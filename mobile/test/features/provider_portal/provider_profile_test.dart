@@ -80,9 +80,22 @@ class ProfileApi extends RequestsApi {
     this.featuredStartsAt,
     this.featuredEndsAt,
     this.socialNetworks = const [],
+    this.pendingChange,
   });
 
   final List<String> socialNetworks;
+
+  /// RA-BE-152: his name, logo, cover, city or category waiting for the team.
+  ProviderPendingProfileChange? pendingChange;
+  int withdrawals = 0;
+
+  @override
+  Future<ProviderDashboardProfile> withdrawProfileChange() async {
+    withdrawals += 1;
+    pendingChange = null;
+    return getProfile();
+  }
+
   bool failsServices = false;
 
   final DateTime? featuredStartsAt;
@@ -121,6 +134,7 @@ class ProfileApi extends RequestsApi {
         portfolioPhotos: 2,
         portfolioPending: 1,
         socialNetworks: socialNetworks,
+        pendingChange: pendingChange,
       );
 
   @override
@@ -425,6 +439,54 @@ void main() {
         GoRouter.of(tester.element(find.byType(Scaffold).last)).pop();
         await tester.pumpAndSettle();
       }
+    });
+
+    // RA-BE-152 (Q-39 (أ)): once approved, his new name, logo, cover, city
+    // or category wait for the team; the profile says what waits, keeps the
+    // live listing, and lets him withdraw it.
+    testWidgets('what waits for the team is said, the listing stays, and he '
+        'can withdraw it', (tester) async {
+      final api = ProfileApi(
+        pendingChange: const ProviderPendingProfileChange(
+          businessName: 'استوديو ضوء الجديد',
+          logoUrl: 'https://x.test/new-logo.png',
+        ),
+      );
+      await _pump(tester, api, () => ProviderProfileTab(now: _now));
+
+      final pending = find.byKey(const Key('provider-me-pending-change'));
+      expect(pending, findsOneWidget);
+      expect(
+        find.descendant(of: pending, matching: find.text('قيد المراجعة')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: pending,
+          matching: find.text('الاسم: استوديو ضوء الجديد · شعار جديد'),
+        ),
+        findsOneWidget,
+      );
+      // Customers still read the live name.
+      expect(find.text('استوديو ضوء صنعاء'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('provider-me-withdraw-change')));
+      await tester.pumpAndSettle();
+      expect(api.withdrawals, 1);
+      expect(pending, findsNothing);
+    });
+
+    test('RA-BE-152: a new logo or cover says it waits for the team once '
+        'approved', () {
+      expect(providerImageSavedLine(logo: true, waits: false), 'تغيّر شعارك.');
+      expect(
+        providerImageSavedLine(logo: true, waits: true),
+        'وصل شعارك الجديد، ويظهر للعرسان بعد ما نراجعه.',
+      );
+      expect(
+        providerImageSavedLine(logo: false, waits: true),
+        'وصل غلافك الجديد، ويظهر للعرسان بعد ما نراجعه.',
+      );
     });
 
     testWidgets('without verification, ratings or a reply speed, nothing '

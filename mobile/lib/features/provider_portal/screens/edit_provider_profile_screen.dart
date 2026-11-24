@@ -157,6 +157,8 @@ class _EditProviderProfileScreenState extends State<EditProviderProfileScreen> {
                         ? 'اكتب اسم النشاط'
                         : null,
                   ),
+                  if (profile.pendingChange?.businessName != null)
+                    _UnderReviewLine(live: profile.businessName),
                   const SizedBox(height: AarastV3Field.gap),
                   ContactPhoneField(
                     phoneController: _phoneController,
@@ -179,6 +181,8 @@ class _EditProviderProfileScreenState extends State<EditProviderProfileScreen> {
                     },
                     validator: (value) => value == null ? 'اختر المدينة' : null,
                   ),
+                  if (profile.pendingChange?.cityId != null)
+                    _UnderReviewLine(live: profile.city?.nameAr),
                   const SizedBox(height: AarastV3Space.x2),
                   AarastDisclosureCard(
                     title: 'نبذة النشاط',
@@ -220,10 +224,14 @@ class _EditProviderProfileScreenState extends State<EditProviderProfileScreen> {
   }
 
   void _populate(ProviderDashboardProfile profile) {
-    _businessNameController.text = profile.businessName;
+    // RA-BE-152: a name or city waiting for the team is what he asked for;
+    // saving it again keeps it waiting, and the live one takes it back.
+    final waiting = profile.pendingChange;
+    _businessNameController.text =
+        waiting?.businessName ?? profile.businessName;
     _phoneController.text = profile.phone ?? '';
     _descriptionController.text = profile.description ?? '';
-    _cityId = profile.cityId;
+    _cityId = waiting?.cityId ?? profile.cityId;
     _didPopulate = true;
   }
 
@@ -276,7 +284,15 @@ class _EditProviderProfileScreenState extends State<EditProviderProfileScreen> {
     if (ok) {
       await _draft?.clear();
       if (!mounted) return;
-      AarastFormSuccess.show(context, message: 'تم حفظ ملف المزود.');
+      final waits =
+          context.read<ProviderDashboardProvider>().profile?.pendingChange !=
+          null;
+      AarastFormSuccess.show(
+        context,
+        message: waits
+            ? 'انحفظ ملفك. اللي قيد المراجعة يظهر للعرسان بعد ما نوافق عليه.'
+            : 'تم حفظ ملف المزود.',
+      );
       context.go(AppRouter.providerDashboard);
     }
   }
@@ -303,6 +319,45 @@ class _ProfileEditNotice extends StatelessWidget {
               style: const TextStyle(
                 color: AppTheme.textPrimary,
                 fontWeight: FontWeight.w800,
+                height: AarastV3Line.reading,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// RA-BE-152 (Q-39 (أ)): under a field whose new value waits for the team,
+/// what customers still read.
+class _UnderReviewLine extends StatelessWidget {
+  const _UnderReviewLine({required this.live});
+
+  final String? live;
+
+  @override
+  Widget build(BuildContext context) {
+    final shown = live?.trim();
+    return Padding(
+      padding: const EdgeInsets.only(top: AarastV3Space.x1),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            LucideIcons.hourglass,
+            size: AarastV3Icon.sm,
+            color: AppTheme.brand,
+          ),
+          const SizedBox(width: AarastV3Space.x1),
+          Expanded(
+            child: Text(
+              shown == null || shown.isEmpty
+                  ? 'قيد المراجعة. يظهر للعرسان لما نوافق.'
+                  : 'قيد المراجعة. العرسان يشوفون «$shown» لين نوافق.',
+              style: JourneyType.of(
+                JourneyType.small,
+                color: AarastV3Color.textMuted,
                 height: AarastV3Line.reading,
               ),
             ),

@@ -445,3 +445,78 @@ class _ProviderCapacitySheetState extends State<ProviderCapacitySheet> {
     );
   }
 }
+
+/// What he reads after sending a new logo or cover: once approved it waits
+/// for the team (RA-BE-152), before that it is his at once.
+String providerImageSavedLine({required bool logo, required bool waits}) {
+  final word = logo ? 'شعارك' : 'غلافك';
+  return waits
+      ? 'وصل $word الجديد، ويظهر للعرسان بعد ما نراجعه.'
+      : 'تغيّر $word.';
+}
+
+/// RA-BE-152 (Q-39 (أ)): p35's «قيد المراجعة». Once approved, his new name,
+/// logo, cover, city or category wait for the team; customers keep seeing
+/// the live ones until it is approved. He can take it back.
+class ProviderPendingChangeCard extends StatelessWidget {
+  const ProviderPendingChangeCard({
+    required this.lines,
+    required this.onWithdraw,
+    this.busy = false,
+    super.key,
+  });
+
+  /// «الاسم: …», «شعار جديد»: what waits, one item per field.
+  final List<String> lines;
+  final VoidCallback? onWithdraw;
+  final bool busy;
+
+  @override
+  Widget build(BuildContext context) {
+    return JourneyBox(
+      borderColor: AarastV3Color.line,
+      borderWidth: AarastV3Space.hair,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                LucideIcons.hourglass,
+                size: AarastV3Icon.sm,
+                color: AarastV3Color.brandAccentStrong,
+              ),
+              const SizedBox(width: AarastV3Space.x2),
+              Text(
+                'قيد المراجعة',
+                style: JourneyType.of(
+                  JourneyType.lead,
+                  weight: JourneyType.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AarastV3Space.x1),
+          Text(lines.join(' · '), style: JourneyType.of(JourneyType.body)),
+          const SizedBox(height: AarastV3Space.x1),
+          Text(
+            'العرسان يشوفون ملفك الحالي لين نوافق على التعديل.',
+            style: JourneyType.of(
+              JourneyType.small,
+              color: AarastV3Color.textMuted,
+              height: AarastV3Line.reading,
+            ),
+          ),
+          const SizedBox(height: AarastV3Space.x3),
+          JourneyButton.quiet(
+            key: const Key('provider-me-withdraw-change'),
+            label: 'اسحب التعديل',
+            icon: LucideIcons.undo2,
+            loading: busy,
+            onPressed: busy ? null : onWithdraw,
+          ),
+        ],
+      ),
+    );
+  }
+}

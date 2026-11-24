@@ -109,7 +109,10 @@ class _ProviderProfileTabState extends State<ProviderProfileTab> {
         JourneyTag(
           key: const Key('provider-me-rating'),
           icon: LucideIcons.star,
-          label: providerRatingLabel(profile.ratingAverage, profile.ratingCount),
+          label: providerRatingLabel(
+            profile.ratingAverage,
+            profile.ratingCount,
+          ),
           color: AarastV3Color.brandAccentStrong,
           soft: AarastV3Color.brandAccentSoft,
         ),
@@ -142,6 +145,17 @@ class _ProviderProfileTabState extends State<ProviderProfileTab> {
       if (tags.isNotEmpty) ...[
         const SizedBox(height: AarastV3Space.x2),
         Wrap(spacing: 6, runSpacing: 6, children: tags),
+      ],
+      // RA-BE-152 (Q-39): what waits for the team; the row above is still
+      // what customers read.
+      if (profile.pendingChange case final change?) ...[
+        const SizedBox(height: AarastV3Space.x3),
+        ProviderPendingChangeCard(
+          key: const Key('provider-me-pending-change'),
+          lines: change.lines,
+          busy: dashboard.isSubmitting,
+          onWithdraw: canManage ? () => _withdraw(context, dashboard) : null,
+        ),
       ],
       // His public page exists only while he is approved.
       if (operations) ...[
@@ -320,6 +334,22 @@ class _ProviderProfileTabState extends State<ProviderProfileTab> {
     ];
   }
 
+  Future<void> _withdraw(
+    BuildContext context,
+    ProviderDashboardProvider dashboard,
+  ) async {
+    final withdrawn = await dashboard.withdrawProfileChange();
+    if (!context.mounted) return;
+    if (withdrawn) {
+      AarastToast.showSuccess(context, 'سحبت التعديل، وملفك باقي مثل ما كان.');
+    } else {
+      AarastToast.showError(
+        context,
+        dashboard.errorMessage ?? 'ما انسحب التعديل الحين.',
+      );
+    }
+  }
+
   /// «من أسبوعين».
   String _since(DateTime at) {
     final ago = providerAgoLabel(at, now: widget.now);
@@ -406,9 +436,14 @@ class _ProviderProfileTabState extends State<ProviderProfileTab> {
         );
         return;
       }
+      final logo = purpose == 'provider-logo';
+      final waiting = dashboard.profile?.pendingChange;
       AarastToast.showSuccess(
         context,
-        purpose == 'provider-logo' ? 'تغيّر شعارك.' : 'تغيّر غلافك.',
+        providerImageSavedLine(
+          logo: logo,
+          waits: (logo ? waiting?.logoUrl : waiting?.coverUrl) != null,
+        ),
       );
     } on ApiException catch (error) {
       if (mounted) AarastToast.showError(context, error.message);

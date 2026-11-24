@@ -142,11 +142,14 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
                       ),
                       const SizedBox(height: AarastV3Field.gap),
                       JourneyChoiceField<String>(
-                        value: _safeCategoryId(marketplace),
+                        value: _safeCategoryId(marketplace, dashboard),
                         label: 'الفئة',
                         icon: LucideIcons.shapes,
                         choices: [
-                          for (final category in marketplace.categories)
+                          for (final category in _sections(
+                            marketplace,
+                            dashboard,
+                          ))
                             JourneyChoice(category.id, category.nameAr),
                         ],
                         onChanged: (value) {
@@ -230,11 +233,36 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
     );
   }
 
-  String? _safeCategoryId(ProviderMarketplaceProvider marketplace) {
+  String? _safeCategoryId(
+    ProviderMarketplaceProvider marketplace,
+    ProviderDashboardProvider dashboard,
+  ) {
     if (_categoryId == null) return null;
-    return marketplace.categories.any((category) => category.id == _categoryId)
+    return _sections(
+          marketplace,
+          dashboard,
+        ).any((category) => category.id == _categoryId)
         ? _categoryId
         : null;
+  }
+
+  /// RA-BE-152: the sections his listing is in (his category and his active
+  /// services'); the server takes a new service only in one of them, and a
+  /// new section comes with a category change the team approves.
+  List<({String id, String nameAr})> _sections(
+    ProviderMarketplaceProvider marketplace,
+    ProviderDashboardProvider dashboard,
+  ) {
+    final listed = {
+      dashboard.profile?.primaryCategoryId,
+      for (final service in dashboard.services)
+        if (service.isActive) service.categoryId,
+    };
+    return [
+      for (final category in marketplace.categories)
+        if (listed.contains(category.id))
+          (id: category.id, nameAr: category.nameAr),
+    ];
   }
 
   String? _safeCityId(ProviderMarketplaceProvider marketplace) {

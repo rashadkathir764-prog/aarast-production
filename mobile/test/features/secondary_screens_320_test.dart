@@ -180,6 +180,61 @@ void main() {
     );
   });
 
+  // RA-BE-152 (Q-39 (أ)): once approved, his new name and city wait for the
+  // team. The fields hold what he asked for, each with its «قيد المراجعة»
+  // line naming what customers still read.
+  testWidgets(
+    'a waiting name and city are shown under review on their fields',
+    (tester) async {
+      await _pumpProviderProfile(
+        tester,
+        marketplace: _FakeMarketplaceProvider(
+          cities: const [
+            MarketplaceCity(id: 'city-1', nameAr: 'أمانة العاصمة'),
+            MarketplaceCity(id: 'city-2', nameAr: 'عدن'),
+          ],
+        ),
+        dashboard: _FakeProviderDashboardProvider(
+          profile: const ProviderDashboardProfile(
+            id: 'provider-1',
+            businessName: 'استديو ضوء',
+            status: 'ACTIVE',
+            ratingAverage: 0,
+            ratingCount: 0,
+            phone: '+967777000111',
+            cityId: 'city-1',
+            city: MarketplaceCity(id: 'city-1', nameAr: 'أمانة العاصمة'),
+            pendingChange: ProviderPendingProfileChange(
+              businessName: 'استديو ضوء الجديد',
+              cityId: 'city-2',
+              cityName: 'عدن',
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final nameField = tester.widget<TextField>(
+        find
+            .descendant(
+              of: find.byType(JourneyTextField),
+              matching: find.byType(TextField),
+            )
+            .first,
+      );
+      expect(nameField.controller?.text, 'استديو ضوء الجديد');
+      expect(
+        find.text('قيد المراجعة. العرسان يشوفون «استديو ضوء» لين نوافق.'),
+        findsOneWidget,
+      );
+      expect(
+        find.text('قيد المراجعة. العرسان يشوفون «أمانة العاصمة» لين نوافق.'),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   group('LocalPlanMigrationScreen at 320px RTL', () {
     // w09: the account already has a plan, so the sheet asks.
     testWidgets(

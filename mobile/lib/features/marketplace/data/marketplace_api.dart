@@ -1240,6 +1240,15 @@ class ProviderDashboardApi {
     return ProviderDashboardProfile.fromJson(json);
   }
 
+  /// RA-BE-152: «اسحب التعديل», his name, logo, cover, city or category
+  /// change waiting for the team; returns the profile as it stays.
+  Future<ProviderDashboardProfile> withdrawProfileChange() async {
+    final json = await _apiClient.deleteJson(
+      '/api/v1/provider/me/profile/pending-change',
+    );
+    return ProviderDashboardProfile.fromJson(json);
+  }
+
   Future<ProviderDashboardProfile> updateProfileMedia({
     String? logoUrl,
     String? coverUrl,

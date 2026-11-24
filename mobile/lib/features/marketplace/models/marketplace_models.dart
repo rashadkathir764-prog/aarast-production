@@ -1021,6 +1021,7 @@ class ProviderDashboardProfile {
     this.portfolioPhotos = 0,
     this.portfolioPending = 0,
     this.socialNetworks = const [],
+    this.pendingChange,
   });
 
   factory ProviderDashboardProfile.fromJson(Map<String, dynamic> json) {
@@ -1084,6 +1085,10 @@ class ProviderDashboardProfile {
                 : const []))
           network.toString(),
       ],
+      pendingChange: _mapOrNull(
+        json['pendingChange'],
+        ProviderPendingProfileChange.fromJson,
+      ),
     );
   }
 
@@ -1162,6 +1167,62 @@ class ProviderDashboardProfile {
   final int portfolioPhotos;
   final int portfolioPending;
   final List<String> socialNetworks;
+
+  /// RA-BE-152 (Q-39): his new name, logo, cover, city or category waiting
+  /// for the team; customers see the live ones until it is approved.
+  final ProviderPendingProfileChange? pendingChange;
+}
+
+/// RA-BE-152: what an approved provider asked to change on his listing,
+/// each field null when it is not asked.
+class ProviderPendingProfileChange {
+  const ProviderPendingProfileChange({
+    this.businessName,
+    this.cityId,
+    this.cityName,
+    this.categoryId,
+    this.categoryName,
+    this.logoUrl,
+    this.coverUrl,
+  });
+
+  factory ProviderPendingProfileChange.fromJson(Map<String, dynamic> json) {
+    String? text(Object? value) {
+      final trimmed = value?.toString().trim();
+      return trimmed == null || trimmed.isEmpty ? null : trimmed;
+    }
+
+    String? nameOf(Object? value) =>
+        value is Map ? text(value['nameAr']) : null;
+
+    return ProviderPendingProfileChange(
+      businessName: text(json['businessName']),
+      cityId: text(json['cityId']),
+      cityName: nameOf(json['city']),
+      categoryId: text(json['primaryCategoryId']),
+      categoryName: nameOf(json['primaryCategory']),
+      logoUrl: text(json['logoUrl']),
+      coverUrl: text(json['coverUrl']),
+    );
+  }
+
+  final String? businessName;
+  final String? cityId;
+  final String? cityName;
+  final String? categoryId;
+  final String? categoryName;
+  final String? logoUrl;
+  final String? coverUrl;
+
+  /// «الاسم: …», «شعار جديد»: one line per field waiting, in the portal's
+  /// words.
+  List<String> get lines => [
+    if (businessName != null) 'الاسم: $businessName',
+    if (cityId != null) 'المدينة: ${cityName ?? 'مدينة جديدة'}',
+    if (categoryId != null) 'الفئة: ${categoryName ?? 'فئة جديدة'}',
+    if (logoUrl != null) 'شعار جديد',
+    if (coverUrl != null) 'غلاف جديد',
+  ];
 }
 
 class ProviderDashboardSummary {

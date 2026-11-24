@@ -940,6 +940,28 @@ class ProviderDashboardProvider extends ChangeNotifier
     }
   }
 
+  /// RA-BE-152 (Q-39): «اسحب التعديل». His listing stays as customers see
+  /// it, and the images he sent for the change are deleted.
+  Future<bool> withdrawProfileChange() async {
+    _isSubmitting = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      _profile = await _api.withdrawProfileChange();
+      return true;
+    } on ApiException catch (error) {
+      _errorMessage = _said(error, 'سحب التعديل يحتاج النت');
+      return false;
+    } catch (_) {
+      _errorMessage = 'ما انسحب التعديل الحين. مرة ثانية غالبًا تمشي.';
+      return false;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
   /// p37 (B-16): his «معرض الشغل», each photo with its review state, and
   /// his links; null until read.
   ProviderPortfolio? get portfolio => _portfolio;

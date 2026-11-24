@@ -6,6 +6,8 @@ import 'package:aarast_mobile/features/guests/widgets/guest_groups_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../support/screen_reader.dart';
+
 void main() {
   group('GuestsProvider groups', () {
     late _GroupsApi api;
@@ -135,6 +137,43 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  // RA-MO-361: the bin beside a group was hidden in the row's one label; a
+  // screen reader could rename a group and never remove it.
+  testWidgets('a screen reader reaches the bin beside a group', (tester) async {
+    final semantics = tester.ensureSemantics();
+    const family = GuestGroup(
+      id: 'family',
+      weddingPlanId: 'plan-1',
+      name: 'الأهل',
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: GuestGroupsSheet(
+            groups: const [family],
+            guestCounts: const {'family': 3},
+            saving: false,
+            onCreate: (_) async => true,
+            onRename: (_, _) async => true,
+            onDelete: (_) async => true,
+          ),
+        ),
+      ),
+    );
+    expectEveryButtonActs();
+
+    await pressSpoken(
+      tester,
+      find.byTooltip('شيل مجموعة الأهل'),
+      tooltip: 'شيل مجموعة الأهل',
+    );
+    expect(
+      find.text('ضيوفها (3) يبقون في قائمتك بدون مجموعة.'),
+      findsOneWidget,
+    );
+    semantics.dispose();
+  });
 }
 
 class _GroupsApi extends GuestsApi {

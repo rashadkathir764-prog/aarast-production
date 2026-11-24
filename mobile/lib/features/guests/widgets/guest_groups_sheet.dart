@@ -123,6 +123,8 @@ class _GuestGroupsSheetState extends State<GuestGroupsSheet> {
                   onTap: widget.saving || !group.editable
                       ? null
                       : () => _rename(group),
+                  // RA-MO-361: the bin is its own button beside the row's.
+                  trailingIsAction: true,
                   trailing: group.editable
                       ? IconButton(
                           tooltip:

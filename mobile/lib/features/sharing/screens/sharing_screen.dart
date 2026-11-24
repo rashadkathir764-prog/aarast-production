@@ -812,88 +812,101 @@ class _PendingInviteRowState extends State<_PendingInviteRow> {
     // Delivered or on its way: remind on WhatsApp. Otherwise the owner
     // sends the link himself.
     final remind = invite.wasDeliveredByAarast || invite.hasPendingDelivery;
+    // RA-MO-361: the row's words join the pressable's own node, and its
+    // pill stays a button of its own; the row's one label had hidden it.
     return AarastPressable(
       key: ValueKey('pending-invite-${invite.id}'),
       onTap: widget.onTap,
-      semanticLabel:
-          '${_inviteName(invite)}، ${_deliveryLine(invite, context.journeyProfile)}',
-      child: Padding(
-        padding: const EdgeInsets.all(AarastV3Space.x3),
-        child: Row(
-          children: [
-            JourneyAvatar(
-              letter: _letter(invite.name),
-              color: widget.color,
-              size: AarastV3Size.mark,
-            ),
-            const SizedBox(width: AarastV3Space.x3),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _Name(name: invite.name, phone: invite.phone),
-                  Text(
-                    _deliveryLine(invite, context.journeyProfile),
-                    style: JourneyType.of(
-                      JourneyType.small,
-                      color: AarastV3Color.textMuted,
+      child: Semantics(
+        label:
+            '${_inviteName(invite)}، ${_deliveryLine(invite, context.journeyProfile)}',
+        child: Padding(
+          padding: const EdgeInsets.all(AarastV3Space.x3),
+          child: Row(
+            children: [
+              ExcludeSemantics(
+                child: JourneyAvatar(
+                  letter: _letter(invite.name),
+                  color: widget.color,
+                  size: AarastV3Size.mark,
+                ),
+              ),
+              const SizedBox(width: AarastV3Space.x3),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ExcludeSemantics(
+                      child: _Name(name: invite.name, phone: invite.phone),
                     ),
-                  ),
-                  // Critique ش3: the action under the words, not in the
-                  // row's middle where it folded them onto three lines.
-                  // x07 draws a small pill; while the server asks to wait
-                  // it rests faded instead of turning into a grey button.
-                  Opacity(
-                    opacity: canRetry ? 1 : 0.5,
-                    child: AarastPressable(
-                      key: ValueKey('pending-invite-reissue-${invite.id}'),
-                      onTap: canRetry ? widget.onReissue : null,
-                      borderRadius: BorderRadius.circular(
-                        AarastV3Radius.surface,
-                      ),
-                      semanticLabel: remind
-                          ? context.say('ذكّره', 'ذكّريه')
-                          : context.say('انسخ الرابط', 'انسخي الرابط'),
-                      // The small pill keeps its look in a 48 target, so a near
-                      // miss does not land on the row's cancel sheet.
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(
-                          minHeight: AarastV3Space.x12,
+                    ExcludeSemantics(
+                      child: Text(
+                        _deliveryLine(invite, context.journeyProfile),
+                        style: JourneyType.of(
+                          JourneyType.small,
+                          color: AarastV3Color.textMuted,
                         ),
-                        child: Align(
-                          widthFactor: 1,
-                          alignment: AlignmentDirectional.centerStart,
-                          child: Container(
-                            padding: AarastV3Density.tagInsets,
-                            decoration: BoxDecoration(
-                              color: remind
-                                  ? context.accent.primarySoft
-                                  : AarastV3Color.brandAccentSoft,
-                              borderRadius: BorderRadius.circular(
-                                AarastV3Radius.surface,
-                              ),
-                            ),
-                            child: Text(
-                              remind
-                                  ? context.say('ذكّره', 'ذكّريه')
-                                  : context.say('انسخ الرابط', 'انسخي الرابط'),
-                              style: JourneyType.of(
-                                JourneyType.small,
-                                weight: JourneyType.bold,
+                      ),
+                    ),
+                    // Critique ش3: the action under the words, not in the
+                    // row's middle where it folded them onto three lines.
+                    // x07 draws a small pill; while the server asks to wait
+                    // it rests faded instead of turning into a grey button.
+                    Opacity(
+                      opacity: canRetry ? 1 : 0.5,
+                      child: AarastPressable(
+                        key: ValueKey('pending-invite-reissue-${invite.id}'),
+                        onTap: canRetry ? widget.onReissue : null,
+                        borderRadius: BorderRadius.circular(
+                          AarastV3Radius.surface,
+                        ),
+                        semanticLabel: remind
+                            ? context.say('ذكّره', 'ذكّريه')
+                            : context.say('انسخ الرابط', 'انسخي الرابط'),
+                        // The small pill keeps its look in a 48 target, so a near
+                        // miss does not land on the row's cancel sheet.
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(
+                            minHeight: AarastV3Space.x12,
+                          ),
+                          child: Align(
+                            widthFactor: 1,
+                            alignment: AlignmentDirectional.centerStart,
+                            child: Container(
+                              padding: AarastV3Density.tagInsets,
+                              decoration: BoxDecoration(
                                 color: remind
-                                    ? context.accent.primary
-                                    : AarastV3Color.brandAccentStrong,
+                                    ? context.accent.primarySoft
+                                    : AarastV3Color.brandAccentSoft,
+                                borderRadius: BorderRadius.circular(
+                                  AarastV3Radius.surface,
+                                ),
+                              ),
+                              child: Text(
+                                remind
+                                    ? context.say('ذكّره', 'ذكّريه')
+                                    : context.say(
+                                        'انسخ الرابط',
+                                        'انسخي الرابط',
+                                      ),
+                                style: JourneyType.of(
+                                  JourneyType.small,
+                                  weight: JourneyType.bold,
+                                  color: remind
+                                      ? context.accent.primary
+                                      : AarastV3Color.brandAccentStrong,
+                                ),
                               ),
                             ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

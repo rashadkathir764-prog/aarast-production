@@ -168,6 +168,8 @@ class _Step extends StatelessWidget {
       title: title,
       subtitle: subtitle,
       onTap: onTap,
+      // RA-MO-361: the button drawn is heard, not only the row.
+      trailingIsAction: true,
       trailing: JourneyButton(
         label: action,
         background: AarastV3Color.primarySoft,

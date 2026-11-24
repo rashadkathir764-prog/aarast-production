@@ -525,6 +525,8 @@ class _AlbumSheetState extends State<_AlbumSheet> {
             soft: AarastV3Color.dangerSoft,
             title: 'أأكد إن الصور بدون وجوه',
             subtitle: 'الكوشة، والزينة، والنقش، والفستان من الخلف',
+            // RA-MO-361: the switch is heard with its state.
+            trailingIsAction: true,
             trailing: JourneyToggle(
               value: _noFaces,
               onChanged: (value) => setState(() => _noFaces = value),

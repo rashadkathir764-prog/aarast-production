@@ -385,31 +385,40 @@ class _MineRow extends StatelessWidget {
         ? null
         : '${task.checklistDoneCount} من ${task.checklist.length}';
     final meta = [taskWhenLabel(task), ?steps].join(' · ');
+    // RA-MO-361: the row's words join the pressable's own node, and the
+    // circle stays a button of its own; the row's one label had hidden it.
     return AarastPressable(
       onTap: onOpen,
-      semanticLabel: '${task.title}، $meta',
-      child: Padding(
-        padding: const EdgeInsets.all(AarastV3Space.x3),
-        child: Row(
-          children: [
-            Semantics(
-              button: true,
-              checked: done,
-              label: done ? 'افتح ${task.title} من جديد' : 'خلّص ${task.title}',
-              onTap: busy ? null : onToggle,
-              excludeSemantics: true,
-              child: AarastPressable(
-                key: ValueKey('participant-task-toggle-${task.id}'),
+      child: Semantics(
+        label: '${task.title}، $meta',
+        child: Padding(
+          padding: const EdgeInsets.all(AarastV3Space.x3),
+          child: Row(
+            children: [
+              Semantics(
+                container: true,
+                button: true,
+                checked: done,
+                label: done
+                    ? 'افتح ${task.title} من جديد'
+                    : 'خلّص ${task.title}',
                 onTap: busy ? null : onToggle,
-                borderRadius: BorderRadius.circular(AarastV3Radius.card),
-                child: _TaskCircle(done: done),
+                excludeSemantics: true,
+                child: AarastPressable(
+                  key: ValueKey('participant-task-toggle-${task.id}'),
+                  onTap: busy ? null : onToggle,
+                  borderRadius: BorderRadius.circular(AarastV3Radius.card),
+                  child: _TaskCircle(done: done),
+                ),
               ),
-            ),
-            const SizedBox(width: AarastV3Space.x1),
-            Expanded(
-              child: _TaskText(task: task, meta: meta, late: late),
-            ),
-          ],
+              const SizedBox(width: AarastV3Space.x1),
+              Expanded(
+                child: ExcludeSemantics(
+                  child: _TaskText(task: task, meta: meta, late: late),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -17,6 +17,8 @@ import 'package:aarast_mobile/features/finance/screens/money_overview_screen.dar
 import 'package:aarast_mobile/features/finance/widgets/funding_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../../support/screen_reader.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -430,5 +432,25 @@ void main() {
 
     final hero = find.byKey(const ValueKey('money-cash-hero'));
     expect(_said(tester, hero), contains('سلف ترجعينها 200,000'));
+  });
+
+  // RA-MO-361: «وصلت؟» on a promise was hidden in the row's one label; a
+  // screen reader's double tap opened the source instead.
+  testWidgets('a screen reader reaches «وصلت؟» on a promise', (tester) async {
+    final semantics = tester.ensureSemantics();
+    final providers = await tester.runAsync(_plan);
+    await _open(tester, providers!);
+    final arrived = find.byKey(
+      const ValueKey('money-pledge-arrived-f-promise'),
+    );
+    await _show(tester, arrived);
+    expectEveryButtonActs();
+
+    await pressSpoken(tester, arrived, label: 'وصلت؟');
+    expect(
+      find.byKey(const ValueKey('money-pledge-arrived-yes')),
+      findsOneWidget,
+    );
+    semantics.dispose();
   });
 }

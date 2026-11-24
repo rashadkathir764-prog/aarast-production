@@ -320,7 +320,10 @@ class JourneyTextAction extends StatelessWidget {
     final enabled = onPressed != null;
     final color = enabled ? this.color : AarastV3Color.textFaint;
     final sub = this.sub;
+    // Its own node (RA-MO-361): beside a figure in a row's end it was merged
+    // with the figure's words into one button.
     return Semantics(
+      container: true,
       button: true,
       enabled: enabled,
       label: [label, ?sub].join('، '),
@@ -1159,10 +1162,10 @@ class JourneyListRow extends StatelessWidget {
   /// A line that names several things (the plan's items) may take more.
   final int subtitleMaxLines;
 
-  /// [trailing] is a control of its own (a «⋯»): on a row with [onTap] a
-  /// screen reader reaches it beside the row's one label, which otherwise
-  /// keeps everything in the row, the end too (RA-MO-361). Its own
-  /// `Semantics(container: true)` with its tap is the caller's.
+  /// [trailing] holds a control of its own (a «⋯», a switch, a button): on a
+  /// row with [onTap] a screen reader reaches it as a node of its own under
+  /// the row's one label, which otherwise keeps everything in the row, the
+  /// end too (RA-MO-361). The control carries its own tap.
   final bool trailingIsAction;
 
   final IconData icon;
@@ -1220,7 +1223,9 @@ class JourneyListRow extends StatelessWidget {
             ],
           ),
         ),
-        end: trailing,
+        end: keepsEnd && trailing != null
+            ? Semantics(container: true, child: trailing)
+            : trailing,
       ),
     );
     if (onTap == null) return row;

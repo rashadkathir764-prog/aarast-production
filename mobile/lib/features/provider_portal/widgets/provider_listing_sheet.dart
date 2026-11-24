@@ -221,9 +221,12 @@ class _ListingSheetState extends State<_ListingSheet> {
                 onTap: _switching || _saving
                     ? null
                     : () => _setActive(!_active),
+                // RA-MO-361: the switch is heard with its state.
+                trailingIsAction: true,
                 trailing: JourneyToggle(
                   value: _active,
                   onChanged: _switching || _saving ? null : _setActive,
+                  semanticLabel: 'تظهر للعرسان',
                 ),
               ),
             ],

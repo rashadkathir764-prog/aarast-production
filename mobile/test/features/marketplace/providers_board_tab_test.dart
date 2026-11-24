@@ -26,6 +26,8 @@ import 'package:aarast_mobile/features/wedding_plans/models/wedding_plan.dart';
 import 'package:aarast_mobile/features/wedding_plans/providers/wedding_plans_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../../support/screen_reader.dart';
 import 'package:go_router/go_router.dart';
 import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:provider/provider.dart';
@@ -950,6 +952,55 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(find.text('خدمات عرسك'), findsOneWidget);
+  });
+
+  // RA-MO-361: the compare box on a saved provider's card was hidden in the
+  // card's one label; a screen reader could open the provider, never pick.
+  testWidgets('a screen reader picks a saved provider to compare', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    FavoriteProvider saved(String id, String name) => FavoriteProvider(
+      id: 'fav-$id',
+      providerId: id,
+      provider: MarketplaceProvider(
+        id: id,
+        businessName: name,
+        ownerName: 'مالك',
+        ratingAverage: 0,
+        ratingCount: 0,
+        primaryCategory: const ProviderCategory(
+          id: 'cat-photo',
+          nameAr: 'تصوير',
+        ),
+      ),
+    );
+    final marketplace = _FakeMarketplaceProvider(
+      favorites: [
+        saved('p1', 'فرقة الأفراح'),
+        saved('p2', 'الفنان أيمن القاضي'),
+        saved('p3', 'ضوء صنعاء'),
+      ],
+    );
+    await _pump(tester, marketplace, finance: _LoadedFinance());
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const ValueKey('providers-tabs')),
+        matching: find.text('المفضلة'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expectEveryButtonActs();
+
+    await pressSpoken(
+      tester,
+      find.byKey(const ValueKey('providers-favorite-pick-p3')),
+      label: 'اختره للمقارنة',
+    );
+    await tester.tap(find.text('قارن الملفين'));
+    await tester.pumpAndSettle();
+    expect(find.text('compare p2,p3'), findsOneWidget);
+    semantics.dispose();
   });
 }
 

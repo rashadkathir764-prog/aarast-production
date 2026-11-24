@@ -28,6 +28,8 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../support/screen_reader.dart';
+
 import 'provider_requests_test.dart' show RequestsApi, bookingJson, quoteJson;
 
 // Provider slice 4 (D40): p35 «ملفي», p36 his services, p37 his gallery,
@@ -889,6 +891,78 @@ void main() {
       );
       expect(find.byKey(const Key('provider-home-first')), findsNothing);
       expect(find.byKey(const Key('provider-home-waiting')), findsOneWidget);
+    });
+  });
+
+  // RA-MO-361: a control at a row's end was hidden in the row's one label.
+  // The switches were heard as plain buttons without their state, and the
+  // first steps' «إضافة» was never heard.
+  group('a screen reader reaches what is at a row\'s end', () {
+    testWidgets('a first step\'s button', (tester) async {
+      final semantics = tester.ensureSemantics();
+      final opened = <int>[];
+      await _pump(
+        tester,
+        ProfileApi(description: null, services: const []),
+        () => ProviderHomeTab(onOpenTab: opened.add),
+      );
+      expectEveryButtonActs();
+
+      await pressSpoken(
+        tester,
+        find.descendant(
+          of: find.byKey(const Key('provider-first-logo')),
+          matching: find.byType(JourneyButton),
+        ),
+        label: 'إضافة',
+      );
+      expect(opened, [4]);
+      semantics.dispose();
+    });
+
+    testWidgets('a package\'s «تظهر للعرسان» switch', (tester) async {
+      final semantics = tester.ensureSemantics();
+      final api = ProfileApi();
+      await _pump(tester, api, () => ProviderServicesScreen(now: _now));
+      await tester.tap(find.byKey(const Key('provider-package-pkg-1')));
+      await tester.pumpAndSettle();
+      expectEveryButtonActs();
+
+      await pressSpoken(
+        tester,
+        find.descendant(
+          of: find.byKey(const Key('provider-listing-active')),
+          matching: find.byType(JourneyToggle),
+        ),
+        label: 'تظهر للعرسان',
+      );
+      expect(api.activations, ['pkg-1:true']);
+      semantics.dispose();
+    });
+
+    testWidgets('the women\'s album «بدون وجوه» switch', (tester) async {
+      final semantics = tester.ensureSemantics();
+      await _pump(
+        tester,
+        ProfileApi(),
+        () => ProviderGalleryScreen(pickImages: () async => const []),
+      );
+      await tester.tap(find.byKey(const Key('provider-gallery-add')));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const Key('provider-gallery-pick-حفلات النساء')),
+      );
+      await tester.pumpAndSettle();
+      expectEveryButtonActs();
+
+      final toggle = find.descendant(
+        of: find.byKey(const Key('provider-gallery-no-faces')),
+        matching: find.byType(JourneyToggle),
+      );
+      expect(tester.widget<JourneyToggle>(toggle).value, isFalse);
+      await pressSpoken(tester, toggle, label: 'الصور بدون وجوه');
+      expect(tester.widget<JourneyToggle>(toggle).value, isTrue);
+      semantics.dispose();
     });
   });
 }

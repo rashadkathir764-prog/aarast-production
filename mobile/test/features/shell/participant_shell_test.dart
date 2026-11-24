@@ -39,6 +39,8 @@ import 'package:aarast_mobile/features/wedding_plans/screens/wedding_plan_dashbo
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../../support/screen_reader.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -729,6 +731,30 @@ void main() {
     expect(tester.takeException(), isNull);
     await _openTab(tester, 'المال');
     expect(tester.takeException(), isNull);
+  });
+
+  // RA-MO-361: the circle that finishes a task was hidden in the row's one
+  // label; a screen reader could open the task, never finish it there.
+  testWidgets('a screen reader finishes one\'s own task from its circle', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    final harness = await _Harness.create(
+      tasks: [_task('t1', 'رتّب الغداء مع أبو علي', days: 2)],
+    );
+    await harness.pump(tester);
+    await _openTab(tester, 'المهام');
+    expectEveryButtonActs();
+
+    await pressSpoken(
+      tester,
+      find.byKey(const ValueKey('participant-task-toggle-t1')),
+      label: 'خلّص رتّب الغداء مع أبو علي',
+    );
+    expect(harness.tasksApi.updates, [
+      {'status': 'DONE'},
+    ]);
+    semantics.dispose();
   });
 }
 

@@ -14,6 +14,8 @@ import 'package:aarast_mobile/features/sharing/screens/sharing_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../../support/screen_reader.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -713,6 +715,30 @@ void main() {
       );
       expect(find.textContaining('هو اللي يضيفهم ويحدد'), findsOneWidget);
     });
+  });
+
+  // RA-MO-361: «ذكّره» on a pending invite was hidden in the row's one
+  // label; a screen reader's double tap opened the cancel sheet instead.
+  testWidgets('a screen reader reissues a pending invite', (tester) async {
+    final semantics = tester.ensureSemantics();
+    _setTallView(tester);
+    final api = _FakeSharingApi(invites: [_invite()]);
+    await _pumpWithAuth(
+      tester,
+      provider: SharingProvider(api),
+      child: const SharingScreen(weddingPlanId: _planId),
+    );
+    await tester.pumpAndSettle();
+    expectEveryButtonActs();
+
+    await pressSpoken(
+      tester,
+      find.byKey(const Key('pending-invite-reissue-invite-1')),
+      label: 'انسخ الرابط',
+    );
+    expect(api.reissueCalls, 1);
+    await tester.pump(const Duration(seconds: 6));
+    semantics.dispose();
   });
 }
 

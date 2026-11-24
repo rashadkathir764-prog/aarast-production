@@ -15,6 +15,8 @@ import 'package:aarast_mobile/features/finance/screens/cost_payment_screens.dart
 import 'package:aarast_mobile/features/finance/screens/money_overview_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../../support/screen_reader.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -550,5 +552,24 @@ void main() {
     final photo = find.byKey(const ValueKey('money-due-s-photo'));
     await _show(tester, photo);
     expect(_said(tester, photo), contains('نذكّرك'));
+  });
+
+  // RA-MO-361: «سجّل» on a date was hidden in the row's one label.
+  testWidgets('a screen reader reaches «سجّل» on a date', (tester) async {
+    final semantics = tester.ensureSemantics();
+    final provider = await tester.runAsync(_plan);
+    final app = await _open(tester, provider!);
+    await _payments(tester);
+    final pay = find.byKey(const ValueKey('money-due-pay-s-late'));
+    await _show(tester, pay);
+    expectEveryButtonActs();
+
+    await pressSpoken(tester, pay, label: 'سجّل');
+    await _settle(tester);
+    expect(
+      app.location,
+      AppRouter.moneySchedulePay(_planId, 'k-hall', 's-late'),
+    );
+    semantics.dispose();
   });
 }

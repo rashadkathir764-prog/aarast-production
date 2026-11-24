@@ -305,6 +305,7 @@ class _MoneyFundingTabState extends State<_MoneyFundingTab> {
                     key: ValueKey('money-source-${source.id}'),
                     source: source,
                     amount: money(source.amount),
+                    currency: currency,
                     onOpen: () => _openSources(source.id),
                     onArrived: () => _arrived(source),
                   ),
@@ -438,11 +439,13 @@ class _PledgeRow extends StatelessWidget {
     required this.amount,
     required this.onOpen,
     required this.onArrived,
+    required this.currency,
     super.key,
   });
 
   final FundingSource source;
   final String amount;
+  final String currency;
   final VoidCallback onOpen;
   final VoidCallback onArrived;
 
@@ -464,12 +467,16 @@ class _PledgeRow extends StatelessWidget {
           ? 'ما تحدد موعدها'
           : 'موعدها ${formatArabicDayMonth(day)}',
       subtitleMaxLines: 2,
+      // RA-MO-361: «وصلت؟» is its own button beside the row's, and the
+      // amount is heard with it.
+      trailingIsAction: true,
       trailing: Column(
         crossAxisAlignment: CrossAxisAlignment.end,
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
             amount,
+            semanticsLabel: _spokenMoney(amount, currency),
             style: JourneyType.of(JourneyType.body, weight: JourneyType.bold),
           ),
           JourneyTextAction(

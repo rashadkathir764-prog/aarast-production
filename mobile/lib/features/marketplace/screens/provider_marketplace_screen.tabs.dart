@@ -648,121 +648,130 @@ class _FavoriteCard extends StatelessWidget {
         ),
       ),
     );
+    // RA-MO-361: the name joins the pressable's own node, and the compare
+    // box stays a button of its own; the card's one label had hidden it.
     return AarastPressable(
       onTap: onOpen,
-      semanticLabel: provider.businessName,
       borderRadius: BorderRadius.circular(AarastV3Radius.card),
-      child: Container(
-        clipBehavior: Clip.antiAlias,
-        decoration: BoxDecoration(
-          color: AarastV3Color.paper,
-          borderRadius: BorderRadius.circular(AarastV3Radius.card),
-          border: picked
-              ? Border.all(
-                  color: context.accent.primary,
-                  width: AarastV3Size.lineStrong,
-                )
-              : null,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // D118: a card photo's proportion of the card's width.
-            AspectRatio(
-              aspectRatio: AarastV3Media.cardPhoto,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  if (cover == null ||
-                      cover.isEmpty ||
-                      (context.watch<DevicePreferences?>()?.dataSaver ?? false))
-                    placeholder
-                  else
-                    Image.network(
-                      cover,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => placeholder,
-                    ),
-                  PositionedDirectional(
-                    top: 0,
-                    end: 0,
-                    child: Semantics(
-                      checked: picked,
-                      child: AarastPressable(
-                        key: ValueKey('providers-favorite-pick-${provider.id}'),
-                        onTap: onPick,
-                        semanticLabel: context.say(
-                          'اختره للمقارنة',
-                          'اختاريه للمقارنة',
-                        ),
-                        // The 24 box in a 48 target (DESIGN_SYSTEM).
-                        child: Padding(
-                          padding: const EdgeInsets.all(AarastV3Space.x3),
-                          child: Container(
-                            width: AarastV3Size.check,
-                            height: AarastV3Size.check,
-                            decoration: BoxDecoration(
-                              color: picked
-                                  ? context.accent.primary
-                                  : AarastV3Color.paper,
-                              borderRadius: BorderRadius.circular(
-                                AarastV3Radius.xs,
+      child: Semantics(
+        label: provider.businessName,
+        child: Container(
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: AarastV3Color.paper,
+            borderRadius: BorderRadius.circular(AarastV3Radius.card),
+            border: picked
+                ? Border.all(
+                    color: context.accent.primary,
+                    width: AarastV3Size.lineStrong,
+                  )
+                : null,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // D118: a card photo's proportion of the card's width.
+              AspectRatio(
+                aspectRatio: AarastV3Media.cardPhoto,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    if (cover == null ||
+                        cover.isEmpty ||
+                        (context.watch<DevicePreferences?>()?.dataSaver ??
+                            false))
+                      placeholder
+                    else
+                      Image.network(
+                        cover,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => placeholder,
+                      ),
+                    PositionedDirectional(
+                      top: 0,
+                      end: 0,
+                      child: Semantics(
+                        checked: picked,
+                        child: AarastPressable(
+                          key: ValueKey(
+                            'providers-favorite-pick-${provider.id}',
+                          ),
+                          onTap: onPick,
+                          semanticLabel: context.say(
+                            'اختره للمقارنة',
+                            'اختاريه للمقارنة',
+                          ),
+                          // The 24 box in a 48 target (DESIGN_SYSTEM).
+                          child: Padding(
+                            padding: const EdgeInsets.all(AarastV3Space.x3),
+                            child: Container(
+                              width: AarastV3Size.check,
+                              height: AarastV3Size.check,
+                              decoration: BoxDecoration(
+                                color: picked
+                                    ? context.accent.primary
+                                    : AarastV3Color.paper,
+                                borderRadius: BorderRadius.circular(
+                                  AarastV3Radius.xs,
+                                ),
                               ),
+                              child: picked
+                                  ? const Icon(
+                                      LucideIcons.check,
+                                      size: AarastV3Icon.sm,
+                                      color: AarastV3Color.onPrimary,
+                                    )
+                                  : null,
                             ),
-                            child: picked
-                                ? const Icon(
-                                    LucideIcons.check,
-                                    size: AarastV3Icon.sm,
-                                    color: AarastV3Color.onPrimary,
-                                  )
-                                : null,
                           ),
                         ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(AarastV3Space.x2),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    provider.businessName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: JourneyType.of(
-                      JourneyType.body,
-                      weight: JourneyType.bold,
-                    ),
+              ExcludeSemantics(
+                child: Padding(
+                  padding: const EdgeInsets.all(AarastV3Space.x2),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        provider.businessName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: JourneyType.of(
+                          JourneyType.body,
+                          weight: JourneyType.bold,
+                        ),
+                      ),
+                      if (kind.isNotEmpty)
+                        Text(
+                          kind,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: JourneyType.of(
+                            JourneyType.caption,
+                            color: AarastV3Color.textMuted,
+                          ),
+                        ),
+                      if (price != null)
+                        Text(
+                          price!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: JourneyType.of(
+                            JourneyType.small,
+                            weight: JourneyType.bold,
+                            color: context.accent.primary,
+                          ),
+                        ),
+                    ],
                   ),
-                  if (kind.isNotEmpty)
-                    Text(
-                      kind,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: JourneyType.of(
-                        JourneyType.caption,
-                        color: AarastV3Color.textMuted,
-                      ),
-                    ),
-                  if (price != null)
-                    Text(
-                      price!,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: JourneyType.of(
-                        JourneyType.small,
-                        weight: JourneyType.bold,
-                        color: context.accent.primary,
-                      ),
-                    ),
-                ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

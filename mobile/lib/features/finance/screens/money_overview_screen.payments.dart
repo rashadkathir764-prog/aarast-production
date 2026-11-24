@@ -694,98 +694,108 @@ class _DueLine extends StatelessWidget {
         'نذكّرك ${formatArabicDayMonth(remind)}',
     ];
     final pay = onPay;
+    // RA-MO-361: the row's words join the pressable's own node, and «سجّل»
+    // stays a button of its own; the row's one label had hidden it.
     final row = AarastPressable(
       // A date opens its pay page; anything else its agreement.
       onTap: pay == null ? onOpen : () => pay(line),
-      semanticLabel: _spokenMoney(
-        [
-          line.title,
-          for (final fact in facts) fact.$1,
-          ...notes,
-          money(line.amount),
-        ].join('، '),
-        currency,
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(AarastV3Space.x3),
-        // What it is beside how much, so the action does not push the
-        // day under a gap.
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    line.title,
-                    style: JourneyType.of(
-                      JourneyType.body,
-                      weight: JourneyType.bold,
-                    ),
-                  ),
-                  Text.rich(
-                    TextSpan(
-                      children: [
-                        for (final (index, fact) in facts.indexed) ...[
-                          if (index > 0) const TextSpan(text: ' · '),
-                          TextSpan(
-                            text: fact.$1,
-                            style: fact.$2 == null
-                                ? null
-                                : TextStyle(
-                                    color: fact.$2,
-                                    fontWeight: JourneyType.bold,
-                                  ),
+      child: Semantics(
+        label: _spokenMoney(
+          [
+            line.title,
+            for (final fact in facts) fact.$1,
+            ...notes,
+            money(line.amount),
+          ].join('، '),
+          currency,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(AarastV3Space.x3),
+          // What it is beside how much, so the action does not push the
+          // day under a gap.
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: ExcludeSemantics(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        line.title,
+                        style: JourneyType.of(
+                          JourneyType.body,
+                          weight: JourneyType.bold,
+                        ),
+                      ),
+                      Text.rich(
+                        TextSpan(
+                          children: [
+                            for (final (index, fact) in facts.indexed) ...[
+                              if (index > 0) const TextSpan(text: ' · '),
+                              TextSpan(
+                                text: fact.$1,
+                                style: fact.$2 == null
+                                    ? null
+                                    : TextStyle(
+                                        color: fact.$2,
+                                        fontWeight: JourneyType.bold,
+                                      ),
+                              ),
+                            ],
+                          ],
+                        ),
+                        style: JourneyType.of(
+                          JourneyType.small,
+                          color: AarastV3Color.textMuted,
+                        ),
+                      ),
+                      if (notes.isNotEmpty)
+                        Text(
+                          notes.join(' · '),
+                          style: JourneyType.of(
+                            JourneyType.caption,
+                            color: AarastV3Color.textMuted,
                           ),
-                        ],
-                      ],
-                    ),
-                    style: JourneyType.of(
-                      JourneyType.small,
-                      color: AarastV3Color.textMuted,
-                    ),
+                        ),
+                    ],
                   ),
-                  if (notes.isNotEmpty)
-                    Text(
-                      notes.join(' · '),
-                      style: JourneyType.of(
-                        JourneyType.caption,
-                        color: AarastV3Color.textMuted,
+                ),
+              ),
+              const SizedBox(width: AarastV3Space.x2),
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: MediaQuery.sizeOf(context).width * .4,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ExcludeSemantics(
+                      child: Text(
+                        money(line.amount),
+                        textAlign: TextAlign.end,
+                        style: JourneyType.of(
+                          JourneyType.body,
+                          weight: JourneyType.bold,
+                          color: late
+                              ? AarastV3Color.danger
+                              : AarastV3Color.ink,
+                        ),
                       ),
                     ),
-                ],
+                    if (pay != null)
+                      JourneyTextAction(
+                        key: ValueKey('money-due-pay-${line.id}'),
+                        label: context.say('سجّل', 'سجّلي'),
+                        color: context.accent.primary,
+                        onPressed: () => pay(line),
+                      ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(width: AarastV3Space.x2),
-            ConstrainedBox(
-              constraints: BoxConstraints(
-                maxWidth: MediaQuery.sizeOf(context).width * .4,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    money(line.amount),
-                    textAlign: TextAlign.end,
-                    style: JourneyType.of(
-                      JourneyType.body,
-                      weight: JourneyType.bold,
-                      color: late ? AarastV3Color.danger : AarastV3Color.ink,
-                    ),
-                  ),
-                  if (pay != null)
-                    JourneyTextAction(
-                      key: ValueKey('money-due-pay-${line.id}'),
-                      label: context.say('سجّل', 'سجّلي'),
-                      color: context.accent.primary,
-                      onPressed: () => pay(line),
-                    ),
-                ],
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

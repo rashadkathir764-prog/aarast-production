@@ -101,4 +101,23 @@ describe('ReportsPage (a02)', () => {
     expect(csv).toContain('طلبات عروض صارت حجز,28٪ (1102 من 3910)');
     expect(csv).toContain('صنعاء,التصوير,24,180000.00,350000.00,900000.00,YER');
   });
+
+  it('RA-AD-28: a cell a sheet would run as a formula is written as text', () => {
+    const typed = (itemName: string): AdminSuccessReport => ({
+      ...report,
+      spending: {
+        minPlans: 5,
+        groups: [
+          { city: '@صنعاء', itemName, currency: 'YER', plans: 7, min: '1.00', median: '2.00', max: '3.00' },
+        ],
+      },
+    });
+    expect(successReportCsv(typed('=HYPERLINK("http://x","قاعة")'))).toContain(
+      `"'@صنعاء","'=HYPERLINK(""http://x"",""قاعة"")",7,1.00,2.00,3.00,YER`,
+    );
+    expect(successReportCsv(typed('+1+1'))).toContain(`,"'+1+1",`);
+    expect(successReportCsv(typed('-1+1'))).toContain(`,"'-1+1",`);
+    expect(successReportCsv(typed('\tقاعة'))).toContain(`,"'\tقاعة",`);
+    expect(successReportCsv(typed('قاعة - كبيرة'))).toContain(',قاعة - كبيرة,7,');
+  });
 });

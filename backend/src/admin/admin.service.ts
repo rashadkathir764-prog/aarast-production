@@ -109,17 +109,19 @@ import {
 } from './admin-data-requests';
 import type { AdminBookingQueryDto } from './dto/admin-booking.dto';
 import { AdminPortfolioReview } from './admin-portfolio-review';
+import { AdminProfileChangeReview } from './admin-profile-change-review';
+import { type AdminPagination, parseAdminPagination } from './admin-pagination';
+import type {
+  AdminProfileChangeDecisionDto,
+  AdminProfileChangeQueryDto,
+} from './dto/admin-profile-change.dto';
 import { AdminUserDetails } from './admin-user-details';
 import type {
   AdminPortfolioDecisionDto,
   AdminPortfolioQueryDto,
 } from './dto/admin-portfolio.dto';
 
-interface Pagination {
-  page: number;
-  limit: number;
-  skip: number;
-}
+type Pagination = AdminPagination;
 
 @Injectable()
 export class AdminService {
@@ -138,15 +140,17 @@ export class AdminService {
     this.claims = new AdminProviderClaims({ prisma, owners, notifications });
     this.featured = new AdminFeaturedPlacements({ prisma, owners, notifications });
     this.portfolio = new AdminPortfolioReview({ prisma, owners, notifications });
+    this.profileChanges = new AdminProfileChangeReview({ prisma, owners, notifications });
     this.userDetails = new AdminUserDetails({ prisma, owners });
   }
 
   private readonly portfolio: AdminPortfolioReview;
+  private readonly profileChanges: AdminProfileChangeReview;
   private readonly userDetails: AdminUserDetails;
 
   // n07 (B-16): portfolio photos waiting for review, oldest first.
   async listPortfolioItems(query: AdminPortfolioQueryDto) {
-    return this.portfolio.list(query, this.parsePagination(query.page, query.limit));
+    return this.portfolio.list(query, parseAdminPagination(query.page, query.limit));
   }
 
   async decidePortfolioItem(
@@ -157,10 +161,24 @@ export class AdminService {
     return this.portfolio.decide(currentUser, id, dto);
   }
 
+  // RA-BE-152 (Q-39): approved providers' name, logo, cover, city and
+  // category changes waiting for the team, oldest first.
+  async listProfileChanges(query: AdminProfileChangeQueryDto) {
+    return this.profileChanges.list(query, parseAdminPagination(query.page, query.limit));
+  }
+
+  async decideProfileChange(
+    currentUser: AuthenticatedUser,
+    id: string,
+    dto: AdminProfileChangeDecisionDto,
+  ) {
+    return this.profileChanges.decide(currentUser, id, dto);
+  }
+
   // B-43: featured placement, recorded by hand after the provider paid
   // outside the app.
   async listFeaturedPeriods(query: AdminFeaturedPeriodQueryDto) {
-    return this.featured.list(query, this.parsePagination(query.page, query.limit));
+    return this.featured.list(query, parseAdminPagination(query.page, query.limit));
   }
 
   async getFeaturedSummary() {
@@ -240,7 +258,7 @@ export class AdminService {
     query: AdminProviderQueryDto,
     defaultStatuses: readonly ProviderStatus[],
   ) {
-    const pagination = this.parsePagination(query.page, query.limit);
+    const pagination = parseAdminPagination(query.page, query.limit);
     const status = this.parseProviderStatus(query.status);
     const searchText = this.optionalText(query.search);
     const resubmitted = this.optionalBoolean(query.resubmitted, 'resubmitted');
@@ -288,7 +306,7 @@ export class AdminService {
   }
 
   async listServices(query: AdminServiceQueryDto) {
-    const pagination = this.parsePagination(query.page, query.limit);
+    const pagination = parseAdminPagination(query.page, query.limit);
     const filter = this.serviceFilter(query);
     const { total, services } = await this.prisma.$transaction(async (tx) => {
       const listing = await this.owners.marketplace.listServices(tx, filter, {
@@ -360,7 +378,7 @@ export class AdminService {
 
   /** a12 (B-40): bookings, read only, newest day first. */
   async listBookings(query: AdminBookingQueryDto) {
-    const pagination = this.parsePagination(query.page, query.limit);
+    const pagination = parseAdminPagination(query.page, query.limit);
     const filter = adminBookingFilter(query);
     const listing = await this.prisma.$transaction((tx) =>
       this.owners.marketplace.listBookings(tx, filter, {
@@ -384,7 +402,7 @@ export class AdminService {
   }
 
   async listReviews(query: AdminReviewQueryDto) {
-    const pagination = this.parsePagination(query.page, query.limit);
+    const pagination = parseAdminPagination(query.page, query.limit);
     const status = query.status ? this.parseReviewStatus(query.status) : null;
     const searchText = this.optionalText(query.search);
     const { total, reviews } = await this.prisma.$transaction(async (tx) => {
@@ -434,7 +452,7 @@ export class AdminService {
   }
 
   async listConversationReports(query: AdminConversationReportQueryDto) {
-    const pagination = this.parsePagination(query.page, query.limit);
+    const pagination = parseAdminPagination(query.page, query.limit);
     const status = query.status
       ? this.parseConversationReportStatus(query.status)
       : null;
@@ -466,7 +484,7 @@ export class AdminService {
 
   /** RA-ST-04 (D95): the assistant answers reported to the team. */
   async listAssistantAnswerReports(query: AdminAssistantReportQueryDto) {
-    const pagination = this.parsePagination(query.page, query.limit);
+    const pagination = parseAdminPagination(query.page, query.limit);
     const listing = await this.owners.accounts.listAssistantAnswerReports(
       this.prisma,
       query.status === 'RESOLVED',
@@ -697,7 +715,7 @@ export class AdminService {
   }
 
   async listClaimRequests(query: AdminClaimRequestQueryDto) {
-    const pagination = this.parsePagination(query.page, query.limit);
+    const pagination = parseAdminPagination(query.page, query.limit);
     const status = this.parseClaimStatus(query.status);
     const { total, claims } = await this.prisma.$transaction(async (tx) => {
       const listing = await this.owners.marketplace.listClaimRequests(
@@ -832,7 +850,7 @@ export class AdminService {
   }
 
   async listUsers(query: AdminProviderQueryDto) {
-    const pagination = this.parsePagination(query.page, query.limit);
+    const pagination = parseAdminPagination(query.page, query.limit);
     const search = this.optionalText(query.search);
     const { total, users } = await this.prisma.$transaction(async (tx) => {
       const listing = await this.owners.accounts.listAccounts(tx, search, {
@@ -1156,23 +1174,6 @@ export class AdminService {
       return ConversationReportStatus[normalized as keyof typeof ConversationReportStatus];
     }
     throw new BadRequestException('conversation report status is not supported');
-  }
-
-  private parsePagination(pageValue?: string, limitValue?: string): Pagination {
-    const page = this.parsePositiveInteger(pageValue ?? '1', 'page');
-    const limit = Math.min(this.parsePositiveInteger(limitValue ?? '20', 'limit'), 100);
-    return { page, limit, skip: (page - 1) * limit };
-  }
-
-  private parsePositiveInteger(value: string, field: string): number {
-    if (!/^\d+$/.test(value)) {
-      throw new BadRequestException(`${field} must be a positive integer`);
-    }
-    const parsed = Number(value);
-    if (!Number.isSafeInteger(parsed) || parsed < 1) {
-      throw new BadRequestException(`${field} must be a positive integer`);
-    }
-    return parsed;
   }
 
   private paginate<T>(items: T[], total: number, pagination: Pagination) {

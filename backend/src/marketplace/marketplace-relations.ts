@@ -75,6 +75,23 @@ export class MarketplaceRelationsService {
     return providers.map((provider) => this.withProviderCatalog(provider, cities, categories));
   }
 
+  /** RA-BE-152: the city and category a provider's profile change asks for. */
+  async attachProfileChangeCatalog<
+    T extends { cityId: string | null; primaryCategoryId: string | null },
+  >(
+    client: Prisma.TransactionClient,
+    change: T,
+  ): Promise<T & { city: City | null; primaryCategory: ProviderCategory | null }> {
+    const { cities, categories } = await this.catalogFor(client, [change], []);
+    return {
+      ...change,
+      city: change.cityId ? (cities.get(change.cityId) ?? null) : null,
+      primaryCategory: change.primaryCategoryId
+        ? (categories.get(change.primaryCategoryId) ?? null)
+        : null,
+    };
+  }
+
   /** Providers of the public list with their catalog rows and the category of each service preview. */
   async attachProviderListCatalog(
     client: Prisma.TransactionClient,

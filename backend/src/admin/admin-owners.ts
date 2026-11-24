@@ -492,6 +492,23 @@ export class AdminOwners {
     };
   }
 
+  /**
+   * RA-BE-152: locks for share the city and category a provider's profile
+   * change asks for; true while each named one is active.
+   */
+  async lockActiveCatalogInTransaction(
+    tx: Client,
+    cityId: string | null,
+    categoryId: string | null,
+  ): Promise<boolean> {
+    if (cityId && !(await this.catalogRead.lockActiveCityForShareInTransaction(tx, cityId))) {
+      return false;
+    }
+    return categoryId
+      ? this.catalogRead.lockActiveCategoriesForShareInTransaction(tx, [categoryId])
+      : true;
+  }
+
   private async cityMap(
     client: Client,
     ids: ReadonlyArray<string | null>,

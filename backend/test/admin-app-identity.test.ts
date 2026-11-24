@@ -206,6 +206,8 @@ test("an administrator app session can create a provider profile without changin
     providerFeaturedPeriod: { findMany: async () => [] },
     // Nor a portfolio photo (B-16).
     portfolioItem: { findMany: async () => [] },
+    // Nor a profile change waiting for the team (RA-BE-152).
+    providerProfileChange: { findFirst: async () => null },
   };
   const prisma = {
     provider: { findUnique: async () => null },
@@ -342,6 +344,8 @@ test("a different administrator can review a provider application", async () => 
         providerFeaturedPeriod: { findMany: async () => [] },
         // Nor a portfolio photo (B-16).
         portfolioItem: { findMany: async () => [] },
+        // Nor a profile change waiting for the team (RA-BE-152).
+        providerProfileChange: { findFirst: async () => null },
         $queryRaw: async (query: any) => {
           const text = query.strings?.join("") ?? String(query);
           if (text.includes('FROM "User"')) {

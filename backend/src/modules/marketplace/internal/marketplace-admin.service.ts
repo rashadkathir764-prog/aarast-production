@@ -46,10 +46,12 @@ import type {
 } from '../public/marketplace-admin.port';
 import type { CreateNotificationInput } from '../../notifications/public/notifications.port';
 import { MarketplaceAdminRepository } from '../infrastructure/marketplace-admin.repository';
-import type { PortfolioItemStatus } from '@prisma/client';
+import type { PortfolioItemStatus, ProviderProfileChangeStatus } from '@prisma/client';
 import type {
   AdminPortfolioDecision,
   AdminPortfolioRow,
+  AdminProfileChangeDecision,
+  AdminProfileChangeRow,
 } from '../public/marketplace-admin.port';
 
 @Injectable()
@@ -162,6 +164,29 @@ export class MarketplaceAdminService implements MarketplaceAdminPort {
     decision: AdminPortfolioDecision,
   ): Promise<AdminPortfolioRow | null> {
     return this.repository.decidePortfolioItemInTransaction(tx, id, decision);
+  }
+
+  async listProfileChangesForReview(
+    client: Prisma.TransactionClient,
+    status: ProviderProfileChangeStatus,
+    page: AdminPage,
+  ): Promise<AdminListing<AdminProfileChangeRow>> {
+    return this.repository.listProfileChangesForReview(client, status, page);
+  }
+
+  async lockProfileChangeInTransaction(
+    tx: Prisma.TransactionClient,
+    id: string,
+  ): Promise<AdminProfileChangeRow | null> {
+    return this.repository.lockProfileChangeInTransaction(tx, id);
+  }
+
+  async decideProfileChangeInTransaction(
+    tx: Prisma.TransactionClient,
+    id: string,
+    decision: AdminProfileChangeDecision,
+  ): Promise<AdminProfileChangeRow | null> {
+    return this.repository.decideProfileChangeInTransaction(tx, id, decision);
   }
 
   async recordProviderReviewInTransaction(

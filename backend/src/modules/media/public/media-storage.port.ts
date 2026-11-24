@@ -84,7 +84,11 @@ export interface MediaConsumptionTarget {
     | 'CHAT_ATTACHMENT'
     | 'COST_RECEIPT'
     | 'PORTFOLIO_ITEM'
-    | 'GUEST_INVITATION_CARD';
+    | 'GUEST_INVITATION_CARD'
+    // RA-BE-152: a new logo or cover an approved provider asked for, held
+    // by his profile change (its id) until the team decides.
+    | 'PROVIDER_PROFILE_CHANGE_LOGO'
+    | 'PROVIDER_PROFILE_CHANGE_COVER';
   id: string;
 }
 
@@ -142,6 +146,18 @@ export interface MediaStoragePort {
   ): Promise<void>;
   scheduleTargetDeletion(
     target: MediaConsumptionTarget,
+    transaction: Prisma.TransactionClient,
+  ): Promise<void>;
+  /**
+   * RA-BE-152: the image [pending] holds becomes [live]'s. Until this runs
+   * the live image stays where it is; now it is scheduled for deletion and
+   * the pending upload takes its place. A pending upload that is gone is a
+   * 409 (`PENDING_MEDIA_UNAVAILABLE`) and changes nothing. A refused
+   * request's upload goes with `scheduleTargetDeletion(pending)`.
+   */
+  promoteTargetMedia(
+    pending: MediaConsumptionTarget,
+    live: MediaConsumptionTarget,
     transaction: Prisma.TransactionClient,
   ): Promise<void>;
   scheduleAllOwnedMediaDeletion(

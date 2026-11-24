@@ -51,6 +51,8 @@ export const NOTIFICATION_ROUTES = {
   LISTING_PLAN_CHANGED: ['/provider/dashboard?tab=:tab'],
   PORTFOLIO_REVIEWED: ['/provider/gallery'],
   FUNDING_EXPECTED: ['/wedding-plans/:planId/money/funding'],
+  // RA-BE-152: his name, logo, cover, city or category change decided (p35).
+  PROVIDER_PROFILE_CHANGE_REVIEWED: ['/provider/dashboard?tab=profile'],
 } as const satisfies Record<NotificationType, readonly string[]>;
 
 const part = (value: string) => encodeURIComponent(value);

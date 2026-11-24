@@ -245,6 +245,14 @@ export class MediaStorageService implements MediaStoragePort {
     return this.tickets.scheduleTargetDeletion(target, transaction);
   }
 
+  promoteTargetMedia(
+    pending: MediaConsumptionTarget,
+    live: MediaConsumptionTarget,
+    transaction: Prisma.TransactionClient,
+  ): Promise<void> {
+    return this.tickets.promoteTargetMedia(pending, live, transaction);
+  }
+
   scheduleAllOwnedMediaDeletion(
     userId: string,
     transaction: Prisma.TransactionClient,

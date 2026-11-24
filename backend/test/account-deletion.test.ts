@@ -364,6 +364,7 @@ function recordingTx(
     "providerProfileViewDay",
     "providerFeaturedPeriod",
     "providerReviewEvent",
+    "providerProfileChange",
   ]) {
     tx[model] = del(model);
   }

@@ -229,6 +229,12 @@ function createProviderDashboard(
     // Nor a featured placement (B-43).
     providerFeaturedPeriod: { findMany: async () => [] },
     portfolioItem: { findMany: async () => [] },
+    // Nor a profile change waiting for the team (RA-BE-152); an approved
+    // provider's new name starts one.
+    providerProfileChange: {
+      findFirst: async () => null,
+      create: async ({ data }: any) => ({ id: 'profile-change', status: 'PENDING', ...data }),
+    },
     providerService: {
       // The one service the provider joined with (B-10).
       findMany: async () => [joiningService()],
@@ -819,10 +825,12 @@ test('only ACTIVE providers can perform provider operations or receive quote/con
 });
 
 // RA-MO-364: a new logo is saved with the addresses of the copies the media
-// port made when it verified it, and the profile sends them.
+// port made when it verified it, and the profile sends them. A logo goes on
+// the profile at once while it waits for approval; once approved it waits
+// for the team first (RA-BE-152, provider-profile-change.test.ts).
 test('a new logo is saved with its smaller copies', async () => {
   const consumed: string[] = [];
-  const dashboard = createProviderDashboard(ProviderStatus.ACTIVE, {
+  const dashboard = createProviderDashboard(ProviderStatus.PENDING, {
     verifyPublicMediaUrl: async (_currentUser: unknown, url: string) => url,
     scheduleTargetDeletion: async () => undefined,
     consumePublicMediaUrl: async (_currentUser: unknown, url: string) => {

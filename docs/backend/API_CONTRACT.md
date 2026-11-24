@@ -3062,9 +3062,9 @@ Joining, changes and reopening (B-01, B-02, B-10):
   PROVIDER_JOINING_SERVICE_ONLY` / `PROVIDER_NOT_ACTIVE`. A profile without
   an active priced service (it applied before B-10, or the team switched its
   service off) may add one in its category with the same fields, in `YER`.
-  `PATCH /api/v1/provider/me/profile` takes `primaryCategoryId` only before
-  approval (`409 PROVIDER_CATEGORY_LOCKED` after); the joining services move
-  with it.
+  `PATCH /api/v1/provider/me/profile` takes `primaryCategoryId` before
+  approval and the joining services move with it; after approval it waits
+  for the team like the name (RA-BE-152, below).
 - `POST /api/v1/provider/me/application/resubmit` (`200`) takes
   `{ latestDecisionId: string | null }`, the `latestDecision.id` of the
   profile he read (required; `null` only when no decision is on record). It
@@ -3446,6 +3446,50 @@ approved photos; the women's album «حفلات النساء» is read by a brid
   notice registry's `providerPortfolio`, opens p37):
   «انقبلت صورة من معرضك · صورتك في «الزفة» تظهر الحين للعرسان.» (للعرائس for
   the women's album) or «ما قبلنا صورة من معرضك · … السبب: …». Audited.
+
+### Provider profile changes after approval (RA-BE-152, Q-39 (أ))
+
+- Once the provider is approved, `PATCH /api/v1/provider/me/profile` puts a
+  new `businessName`, `logoUrl`, `coverUrl`, `cityId` or `primaryCategoryId`
+  in his profile change (`ProviderProfileChange`, one `PENDING` per
+  provider) instead of on the listing; customers keep reading the live
+  values and images. A later edit updates the same request; a value equal
+  to the live one takes that field out, and a request left asking nothing
+  is `WITHDRAWN`. A new logo or cover is verified as before and held by the
+  request's media target (`PROVIDER_PROFILE_CHANGE_LOGO|COVER`), never the
+  listing's. Removing a logo or cover (`null`), the description, phones,
+  address, location, capacity, services' prices and packages stay live.
+- After approval a service (`POST|PATCH /api/v1/provider/me/services`) takes
+  only a `categoryId` the listing already shows in (its category or an
+  active service's); another is `409 PROVIDER_CATEGORY_LOCKED`: a new
+  section comes with a category change the team approves.
+- `GET /api/v1/provider/me/profile` adds `pendingChange: { id,
+  businessName, cityId, city { id, nameAr }, primaryCategoryId,
+  primaryCategory { id, nameAr }, logoUrl, coverUrl, createdAt, updatedAt }
+  | null` (each field null when not asked).
+- `DELETE /api/v1/provider/me/profile/pending-change` (a writable profile)
+  withdraws it and deletes the images it held; none waiting is
+  `404 PROFILE_CHANGE_NOT_FOUND`. Returns the profile.
+- `GET /admin/provider-profile-changes?status=PENDING&page&limit`
+  (`PROVIDERS_READ`) lists requests of one status (PENDING by default,
+  also APPROVED, REJECTED, WITHDRAWN), oldest first: `{ id, status,
+  rejectionReason, decidedAt, createdAt, updatedAt, asked { businessName,
+  city, primaryCategory, logoUrl, coverUrl, logoChanged, coverChanged },
+  provider { id, businessName, status, city, primaryCategory, logoUrl,
+  coverUrl } }` (a refused or withdrawn request's images are null: deleted).
+- `PATCH /admin/provider-profile-changes/:id/decision` (`PROVIDERS_WRITE`)
+  `{ decision: "APPROVE" | "REJECT", reason? }`. A refusal needs `reason`
+  (at most 400 characters). Approval checks the asked city and category are
+  still active (`422 PROFILE_CHANGE_CATALOG_INACTIVE`), puts the values on
+  the listing and the new logo or cover in place of the old one (deleted;
+  a pending image that is gone is `409 PENDING_MEDIA_UNAVAILABLE`); a
+  refusal deletes the request's images. A decided or withdrawn request is
+  `409 PROFILE_CHANGE_ALREADY_DECIDED`, an administrator's own listing
+  `400`. The provider is told (`PROVIDER_PROFILE_CHANGE_REVIEWED`, opens
+  p35): «وافقنا على تعديل ملفك · تعديل الاسم والشعار صار ظاهر للعرسان.» or
+  «ما وافقنا على تعديل ملفك · تعديل … ما نزل، وملفك باقي مثل ما كان. السبب:
+  …». Audited with the reason and the state before and after (codes and
+  ids only, never the typed name).
 
 ## Quote Conversations And Media
 
@@ -3879,6 +3923,8 @@ configuration, and smoke checks.
 | GET | `/admin/provider-claims` | `admin.listClaimRequests` | 🔒 |
 | POST | `/admin/provider-claims/:id/approve` | `admin.approveClaimRequest` | 🔒 |
 | POST | `/admin/provider-claims/:id/reject` | `admin.rejectClaimRequest` | 🔒 |
+| GET | `/admin/provider-profile-changes` | `admin.listProfileChanges` | 🔒 |
+| PATCH | `/admin/provider-profile-changes/:id/decision` | `admin.decideProfileChange` | 🔒 |
 | GET | `/admin/providers` | `admin.listProviders` | 🔒 |
 | POST | `/admin/providers` | `admin.createListedProvider` | 🔒 |
 | GET | `/admin/providers/:id` | `admin.getProvider` | 🔒 |
@@ -4044,6 +4090,7 @@ configuration, and smoke checks.
 | PUT | `/api/v1/provider/me/portfolio` | `provider-dashboard.updatePortfolio` | 🔒 |
 | GET | `/api/v1/provider/me/profile` | `provider-dashboard.getProfile` | 🔒 |
 | PATCH | `/api/v1/provider/me/profile` | `provider-dashboard.updateProfile` | 🔒 |
+| DELETE | `/api/v1/provider/me/profile/pending-change` | `provider-dashboard.withdrawProfileChange` | 🔒 |
 | PATCH | `/api/v1/provider/me/quote-offers/:id` | `provider-dashboard.updateQuoteOffer` | 🔒 |
 | POST | `/api/v1/provider/me/quote-offers/:id/withdraw` | `provider-dashboard.withdrawQuoteOffer` | 🔒 |
 | GET | `/api/v1/provider/me/quote-requests` | `provider-dashboard.findQuoteRequests` | 🔒 |

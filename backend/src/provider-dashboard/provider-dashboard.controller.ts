@@ -82,6 +82,12 @@ export class ProviderDashboardController {
     return this.providerDashboardService.updateProfile(currentUser, dto);
   }
 
+  // RA-BE-152 (Q-39): «اسحب التعديل», his change waiting for the team.
+  @Delete("profile/pending-change")
+  withdrawProfileChange(@CurrentUser() currentUser: AuthenticatedUser) {
+    return this.providerDashboardService.withdrawProfileChange(currentUser);
+  }
+
   // B-16 (p37): «معرض الشغل», every photo with its review state, and his links.
   @Get("portfolio")
   getPortfolio(@CurrentUser() currentUser: AuthenticatedUser) {

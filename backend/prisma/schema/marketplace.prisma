@@ -85,6 +85,15 @@ enum PortfolioItemStatus {
   REJECTED
 }
 
+// RA-BE-152 (Q-39 (أ)): an approved provider's change of his listing's
+// name, logo, cover, city or category waits for the team.
+enum ProviderProfileChangeStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  WITHDRAWN
+}
+
 model Provider {
   id                String                   @id @default(uuid())
   userId            String?                  @unique
@@ -153,6 +162,7 @@ model Provider {
   claimRequests     ProviderClaimRequest[]
   featuredPeriods   ProviderFeaturedPeriod[]
   portfolioItems    PortfolioItem[]
+  profileChanges    ProviderProfileChange[]
 
   @@index([cityId, status])
   @@index([primaryCategoryId, status])
@@ -612,4 +622,34 @@ model ReviewReport {
 
   @@unique([reviewId, reporterUserId])
   @@index([resolvedAt, createdAt])
+}
+
+// RA-BE-152 (Q-39 (أ), D124): what an approved provider asked to change on
+// his listing's identity. The listing keeps its live name, logo, cover, city
+// and category until the team approves; one request waits per provider (a
+// partial unique index in the migration), and a later edit updates it.
+model ProviderProfileChange {
+  id                String                      @id @default(uuid())
+  providerId        String
+  status            ProviderProfileChangeStatus @default(PENDING)
+  // The asked value of each field; null where the request leaves it as it is.
+  businessName      String?
+  // Catalog ids, checked active when asked and again when approved.
+  cityId            String?
+  primaryCategoryId String?
+  // A new logo or cover: a verified upload held by this request's media
+  // target until the decision, then the listing's or deleted.
+  logoUrl           String?
+  coverUrl          String?
+  // The team's reason, with a refusal only.
+  rejectionReason   String?                     @db.Text
+  // When the team decided or the provider withdrew it, and the deciding admin.
+  decidedAt         DateTime?
+  decidedById       String?
+  createdAt         DateTime                    @default(now())
+  updatedAt         DateTime                    @updatedAt
+  provider          Provider                    @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@index([providerId, status])
+  @@index([status, createdAt])
 }

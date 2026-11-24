@@ -239,6 +239,8 @@ function dashboardFor(
     // No featured placement on record (B-43).
     providerFeaturedPeriod: { findMany: async () => [] },
     portfolioItem: { findMany: async () => [] },
+    // Nor a profile change waiting for the team (RA-BE-152).
+    providerProfileChange: { findFirst: async () => null },
     providerService: {
       count: async () => options.activePriced ?? 1,
       findMany: async () => options.services ?? [joiningService()],

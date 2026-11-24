@@ -45,6 +45,8 @@ enum NotificationType {
   // RA-BE-188 (Q-40): promised money (the bride's mahr rest, every «موعود»
   // source) is expected tomorrow or today.
   FUNDING_EXPECTED
+  // RA-BE-152: his name, logo, cover, city or category change approved or refused.
+  PROVIDER_PROFILE_CHANGE_REVIEWED
 }
 
 enum NotificationPriority {

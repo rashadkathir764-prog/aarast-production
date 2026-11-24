@@ -155,8 +155,18 @@ import {
   providerDayUnavailableError,
   requestedBookableDay,
 } from '../marketplace/provider-day-availability';
-import { countProviderPortfolio } from '../modules/marketplace/infrastructure/portfolio.repository';
+import {
+  countProviderPortfolio,
+  providerCategoryIds,
+} from '../modules/marketplace/infrastructure/portfolio.repository';
 import { readSocialLinks } from '../modules/marketplace/public/provider-portfolio';
+import {
+  holdReviewedProfileFields,
+  type PendingProfileChange,
+  toPendingProfileChangeResponse,
+  withdrawProfileChange,
+} from './provider-profile-change';
+import { findPendingProfileChange } from '../modules/marketplace/infrastructure/provider-profile-change.repository';
 
 type ProviderProfile = Provider & {
   city: City;
@@ -169,6 +179,8 @@ type ProviderProfile = Provider & {
   featuredPeriod: FeaturedWindow | null;
   /** B-16: his photos (refused ones aside) and those waiting for review. */
   portfolio: { photos: number; pending: number; rejected: number };
+  /** RA-BE-152: his name, logo, cover, city or category waiting for the team. */
+  pendingChange: PendingProfileChange | null;
 };
 type ProviderDashboardServiceRecord = ProviderService & {
   category: ProviderCategory;
@@ -544,6 +556,38 @@ export class ProviderDashboardService {
     return this.toProviderProfileResponse(updated);
   }
 
+  /**
+   * RA-BE-152: «اسحب التعديل». His waiting change of name, logo, cover,
+   * city or category goes, with the images it held; the listing stays as
+   * it is.
+   */
+  async withdrawProfileChange(currentUser: AuthenticatedUser) {
+    const updated = await runSerializableTransaction(this.prisma, async (tx) => {
+      const provider = await lockOwnedProviderForMutationInTransaction(
+        tx,
+        currentUser.id,
+        'PROFILE',
+        'UPDATE',
+      );
+      const withdrawn = await withdrawProfileChange(
+        tx,
+        this.mediaStorage,
+        currentUser,
+        provider.id,
+        new Date(),
+      );
+      if (!withdrawn) {
+        throw new NotFoundException({
+          statusCode: 404,
+          code: 'PROFILE_CHANGE_NOT_FOUND',
+          message: 'No profile change is waiting for review',
+        });
+      }
+      return this.withProviderCatalog(tx, provider);
+    });
+    return this.toProviderProfileResponse(updated);
+  }
+
   private toClaimResponse(claim: {
     id: string;
     status: ProviderClaimStatus;
@@ -598,29 +642,49 @@ export class ProviderDashboardService {
       if (dto.cityId !== undefined) {
         await this.lockActiveCityInTransaction(tx, dto.cityId);
       }
+      // RA-BE-152 (Q-39 (أ)): once approved, the listing's name, logo,
+      // cover, city and category change only when the team approves; they
+      // wait as his profile change and the rest of the edit goes live. A
+      // removed logo or cover goes at once: nothing new is shown.
+      const reviewed = !isProviderAwaitingApproval(provider);
+      const businessName =
+        dto.businessName !== undefined
+          ? this.requiredText(dto.businessName, 'businessName')
+          : undefined;
       const categoryChanged =
         dto.primaryCategoryId !== undefined &&
         dto.primaryCategoryId !== provider.primaryCategoryId;
       if (categoryChanged) {
-        if (!isProviderAwaitingApproval(provider)) {
-          throw new ConflictException({
-            statusCode: 409,
-            code: 'PROVIDER_CATEGORY_LOCKED',
-            message: 'The category changes only before approval',
-          });
-        }
         await this.lockActiveCategoryInTransaction(tx, dto.primaryCategoryId!);
-        await dashboardStore.moveJoiningServicesToCategory(
+        if (!reviewed) {
+          await dashboardStore.moveJoiningServicesToCategory(
+            tx,
+            provider.id,
+            dto.primaryCategoryId!,
+          );
+        }
+      }
+      if (reviewed) {
+        await holdReviewedProfileFields(
           tx,
-          provider.id,
-          dto.primaryCategoryId!,
+          this.mediaStorage,
+          currentUser,
+          provider,
+          {
+            businessName,
+            cityId: dto.cityId,
+            primaryCategoryId: dto.primaryCategoryId,
+            logoUrl: logoUrl ?? undefined,
+            coverUrl: coverUrl ?? undefined,
+          },
+          new Date(),
         );
       }
+      const liveLogo = dto.logoUrl !== undefined && !(reviewed && logoUrl);
+      const liveCover = dto.coverUrl !== undefined && !(reviewed && coverUrl);
 
-      const logoChanged =
-        dto.logoUrl !== undefined && logoUrl !== provider.logoUrl;
-      const coverChanged =
-        dto.coverUrl !== undefined && coverUrl !== provider.coverUrl;
+      const logoChanged = liveLogo && logoUrl !== provider.logoUrl;
+      const coverChanged = liveCover && coverUrl !== provider.coverUrl;
       if (logoChanged) {
         await this.mediaStorage.scheduleTargetDeletion(
           { type: 'PROVIDER_LOGO', id: provider.id },
@@ -654,9 +718,7 @@ export class ProviderDashboardService {
       return this.withProviderCatalog(
         tx,
         await dashboardStore.updateProviderProfile(tx, provider.id, {
-        ...(dto.businessName !== undefined
-          ? { businessName: this.requiredText(dto.businessName, 'businessName') }
-          : {}),
+        ...(businessName !== undefined && !reviewed ? { businessName } : {}),
         ...(dto.ownerName !== undefined
           ? { ownerName: this.optionalText(dto.ownerName) }
           : {}),
@@ -678,16 +740,18 @@ export class ProviderDashboardService {
         ...(dto.address !== undefined
           ? { address: this.optionalText(dto.address) }
           : {}),
-        ...(dto.cityId !== undefined ? { cityId: dto.cityId } : {}),
-        ...(categoryChanged ? { primaryCategoryId: dto.primaryCategoryId } : {}),
+        ...(dto.cityId !== undefined && !reviewed ? { cityId: dto.cityId } : {}),
+        ...(categoryChanged && !reviewed
+          ? { primaryCategoryId: dto.primaryCategoryId }
+          : {}),
         ...(dto.latitude !== undefined
           ? { latitude: this.optionalSignedDecimal(dto.latitude, 'latitude') }
           : {}),
         ...(dto.longitude !== undefined
           ? { longitude: this.optionalSignedDecimal(dto.longitude, 'longitude') }
           : {}),
-        ...(dto.logoUrl !== undefined ? { logoUrl } : {}),
-        ...(dto.coverUrl !== undefined ? { coverUrl } : {}),
+        ...(liveLogo ? { logoUrl } : {}),
+        ...(liveCover ? { coverUrl } : {}),
         // RA-MO-364: a new logo or cover comes with its smaller copies (the
         // verification made them); one kept as it was keeps its own.
         ...(logoChanged ? providerImageVariants('logo', logoUrl) : {}),
@@ -771,6 +835,8 @@ export class ProviderDashboardService {
           );
         }
         this.joiningPrice(dto.basePrice);
+      } else {
+        await this.assertListingCategoryInTransaction(tx, provider, dto.categoryId);
       }
       const currency = joining
         ? this.joiningCurrency(dto.currency)
@@ -833,6 +899,8 @@ export class ProviderDashboardService {
           throw this.joiningServiceOnly();
         }
         if (dto.basePrice !== undefined) this.joiningPrice(dto.basePrice);
+      } else if (dto.categoryId !== undefined) {
+        await this.assertListingCategoryInTransaction(tx, provider, dto.categoryId);
       }
       const currency =
         dto.currency === undefined
@@ -1801,6 +1869,27 @@ export class ProviderDashboardService {
     return plan;
   }
 
+  /**
+   * RA-BE-152: after approval a service of his is listed only in a section
+   * the listing already shows in (his category, or one of his active
+   * services'); a new section comes with a category change the team
+   * approves, not with a service.
+   */
+  private async assertListingCategoryInTransaction(
+    tx: Prisma.TransactionClient,
+    provider: Provider,
+    categoryId: string,
+  ): Promise<void> {
+    const listed = await providerCategoryIds(tx, provider);
+    if (!listed.includes(categoryId)) {
+      throw new ConflictException({
+        statusCode: 409,
+        code: 'PROVIDER_CATEGORY_LOCKED',
+        message: 'A new section for the listing goes through review',
+      });
+    }
+  }
+
   private async lockActiveCategoriesInTransaction(
     tx: Prisma.TransactionClient,
     categoryIds: readonly string[],
@@ -1970,13 +2059,21 @@ export class ProviderDashboardService {
     client: Prisma.TransactionClient,
     provider: Provider,
   ): Promise<ProviderProfile> {
-    const [[profile], latestDecision, featuredPeriod, portfolio] = await Promise.all([
-      this.relations.attachProviderCatalog(client, [provider]),
-      findLatestProviderDecision(client, provider.id),
-      findProviderFeaturedView(client, provider.id, new Date()),
-      countProviderPortfolio(client, provider.id),
-    ]);
-    return { ...profile, latestDecision, featuredPeriod, portfolio };
+    const [[profile], latestDecision, featuredPeriod, portfolio, pending] =
+      await Promise.all([
+        this.relations.attachProviderCatalog(client, [provider]),
+        findLatestProviderDecision(client, provider.id),
+        findProviderFeaturedView(client, provider.id, new Date()),
+        countProviderPortfolio(client, provider.id),
+        // RA-BE-152: only an approved listing's edits wait for the team.
+        isProviderAwaitingApproval(provider)
+          ? null
+          : findPendingProfileChange(client, provider.id),
+      ]);
+    const pendingChange = pending
+      ? await this.relations.attachProfileChangeCatalog(client, pending)
+      : null;
+    return { ...profile, latestDecision, featuredPeriod, portfolio, pendingChange };
   }
 
   private async withServiceCatalog<
@@ -2148,6 +2245,9 @@ export class ProviderDashboardService {
         ...provider.portfolio,
         socialNetworks: Object.keys(readSocialLinks(provider.socialLinks)),
       },
+      // RA-BE-152 (Q-39 (أ)): what he changed of his name, logo, cover,
+      // city or category, shown to customers only once the team approves.
+      pendingChange: toPendingProfileChangeResponse(provider.pendingChange),
       createdAt: provider.createdAt,
       updatedAt: provider.updatedAt,
     };

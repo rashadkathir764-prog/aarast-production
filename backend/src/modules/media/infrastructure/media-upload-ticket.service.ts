@@ -236,6 +236,53 @@ export class MediaUploadTicketService {
     });
   }
 
+  /**
+   * RA-BE-152: the one verified upload [pending] holds moves to [live],
+   * whose own upload is scheduled for deletion first (one live upload per
+   * target). Both targets are locked in a fixed order.
+   */
+  async promoteTargetMedia(
+    pending: MediaConsumptionTarget,
+    live: MediaConsumptionTarget,
+    transaction: Prisma.TransactionClient,
+  ): Promise<void> {
+    const [first, second] = [pending, live].sort((a, b) =>
+      `${a.type}:${a.id}`.localeCompare(`${b.type}:${b.id}`),
+    );
+    await this.lockTarget(transaction, first);
+    await this.lockTarget(transaction, second);
+    const held = await transaction.mediaUploadTicket.findMany({
+      where: {
+        status: MediaUploadStatus.VERIFIED,
+        consumedByType: pending.type,
+        consumedById: pending.id,
+      },
+      select: { key: true },
+    });
+    if (held.length !== 1) {
+      throw new ConflictException({
+        code: 'PENDING_MEDIA_UNAVAILABLE',
+        message: 'The image this change asked for is no longer available',
+      });
+    }
+    await transaction.mediaUploadTicket.updateMany({
+      where: {
+        status: MediaUploadStatus.VERIFIED,
+        consumedByType: live.type,
+        consumedById: live.id,
+      },
+      data: { status: MediaUploadStatus.DELETE_PENDING },
+    });
+    await transaction.mediaUploadTicket.updateMany({
+      where: { key: held[0].key, status: MediaUploadStatus.VERIFIED },
+      data: {
+        consumedAt: new Date(),
+        consumedByType: live.type,
+        consumedById: live.id,
+      },
+    });
+  }
+
   async scheduleUserDeletion(
     userId: string,
     transaction: Prisma.TransactionClient,

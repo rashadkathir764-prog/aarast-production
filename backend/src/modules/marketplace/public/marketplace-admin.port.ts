@@ -5,6 +5,8 @@ import type {
   PortfolioItemStatus,
   Prisma,
   Provider,
+  ProviderProfileChange,
+  ProviderProfileChangeStatus,
   QuoteRequest,
   ProviderClaimRequest,
   ProviderClaimStatus,
@@ -121,6 +123,29 @@ export interface AdminPortfolioDecision {
   reason: string | null;
   reviewedAt: Date;
   reviewedById: string;
+}
+
+/** RA-BE-152 (Q-39): a provider's profile change with what his listing shows now. */
+export type AdminProfileChangeRow = ProviderProfileChange & {
+  provider: Pick<
+    Provider,
+    | 'id'
+    | 'businessName'
+    | 'userId'
+    | 'status'
+    | 'cityId'
+    | 'primaryCategoryId'
+    | 'logoUrl'
+    | 'coverUrl'
+  >;
+};
+
+/** How a waiting profile change closes: the team decides, or the provider withdraws it. */
+export interface AdminProfileChangeDecision {
+  status: Exclude<ProviderProfileChangeStatus, 'PENDING'>;
+  reason: string | null;
+  decidedAt: Date;
+  decidedById: string | null;
 }
 
 /**
@@ -413,6 +438,26 @@ export interface MarketplaceAdminPort {
     id: string,
     decision: AdminPortfolioDecision,
   ): Promise<AdminPortfolioRow | null>;
+  /** RA-BE-152: providers' profile changes of one status, oldest first. */
+  listProfileChangesForReview(
+    client: Prisma.TransactionClient,
+    status: ProviderProfileChangeStatus,
+    page: AdminPage,
+  ): Promise<AdminListing<AdminProfileChangeRow>>;
+  /** Locks one profile change (its provider's row first) for its decision. */
+  lockProfileChangeInTransaction(
+    tx: Prisma.TransactionClient,
+    id: string,
+  ): Promise<AdminProfileChangeRow | null>;
+  /**
+   * Decides a PENDING profile change; an approval puts its values on the
+   * listing. Null when it was closed meanwhile.
+   */
+  decideProfileChangeInTransaction(
+    tx: Prisma.TransactionClient,
+    id: string,
+    decision: AdminProfileChangeDecision,
+  ): Promise<AdminProfileChangeRow | null>;
   /** Every review step of the provider, oldest first (B-01, B-02). */
   listProviderReviewEvents(
     client: Prisma.TransactionClient,

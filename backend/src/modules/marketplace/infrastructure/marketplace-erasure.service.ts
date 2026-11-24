@@ -358,6 +358,9 @@ export class MarketplaceErasureService implements MarketplaceErasurePort {
     await tx.providerFeaturedPeriod.deleteMany({ where: ofProviders });
     await tx.providerClaimRequest.deleteMany({ where: ofProviders });
     await tx.providerReviewEvent.deleteMany({ where: ofProviders });
+    // RA-BE-152: the name and images he asked for (the images go with his
+    // account's media).
+    await tx.providerProfileChange.deleteMany({ where: ofProviders });
     await tx.provider.updateMany({
       where: { id: { in: [...providerIds] } },
       data: {

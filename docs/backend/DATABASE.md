@@ -584,7 +584,7 @@ rewrite as permission to restore a removed live model.
 | `ReferenceCatalogItem` | 9 | `id`, `catalogId`, `createdAt`, `updatedAt` |
 | `ReferenceCatalogItemRevision` | 19 | `id`, `itemId`, `createdAt` |
 | `ProviderCategory` | 13 | `id`, `createdAt`, `updatedAt` |
-| `Provider` | 55 | `id`, `userId`, `cityId`, `primaryCategoryId`, `reviewedAt`, `reviewedById`, `resubmittedAt`, `reopenedAt` |
+| `Provider` | 56 | `id`, `userId`, `cityId`, `primaryCategoryId`, `reviewedAt`, `reviewedById`, `resubmittedAt`, `reopenedAt` |
 | `ProviderService` | 19 | `id`, `providerId`, `categoryId`, `priceUpdatedAt`, `cityId`, `createdAt`, `updatedAt` |
 | `ProviderServiceImage` | 7 | `id`, `serviceId`, `createdAt` |
 | `ProviderPackage` | 13 | `id`, `providerId`, `serviceId`, `createdAt`, `updatedAt` |
@@ -604,6 +604,7 @@ rewrite as permission to restore a removed live model.
 | `ProviderFeaturedPeriod` | 14 | `id`, `providerId`, `startsAt`, `endsAt`, `grantedById`, `createdAt`, `endedAt`, `endedById` |
 | `PortfolioItem` | 15 | `id`, `providerId`, `reviewedAt`, `reviewedById`, `createdAt`, `updatedAt` |
 | `ReviewReport` | 9 | `id`, `reviewId`, `reporterUserId`, `resolvedAt`, `createdAt`, `updatedAt` |
+| `ProviderProfileChange` | 14 | `id`, `providerId`, `cityId`, `primaryCategoryId`, `decidedAt`, `decidedById`, `createdAt`, `updatedAt` |
 | `Conversation` | 23 | `id`, `weddingPlanId`, `accountRequesterUserId`, `providerId`, `createdByUserId`, `lastActivityAt`, `closedAt`, `customerSideBlockedAt` |
 | `ConversationParticipant` | 11 | `id`, `conversationId`, `userId`, `joinedAt`, `revokedAt`, `lastReadAt`, `mutedAt`, `createdAt` |
 | `ConversationEvent` | 14 | `id`, `conversationId`, `quoteRequestId`, `quoteOfferId`, `actorUserId`, `occurredAt`, `createdAt` |
@@ -611,5 +612,5 @@ rewrite as permission to restore a removed live model.
 | `ChatAttachment` | 7 | `id`, `messageId`, `createdAt` |
 | `ConversationReport` | 9 | `id`, `conversationId`, `reporterUserId`, `createdAt`, `updatedAt` |
 
-Total models: 75
+Total models: 76
 <!-- DOCS-SYNC:END -->

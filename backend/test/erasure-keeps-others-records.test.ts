@@ -238,6 +238,8 @@ test("RA-BE-178: the erased listing stays as «مزود محذوف», read-only,
     "providerFeaturedPeriod",
     "providerClaimRequest",
     "providerReviewEvent",
+    // RA-BE-152: the name and images he asked for and the team has not decided.
+    "providerProfileChange",
   ]) {
     assert.deepEqual(
       op(model).map((write) => write.op),

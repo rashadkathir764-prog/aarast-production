@@ -49,6 +49,10 @@ import {
 } from './dto/admin-conversation-report.dto';
 import { AdminAssistantReportQueryDto } from './dto/admin-assistant-report.dto';
 import { AdminUserDisableDto } from './dto/admin-user-disable.dto';
+import {
+  AdminProfileChangeDecisionDto,
+  AdminProfileChangeQueryDto,
+} from './dto/admin-profile-change.dto';
 
 @Controller('admin')
 @UseGuards(JwtSessionGuard, AdminGuard, AdminPermissionGuard)
@@ -301,6 +305,25 @@ export class AdminController {
   }
 
   // a12 (B-40): bookings, read only. No amount, offer or payment.
+  // RA-BE-152 (Q-39): an approved provider's new name, logo, cover, city or
+  // category waits here, the oldest first; the decision's reason and the
+  // state before and after are in the audit log.
+  @Get('provider-profile-changes')
+  @RequireAdminPermission(AdminPermission.PROVIDERS_READ)
+  listProfileChanges(@Query() query: AdminProfileChangeQueryDto) {
+    return this.adminService.listProfileChanges(query);
+  }
+
+  @Patch('provider-profile-changes/:id/decision')
+  @RequireAdminPermission(AdminPermission.PROVIDERS_WRITE)
+  decideProfileChange(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: AdminProfileChangeDecisionDto,
+  ) {
+    return this.adminService.decideProfileChange(currentUser, id, dto);
+  }
+
   @Get('bookings')
   @RequireAdminPermission(AdminPermission.PROVIDERS_READ)
   listBookings(@Query() query: AdminBookingQueryDto) {

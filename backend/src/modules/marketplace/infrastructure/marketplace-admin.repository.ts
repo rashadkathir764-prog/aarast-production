@@ -11,9 +11,11 @@ import {
 import type { CreateNotificationInput } from '../../notifications/public/notifications.port';
 import * as bookingStore from './marketplace-booking.repository';
 import * as portfolioStore from './portfolio.repository';
-import type { PortfolioItemStatus } from '@prisma/client';
+import * as profileChangeStore from './provider-profile-change.repository';
+import type { PortfolioItemStatus, ProviderProfileChangeStatus } from '@prisma/client';
 import type {
   AdminPortfolioDecision,
+  AdminProfileChangeDecision,
   BookingNoticeAddressee,
 } from '../public/marketplace-admin.port';
 import {
@@ -752,6 +754,27 @@ export class MarketplaceAdminRepository implements MarketplaceAdminPort {
     decision: AdminPortfolioDecision,
   ) {
     return portfolioStore.decidePortfolioItem(tx, id, decision);
+  }
+
+  // RA-BE-152 (Q-39): providers' profile changes and their decisions.
+  async listProfileChangesForReview(
+    client: Prisma.TransactionClient,
+    status: ProviderProfileChangeStatus,
+    page: { skip: number; take: number },
+  ) {
+    return profileChangeStore.listProfileChangesForReview(client, status, page);
+  }
+
+  async lockProfileChangeInTransaction(tx: Prisma.TransactionClient, id: string) {
+    return profileChangeStore.lockProfileChange(tx, id);
+  }
+
+  async decideProfileChangeInTransaction(
+    tx: Prisma.TransactionClient,
+    id: string,
+    decision: AdminProfileChangeDecision,
+  ) {
+    return profileChangeStore.decideProfileChange(tx, id, decision);
   }
 
   async listReviews(

@@ -65,6 +65,7 @@ class ContributionHistoryEvent {
     required this.occurredAt,
     required this.capturedAt,
     this.provenance,
+    this.subjectName,
   });
 
   factory ContributionHistoryEvent.fromJson(Map<String, dynamic> json) {
@@ -110,6 +111,9 @@ class ContributionHistoryEvent {
       provenance: json['provenance'] is String
           ? json['provenance'] as String
           : null,
+      subjectName: json['subjectName'] is String
+          ? json['subjectName'] as String
+          : null,
     );
   }
 
@@ -121,6 +125,10 @@ class ContributionHistoryEvent {
   final DateTime? occurredAt;
   final DateTime capturedAt;
   final String? provenance;
+
+  /// RA-BE-176: the guest's or member's name, read now from the guest or
+  /// member itself («محذوف» once gone); the snapshot keeps no person's name.
+  final String? subjectName;
 }
 
 Map<String, dynamic> _strictStringMap(Map<dynamic, dynamic> raw, String name) {

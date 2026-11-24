@@ -111,7 +111,17 @@ function switchSnapshot(
         dueDate: "dueDate",
         category: "taskCategory",
       });
+    // RA-BE-176 (D124): a snapshot keeps no person's name. The event's
+    // entity type and id are its neutral label; the history reads the
+    // guest's or member's name live from the guest or member, «محذوف» once
+    // it is gone. A group is not a person and keeps its name.
     case ContributionEntityType.GUEST:
+      return pick(source, {
+        groupDisplayName: "groupDisplayName",
+        side: "side",
+        invitationStatus: "invitationStatus",
+        attendanceStatus: "attendanceStatus",
+      });
     case ContributionEntityType.GUEST_GROUP:
       return pick(source, {
         displayName: "displayName",
@@ -147,7 +157,6 @@ function switchSnapshot(
     case ContributionEntityType.MEMBER_ITEM:
     case ContributionEntityType.PLAN_INVITE:
       return pick(source, {
-        displayName: "displayName",
         role: "role",
         permissionLabels: "permissionLabels",
         inviteState: "inviteState",

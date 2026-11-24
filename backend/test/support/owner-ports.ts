@@ -35,7 +35,13 @@ export const ownerPorts = {
 };
 
 const realPermissions = new PermissionService({} as any, ownerPorts.plans);
-const realHistory = new ContributionHistoryService({} as any, ownerPorts.plans, realPermissions);
+const realHistory = new ContributionHistoryService(
+  {} as any,
+  ownerPorts.plans,
+  realPermissions,
+  ownerPorts.guests,
+  ownerPorts.users,
+);
 
 /**
  * A collaboration permission fake completed with the owner-side methods a
@@ -252,6 +258,8 @@ export function contributionHistoryService(prisma: unknown): ContributionHistory
     client,
     ownerPorts.plans,
     new PermissionService(client, ownerPorts.plans),
+    ownerPorts.guests,
+    ownerPorts.users,
   );
 }
 

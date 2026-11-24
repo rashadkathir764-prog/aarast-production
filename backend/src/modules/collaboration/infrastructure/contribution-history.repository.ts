@@ -260,4 +260,22 @@ export class ContributionHistoryRepository {
       where: { weddingPlanId_userId: { weddingPlanId, userId } },
     });
   }
+
+  /** RA-BE-176: the plan's members among these ids, with their accounts. */
+  listPlanMemberAccounts(tx: Client, weddingPlanId: string, memberIds: readonly string[]) {
+    if (memberIds.length === 0) return Promise.resolve([]);
+    return tx.sharedMember.findMany({
+      where: { weddingPlanId, id: { in: [...memberIds] } },
+      select: { id: true, userId: true },
+    });
+  }
+
+  /** RA-BE-176: the plan's invitations among these ids, with the name they carry. */
+  listPlanInviteNames(tx: Client, weddingPlanId: string, inviteIds: readonly string[]) {
+    if (inviteIds.length === 0) return Promise.resolve([]);
+    return tx.planInvite.findMany({
+      where: { weddingPlanId, id: { in: [...inviteIds] } },
+      select: { id: true, name: true },
+    });
+  }
 }

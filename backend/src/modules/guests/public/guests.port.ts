@@ -50,6 +50,12 @@ export interface GuestsPort {
     client: Prisma.TransactionClient,
     weddingPlanId: string,
   ): Promise<ReadableGuest[]>;
+  /** RA-BE-176: the plan's guests among these ids, by name (the history names them live). */
+  listGuestNames(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+    guestIds: readonly string[],
+  ): Promise<Array<{ id: string; name: string }>>;
   /** The plan dashboard's guest counters; `guestIds` narrows to a contributor's guests. */
   getPlanGuestCounters(
     client: Prisma.TransactionClient,

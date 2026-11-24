@@ -99,6 +99,33 @@ void main() {
     expect(activityLine(schedule, self: true), startsWith('أضفت'));
   });
 
+  // RA-BE-176 (D124): the history keeps no guest's or member's name; the
+  // server reads it now from the guest or member, «محذوف» once gone.
+  test('a guest is named from the server, not from the snapshot', () {
+    final live = ContributionHistoryEvent.fromJson({
+      ..._json(
+        'g1',
+        at: '2026-08-02T10:00:00.000Z',
+        section: 'GUESTS',
+        entityType: 'GUEST',
+        snapshot: const {'side': 'GROOM'},
+      ),
+      'subjectName': 'سالم',
+    });
+    expect(activityLine(live, self: false), 'أضاف الضيف سالم');
+    final gone = ContributionHistoryEvent.fromJson({
+      ..._json(
+        'g2',
+        at: '2026-08-02T10:00:00.000Z',
+        section: 'GUESTS',
+        entityType: 'GUEST',
+        snapshot: const {'side': 'GROOM'},
+      ),
+      'subjectName': 'محذوف',
+    });
+    expect(activityLine(gone, self: true), 'أضفت الضيف محذوف');
+  });
+
   // RA-MO-272 (batch 8): a right taken away read as a bare «أنت سجّلت».
   test('a right taken away says which, not «سجّلت»', () {
     final revoked = _event(

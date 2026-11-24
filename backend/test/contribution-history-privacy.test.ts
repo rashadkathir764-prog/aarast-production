@@ -57,10 +57,11 @@ test("each contribution snapshot type emits only its explicit privacy allowlist"
       ContributionEntityType.TASK,
       ["title", "status", "priority", "dueDate", "category"],
     ],
+    // RA-BE-176 (D124): no guest's or member's name; the history reads it
+    // live from the guest or member (contribution-history-names.test.ts).
     [
       ContributionEntityType.GUEST,
       [
-        "displayName",
         "groupDisplayName",
         "side",
         "invitationStatus",
@@ -86,7 +87,7 @@ test("each contribution snapshot type emits only its explicit privacy allowlist"
     ],
     [
       ContributionEntityType.MEMBER_ITEM,
-      ["displayName", "role", "permissionLabels", "inviteState"],
+      ["role", "permissionLabels", "inviteState"],
     ],
     [ContributionEntityType.PLAN, ["planTitle", "weddingDate", "status"]],
     [ContributionEntityType.SECTION, ["status"]],
@@ -298,6 +299,10 @@ test("history listing requires current access and removes live ids from revoked 
       findMany: async () => events,
       count: async () => events.length,
     },
+    // RA-BE-176: the guest's name is read live, in this plan.
+    guest: {
+      findMany: async () => [{ id: "guest-live-id", name: "Guest" }],
+    },
   };
   prisma.$transaction = async (operation: (tx: any) => Promise<unknown>) =>
     operation(prisma);
@@ -311,6 +316,7 @@ test("history listing requires current access and removes live ids from revoked 
 
   assert.equal("entityId" in result.events[0], false);
   assert.equal("entityId" in result.events[1], false);
+  assert.equal(result.events[1].subjectName, "Guest");
   assert.equal(result.events[0].contributorReference, "a".repeat(64));
   assert.equal(result.historyCoverageStartsAt, "2026-08-02T09:00:00.000Z");
 

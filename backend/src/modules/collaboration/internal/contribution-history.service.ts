@@ -32,6 +32,12 @@ import {
   type PlanReadPort,
 } from "../../planning/public/plan-read.port";
 import { PermissionService } from "./permission.service";
+import { GUESTS_PORT, type GuestsPort } from "../../guests/public/guests.port";
+import {
+  USER_READ_PORT,
+  type UserReadPort,
+} from "../../identity/public/user-read.port";
+import { applicationDisplayName } from "../../../shared-kernel/privacy/application-user-identity";
 import {
   canonicalJson,
   hashContributionSnapshot,
@@ -47,6 +53,8 @@ import {
 } from "../infrastructure/contribution-history.repository";
 
 const PERMISSION_POLICY_VERSION = 1;
+/** RA-BE-176 (D124): what the history calls a guest or member that is gone. */
+export const DELETED_SUBJECT = "محذوف";
 
 @Injectable()
 export class ContributionHistoryService implements CollaborationHistoryPort {
@@ -55,6 +63,8 @@ export class ContributionHistoryService implements CollaborationHistoryPort {
     private readonly prisma: PrismaService,
     @Inject(PLAN_READ_PORT) private readonly plans: PlanReadPort,
     private readonly permissions: PermissionService,
+    @Inject(GUESTS_PORT) private readonly guests: GuestsPort,
+    @Inject(USER_READ_PORT) private readonly users: UserReadPort,
   ) {}
 
   async recordInTransaction(
@@ -203,6 +213,7 @@ export class ContributionHistoryService implements CollaborationHistoryPort {
           this.hiddenSections(access),
         );
 
+        const subjectName = await this.subjectNames(tx, weddingPlanId, events);
         return {
           historyCoverageStartsAt: scope.historyCoverageStartsAt.toISOString(),
           total,
@@ -213,6 +224,7 @@ export class ContributionHistoryService implements CollaborationHistoryPort {
             entityType: event.entityType,
             action: event.action,
             snapshot: event.snapshot as Record<string, unknown>,
+            subjectName: subjectName(event),
             provenance: event.provenance,
             occurredAt: event.occurredAt?.toISOString() ?? null,
             capturedAt: event.capturedAt.toISOString(),
@@ -259,6 +271,60 @@ export class ContributionHistoryService implements CollaborationHistoryPort {
     return Object.fromEntries(
       Object.entries(sets).map(([section, ids]) => [section, ids.size]),
     ) as ContributionHistorySummaryResponse;
+  }
+
+  /**
+   * RA-BE-176 (D124): the snapshot keeps no guest's or member's name; the
+   * history names them from the guest, the member or the invitation as they
+   * are now, in this plan, and says «محذوف» once they are gone. Guests are
+   * read by every member (D52), and so are the plan's members.
+   */
+  private async subjectNames(
+    tx: Prisma.TransactionClient,
+    weddingPlanId: string,
+    events: ReadonlyArray<Pick<ContributionEvent, "entityType" | "entityId">>,
+  ): Promise<(event: Pick<ContributionEvent, "entityType" | "entityId">) => string | null> {
+    const idsOf = (type: ContributionEntityType) => [
+      ...new Set(
+        events.flatMap((event) =>
+          event.entityType === type && event.entityId ? [event.entityId] : [],
+        ),
+      ),
+    ];
+    const [guests, members, invites] = await Promise.all([
+      this.guests.listGuestNames(tx, weddingPlanId, idsOf(ContributionEntityType.GUEST)),
+      this.repository.listPlanMemberAccounts(
+        tx, weddingPlanId, idsOf(ContributionEntityType.MEMBER_ITEM),
+      ),
+      this.repository.listPlanInviteNames(
+        tx, weddingPlanId, idsOf(ContributionEntityType.PLAN_INVITE),
+      ),
+    ]);
+    const accounts = new Map(
+      (
+        await this.users.getAppIdentities(
+          tx,
+          [...new Set(members.map((member) => member.userId))],
+        )
+      ).map((account) => [account.id, applicationDisplayName(account)]),
+    );
+    const names = new Map<ContributionEntityType, Map<string, string | null>>([
+      [ContributionEntityType.GUEST, new Map(guests.map((guest) => [guest.id, guest.name]))],
+      [
+        ContributionEntityType.MEMBER_ITEM,
+        new Map(members.map((member) => [member.id, accounts.get(member.userId) ?? null])),
+      ],
+      [
+        ContributionEntityType.PLAN_INVITE,
+        new Map(invites.map((invite) => [invite.id, invite.name])),
+      ],
+    ]);
+    return (event) => {
+      const ofType = names.get(event.entityType);
+      if (!ofType || !event.entityId) return null;
+      if (!ofType.has(event.entityId)) return DELETED_SUBJECT;
+      return ofType.get(event.entityId)?.trim() || null;
+    };
   }
 
   // RA-BE-39: money in the history is money too (D52): a member who does not

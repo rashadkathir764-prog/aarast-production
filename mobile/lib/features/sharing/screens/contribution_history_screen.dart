@@ -415,8 +415,10 @@ String activityLine(
     return value is String && value.trim().isNotEmpty ? value.trim() : null;
   }
 
+  final subjectName = event.subjectName?.trim();
   final title =
       text('title') ??
+      (subjectName == null || subjectName.isEmpty ? null : subjectName) ??
       text('displayName') ??
       text('groupDisplayName') ??
       text('providerDisplayLabel') ??

@@ -65,6 +65,18 @@ export class GuestsPortService implements GuestsPort {
     return countPlanGuests(client, weddingPlanId);
   }
 
+  async listGuestNames(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+    guestIds: readonly string[],
+  ): Promise<Array<{ id: string; name: string }>> {
+    if (guestIds.length === 0) return [];
+    return client.guest.findMany({
+      where: { weddingPlanId, id: { in: [...guestIds] } },
+      select: { id: true, name: true },
+    });
+  }
+
   async listPlanInvitationCardIds(
     client: Prisma.TransactionClient,
     weddingPlanIds: readonly string[],

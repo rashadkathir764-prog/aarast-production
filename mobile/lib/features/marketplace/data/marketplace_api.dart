@@ -879,10 +879,12 @@ class MarketplaceProviderPage {
 class ProviderDashboardApi {
   ProviderDashboardApi(ApiClient apiClient, {OfflineSyncService? offline})
     : _apiClient = apiClient,
-      _reads = OfflineReads(apiClient, offline);
+      _reads = OfflineReads(apiClient, offline),
+      _writes = OfflineWrites(apiClient, offline);
 
   final ApiClient _apiClient;
   final OfflineReads _reads;
+  final OfflineWrites _writes;
 
   /// A listing the admin made under this account's phone, not yet claimed
   /// (V1 checklist 4.18); null when there is none.
@@ -1243,8 +1245,10 @@ class ProviderDashboardApi {
   /// RA-BE-152: «اسحب التعديل», his name, logo, cover, city or category
   /// change waiting for the team; returns the profile as it stays.
   Future<ProviderDashboardProfile> withdrawProfileChange() async {
-    final json = await _apiClient.deleteJson(
-      '/api/v1/provider/me/profile/pending-change',
+    final json = await _writes.serverOnly(
+      reason: 'سحب التعديل يوصل فريق اعّرست، فيحتاج النت.',
+      method: 'DELETE',
+      path: '/api/v1/provider/me/profile/pending-change',
     );
     return ProviderDashboardProfile.fromJson(json);
   }

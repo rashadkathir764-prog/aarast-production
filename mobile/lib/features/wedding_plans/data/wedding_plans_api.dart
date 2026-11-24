@@ -341,12 +341,25 @@ class WeddingPlansApi {
   }
 
   /// Q-45 (D124): the plan is erased 30 days from now unless taken back.
-  Future<WeddingPlan> requestPlanDeletion(String id) =>
-      _savePlan(_apiClient.postJson('/api/v1/wedding-plans/$id/deletion', {}));
+  /// It closes the plan to its members and ends its invitations now, so it
+  /// cannot wait on the phone (D85).
+  Future<WeddingPlan> requestPlanDeletion(String id) => _savePlan(
+    OfflineWrites(_apiClient, _offline).serverOnly(
+      reason: 'حذف الخطة يقفلها عن المشاركين ويلغي دعواتها فورًا، فيحتاج النت.',
+      method: 'POST',
+      path: '/api/v1/wedding-plans/$id/deletion',
+    ),
+  );
 
-  /// Q-45 (D124): the request is taken back; the plan is as it was.
-  Future<WeddingPlan> cancelPlanDeletion(String id) =>
-      _savePlan(_apiClient.deleteJson('/api/v1/wedding-plans/$id/deletion'));
+  /// Q-45 (D124): the request is taken back; the plan is as it was, open
+  /// to its members again now.
+  Future<WeddingPlan> cancelPlanDeletion(String id) => _savePlan(
+    OfflineWrites(_apiClient, _offline).serverOnly(
+      reason: 'ترجيع الخطة يفتحها للمشاركين فورًا، فيحتاج النت.',
+      method: 'DELETE',
+      path: '/api/v1/wedding-plans/$id/deletion',
+    ),
+  );
 
   Future<WeddingPlan> _savePlan(Future<Map<String, dynamic>> answer) async {
     final json = await answer;

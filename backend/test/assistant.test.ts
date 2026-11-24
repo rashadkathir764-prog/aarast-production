@@ -690,10 +690,10 @@ test('quote prices reach the model only for a reader who may see money', async (
 test('RA-BE-165: each account has its own monthly cap, one dollar unless configured', () => {
   assert.equal(readAssistantConfig({})?.userMonthlyBudgetMicroUsd, 1_000_000n);
   assert.equal(
-    readAssistantConfig({ ASSISTANT_USER_MONTHLY_USD: '2.5' })?.userMonthlyBudgetMicroUsd,
+    readAssistantConfig({ AARAST_ASSISTANT_USER_MONTHLY_USD: '2.5' })?.userMonthlyBudgetMicroUsd,
     2_500_000n,
   );
-  assert.equal(readAssistantConfig({ ASSISTANT_USER_MONTHLY_USD: '0' })?.userMonthlyBudgetMicroUsd, 1_000_000n);
+  assert.equal(readAssistantConfig({ AARAST_ASSISTANT_USER_MONTHLY_USD: '0' })?.userMonthlyBudgetMicroUsd, 1_000_000n);
 });
 
 test('RA-BE-165: a reader past their own month is refused, and the others go on', async () => {
@@ -745,11 +745,20 @@ test('RA-BE-165: the reservation bounds what the request may cost', () => {
   );
 });
 
-test('RA-BE-165: a timeout keeps the reserved cost; a refused call gives it back', async () => {
-  const timedOut = serviceFor({ modelError: new AssistantModelError('TIMEOUT', 'APIConnectionTimeoutError') });
+test('RA-BE-165: a call that may have been billed keeps its reserved cost; a refused call gives it back', async () => {
+  const timedOut = serviceFor({ modelError: new AssistantModelError('UNANSWERED', 'APIConnectionTimeoutError') });
   await rejectsWith(timedOut.service.ask(user, 'plan-1', ask), 503, 'ASSISTANT_BUSY');
   assert.equal(timedOut.calls.released, 1, 'the question is given back');
   assert.deepEqual(timedOut.calls.refunds, [0n], 'its reserved cost stays spent');
+
+  // A connection dropped after the request was sent: the same as a timeout.
+  const dropped = serviceFor({ modelError: new AssistantModelError('UNANSWERED', 'APIConnectionError UND_ERR_SOCKET') });
+  await rejectsWith(dropped.service.ask(user, 'plan-1', ask), 503, 'ASSISTANT_BUSY');
+  assert.deepEqual(dropped.calls.refunds, [0n]);
+  // Any other failure after the call went out keeps it too.
+  const thrown = serviceFor({ modelError: new Error('response parse failed') as AssistantModelError });
+  await assert.rejects(thrown.service.ask(user, 'plan-1', ask), /response parse failed/);
+  assert.deepEqual(thrown.calls.refunds, [0n]);
 
   const busy = serviceFor({ modelError: new AssistantModelError('BUSY', 'RateLimitError') });
   await rejectsWith(busy.service.ask(user, 'plan-1', ask), 503, 'ASSISTANT_BUSY');

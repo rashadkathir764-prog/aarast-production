@@ -143,7 +143,12 @@ class _PlanAssistantScreenState extends State<PlanAssistantScreen> {
     }
   }
 
-  Future<void> _ask(PlanAssistantKind kind) async {
+  /// [consentAskedAgain]: this is the one retry after the sheet asked
+  /// again because the server held no consent (item 7).
+  Future<void> _ask(
+    PlanAssistantKind kind, {
+    bool consentAskedAgain = false,
+  }) async {
     final status = _status;
     if (status == null || _asking) return;
     final typed = _questionController.text.trim();
@@ -155,16 +160,26 @@ class _PlanAssistantScreenState extends State<PlanAssistantScreen> {
       return;
     }
     if (!await _ensureConsent(status) || !mounted) return;
-    if (await _send(kind, typed) && mounted) {
+    final consentLost = await _send(
+      kind,
+      typed,
+      consentAskedAgain: consentAskedAgain,
+    );
+    if (consentLost && mounted) {
       // Item 7: the server no longer holds the consent (taken back from
       // another phone): the sheet asks again, and the question goes once
-      // it is given.
-      await _ask(kind);
+      // more when it is given; a second refusal is said, not asked again.
+      await _ask(kind, consentAskedAgain: true);
     }
   }
 
-  /// Sends one question; true when the server holds no consent for it.
-  Future<bool> _send(PlanAssistantKind kind, String typed) async {
+  /// Sends one question; true when the server holds no consent for it and
+  /// the sheet has not asked again yet.
+  Future<bool> _send(
+    PlanAssistantKind kind,
+    String typed, {
+    required bool consentAskedAgain,
+  }) async {
     var consentGone = false;
     FocusScope.of(context).unfocus();
     final exchange = _Exchange(
@@ -196,8 +211,12 @@ class _PlanAssistantScreenState extends State<PlanAssistantScreen> {
       setState(() {
         _exchanges.remove(exchange);
         if (error.serverCode == 'ASSISTANT_CONSENT_REQUIRED') {
-          consentGone = true;
           _status = _status?.copyWith(consentedAt: () => null);
+          if (consentAskedAgain) {
+            _askError = error.message;
+          } else {
+            consentGone = true;
+          }
         } else if (error.serverCode == 'ASSISTANT_DAILY_LIMIT') {
           _stop = _Stop.limit;
         } else if (error.isNetworkFailure) {

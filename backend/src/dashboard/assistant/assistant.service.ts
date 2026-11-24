@@ -292,7 +292,7 @@ export class AssistantService {
     try {
       reply = await model.ask({ model: config.model, system: ASSISTANT_SYSTEM_PROMPT, userText });
     } catch (error) {
-      if (error instanceof AssistantModelError && error.failure !== 'TIMEOUT') {
+      if (error instanceof AssistantModelError && error.failure !== 'UNANSWERED') {
         // Refused before any answer: nothing was billed.
         await this.quota.releaseQuestion(currentUser.id, day, reserved);
         if (error.failure === 'BUSY') {
@@ -306,11 +306,12 @@ export class AssistantService {
           'The assistant is unavailable',
         );
       }
-      // A timeout, or a failure after the call went out: it may have been
-      // billed, so its reserved cost stays spent; the question is given back.
+      // No answer after the call may have gone out (a timeout, a dropped
+      // connection, or any other failure): it may have been billed, so its
+      // reserved cost stays spent; the question is given back.
       await this.quota.releaseQuestion(currentUser.id, day, 0n);
       if (error instanceof AssistantModelError) {
-        this.logger.warn(`Assistant model timed out: ${error.detail}; its reserved cost is kept`);
+        this.logger.warn(`Assistant model gave no answer: ${error.detail}; its reserved cost is kept`);
         throw refusal(HttpStatus.SERVICE_UNAVAILABLE, 'ASSISTANT_BUSY', 'The assistant is busy');
       }
       throw error;

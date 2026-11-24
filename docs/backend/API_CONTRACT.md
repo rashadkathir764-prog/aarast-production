@@ -1788,13 +1788,17 @@ is stored; only counts, cost, and the consent's date.
 
 Spending (RA-BE-165): before the model is asked, one transaction under an
 advisory lock checks the service's month (`AARAST_ASSISTANT_MONTHLY_BUDGET_USD`),
-the asker's month (`ASSISTANT_USER_MONTHLY_USD`, default 1) and day, and
+the asker's month (`AARAST_ASSISTANT_USER_MONTHLY_USD`, default 1) and day, and
 reserves the call's most cost (the request's UTF-8 bytes as input tokens and
 all 8,000 output tokens, at the dearest known price) in `AssistantUsageDay`.
 A question is admitted while the spending is below the cap, so a month ends
 at most one reservation over it. The answer settles the reservation at its
-real cost; a call refused before answering gives it back; a timeout keeps it
-(the call may have been billed) and gives the question back.
+real cost; a call refused before answering, or whose connection never
+opened, gives it back; a timeout, a connection dropped after the request was
+sent, or any other failure after it went out keeps it (the call may have been
+billed) and gives the question back. The client makes one attempt per
+question (`maxRetries: 0`, 45 s), so no attempt is billed without its own
+reservation.
 
 - `POST /api/v1/wedding-plans/:weddingPlanId/assistant/reports` with
   `{ answerId, kind, question?, answer, reason }` (RA-ST-04) returns
@@ -1809,12 +1813,12 @@ Refusals: `400 ASSISTANT_CONSENT_REQUIRED` (the asker has no stored consent),
 `403 ASSISTANT_OWNER_OR_PARTNER_ONLY`, `429 ASSISTANT_DAILY_LIMIT`
 (`AARAST_ASSISTANT_DAILY_LIMIT`, default 10 a day), `429
 ASSISTANT_USER_MONTHLY_LIMIT` (the asker's month reached
-`ASSISTANT_USER_MONTHLY_USD`; the app says «خلصت أسئلتك هذا الشهر، ترجع أول
+`AARAST_ASSISTANT_USER_MONTHLY_USD`; the app says «خلصت أسئلتك هذا الشهر، ترجع أول
 الشهر»; other accounts go on), `503 ASSISTANT_DISABLED`,
 `503 ASSISTANT_BUDGET_EXHAUSTED` (the month's cost reached
 `AARAST_ASSISTANT_MONTHLY_BUDGET_USD`, default 30), `503 ASSISTANT_BUSY` and
 `503 ASSISTANT_UNAVAILABLE` (the model failed; the question is given back;
-on a timeout its reserved cost stays spent).
+when the call may have been billed, its reserved cost stays spent).
 A safety decline returns `declined: true` with an Arabic explanation.
 
 ## Timeline

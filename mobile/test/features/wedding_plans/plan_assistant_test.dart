@@ -518,6 +518,32 @@ void main() {
     expect(find.byKey(const ValueKey('assistant-answer')), findsOneWidget);
   });
 
+  testWidgets('the sheet asks again once only: a second refusal is said, '
+      'not asked again', (tester) async {
+    final api = _FakeAssistantApi(
+      consented: true,
+      consentGoneOnServer: true,
+      consentNeverKept: true,
+    );
+    await tester.pumpWidget(
+      app(PlanAssistantScreen(weddingPlanId: 'plan-1', api: api)),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('assistant-kind-CHEAPER')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('assistant-consent-agree')));
+    await tester.pumpAndSettle();
+    // One sheet, one consent, two attempts, then the refusal in words.
+    expect(api.consentsRecorded, ['plan-1']);
+    expect(api.attempts, 2);
+    expect(find.text('المساعد الذكي'), findsNothing);
+    expect(find.byKey(const ValueKey('assistant-error')), findsOneWidget);
+    expect(
+      find.text('وافق على إرسال بيانات خطتك للمساعد أولًا.'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('a consent the server no longer holds, declined again, sends '
       'nothing', (tester) async {
     final api = _FakeAssistantApi(consented: true, consentGoneOnServer: true);
@@ -711,6 +737,7 @@ class _FakeAssistantApi extends PlanAssistantApi {
     bool consented = false,
     this.consentFailure,
     this.consentGoneOnServer = false,
+    this.consentNeverKept = false,
   }) : _consentedAt = consented ? DateTime.utc(2026, 11, 20) : null,
        super(ApiClient(tokenProvider: () async => null));
 
@@ -721,6 +748,12 @@ class _FakeAssistantApi extends PlanAssistantApi {
   /// (taken back elsewhere) until consent is recorded again.
   bool consentGoneOnServer;
 
+  /// The server takes the consent but still answers that it holds none.
+  final bool consentNeverKept;
+
+  /// Every question sent, refused or not.
+  int attempts = 0;
+
   /// RA-BE-161: the server's stored consent.
   DateTime? _consentedAt;
   final ApiException? consentFailure;
@@ -730,7 +763,7 @@ class _FakeAssistantApi extends PlanAssistantApi {
   Future<DateTime> recordConsent(String weddingPlanId) async {
     if (consentFailure != null) throw consentFailure!;
     consentsRecorded.add(weddingPlanId);
-    consentGoneOnServer = false;
+    if (!consentNeverKept) consentGoneOnServer = false;
     return _consentedAt ??= DateTime.utc(2026, 11, 24, 9);
   }
 
@@ -776,6 +809,7 @@ class _FakeAssistantApi extends PlanAssistantApi {
     required PlanAssistantKind kind,
     String? question,
   }) async {
+    attempts += 1;
     if (failure != null) throw failure!;
     if (consentGoneOnServer) {
       throw const ApiException(

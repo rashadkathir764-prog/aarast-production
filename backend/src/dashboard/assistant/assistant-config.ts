@@ -48,7 +48,7 @@ export function readAssistantConfig(env: NodeJS.ProcessEnv): AssistantConfig | n
       positiveNumber(env.AARAST_ASSISTANT_MONTHLY_BUDGET_USD, DEFAULT_MONTHLY_BUDGET_USD),
     ),
     userMonthlyBudgetMicroUsd: microUsd(
-      positiveNumber(env.ASSISTANT_USER_MONTHLY_USD, DEFAULT_USER_MONTHLY_USD),
+      positiveNumber(env.AARAST_ASSISTANT_USER_MONTHLY_USD, DEFAULT_USER_MONTHLY_USD),
     ),
   };
 }

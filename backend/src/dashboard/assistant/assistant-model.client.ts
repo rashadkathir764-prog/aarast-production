@@ -18,10 +18,44 @@ export interface AssistantModelReply {
 }
 
 /**
- * Why a call never produced a reply. TIMEOUT: no answer came in time, so the
- * call may still have been billed (RA-BE-165 keeps its reserved cost).
+ * Why a call never produced a reply. BUSY and UNAVAILABLE: the API refused
+ * it, or the connection never opened, so nothing was billed. UNANSWERED: the
+ * request may have reached the API (a timeout, a connection dropped after
+ * it was sent), so it may have been billed and RA-BE-165 keeps its reserved
+ * cost.
  */
-export type AssistantModelFailure = 'BUSY' | 'TIMEOUT' | 'UNAVAILABLE';
+export type AssistantModelFailure = 'BUSY' | 'UNANSWERED' | 'UNAVAILABLE';
+
+/**
+ * Connection failures that prove the request never left: no address, no
+ * route, or a refused or unopened connection. Any other connection failure
+ * may come after the request was sent.
+ */
+const NEVER_SENT = new Set([
+  'ECONNREFUSED',
+  'ENOTFOUND',
+  'EAI_AGAIN',
+  'ENETUNREACH',
+  'EHOSTUNREACH',
+  'UND_ERR_CONNECT_TIMEOUT',
+]);
+
+function connectionCode(error: unknown): string | null {
+  // The SDK wraps fetch's TypeError, whose cause is the socket's error.
+  let cause: unknown = (error as { cause?: unknown }).cause;
+  for (let depth = 0; depth < 3 && cause; depth++) {
+    const code = (cause as { code?: unknown }).code;
+    if (typeof code === 'string') return code;
+    cause = (cause as { cause?: unknown }).cause;
+  }
+  return null;
+}
+
+/** For tests only: where the API is and how long a call may wait. */
+export interface ClaudeAssistantModelOptions {
+  baseURL?: string;
+  timeoutMs?: number;
+}
 
 export class AssistantModelError extends Error {
   constructor(readonly failure: AssistantModelFailure, readonly detail: string) {
@@ -40,9 +74,17 @@ export interface AssistantModel {
 export class ClaudeAssistantModel implements AssistantModel {
   private readonly client: Anthropic;
 
-  constructor(apiKey: string) {
-    // One retry within 45 s each ends before the app stops waiting (100 s).
-    this.client = new Anthropic({ apiKey, timeout: 45_000, maxRetries: 1 });
+  constructor(apiKey: string, options: ClaudeAssistantModelOptions = {}) {
+    // RA-BE-165: no retry inside the SDK. Each attempt may be billed, and a
+    // question reserves the cost of one call; a hidden second attempt was
+    // billed with nothing reserved for it. 45 s ends well before the app
+    // stops waiting (100 s).
+    this.client = new Anthropic({
+      apiKey,
+      timeout: options.timeoutMs ?? 45_000,
+      maxRetries: 0,
+      ...(options.baseURL ? { baseURL: options.baseURL } : {}),
+    });
   }
 
   async ask(request: AssistantModelRequest): Promise<AssistantModelReply> {
@@ -80,13 +122,16 @@ export class ClaudeAssistantModel implements AssistantModel {
     } catch (error) {
       // Before APIConnectionError, which it extends.
       if (error instanceof Anthropic.APIConnectionTimeoutError) {
-        throw new AssistantModelError('TIMEOUT', error.constructor.name);
+        throw new AssistantModelError('UNANSWERED', error.constructor.name);
       }
-      if (
-        error instanceof Anthropic.RateLimitError ||
-        error instanceof Anthropic.InternalServerError ||
-        error instanceof Anthropic.APIConnectionError
-      ) {
+      if (error instanceof Anthropic.APIConnectionError) {
+        const code = connectionCode(error);
+        throw new AssistantModelError(
+          code && NEVER_SENT.has(code) ? 'BUSY' : 'UNANSWERED',
+          `${error.constructor.name} ${code ?? 'unknown'}`,
+        );
+      }
+      if (error instanceof Anthropic.RateLimitError || error instanceof Anthropic.InternalServerError) {
         throw new AssistantModelError('BUSY', error.constructor.name);
       }
       if (error instanceof Anthropic.APIError) {

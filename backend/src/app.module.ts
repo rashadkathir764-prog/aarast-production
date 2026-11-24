@@ -3,6 +3,7 @@ import { APP_GUARD, APP_INTERCEPTOR } from "@nestjs/core";
 import { ScheduleModule } from "@nestjs/schedule";
 import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import { ThrottlerStorageRedisService } from "@nest-lab/throttler-storage-redis";
+import { rsvpAddressThrottler } from "./guests/rsvp-throttle";
 import { IdempotencyInterceptor } from "./platform/idempotency/idempotency.interceptor";
 import { IdempotencyCleanupScheduler } from "./platform/idempotency/idempotency-cleanup.scheduler";
 import { AdminAuditInterceptor } from "./admin/admin-audit.interceptor";
@@ -53,6 +54,8 @@ import { NotificationsModule } from "./modules/notifications/notifications.modul
               ttl: Number.isFinite(ttl) && ttl > 0 ? ttl : 60_000,
               limit: Number.isFinite(limit) && limit > 0 ? limit : 1_000,
             },
+            // I-1: the address-wide ceiling of the public RSVP routes.
+            rsvpAddressThrottler,
           ],
           ...(redisUrl
             ? {

@@ -44,6 +44,13 @@ export interface CreateNotificationInput {
   routeTarget?: string | null;
   data?: Prisma.InputJsonValue;
   dedupeKey?: string;
+  /**
+   * RA-BE-174: a notice already under [dedupeKey] takes this one's words
+   * and stands unread again, without a second row or a second push (one
+   * notice per guest per hour of reply changes, say). Without it, the key
+   * is a duplicate the caller sees.
+   */
+  mergeIntoExisting?: boolean;
 }
 
 // The caller's transaction (or the shared client). Notifications reads the

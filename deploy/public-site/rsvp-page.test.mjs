@@ -606,3 +606,21 @@ test("RA-BE-173: the companion chips are the owner's number, and none asks nothi
   await settle();
   assert.equal(alone.requests[1], `POST ${endpoint}`);
 });
+
+// RA-BE-174: a week after the wedding the link closes; the page says the
+// wedding is over, not that the link is broken, and names no one.
+test("RA-BE-174: a link closed after the wedding says so, on opening and on answering", async () => {
+  const gone = [410, { statusCode: 410, code: "RSVP_LINK_EXPIRED", message: "العرس فات، والرابط انتهى." }];
+  const closed = await openPage([gone]);
+  assert.equal(closed.element("rsvp-title").textContent, "العرس فات");
+  assert.match(closed.element("rsvp-invite-line").textContent, /انتهت/);
+  assert.equal(closed.element("rsvp-answer").hidden, true);
+  assert.equal(closed.element("rsvp-retry").hidden, true);
+
+  const late = await openPage([[200, invitation([lunch])], gone]);
+  late.element("rsvp-yes").click();
+  await settle();
+  assert.equal(late.element("rsvp-title").textContent, "العرس فات");
+  assert.equal(late.element("rsvp-answer").hidden, true);
+  assert.equal(late.element("rsvp-events").hidden, true);
+});

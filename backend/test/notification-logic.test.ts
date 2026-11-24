@@ -658,3 +658,70 @@ test("revoking financial access purges stored financial notifications atomically
 
   assert.equal(purgedInTransaction, true);
 });
+
+// RA-BE-174: a notice that merges into the one already under its key takes
+// its words and stands unread again, without a second push or a second row.
+test("RA-BE-174: a merged notice rewrites the one under its key, unread, without telling the phone again", async () => {
+  const rows: Array<Record<string, any>> = [];
+  const outbox: Array<Record<string, any>> = [];
+  const tx = {
+    $queryRaw: async (query: any) => {
+      const sql = Array.isArray(query?.strings) ? query.strings.join(" ") : String(query);
+      if (sql.includes('FROM "User"')) return [{ id: "owner-1", status: UserStatus.ACTIVE }];
+      return [];
+    },
+    user: { findMany: async () => [] },
+    notificationPreference: { findUnique: async () => null },
+    notification: {
+      findUnique: async ({ where }: any) => rows.find((row) => row.dedupeKey === where.dedupeKey) ?? null,
+      create: async ({ data }: any) => {
+        if (rows.some((row) => row.dedupeKey === data.dedupeKey)) {
+          throw new Prisma.PrismaClientKnownRequestError("dedupe", { code: "P2002", clientVersion: "test" });
+        }
+        const row = { ...data, id: `notification-${rows.length + 1}`, readAt: null, archivedAt: null, createdAt: new Date(), updatedAt: new Date() };
+        rows.push(row);
+        return row;
+      },
+      update: async ({ where, data }: any) => {
+        const row = rows.find((candidate) => candidate.id === where.id)!;
+        Object.assign(row, data, { updatedAt: new Date() });
+        return row;
+      },
+    },
+    outboxEvent: {
+      create: async ({ data }: any) => {
+        outbox.push(data);
+        return { id: `outbox-${outbox.length}` };
+      },
+    },
+  };
+  const service = notificationsService({} as any, {} as any, new OutboxService());
+  const notice = (title: string) => ({
+    userId: "owner-1",
+    weddingPlanId: "plan-1",
+    type: NotificationType.GUEST_RESPONDED,
+    title,
+    body: "الرد وصل من رابط الدعوة.",
+    entityType: "guest",
+    entityId: "guest-1",
+    dedupeKey: "owner-1:guest-responded:guest-1:hour-1",
+    mergeIntoExisting: true,
+  });
+
+  await service.createNotificationInTransaction(tx as any, notice("صالح أكّد حضوره"));
+  const pushes = outbox.length;
+  rows[0].readAt = new Date();
+  const merged = await service.createNotificationInTransaction(tx as any, notice("صالح اعتذر عن الحضور"));
+
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].title, "صالح اعتذر عن الحضور");
+  assert.equal(rows[0].readAt, null, "the owner reads the change as new");
+  assert.equal(merged?.id, rows[0].id);
+  assert.equal(outbox.length, pushes, "nothing new goes to the phone");
+
+  // Without merging, the same key is still a duplicate the caller sees.
+  await assert.rejects(
+    service.createNotificationInTransaction(tx as any, { ...notice("x"), mergeIntoExisting: undefined }),
+    (error: any) => error?.code === "P2002",
+  );
+});

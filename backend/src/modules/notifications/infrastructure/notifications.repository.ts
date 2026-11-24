@@ -110,6 +110,29 @@ export class NotificationsRepository {
     });
   }
 
+  /**
+   * RA-BE-174: a later notice merged into [id]: its words, and unread
+   * again (also out of the archive), as the reader has not seen them.
+   */
+  rewriteNotification(
+    client: Prisma.TransactionClient,
+    id: string,
+    input: CreateNotificationInput & { title: string; body: string },
+  ) {
+    return client.notification.update({
+      where: { id },
+      data: {
+        priority: input.priority ?? NotificationPriority.NORMAL,
+        title: input.title,
+        body: input.body,
+        routeTarget: input.routeTarget ?? null,
+        data: input.data,
+        readAt: null,
+        archivedAt: null,
+      },
+    });
+  }
+
   /** Writes a notification whose words are already in the recipient's form. */
   createNotification(
     client: Prisma.TransactionClient,

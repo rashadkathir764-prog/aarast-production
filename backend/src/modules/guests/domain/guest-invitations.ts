@@ -203,3 +203,23 @@ export function dueSend(
   if (has('WAITING')) return 'REMINDER';
   return null;
 }
+
+/** RA-BE-174: how many days after the wedding a guest's link still opens. */
+export const RSVP_LINK_DAYS_AFTER_WEDDING = 7;
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+// Aden keeps UTC+3 all year.
+const ADEN_OFFSET_MS = 3 * 60 * 60 * 1000;
+
+/**
+ * RA-BE-174: a guest's link names the guest and the wedding's place, and a
+ * family group keeps it for good; it opens through the seventh day after
+ * the wedding (to that day's end in Aden) and then closes. A plan with no
+ * date yet keeps it open. [weddingDate] is the plan's calendar day.
+ */
+export function rsvpLinkClosed(weddingDate: Date | null, now: Date): boolean {
+  if (!weddingDate) return false;
+  const closesAt =
+    weddingDate.getTime() + (RSVP_LINK_DAYS_AFTER_WEDDING + 1) * DAY_MS - ADEN_OFFSET_MS;
+  return now.getTime() >= closesAt;
+}

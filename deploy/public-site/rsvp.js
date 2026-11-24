@@ -105,6 +105,17 @@
     );
   }
 
+  /**
+   * RA-BE-174: the link closed a week after the wedding. It is not broken,
+   * and a new one would not open either, so the page asks for nothing.
+   */
+  function showEnded() {
+    clearInvitation();
+    retry.hidden = true;
+    title.textContent = "العرس فات";
+    inviteLine.textContent = "هذي الدعوة انتهت، وما عاد الرابط يفتح.";
+  }
+
   /** A load that did not reach the invitation (no network, a 5xx). */
   function showLoadFailure() {
     clearInvitation();
@@ -438,6 +449,7 @@
     try {
       const response = await fetch(endpoint, { headers: { Accept: "application/json" } });
       if (response.status === 404) return showInvalid();
+      if (response.status === 410) return showEnded();
       if (!response.ok) throw new Error(String(response.status));
       focused = render(await response.json(), message);
     } catch {
@@ -484,6 +496,7 @@
         body: JSON.stringify(body),
       });
       if (response.status === 404) return showInvalid();
+      if (response.status === 410) return showEnded();
       if (response.status === 409 && (await refusalCode(response)) === "RSVP_EVENT_NOT_INVITED") {
         return load(INVITATION_CHANGED);
       }

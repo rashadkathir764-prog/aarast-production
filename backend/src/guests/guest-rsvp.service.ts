@@ -2,6 +2,7 @@ import { createHash, createHmac } from "node:crypto";
 import {
   BadRequestException,
   ConflictException,
+  GoneException,
   Inject,
   Injectable,
   NotFoundException,
@@ -64,6 +65,7 @@ import {
   dueSend,
   occasionStanding,
   occasionsToName,
+  rsvpLinkClosed,
   type ToldOccasion,
   toldOccasions,
 } from "../modules/guests/domain/guest-invitations";
@@ -653,7 +655,7 @@ export class GuestRsvpService {
       async (tx) => {
         const guest = await findRsvpGuestByTokenHash(tx, hash);
         if (!guest) throw this.linkNotFound();
-        const plan = await this.livePlan(tx, guest.weddingPlanId);
+        const plan = await this.openLinkPlan(tx, guest.weddingPlanId);
         return this.publicView(
           token,
           guest,
@@ -675,7 +677,7 @@ export class GuestRsvpService {
     await runSerializableTransaction(this.prisma, async (tx) => {
       const guest = await findRsvpGuestByTokenHash(tx, hash);
       if (!guest) throw this.linkNotFound();
-      await this.livePlan(tx, guest.weddingPlanId);
+      await this.openLinkPlan(tx, guest.weddingPlanId);
       await markRsvpLinkOpened(tx, guest.id, new Date());
     });
     return { opened: true };
@@ -696,6 +698,7 @@ export class GuestRsvpService {
         if (!guest) return null;
         const plan = await this.plans.getPlan(tx, guest.weddingPlanId);
         if (!plan || plan.status === WeddingPlanStatus.ARCHIVED) return null;
+        if (rsvpLinkClosed(plan.weddingDate, new Date())) return null;
         return { plan, context: await this.invitationContext(tx, plan.id, guest.id) };
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
@@ -743,7 +746,7 @@ export class GuestRsvpService {
       async (tx) => {
         const guest = await findRsvpGuestByTokenHash(tx, hash);
         if (!guest) throw this.linkNotFound();
-        const plan = await this.livePlan(tx, guest.weddingPlanId);
+        const plan = await this.openLinkPlan(tx, guest.weddingPlanId);
         return (await findGuestInvitationCard(tx, plan.id))?.photoUrl ?? null;
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
@@ -879,11 +882,11 @@ export class GuestRsvpService {
       if (!(await lockGuestForUpdate(tx, guest.id, guest.weddingPlanId))) {
         throw this.linkNotFound();
       }
+      const plan = await this.openLinkPlan(tx, guest.weddingPlanId);
       // Read under the guest's lock, so an owner's change of seats is
       // either before this answer or after it.
       const allowed = rsvpCompanionsAllowed(guest);
       if (companions > allowed) throw this.invalidCompanions(allowed);
-      const plan = await this.livePlan(tx, guest.weddingPlanId);
       const events = await this.plans.listPlanEvents(tx, plan.id);
       const wedding = this.weddingRow(events);
       const respondedAt = new Date();
@@ -935,7 +938,7 @@ export class GuestRsvpService {
           entityId: guest.id,
           routeTarget: noticeRoutes.guest(plan.id, guest.id),
           data: { guestId: guest.id, weddingPlanId: plan.id, attendance },
-          dedupeKey: `${plan.ownerUserId}:guest-responded:${guest.id}:${respondedAt.getTime()}`,
+          ...this.replyNoticeKey(plan.ownerUserId, guest.id, respondedAt),
         });
       }
       return this.publicView(
@@ -1023,7 +1026,7 @@ export class GuestRsvpService {
           planEventId,
           attendance: answer.confirmed ? "CONFIRMED" : "DECLINED",
         },
-        dedupeKey: `${plan.ownerUserId}:guest-responded:${guest.id}:${planEventId}:${answer.respondedAt.getTime()}`,
+        ...this.replyNoticeKey(plan.ownerUserId, guest.id, answer.respondedAt),
       });
     }
     return this.publicView(token, current, plan, context);
@@ -1239,6 +1242,19 @@ export class GuestRsvpService {
     return rsvpTokenHash(token);
   }
 
+  /**
+   * RA-BE-174: one guest's reply changes in one hour are one notice to the
+   * owner, saying the last of them (any of the guest's occasions); the
+   * next hour starts a new one.
+   */
+  private replyNoticeKey(ownerUserId: string, guestId: string, respondedAt: Date) {
+    const hour = Math.floor(respondedAt.getTime() / 3_600_000);
+    return {
+      dedupeKey: `${ownerUserId}:guest-responded:${guestId}:hour-${hour}`,
+      mergeIntoExisting: true,
+    };
+  }
+
   private invalidCompanions(allowed: number): BadRequestException {
     return new BadRequestException({
       statusCode: 400,
@@ -1253,6 +1269,26 @@ export class GuestRsvpService {
       code: "RSVP_LINK_NOT_FOUND",
       message: "This invitation link is not valid",
     });
+  }
+
+  /**
+   * The plan a guest's link opens: live (`livePlan`), and not past the week
+   * after its wedding (RA-BE-174), which is a 410 the page tells apart from
+   * a link that never worked.
+   */
+  private async openLinkPlan(
+    tx: Prisma.TransactionClient,
+    weddingPlanId: string,
+  ): Promise<WeddingPlan> {
+    const plan = await this.livePlan(tx, weddingPlanId);
+    if (rsvpLinkClosed(plan.weddingDate, new Date())) {
+      throw new GoneException({
+        statusCode: 410,
+        code: "RSVP_LINK_EXPIRED",
+        message: "العرس فات، والرابط انتهى.",
+      });
+    }
+    return plan;
   }
 
   /** An archived or missing plan closes every link. */

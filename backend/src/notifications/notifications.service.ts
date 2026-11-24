@@ -397,11 +397,20 @@ export class NotificationsService implements NotificationsPort {
             input.weddingPlanId ?? null,
           )
         : "MASCULINE";
-    const created = await this.repository.createNotification(client, {
+    const written = {
       ...input,
       title: textFor(form, input.title),
       body: textFor(form, input.body),
-    });
+    };
+    if (input.mergeIntoExisting && input.dedupeKey) {
+      const existing = await this.repository.findByDedupeKey(client, input.dedupeKey);
+      if (existing) {
+        return this.toResponse(
+          await this.repository.rewriteNotification(client, existing.id, written),
+        );
+      }
+    }
+    const created = await this.repository.createNotification(client, written);
     await this.enqueueNotificationDelivery(client, created);
     return this.toResponse(created);
   }

@@ -1,7 +1,7 @@
 import "reflect-metadata";
 
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { mock, test } from "node:test";
 import { HEADERS_METADATA } from "@nestjs/common/constants";
 import {
   buildRsvpMessage,
@@ -211,6 +211,7 @@ function service(
     planStatus?: string;
     persona?: string;
     signingFails?: boolean;
+    weddingDate?: Date | null;
   } = {},
 ) {
   const context = (user: any) => ({
@@ -236,7 +237,8 @@ function service(
       title: "عرس أحمد",
       persona: options.persona ?? "GROOM",
       status: options.planStatus ?? "PLANNING",
-      weddingDate: new Date("2027-02-18T00:00:00Z"),
+      weddingDate:
+        options.weddingDate === undefined ? new Date("2027-02-18T00:00:00Z") : options.weddingDate,
       city: null,
       location: { governorate: "أمانة العاصمة", cityOrDistrict: "شعوب" },
     }),
@@ -250,8 +252,13 @@ function service(
     },
   };
   const notifications: any = {
+    // As the real one: a merged notice replaces the one under its key.
     createNotificationInTransaction: async (_tx: unknown, input: any) => {
-      db.notifications.push(input);
+      const existing = input.mergeIntoExisting
+        ? db.notifications.findIndex((notice: any) => notice.dedupeKey === input.dedupeKey)
+        : -1;
+      if (existing >= 0) db.notifications[existing] = input;
+      else db.notifications.push(input);
       return null;
     },
   };
@@ -447,9 +454,16 @@ test("D116: a changed occasion is told to the guests who hold the old one, and a
   assert.match(change.message, /نرجو تأكيد حضورك من جديد من الرابط:/);
   assert.match(change.message, /بعد العصر/);
 
-  // Confirming again, with the same figures, is news to the owner.
+  // Confirming again, with the same figures, is news to the owner (a day
+  // later here: within the hour it merges into the first, RA-BE-174).
   const before = db.notifications.length;
-  const again = await rsvp.respond(token, "CONFIRMED", 2, "event-lunch");
+  mock.timers.enable({ apis: ["Date"], now: new Date(Date.now() + 24 * 3_600_000) });
+  let again;
+  try {
+    again = await rsvp.respond(token, "CONFIRMED", 2, "event-lunch");
+  } finally {
+    mock.timers.reset();
+  }
   assert.equal(again.events[0].needsReconfirm, false);
   assert.equal(db.eventInvites[0].answeredVersion, 2);
   assert.equal(db.notifications.length, before + 1);
@@ -618,26 +632,89 @@ test("a reply to an event taken out of the invitation is a conflict the page can
 });
 
 // RA-BE-87: the owner hears of a reply when it changed what the guest said.
+// RA-BE-174: and the changes one guest makes in one hour are one notice,
+// saying the last of them.
 test("the owner is told once per change of reply, never for the same reply again", async () => {
   const db = fakeDatabase();
   const rsvp = service(db);
   const token = tokenOf((await rsvp.createInvitationLink(owner, "guest-1")).url);
+  const hour = (time: string) => new Date(`2026-12-01T${time}:00Z`);
+  const at = async (time: string, answer: () => Promise<unknown>) => {
+    mock.timers.enable({ apis: ["Date"], now: hour(time) });
+    try {
+      await answer();
+    } finally {
+      mock.timers.reset();
+    }
+  };
 
-  await rsvp.respond(token, "CONFIRMED", 2);
-  await rsvp.respond(token, "CONFIRMED", 2);
+  await at("10:05", () => rsvp.respond(token, "CONFIRMED", 2));
+  await at("10:06", () => rsvp.respond(token, "CONFIRMED", 2));
   assert.equal(db.notifications.length, 1, "the same reply again tells nothing new");
-  await rsvp.respond(token, "CONFIRMED", 3);
-  await rsvp.respond(token, "DECLINED", 0);
-  await rsvp.respond(token, "DECLINED", 4); // declining keeps no companions
-  assert.equal(db.notifications.length, 3);
-  assert.match(db.notifications[2].title.masculine, /اعتذر/);
+  const key = db.notifications[0].dedupeKey;
+  assert.match(key, /^owner-1:guest-responded:guest-1:/);
+  assert.equal(db.notifications[0].mergeIntoExisting, true);
 
-  await rsvp.respond(token, "DECLINED", 0, "event-lunch");
-  await rsvp.respond(token, "DECLINED", 0, "event-lunch");
-  assert.equal(db.notifications.length, 4);
-  await rsvp.respond(token, "CONFIRMED", 0, "event-lunch");
-  assert.equal(db.notifications.length, 5);
-  assert.match(db.notifications[4].title.masculine, /أكّد حضوره في الغداء/);
+  await at("10:20", () => rsvp.respond(token, "CONFIRMED", 3));
+  await at("10:40", () => rsvp.respond(token, "DECLINED", 0));
+  await at("10:41", () => rsvp.respond(token, "DECLINED", 4)); // declining keeps no companions
+  assert.equal(db.notifications.length, 1, "one guest's changes in one hour are one notice");
+  assert.equal(db.notifications[0].dedupeKey, key);
+  assert.match(db.notifications[0].title.masculine, /اعتذر/);
+
+  // The same guest's answer to another occasion in that hour merges too.
+  await at("10:50", () => rsvp.respond(token, "DECLINED", 0, "event-lunch"));
+  await at("10:51", () => rsvp.respond(token, "DECLINED", 0, "event-lunch"));
+  assert.equal(db.notifications.length, 1);
+  assert.match(db.notifications[0].title.masculine, /اعتذر عن الغداء/);
+
+  // The next hour is a new notice.
+  await at("11:02", () => rsvp.respond(token, "CONFIRMED", 0, "event-lunch"));
+  assert.equal(db.notifications.length, 2);
+  assert.notEqual(db.notifications[1].dedupeKey, key);
+  assert.match(db.notifications[1].title.masculine, /أكّد حضوره في الغداء/);
+});
+
+// RA-BE-174: a week after the wedding the link stops opening: it names the
+// guest and the place, and a family group keeps it forever.
+test("RA-BE-174: the link closes seven days after the wedding, and a plan with no date keeps it", async () => {
+  const db = fakeDatabase();
+  const wedding = new Date("2026-11-10T00:00:00Z");
+  const token = tokenOf((await service(db).createInvitationLink(owner, "guest-1")).url);
+  const expired = (error: any) =>
+    error?.getStatus?.() === 410 &&
+    error.response.code === "RSVP_LINK_EXPIRED" &&
+    /[؀-ۿ]/u.test(error.response.message);
+  const on = async (instant: string, check: (rsvp: GuestRsvpService) => Promise<void>) => {
+    mock.timers.enable({ apis: ["Date"], now: new Date(instant) });
+    try {
+      await check(service(db, { weddingDate: wedding }));
+    } finally {
+      mock.timers.reset();
+    }
+  };
+
+  // The seventh day after, to its end in Aden, still opens.
+  await on("2026-11-17T20:59:00Z", async (rsvp) => {
+    assert.equal((await rsvp.getInvitation(token)).guestName, "عمي صالح");
+    assert.ok(await rsvp.invitationPreview(token));
+  });
+  await on("2026-11-17T21:00:00Z", async (rsvp) => {
+    await assert.rejects(rsvp.getInvitation(token), expired);
+    await assert.rejects(rsvp.respond(token, "CONFIRMED", 0), expired);
+    await assert.rejects(rsvp.respond(token, "CONFIRMED", 0, "event-lunch"), expired);
+    await assert.rejects(rsvp.markInvitationOpened(token), expired);
+    await assert.rejects(rsvp.cardPhotoDownloadUrl(token), expired);
+    assert.equal(await rsvp.invitationPreview(token), null);
+  });
+  assert.equal(db.guests.get("guest-1").attendanceStatus, "PENDING");
+
+  mock.timers.enable({ apis: ["Date"], now: new Date("2030-01-01T00:00:00Z") });
+  try {
+    assert.equal((await service(db, { weddingDate: null }).getInvitation(token)).guestName, "عمي صالح");
+  } finally {
+    mock.timers.reset();
+  }
 });
 
 // RA-BE-86: reading the card is a read of the plan, like its guest list.

@@ -67,7 +67,10 @@ List<RouteBase> _providerPortalRoutes() => [
       resumeLocation: state.uri.toString(),
       registerAsProvider: true,
       providerAccountRequired: true,
-      child: const ProviderNotificationsScreen(),
+      child: ProviderNotificationsScreen(
+        openNotificationId:
+            state.uri.queryParameters[AppRouter.openNotificationParameter],
+      ),
     ),
   ),
   GoRoute(

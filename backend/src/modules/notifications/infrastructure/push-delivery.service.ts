@@ -59,6 +59,50 @@ export class PushDeliveryService implements PushDeliveryPort {
     });
   }
 
+  /**
+   * RA-MO-358: the application session [sessionId] ended (a sign-out here
+   * or on another phone, a refresh token used twice), so the phone that
+   * registered under it is no longer the account's phone. Its registration
+   * goes; an account left with none has push off until a phone registers
+   * again, as after any last sign-out.
+   */
+  async releaseSessionInstallations(sessionId: string): Promise<void> {
+    await runSerializableTransaction(this.prisma, async (tx) => {
+      const released = await tx.pushInstallation.findMany({
+        where: { sessionId },
+        select: { userId: true },
+      });
+      if (released.length === 0) return;
+      await tx.pushInstallation.deleteMany({ where: { sessionId } });
+      for (const userId of new Set(released.map((item) => item.userId))) {
+        const remaining = await tx.pushInstallation.count({
+          where: { userId, enabled: true },
+        });
+        if (remaining === 0) {
+          await tx.notificationPreference.updateMany({
+            where: { userId },
+            data: { pushEnabled: false },
+          });
+        }
+      }
+    });
+  }
+
+  /**
+   * RA-MO-358: a refresh gives the session a new id; the registration made
+   * under the old one belongs to the new, or a later sign-out would not
+   * find it.
+   */
+  async moveSessionInstallations(
+    sessionId: string,
+    nextSessionId: string,
+  ): Promise<void> {
+    await this.prisma.pushInstallation.updateMany({
+      where: { sessionId },
+      data: { sessionId: nextSessionId },
+    });
+  }
+
   async dispatchNotification(notificationId: string): Promise<void> {
     if (!this.firebase.enabled) return;
 

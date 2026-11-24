@@ -976,3 +976,53 @@ test("repeated old-token replay revokes only its descendants, never a new login 
   assert.equal(independent.revokedAt, null);
   assert.deepEqual(harness.disconnectedUsers, []);
 });
+
+// RA-MO-358: a refresh retires a session id and the session carries on as the
+// next one; a revoke ends it. The outbox says which, so the phone's push
+// registration follows the first and goes with the second.
+test("a refresh publishes the session's next id; a revoke publishes none", async () => {
+  const events: any[] = [];
+  const tx = {
+    refreshToken: {
+      create: async () => ({ id: "session-2" }),
+      updateMany: async () => ({ count: 1 }),
+      update: async () => undefined,
+    },
+    outboxEvent: {
+      create: async ({ data }: any) => {
+        events.push(data.payload);
+      },
+    },
+  } as any;
+  const sessions = new AuthSessionRepository();
+  const now = new Date("2026-11-24T10:00:00.000Z");
+
+  await sessions.rotate(tx, {
+    id: "session-1",
+    userId: "user-1",
+    tokenHash: "hash",
+    scope: AuthSessionScope.APPLICATION,
+    now,
+    expiresAt: new Date("2026-12-24T10:00:00.000Z"),
+  });
+  await sessions.revokeFamily(
+    tx,
+    [
+      {
+        id: "session-2",
+        userId: "user-1",
+        scope: AuthSessionScope.APPLICATION,
+        expiresAt: new Date("2026-12-24T10:00:00.000Z"),
+        revokedAt: null,
+        replacedById: null,
+      },
+    ],
+    now,
+    true,
+  );
+
+  assert.deepEqual(events, [
+    { sessionId: "session-1", replacedBySessionId: "session-2" },
+    { sessionId: "session-2" },
+  ]);
+});

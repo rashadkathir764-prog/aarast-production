@@ -59,8 +59,9 @@ void main() {
         'auth-local',
         'local-cache',
         'push-local',
-        'auth-remote',
+        // RA-MO-358: the registration goes before the session is revoked.
         'push-remote',
+        'auth-remote',
       ]);
       expect(result.localCleanupCompleted, isTrue);
       expect(result.authRemote, SessionRemoteTeardownOutcome.completed);
@@ -135,6 +136,79 @@ void main() {
     expect(auth.remoteWasCancelled, isTrue);
     expect(push.remoteWasCancelled, isTrue);
   });
+
+  // RA-MO-358: both went at once with the session's own token; a revoke that
+  // came first answered the unregister 401 and the phone stayed registered.
+  test('the push unregister completes before the session is revoked', () async {
+    final events = <String>[];
+    final auth = _FakeAuthTeardown(events);
+    final push = _FakePushTeardown(
+      events,
+      remoteDelay: const Duration(milliseconds: 40),
+    );
+    final coordinator = SessionTeardownCoordinator(
+      auth: auth,
+      push: push,
+      clearLocalAccountData: () async => events.add('local-cache'),
+      clearGuestDraft: () async => events.add('local-draft'),
+      remoteTimeout: const Duration(milliseconds: 400),
+    );
+
+    final result = await coordinator.terminate(coordinator.begin('user-a'));
+
+    expect(
+      events.where(
+        (event) => event.endsWith('-remote') || event.endsWith('-remote-done'),
+      ),
+      ['push-remote', 'push-remote-done', 'auth-remote'],
+    );
+    expect(result.pushRemote, SessionRemoteTeardownOutcome.completed);
+    expect(result.authRemote, SessionRemoteTeardownOutcome.completed);
+  });
+
+  test(
+    'a push unregister that hangs never keeps the session from being revoked',
+    () async {
+      final events = <String>[];
+      final auth = _FakeAuthTeardown(events);
+      final push = _FakePushTeardown(events, hangRemote: true);
+      final coordinator = SessionTeardownCoordinator(
+        auth: auth,
+        push: push,
+        clearLocalAccountData: () async => events.add('local-cache'),
+        clearGuestDraft: () async => events.add('local-draft'),
+        remoteTimeout: const Duration(milliseconds: 100),
+      );
+
+      final result = await coordinator.terminate(coordinator.begin('user-a'));
+
+      expect(events, containsAllInOrder(['push-remote', 'auth-remote']));
+      expect(push.remoteWasCancelled, isTrue);
+      expect(result.pushRemote, SessionRemoteTeardownOutcome.timedOut);
+      expect(result.authRemote, SessionRemoteTeardownOutcome.completed);
+    },
+  );
+
+  test(
+    'a push unregister that fails still lets the session be revoked',
+    () async {
+      final events = <String>[];
+      final auth = _FakeAuthTeardown(events);
+      final push = _FakePushTeardown(events, failRemote: true);
+      final coordinator = SessionTeardownCoordinator(
+        auth: auth,
+        push: push,
+        clearLocalAccountData: () async => events.add('local-cache'),
+        clearGuestDraft: () async => events.add('local-draft'),
+      );
+
+      final result = await coordinator.terminate(coordinator.begin('user-a'));
+
+      expect(events, containsAllInOrder(['push-remote', 'auth-remote']));
+      expect(result.pushRemote, SessionRemoteTeardownOutcome.failed);
+      expect(result.authRemote, SessionRemoteTeardownOutcome.completed);
+    },
+  );
 
   test('hanging local push clear becomes a retryable push failure', () async {
     final events = <String>[];
@@ -351,11 +425,15 @@ class _FakePushTeardown implements SessionPushTeardownPort {
     this.events, {
     this.hangLocal = false,
     this.hangRemote = false,
+    this.failRemote = false,
+    this.remoteDelay = Duration.zero,
   });
 
   final List<String> events;
   final bool hangLocal;
   final bool hangRemote;
+  final bool failRemote;
+  final Duration remoteDelay;
   final Completer<void> _localRelease = Completer<void>();
   bool remoteWasCancelled = false;
 
@@ -380,6 +458,11 @@ class _FakePushTeardown implements SessionPushTeardownPort {
     String? bearerToken,
   }) async {
     events.add('push-remote');
+    if (failRemote) throw StateError('push unregister failed');
+    if (remoteDelay > Duration.zero) {
+      await Future<void>.delayed(remoteDelay);
+      events.add('push-remote-done');
+    }
     if (!hangRemote) return;
     await cancelToken.whenCancel;
     remoteWasCancelled = true;

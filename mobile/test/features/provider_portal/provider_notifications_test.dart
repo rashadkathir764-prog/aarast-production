@@ -114,8 +114,9 @@ RequestsApi _requests() {
 
 Future<_NoticesApi> _pump(
   WidgetTester tester,
-  List<AarastNotification> items,
-) async {
+  List<AarastNotification> items, {
+  String? openId,
+}) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = const Size(420, 1200);
   addTearDown(tester.view.reset);
@@ -129,7 +130,8 @@ Future<_NoticesApi> _pump(
       GoRoute(path: '/', builder: (_, _) => const SizedBox()),
       GoRoute(
         path: '/notices',
-        builder: (_, _) => const ProviderNotificationsScreen(),
+        builder: (_, _) =>
+            ProviderNotificationsScreen(openNotificationId: openId),
       ),
       GoRoute(
         path: '/provider/requests/:id',
@@ -242,6 +244,27 @@ void main() {
     await tester.pumpAndSettle();
     expect(api.read, ['n2']);
     expect(find.text('طلب quote-2'), findsOne);
+  });
+
+  // RA-MO-357: a push tap names its notice; it opens as a tap on its row
+  // does and is marked read; one not in his list leaves the inbox as it is.
+  testWidgets('a push tap opens its notice and marks it read', (tester) async {
+    final api = await _pump(tester, [
+      _notice('n2', 'BOOKING_REQUESTED', quoteId: 'quote-2'),
+      _notice('n3', 'BOOKING_REQUESTED', quoteId: 'quote-3'),
+    ], openId: 'n3');
+    expect(api.read, ['n3']);
+    expect(find.text('طلب quote-3'), findsOne);
+  });
+
+  testWidgets('a push tap for a notice not in his list stays on the inbox', (
+    tester,
+  ) async {
+    final api = await _pump(tester, [
+      _notice('n2', 'BOOKING_REQUESTED', quoteId: 'quote-2'),
+    ], openId: 'gone');
+    expect(api.read, isEmpty);
+    expect(find.byKey(const Key('provider-notice-n2')), findsOne);
   });
 
   testWidgets('a message opens its chat', (tester) async {

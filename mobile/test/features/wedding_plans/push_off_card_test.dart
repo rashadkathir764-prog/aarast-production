@@ -106,7 +106,8 @@ class _Gateway implements PushMessagingGateway {
   Stream<void> get tokenChanges => const Stream.empty();
 
   @override
-  Stream<void> get notificationTaps => const Stream.empty();
+  Stream<PushNotificationTap> get notificationTaps =>
+      const Stream<PushNotificationTap>.empty();
 
   @override
   Stream<PushForegroundNotification> get foregroundNotifications =>
@@ -128,7 +129,7 @@ class _Gateway implements PushMessagingGateway {
   Future<String> ensureRegistrationAndGetInstallationId() async => 'fid-1';
 
   @override
-  Future<bool> consumeInitialNotificationTap() async => false;
+  Future<PushNotificationTap?> consumeInitialNotificationTap() async => null;
 }
 
 class _Registry implements PushInstallationRegistry {

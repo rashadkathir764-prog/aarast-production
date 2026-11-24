@@ -109,9 +109,18 @@ export class OutboxDispatcher {
         return;
       }
       case OutboxEventTypes.sessionRevoked: {
-        await this.realtime.dispatchSessionRevoked(
-          requiredText(payload, "sessionId"),
-        );
+        const sessionId = requiredText(payload, "sessionId");
+        await this.realtime.dispatchSessionRevoked(sessionId);
+        // RA-MO-358: a refreshed session carries its phone's push
+        // registration to its next id; an ended one lets it go.
+        if (payload.replacedBySessionId === undefined) {
+          await this.pushDelivery?.releaseSessionInstallations(sessionId);
+        } else {
+          await this.pushDelivery?.moveSessionInstallations(
+            sessionId,
+            requiredText(payload, "replacedBySessionId"),
+          );
+        }
         return;
       }
       default:

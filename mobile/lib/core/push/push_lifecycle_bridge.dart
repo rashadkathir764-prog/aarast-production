@@ -9,6 +9,23 @@ import '../widgets/aarast_toast.dart';
 import 'push_messaging_gateway.dart';
 import 'push_notifications_controller.dart';
 
+final RegExp _pushNotificationId = RegExp(r'^[A-Za-z0-9_-]{1,128}$');
+
+/// The inbox a push tap opens, naming the notice to open when the push
+/// carried a well-formed id.
+String _inboxLocation({required bool provider, String? notificationId}) {
+  final inbox = provider
+      ? AppRouter.providerNotifications
+      : AppRouter.notifications;
+  if (notificationId == null || !_pushNotificationId.hasMatch(notificationId)) {
+    return inbox;
+  }
+  return Uri(
+    path: inbox,
+    queryParameters: {AppRouter.openNotificationParameter: notificationId},
+  ).toString();
+}
+
 class AarastPushLifecycleBridge extends StatefulWidget {
   const AarastPushLifecycleBridge({
     required this.router,
@@ -118,13 +135,17 @@ class _AarastPushLifecycleBridgeState extends State<AarastPushLifecycleBridge>
         _navigationScheduled = false;
         if (!mounted) return;
         final push = context.read<PushNotificationsController>();
-        if (push.claimNotificationsOpen()) {
-          // A notification tap never selects a plan context. The inbox and
-          // existing route guards remain authoritative for any target action.
+        final tap = push.claimNotificationsOpen();
+        if (tap != null) {
+          // A notification tap never selects a plan context. The inbox opens
+          // the notice the push named through its own route guards and marks
+          // it read; with no notice named, or none the guards let through,
+          // it stays on the inbox.
           widget.router.go(
-            (widget.isProviderAccount?.call() ?? false)
-                ? AppRouter.providerNotifications
-                : AppRouter.notifications,
+            _inboxLocation(
+              provider: widget.isProviderAccount?.call() ?? false,
+              notificationId: tap.notificationId,
+            ),
           );
         }
       });

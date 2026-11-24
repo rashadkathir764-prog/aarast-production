@@ -30,9 +30,19 @@ const _notificationsEmptyTop = 60.0;
 const _notificationsSkeletonRow = 90.0;
 
 class NotificationsScreen extends StatefulWidget {
-  const NotificationsScreen({this.weddingPlanId, this.clock, super.key});
+  const NotificationsScreen({
+    this.weddingPlanId,
+    this.openNotificationId,
+    this.clock,
+    super.key,
+  });
 
   final String? weddingPlanId;
+
+  /// The notice a push tap named: opened once the list is read, through the
+  /// same guards as a tap on its row. A notice not in the list, or whose
+  /// target the guards refuse, leaves the inbox as it is.
+  final String? openNotificationId;
 
   /// The time the «when» labels and groups are read against; the device
   /// clock unless a caller (a golden) pins it.
@@ -362,9 +372,24 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     if (_suppressAccountData) {
       setState(() => _suppressAccountData = false);
     }
-    return context.read<NotificationsProvider>().loadNotifications(
-      weddingPlanId: widget.weddingPlanId,
-    );
+    final provider = context.read<NotificationsProvider>();
+    await provider.loadNotifications(weddingPlanId: widget.weddingPlanId);
+    await _openRequestedNotification(provider);
+  }
+
+  bool _requestedNotificationOpened = false;
+
+  Future<void> _openRequestedNotification(
+    NotificationsProvider provider,
+  ) async {
+    final id = widget.openNotificationId;
+    if (id == null || _requestedNotificationOpened || !mounted) return;
+    final notification = provider.notifications
+        .where((item) => item.id == id)
+        .firstOrNull;
+    if (notification == null) return;
+    _requestedNotificationOpened = true;
+    await _openNotification(provider, notification);
   }
 
   Future<void> _markAllRead(NotificationsProvider provider) async {

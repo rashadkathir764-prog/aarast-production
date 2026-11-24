@@ -58,16 +58,25 @@ export async function enqueuePushInstallationsReleased(
   });
 }
 
+/**
+ * A session's id is over: its sockets end. With [replacedBySessionId] the
+ * session was refreshed, not ended (its next id carries on), so the phone's
+ * push registration follows it to that id; without it the session is over
+ * and the registration goes (RA-MO-358).
+ */
 export async function enqueueSessionRevoked(
   client: RevocationOutboxClient,
   sessionId: string,
+  replacedBySessionId?: string,
 ): Promise<void> {
   await client.outboxEvent.create({
     data: {
       type: OutboxEventTypes.sessionRevoked,
       aggregateType: 'session',
       aggregateId: sessionId,
-      payload: { sessionId },
+      payload: replacedBySessionId
+        ? { sessionId, replacedBySessionId }
+        : { sessionId },
     },
   });
 }

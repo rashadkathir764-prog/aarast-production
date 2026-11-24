@@ -34,7 +34,9 @@ void main() {
     },
   );
 
-  test('notification taps only request opening the neutral inbox', () async {
+  // RA-MO-357: a tap carries the id of the notice the push announced, and
+  // only that: the notice's target is read from the notice, never the push.
+  test('a notification tap carries the id of its notice, once', () async {
     SharedPreferences.setMockInitialValues({});
     final preferences = await SharedPreferences.getInstance();
     final gateway = _FakePushGateway();
@@ -45,13 +47,37 @@ void main() {
     );
 
     await controller.initialize();
-    gateway.taps.add(null);
+    gateway.taps.add(const PushNotificationTap(notificationId: 'n-1'));
     await Future<void>.delayed(Duration.zero);
 
     expect(controller.hasPendingNotificationsOpen, isTrue);
-    expect(controller.claimNotificationsOpen(), isTrue);
-    expect(controller.claimNotificationsOpen(), isFalse);
+    expect(controller.claimNotificationsOpen()?.notificationId, 'n-1');
+    expect(controller.claimNotificationsOpen(), isNull);
   });
+
+  test(
+    'a tap that names no notice still opens the inbox, and the last tap wins',
+    () async {
+      SharedPreferences.setMockInitialValues({});
+      final preferences = await SharedPreferences.getInstance();
+      final gateway = _FakePushGateway();
+      final controller = PushNotificationsController(
+        preferences: preferences,
+        gateway: gateway,
+        registrationApi: _FakePushRegistry(),
+      );
+
+      await controller.initialize();
+      gateway.taps.add(const PushNotificationTap());
+      await Future<void>.delayed(Duration.zero);
+      expect(controller.claimNotificationsOpen()?.notificationId, isNull);
+
+      gateway.taps.add(const PushNotificationTap(notificationId: 'n-1'));
+      gateway.taps.add(const PushNotificationTap(notificationId: 'n-2'));
+      await Future<void>.delayed(Duration.zero);
+      expect(controller.claimNotificationsOpen()?.notificationId, 'n-2');
+    },
+  );
 
   test(
     'foreground push remains available to the app-wide top receipt',
@@ -249,7 +275,8 @@ class _FakePushGateway implements PushMessagingGateway {
 
   final bool stallFirstRegistration;
   final StreamController<void> tokens = StreamController<void>.broadcast();
-  final StreamController<void> taps = StreamController<void>.broadcast();
+  final StreamController<PushNotificationTap> taps =
+      StreamController<PushNotificationTap>.broadcast();
   final StreamController<PushForegroundNotification> foreground =
       StreamController<PushForegroundNotification>.broadcast();
   final Completer<void> registrationStarted = Completer<void>();
@@ -264,7 +291,7 @@ class _FakePushGateway implements PushMessagingGateway {
   Stream<void> get tokenChanges => tokens.stream;
 
   @override
-  Stream<void> get notificationTaps => taps.stream;
+  Stream<PushNotificationTap> get notificationTaps => taps.stream;
 
   @override
   Stream<PushForegroundNotification> get foregroundNotifications =>
@@ -296,7 +323,7 @@ class _FakePushGateway implements PushMessagingGateway {
   }
 
   @override
-  Future<bool> consumeInitialNotificationTap() async => false;
+  Future<PushNotificationTap?> consumeInitialNotificationTap() async => null;
 
   void releaseStalledRegistration() {
     if (!_registrationRelease.isCompleted) {

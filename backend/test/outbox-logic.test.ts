@@ -83,6 +83,8 @@ test("ending an account's sessions releases its push registrations made before t
     releaseUserInstallations: async (userId: string, revokedAt: Date) => {
       released.push([userId, revokedAt.toISOString()]);
     },
+    releaseSessionInstallations: async () => {},
+    moveSessionInstallations: async () => {},
   };
   const dispatcher = new OutboxDispatcher(realtime, push);
 
@@ -91,6 +93,45 @@ test("ending an account's sessions releases its push registrations made before t
   );
 
   assert.deepEqual(released, [["user-1", "2026-07-10T10:00:00.000Z"]]);
+});
+
+// RA-MO-358: an ended session lets go of the phone's registration made under
+// it; a refreshed one carries it to its next id (its sockets end either way).
+test("an ended session releases its registration; a refreshed one moves it", async () => {
+  const calls: unknown[][] = [];
+  const ended: string[] = [];
+  const realtime = {
+    dispatchSessionRevoked: async (sessionId: string) => {
+      ended.push(sessionId);
+    },
+  } as unknown as ConversationRealtimePublisher;
+  const push = {
+    dispatchNotification: async () => {},
+    releaseUserInstallations: async () => {},
+    releaseSessionInstallations: async (...args: unknown[]) => {
+      calls.push(["release", ...args]);
+    },
+    moveSessionInstallations: async (...args: unknown[]) => {
+      calls.push(["move", ...args]);
+    },
+  };
+  const dispatcher = new OutboxDispatcher(realtime, push);
+
+  await dispatcher.dispatch(
+    event(OutboxEventTypes.sessionRevoked, { sessionId: "session-1" }),
+  );
+  await dispatcher.dispatch(
+    event(OutboxEventTypes.sessionRevoked, {
+      sessionId: "session-2",
+      replacedBySessionId: "session-3",
+    }),
+  );
+
+  assert.deepEqual(ended, ["session-1", "session-2"]);
+  assert.deepEqual(calls, [
+    ["release", "session-1"],
+    ["move", "session-2", "session-3"],
+  ]);
 });
 
 // RA-BE-133: a new password ends the other sessions and keeps the caller's;
@@ -108,6 +149,8 @@ test("a password change's release keeps the named phone and leaves the sockets a
     releaseUserInstallations: async (...args: unknown[]) => {
       released.push(args);
     },
+    releaseSessionInstallations: async () => {},
+    moveSessionInstallations: async () => {},
   };
   const dispatcher = new OutboxDispatcher(realtime, push);
 

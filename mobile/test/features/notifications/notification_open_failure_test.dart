@@ -47,6 +47,56 @@ void main() {
       );
     },
   );
+  // RA-MO-357: a tap on a push opens the inbox naming its notice; the notice
+  // opens as a tap on its row does (the same guards), and is marked read.
+  testWidgets('a push tap opens its notice and marks it read', (tester) async {
+    final api = _Api(failWrites: true);
+    await _pump(tester, api, openId: 'n1');
+
+    expect(find.text('opened tasks'), findsOneWidget);
+    expect(api.markReadCalls, 1);
+  });
+
+  testWidgets('a push tap for a notice not in the list stays on the inbox', (
+    tester,
+  ) async {
+    final api = _Api(failWrites: true);
+    await _pump(tester, api, openId: 'gone');
+
+    expect(find.text('opened tasks'), findsNothing);
+    expect(find.text('محمد عطاك مهمة'), findsOneWidget);
+    expect(api.markReadCalls, 0);
+  });
+
+  testWidgets('a push tap whose target the guards refuse stays on the inbox', (
+    tester,
+  ) async {
+    final api = _Api(failWrites: true, target: 'https://elsewhere.example/x');
+    await _pump(tester, api, openId: 'n1');
+
+    expect(find.text('opened tasks'), findsNothing);
+    expect(api.markReadCalls, 0);
+  });
+
+  testWidgets('a push tap for another plan\'s notice opens that plan', (
+    tester,
+  ) async {
+    final other = accountContext(
+      role: AccountContextRole.owner,
+      planId: 'plan-2',
+    );
+    final controller = await _pump(
+      tester,
+      _Api(target: '/wedding-plans/plan-2/tasks'),
+      others: [other],
+      openId: 'n1',
+    );
+
+    expect(controller.selectedContext?.weddingPlanId, 'plan-2');
+    expect(find.text('opened tasks'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 5));
+  });
+
   testWidgets('a notice opens even when marking it read fails', (tester) async {
     await _pump(tester, _Api(failWrites: true));
 
@@ -190,6 +240,9 @@ Future<AccountContextController> _pump(
 
   /// The account's list, every plan's notices together.
   bool accountWide = false,
+
+  /// The notice a push tap named.
+  String? openId,
 }) async {
   SharedPreferences.setMockInitialValues({});
   final storage = AuthStorage(await SharedPreferences.getInstance());
@@ -220,8 +273,10 @@ Future<AccountContextController> _pump(
     routes: [
       GoRoute(
         path: '/notifications',
-        builder: (_, _) =>
-            NotificationsScreen(weddingPlanId: accountWide ? null : _planId),
+        builder: (_, _) => NotificationsScreen(
+          weddingPlanId: accountWide ? null : _planId,
+          openNotificationId: openId,
+        ),
       ),
       GoRoute(
         path: '/wedding-plans/:id/tasks',

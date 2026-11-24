@@ -41,7 +41,10 @@ bool isProviderNotice(AarastNotification notice) =>
 /// other keeps the server's words. Deposit, postpone and hold notices do
 /// not exist on the server (B-18, B-22, B-25), so none is shown.
 class ProviderNotificationsScreen extends StatefulWidget {
-  const ProviderNotificationsScreen({super.key});
+  const ProviderNotificationsScreen({this.openNotificationId, super.key});
+
+  /// The notice a push tap named: opened once the list is read.
+  final String? openNotificationId;
 
   @override
   State<ProviderNotificationsScreen> createState() =>
@@ -66,6 +69,23 @@ class _ProviderNotificationsScreenState
       if (dashboard.quoteRequests.isEmpty && !dashboard.isLoading)
         dashboard.loadDashboard(),
     ]);
+    await _openRequestedNotice(notices);
+  }
+
+  bool _requestedNoticeOpened = false;
+
+  /// A push tap names its notice: it opens as a tap on its row does, through
+  /// the same guards, and is marked read. A notice that is not in the list,
+  /// or whose target the guards refuse, leaves the inbox as it is.
+  Future<void> _openRequestedNotice(NotificationsProvider notices) async {
+    final id = widget.openNotificationId;
+    if (id == null || _requestedNoticeOpened || !mounted) return;
+    final notice = notices.notifications
+        .where((item) => item.id == id && isProviderNotice(item))
+        .firstOrNull;
+    if (notice == null) return;
+    _requestedNoticeOpened = true;
+    await _open(notices, notice);
   }
 
   @override

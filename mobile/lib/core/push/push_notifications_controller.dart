@@ -32,6 +32,7 @@ class PushNotificationsController extends ChangeNotifier
   String? _registeredFid;
   bool _initialized = false;
   bool _pendingNotificationsOpen = false;
+  PushNotificationTap? _pendingTap;
   int _bindingGeneration = 0;
   CancelToken? _bindingCancelToken;
 
@@ -104,15 +105,10 @@ class PushNotificationsController extends ChangeNotifier
             unawaited(_queueCurrentRegistration());
           }),
         )
-        ..add(
-          _gateway.notificationTaps.listen((_) {
-            _markNotificationsOpenPending();
-          }),
-        )
+        ..add(_gateway.notificationTaps.listen(_markNotificationsOpenPending))
         ..add(_gateway.foregroundNotifications.listen(_foreground.add));
-      if (await _gateway.consumeInitialNotificationTap()) {
-        _markNotificationsOpenPending();
-      }
+      final initialTap = await _gateway.consumeInitialNotificationTap();
+      if (initialTap != null) _markNotificationsOpenPending(initialTap);
     } on Object {
       _initialized = false;
       appLogEvent(
@@ -308,11 +304,14 @@ class PushNotificationsController extends ChangeNotifier
     }
   }
 
-  bool claimNotificationsOpen() {
-    if (!_pendingNotificationsOpen) return false;
+  /// The tap waiting to be opened, once; null when none waits.
+  PushNotificationTap? claimNotificationsOpen() {
+    if (!_pendingNotificationsOpen) return null;
+    final tap = _pendingTap;
     _pendingNotificationsOpen = false;
+    _pendingTap = null;
     notifyListeners();
-    return true;
+    return tap ?? const PushNotificationTap();
   }
 
   Future<void> _queueCurrentRegistration() {
@@ -395,7 +394,9 @@ class PushNotificationsController extends ChangeNotifier
         !cancelToken.isCancelled;
   }
 
-  void _markNotificationsOpenPending() {
+  void _markNotificationsOpenPending(PushNotificationTap tap) {
+    // The last tap is the one the person means.
+    _pendingTap = tap;
     if (_pendingNotificationsOpen) return;
     _pendingNotificationsOpen = true;
     notifyListeners();

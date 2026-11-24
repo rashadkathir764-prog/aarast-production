@@ -148,8 +148,40 @@ test("registering a shared-device FID atomically moves it to the current account
 
   assert.equal(upserts[0]?.update.userId, "current-user");
   assert.equal(upserts[0]?.update.enabled, true);
+  // RA-MO-358: no session on the identity leaves it unbound, not undefined.
+  assert.equal(upserts[0]?.update.sessionId, null);
   assert.equal(preferenceUpserts[0]?.update.pushEnabled, true);
   assert.deepEqual(disabledUsers, ["old-user"]);
+});
+
+// RA-MO-358: the registration remembers the session it was made under, so
+// ending that session can let it go.
+test("a registration is stored with the session it was made under", async () => {
+  const upserts: any[] = [];
+  const rawResponses = [[], [{ id: "current-user", status: UserStatus.ACTIVE }]];
+  const transaction = {
+    $queryRaw: async () => rawResponses.shift() ?? [],
+    pushInstallation: {
+      upsert: async (input: any) => {
+        upserts.push(input);
+      },
+      count: async () => 0,
+    },
+    notificationPreference: { upsert: async () => undefined },
+  };
+  const service = new PushInstallationsService({
+    $transaction: async (operation: (tx: any) => Promise<unknown>) =>
+      operation(transaction),
+  } as never);
+
+  await service.register(
+    { id: "current-user", sessionId: "session-9" } as any,
+    "fid_shared_device",
+    PushPlatform.ANDROID,
+  );
+
+  assert.equal(upserts[0]?.create.sessionId, "session-9");
+  assert.equal(upserts[0]?.update.sessionId, "session-9");
 });
 
 test("delivery removes permanent invalid installations and retries transient failures", async () => {
@@ -386,6 +418,92 @@ test("ended sessions release the registrations made before them; one made since 
       lastSeenAt: { lt: revokedAt },
       fid: { not: "this-phone-fid-1" },
     },
+  ]);
+});
+
+// RA-MO-358: a session that ended (a sign-out on another phone, a refresh
+// token used twice) lets go of the registration made under it, whatever its
+// age; the account's push goes off only when no phone is left.
+test("an ended session releases its own phone's registration", async () => {
+  const deletes: unknown[] = [];
+  const disabledUsers: string[] = [];
+  let enabledLeft = 1;
+  const transaction = {
+    pushInstallation: {
+      findMany: async ({ where }: any) => {
+        assert.deepEqual(where, { sessionId: "session-1" });
+        return [{ userId: "user-3" }];
+      },
+      deleteMany: async ({ where }: any) => {
+        deletes.push(where);
+        return { count: 1 };
+      },
+      count: async ({ where }: any) => {
+        assert.deepEqual(where, { userId: "user-3", enabled: true });
+        return enabledLeft;
+      },
+    },
+    notificationPreference: {
+      updateMany: async ({ where, data }: any) => {
+        assert.equal(data.pushEnabled, false);
+        disabledUsers.push(where.userId);
+      },
+    },
+  };
+  const service = new PushDeliveryService(
+    {
+      $transaction: async (operation: (tx: any) => Promise<unknown>) =>
+        operation(transaction),
+    } as never,
+    { enabled: false } as never,
+  );
+
+  await service.releaseSessionInstallations("session-1");
+  assert.deepEqual(deletes, [{ sessionId: "session-1" }]);
+  assert.deepEqual(disabledUsers, []);
+
+  enabledLeft = 0;
+  await service.releaseSessionInstallations("session-1");
+  assert.deepEqual(disabledUsers, ["user-3"]);
+});
+
+test("a session with no registration releases nothing", async () => {
+  const transaction = {
+    pushInstallation: {
+      findMany: async () => [],
+      deleteMany: async () => {
+        throw new Error("nothing to delete");
+      },
+    },
+  };
+  const service = new PushDeliveryService(
+    {
+      $transaction: async (operation: (tx: any) => Promise<unknown>) =>
+        operation(transaction),
+    } as never,
+    { enabled: false } as never,
+  );
+  await service.releaseSessionInstallations("session-none");
+});
+
+test("a refreshed session carries its registration to its next id", async () => {
+  const moves: any[] = [];
+  const service = new PushDeliveryService(
+    {
+      pushInstallation: {
+        updateMany: async (input: any) => {
+          moves.push(input);
+          return { count: 1 };
+        },
+      },
+    } as never,
+    { enabled: false } as never,
+  );
+
+  await service.moveSessionInstallations("session-1", "session-2");
+
+  assert.deepEqual(moves, [
+    { where: { sessionId: "session-1" }, data: { sessionId: "session-2" } },
   ]);
 });
 

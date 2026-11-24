@@ -406,25 +406,39 @@ class SessionTeardownCoordinator {
     );
     final operations = <Future<void>>[];
 
-    if (authTracker.outcome == null) {
-      operations.add(
-        _trackRemote(
+    // This phone's push registration goes before its session is revoked:
+    // the unregister call is made with the session's own token, and a
+    // revoke that came first answered it 401 and left the phone registered
+    // to an account it had left. The registration gets half the deadline, so
+    // a server that does not answer it never keeps the session from being
+    // revoked.
+    final pushCancelToken = CancelToken();
+    Future<void> unregisterPushThenRevokeSession() async {
+      if (pushLease != null && pushTracker.outcome == null) {
+        try {
+          await _trackRemote(
+            pushTracker,
+            () => _push!.unregisterRemote(
+              pushLease,
+              cancelToken: pushCancelToken,
+              bearerToken: pushBearerToken,
+            ),
+          ).timeout(remoteTimeout ~/ 2);
+        } on TimeoutException {
+          pushTracker.markTimedOutIfPending();
+          pushCancelToken.cancel('Push unregister deadline reached');
+        }
+      }
+      if (authTracker.outcome == null) {
+        await _trackRemote(
           authTracker,
           () => _auth.revokeRemoteSession(lease.auth, cancelToken: cancelToken),
-        ),
-      );
+        );
+      }
     }
-    if (pushLease != null && pushTracker.outcome == null) {
-      operations.add(
-        _trackRemote(
-          pushTracker,
-          () => _push!.unregisterRemote(
-            pushLease,
-            cancelToken: cancelToken,
-            bearerToken: pushBearerToken,
-          ),
-        ),
-      );
+
+    if (authTracker.outcome == null || pushTracker.outcome == null) {
+      operations.add(unregisterPushThenRevokeSession());
     }
 
     if (operations.isNotEmpty) {
@@ -442,6 +456,7 @@ class SessionTeardownCoordinator {
         authTracker.markTimedOutIfPending();
         pushTracker.markTimedOutIfPending();
         cancelToken.cancel('Session teardown deadline reached');
+        pushCancelToken.cancel('Session teardown deadline reached');
         try {
           await Future.wait(
             operations,

@@ -206,6 +206,9 @@ class AppRouter {
   static String providerRequestOffer(String quoteRequestId) =>
       '/provider/requests/$quoteRequestId/offer';
   static const notifications = '/notifications';
+
+  /// The query a push tap adds to an inbox route: the notice to open.
+  static const openNotificationParameter = 'open';
   static const inviteAccess = '/invites';
   static const inviteAppLinkHost = String.fromEnvironment(
     'AARAST_INVITE_HOST',

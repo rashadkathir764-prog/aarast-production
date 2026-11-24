@@ -90,6 +90,56 @@ void main() {
     expect(router.goCalls, ['/notifications']);
   });
 
+  // RA-MO-357: the push names its notice; the inbox opens it through its own
+  // guards and marks it read, so the tap goes to the inbox naming it.
+  testWidgets('a tap that names its notice opens the inbox on that notice', (
+    tester,
+  ) async {
+    final push = await _createPushController()
+      ..markNotificationsOpenPending(notificationId: 'n-1');
+    final router = _RecordingRouter();
+    addTearDown(push.close);
+    addTearDown(router.dispose);
+
+    await _pumpBridge(tester, push: push, router: router, userId: 'user-A');
+
+    expect(router.goCalls, ['/notifications?open=n-1']);
+  });
+
+  testWidgets('a provider tap that names its notice opens it in his inbox', (
+    tester,
+  ) async {
+    final push = await _createPushController()
+      ..markNotificationsOpenPending(notificationId: 'n-1');
+    final router = _RecordingRouter();
+    addTearDown(push.close);
+    addTearDown(router.dispose);
+
+    await _pumpBridge(
+      tester,
+      push: push,
+      router: router,
+      userId: 'user-A',
+      providerAccount: true,
+    );
+
+    expect(router.goCalls, ['/provider/notifications?open=n-1']);
+  });
+
+  testWidgets('an id that is not a plain id opens the inbox alone', (
+    tester,
+  ) async {
+    final push = await _createPushController()
+      ..markNotificationsOpenPending(notificationId: '../x?y=1');
+    final router = _RecordingRouter();
+    addTearDown(push.close);
+    addTearDown(router.dispose);
+
+    await _pumpBridge(tester, push: push, router: router, userId: 'user-A');
+
+    expect(router.goCalls, ['/notifications']);
+  });
+
   testWidgets('a provider account opens the provider inbox', (tester) async {
     final push = await _createPushController()
       ..markNotificationsOpenPending();
@@ -263,15 +313,18 @@ class _FakePushController extends PushNotificationsController {
   }
 
   @override
-  bool claimNotificationsOpen() {
-    if (!_notificationsOpenPending) return false;
+  PushNotificationTap? claimNotificationsOpen() {
+    if (!_notificationsOpenPending) return null;
     notificationsOpenClaims += 1;
     _notificationsOpenPending = false;
     notifyListeners();
-    return true;
+    return _pendingTap;
   }
 
-  void markNotificationsOpenPending() {
+  PushNotificationTap _pendingTap = const PushNotificationTap();
+
+  void markNotificationsOpenPending({String? notificationId}) {
+    _pendingTap = PushNotificationTap(notificationId: notificationId);
     _notificationsOpenPending = true;
     notifyListeners();
   }
@@ -308,7 +361,8 @@ class _UnavailablePushGateway implements PushMessagingGateway {
       const Stream<PushForegroundNotification>.empty();
 
   @override
-  Stream<void> get notificationTaps => const Stream<void>.empty();
+  Stream<PushNotificationTap> get notificationTaps =>
+      const Stream<PushNotificationTap>.empty();
 
   @override
   Stream<void> get tokenChanges => const Stream<void>.empty();
@@ -318,7 +372,7 @@ class _UnavailablePushGateway implements PushMessagingGateway {
       PushAuthorizationStatus.denied;
 
   @override
-  Future<bool> consumeInitialNotificationTap() async => false;
+  Future<PushNotificationTap?> consumeInitialNotificationTap() async => null;
 
   @override
   Future<String> ensureRegistrationAndGetInstallationId() async => '';

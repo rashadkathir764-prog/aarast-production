@@ -69,7 +69,8 @@ class _AvailablePushGateway implements PushMessagingGateway {
   bool get isAvailable => true;
 
   @override
-  Stream<void> get notificationTaps => const Stream<void>.empty();
+  Stream<PushNotificationTap> get notificationTaps =>
+      const Stream<PushNotificationTap>.empty();
 
   @override
   Stream<PushForegroundNotification> get foregroundNotifications =>
@@ -84,7 +85,7 @@ class _AvailablePushGateway implements PushMessagingGateway {
   }
 
   @override
-  Future<bool> consumeInitialNotificationTap() async => false;
+  Future<PushNotificationTap?> consumeInitialNotificationTap() async => null;
 
   @override
   Future<String> ensureRegistrationAndGetInstallationId() async => 'fid-a';

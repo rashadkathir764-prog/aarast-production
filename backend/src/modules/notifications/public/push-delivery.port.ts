@@ -12,4 +12,18 @@ export interface PushDeliveryPort {
     revokedAt: Date,
     keepFid?: string,
   ): Promise<void>;
+  /**
+   * RA-MO-358: the application session [sessionId] ended; the push
+   * registrations made under it go, and an account left with none has its
+   * push off until a phone registers again.
+   */
+  releaseSessionInstallations(sessionId: string): Promise<void>;
+  /**
+   * RA-MO-358: the session [sessionId] was refreshed and carries on as
+   * [nextSessionId]; its registrations follow it.
+   */
+  moveSessionInstallations(
+    sessionId: string,
+    nextSessionId: string,
+  ): Promise<void>;
 }

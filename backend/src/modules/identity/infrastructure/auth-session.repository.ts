@@ -66,7 +66,7 @@ export class AuthSessionRepository {
       where: { id: input.id }, data: { replacedById: replacement.id },
     });
     if (input.scope === AuthSessionScope.APPLICATION) {
-      await enqueueSessionRevoked(tx, input.id);
+      await enqueueSessionRevoked(tx, input.id, replacement.id);
     }
     return replacement.id;
   }

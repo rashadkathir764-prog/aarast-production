@@ -19,12 +19,22 @@ class PushForegroundNotification {
   final String message;
 }
 
+/// A tap on a notification of the phone's tray. A push carries the id of
+/// the notice it announces (never its words or its target), so the app opens
+/// that notice through the inbox's own guards; [notificationId] is null when
+/// the push named none.
+class PushNotificationTap {
+  const PushNotificationTap({this.notificationId});
+
+  final String? notificationId;
+}
+
 abstract interface class PushMessagingGateway {
   bool get isAvailable;
 
   Stream<void> get tokenChanges;
 
-  Stream<void> get notificationTaps;
+  Stream<PushNotificationTap> get notificationTaps;
 
   Stream<PushForegroundNotification> get foregroundNotifications;
 
@@ -36,7 +46,7 @@ abstract interface class PushMessagingGateway {
 
   Future<String> ensureRegistrationAndGetInstallationId();
 
-  Future<bool> consumeInitialNotificationTap();
+  Future<PushNotificationTap?> consumeInitialNotificationTap();
 }
 
 @pragma('vm:entry-point')
@@ -67,9 +77,9 @@ class FirebasePushMessagingGateway implements PushMessagingGateway {
   }
 
   @override
-  Stream<void> get notificationTaps => _initialized
-      ? FirebaseMessaging.onMessageOpenedApp.map((_) {})
-      : const Stream<void>.empty();
+  Stream<PushNotificationTap> get notificationTaps => _initialized
+      ? FirebaseMessaging.onMessageOpenedApp.map(_tapFromMessage)
+      : const Stream<PushNotificationTap>.empty();
 
   @override
   Stream<PushForegroundNotification> get foregroundNotifications {
@@ -144,10 +154,18 @@ class FirebasePushMessagingGateway implements PushMessagingGateway {
   }
 
   @override
-  Future<bool> consumeInitialNotificationTap() async {
+  Future<PushNotificationTap?> consumeInitialNotificationTap() async {
     final messaging = _messaging;
-    if (messaging == null) return false;
-    return await messaging.getInitialMessage() != null;
+    if (messaging == null) return null;
+    final message = await messaging.getInitialMessage();
+    return message == null ? null : _tapFromMessage(message);
+  }
+
+  PushNotificationTap _tapFromMessage(RemoteMessage message) {
+    final id = message.data['notificationId']?.toString().trim();
+    return PushNotificationTap(
+      notificationId: id == null || id.isEmpty ? null : id,
+    );
   }
 
   PushAuthorizationStatus _mapAuthorization(AuthorizationStatus status) {

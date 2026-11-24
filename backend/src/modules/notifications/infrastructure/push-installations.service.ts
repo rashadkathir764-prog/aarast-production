@@ -40,12 +40,14 @@ export class PushInstallationsService {
           platform,
           enabled: true,
           lastSeenAt: new Date(),
+          sessionId: currentUser.sessionId ?? null,
         },
         update: {
           userId: currentUser.id,
           platform,
           enabled: true,
           lastSeenAt: new Date(),
+          sessionId: currentUser.sessionId ?? null,
         },
       });
       await tx.notificationPreference.upsert({

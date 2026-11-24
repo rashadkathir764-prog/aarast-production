@@ -4,7 +4,10 @@ part of 'app_router.dart';
 List<RouteBase> _accountRoutes() => [
   GoRoute(
     path: AppRouter.notifications,
-    builder: (context, state) => const NotificationsScreen(),
+    builder: (context, state) => NotificationsScreen(
+      openNotificationId:
+          state.uri.queryParameters[AppRouter.openNotificationParameter],
+    ),
   ),
   // x04 «تساعد في عرس أحد؟»: the way in for a participant without the link
   // open yet; the link itself opens the invite (q01 to q03).

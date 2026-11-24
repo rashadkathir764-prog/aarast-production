@@ -131,6 +131,7 @@ void main() {
   // July: 58 days to 31 August; the summaries' «57» is the server's count
   // a day later, which the phone no longer takes over the date).
   setUpAll(() => pinAppClock(DateTime(2026, 7, 4, 9)));
+  tearDownAll(resetAppClock);
 
   testWidgets('real dashboard shell - active plan at 420px RTL', (
     tester,

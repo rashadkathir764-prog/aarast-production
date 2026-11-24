@@ -2,6 +2,7 @@ import 'package:aarast_mobile/core/media/media_upload_api.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
+import 'package:aarast_mobile/core/utils/app_clock.dart';
 import 'package:aarast_mobile/features/chat/data/chat_api.dart';
 import 'package:aarast_mobile/features/chat/data/chat_realtime_client.dart';
 import 'package:aarast_mobile/features/chat/models/chat_models.dart';
@@ -25,7 +26,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 // answer window, an offer its version, and the customer's phone and budget
 // reach the provider only when shared.
 
-final _now = DateTime.now();
+final _now = appNow();
 final _today = DateTime(_now.year, _now.month, _now.day);
 String _day(DateTime day) =>
     '${day.year}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
@@ -464,7 +465,7 @@ void main() {
       expect(find.text('كذا يوصل محمد'), findsOneWidget);
       expect(find.text('550,000\u00a0ر.ي'), findsOneWidget);
 
-      final before = DateTime.now();
+      final before = appNow();
       await tester.tap(find.byKey(const Key('provider-offer-submit')));
       await tester.pumpAndSettle();
       final created = api.created.single;
@@ -642,7 +643,7 @@ void main() {
         find.byKey(const Key('provider-quick-offer-package-pkg-2')),
       );
       await tester.pumpAndSettle();
-      final before = DateTime.now();
+      final before = appNow();
       await tester.tap(find.byKey(const Key('provider-quick-offer-send')));
       await tester.pumpAndSettle();
 
@@ -881,7 +882,7 @@ class RequestsApi extends ProviderDashboardApi {
         (offer) => (offer as Map)['id'] == quoteOfferId,
       ),
     );
-    final now = DateTime.now();
+    final now = appNow();
     quote['status'] = 'VIEWED';
     quote['expiresAt'] = now
         .add(const Duration(days: 7))

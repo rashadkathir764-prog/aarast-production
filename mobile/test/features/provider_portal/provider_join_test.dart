@@ -2,6 +2,7 @@ import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/session/safe_user.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
+import 'package:aarast_mobile/core/utils/app_clock.dart';
 import 'package:aarast_mobile/features/account_contexts/data/account_contexts_api.dart';
 import 'package:aarast_mobile/features/account_contexts/models/account_context.dart';
 import 'package:aarast_mobile/features/account_contexts/providers/account_context_controller.dart';
@@ -569,7 +570,7 @@ class _JoinApi extends ProviderDashboardApi {
           providerId: 'listing-1',
           businessName: 'الفنان علي',
           note: claimStatus == 'REJECTED' ? 'اتصلنا بالرقم وما رد.' : null,
-          createdAt: DateTime.now(),
+          createdAt: appNow(),
         );
 
   /// The review team hands the listing over.

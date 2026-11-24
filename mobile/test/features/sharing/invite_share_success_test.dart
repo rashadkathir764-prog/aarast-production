@@ -3,6 +3,7 @@ import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/core/session/safe_user.dart';
 import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
+import 'package:aarast_mobile/core/utils/app_clock.dart';
 import 'package:aarast_mobile/features/sharing/data/sharing_api.dart';
 import 'package:aarast_mobile/features/sharing/models/plan_access_permissions.dart';
 import 'package:aarast_mobile/features/sharing/models/shared_member.dart';
@@ -314,9 +315,7 @@ void main() {
           weddingPlanId: 'plan-1',
           role: 'VIEWER',
           deliveryStatus: 'UNCERTAIN',
-          deliveryRetryAvailableAt: DateTime.now().add(
-            const Duration(seconds: 60),
-          ),
+          deliveryRetryAvailableAt: appNow().add(const Duration(seconds: 60)),
         ),
       ],
     );

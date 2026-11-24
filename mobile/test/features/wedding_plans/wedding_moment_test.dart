@@ -122,6 +122,7 @@ void main() {
     tester,
   ) async {
     pinAppClock(DateTime(2027, 1, 14, 9));
+    addTearDown(resetAppClock);
     final opened = await _pump(tester, WeddingMoment.week);
 
     expect(find.text('الخميس 14 يناير'), findsOneWidget);
@@ -145,6 +146,7 @@ void main() {
 
   testWidgets('y07: the day\'s programme by its time', (tester) async {
     pinAppClock(DateTime(2027, 1, 21, 8));
+    addTearDown(resetAppClock);
     await _pump(tester, WeddingMoment.day);
 
     expect(find.text('اليوم عرسك'), findsOneWidget);

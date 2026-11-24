@@ -1,5 +1,6 @@
 import 'package:aarast_mobile/core/offline/local_database_json.dart';
 import 'package:aarast_mobile/core/offline/offline_tables.dart';
+import 'package:aarast_mobile/core/utils/app_clock.dart';
 import 'package:aarast_mobile/features/home/data/dashboard_summary_sources.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,7 +14,7 @@ void main() {
       final database = JsonLocalDatabase(preferences);
       await database.initialize();
       const planId = 'local-money-plan';
-      final now = DateTime.now();
+      final now = appNow();
 
       await database.saveCachedItem(
         table: OfflineTables.cachedCosts,

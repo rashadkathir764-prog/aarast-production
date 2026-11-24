@@ -4,6 +4,7 @@ import 'package:aarast_mobile/core/offline/local_database_json.dart';
 import 'package:aarast_mobile/core/offline/offline_tables.dart';
 import 'package:aarast_mobile/core/offline/offline_sync_service.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
+import 'package:aarast_mobile/core/utils/app_clock.dart';
 import 'package:aarast_mobile/features/guests/data/guests_api.dart';
 import 'package:aarast_mobile/features/home/data/dashboard_summary_sources.dart';
 import 'package:aarast_mobile/features/home/screens/local_guest_dashboard_screen.dart';
@@ -86,7 +87,7 @@ void main() {
         apiClient,
         offline: offline,
       ).createTask(weddingPlanId: planId, title: 'حجز القاعة');
-      final now = DateTime.now();
+      final now = appNow();
       await database.saveCachedItem(
         table: OfflineTables.cachedCosts,
         json: {
@@ -314,7 +315,7 @@ void main() {
     final preferences = await SharedPreferences.getInstance();
     final authStorage = AuthStorage(preferences);
     final plan = _guestPlan().copyWith(
-      weddingDate: DateTime.now().subtract(const Duration(days: 10)),
+      weddingDate: appNow().subtract(const Duration(days: 10)),
     );
     const metrics = LocalDashboardMetrics(
       taskCount: 0,
@@ -679,7 +680,7 @@ GuestOnboardingDraft _guestPlan() {
     neighborhood: 'حدة',
     street: null,
     addressNote: null,
-    weddingDate: DateTime.now().add(const Duration(days: 90)),
+    weddingDate: appNow().add(const Duration(days: 90)),
     weddingDateUnknown: false,
     priorities: const ['budget', 'tasks'],
     currency: 'YER',

@@ -1,6 +1,7 @@
 import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
+import 'package:aarast_mobile/core/utils/app_clock.dart';
 import 'package:aarast_mobile/core/widgets/aarast_pressable.dart';
 import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
 import 'package:aarast_mobile/features/auth/models/auth_otp.dart';
@@ -224,7 +225,7 @@ class _TestAuthRepository extends AuthRepository {
     return OtpRequestResult(
       phone: phone,
       purpose: purpose,
-      expiresAt: DateTime.now().add(const Duration(minutes: 5)),
+      expiresAt: appNow().add(const Duration(minutes: 5)),
       delivery: 'WHATSAPP',
       deliveryStatus: otpDeliveryStatus,
     );

@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:aarast_mobile/core/media/media_upload_api.dart';
+import 'package:aarast_mobile/core/utils/app_clock.dart';
 import 'package:aarast_mobile/features/marketplace/models/provider_portfolio.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
@@ -37,7 +38,7 @@ import 'provider_requests_test.dart' show RequestsApi, bookingJson, quoteJson;
 // request. Nothing shows a figure or a promise the server does not keep:
 // no teams, no season price, no review tag, no visibility claim, no QR.
 
-final _now = DateTime.now();
+final _now = appNow();
 
 const _service = MarketplaceService(
   id: 'service-1',

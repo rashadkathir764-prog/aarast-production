@@ -6,6 +6,7 @@ library;
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
+import 'package:aarast_mobile/core/utils/app_clock.dart';
 import 'package:aarast_mobile/core/widgets/aarast_bottom_sheet.dart';
 import 'package:aarast_mobile/features/tasks/data/task_timeline_api.dart';
 import 'package:aarast_mobile/features/tasks/models/task_checklist_item.dart';
@@ -80,7 +81,7 @@ WeddingTask _t(
   bool private = false,
   List<(String, bool)> steps = const [],
 }) {
-  final now = DateTime.now();
+  final now = appNow();
   return WeddingTask(
     id: id,
     weddingPlanId: _plan,

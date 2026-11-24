@@ -1,4 +1,5 @@
 import 'package:aarast_mobile/core/network/api_client.dart';
+import 'package:aarast_mobile/core/utils/app_clock.dart';
 import 'package:aarast_mobile/features/marketplace/models/marketplace_models.dart';
 import 'package:aarast_mobile/features/provider_portal/screens/provider_booking_screen.dart';
 import 'package:flutter/material.dart';
@@ -93,11 +94,11 @@ BookingApi _ended({
   final booking = bookingJson(status: status)
     ..['cancelledBy'] = by
     ..['note'] = note
-    ..['cancelledAt'] = DateTime.now()
+    ..['cancelledAt'] = appNow()
         .subtract(const Duration(days: 1))
         .toUtc()
         .toIso8601String()
-    ..['declinedAt'] = DateTime.now().toUtc().toIso8601String();
+    ..['declinedAt'] = appNow().toUtc().toIso8601String();
   return BookingApi(
     quotes: [
       quoteJson(

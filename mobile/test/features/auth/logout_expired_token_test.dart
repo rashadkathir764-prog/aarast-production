@@ -27,6 +27,7 @@ String _token(DateTime expiresAt) {
 
 void main() {
   setUp(() => pinAppClock(_now));
+  tearDown(resetAppClock);
 
   test('an expired token is read as expired, a live one as live', () {
     expect(

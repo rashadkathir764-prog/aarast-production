@@ -2,6 +2,7 @@ import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/offline/local_database_json.dart';
 import 'package:aarast_mobile/core/offline/offline_sync_service.dart';
 import 'package:aarast_mobile/core/offline/offline_tables.dart';
+import 'package:aarast_mobile/core/utils/app_clock.dart';
 import 'package:aarast_mobile/features/finance/data/finance_api_contracts.dart';
 import 'package:aarast_mobile/features/finance/data/finance_local_data_source.dart';
 import 'package:aarast_mobile/features/finance/models/money_summary.dart';
@@ -57,7 +58,7 @@ GuestOnboardingDraft _draft({bool? inside}) => GuestOnboardingDraft(
   neighborhood: null,
   street: null,
   addressNote: null,
-  weddingDate: DateTime.now().add(const Duration(days: 120)),
+  weddingDate: appNow().add(const Duration(days: 120)),
   weddingDateUnknown: false,
   priorities: const [],
   currency: 'YER',

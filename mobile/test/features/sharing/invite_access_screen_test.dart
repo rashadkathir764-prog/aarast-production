@@ -6,6 +6,7 @@ import 'package:aarast_mobile/core/session/session_boundary.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
+import 'package:aarast_mobile/core/utils/app_clock.dart';
 import 'package:aarast_mobile/features/account_contexts/data/account_contexts_api.dart';
 import 'package:aarast_mobile/features/account_contexts/models/account_context.dart';
 import 'package:aarast_mobile/features/account_contexts/providers/account_context_controller.dart';
@@ -1426,7 +1427,7 @@ class _FakeAuthRepository extends AuthRepository {
     return AuthResponse(
       accessToken: 'registered-access-token',
       refreshToken: 'registered-refresh-token',
-      refreshTokenExpiresAt: DateTime.now().add(const Duration(days: 30)),
+      refreshTokenExpiresAt: appNow().add(const Duration(days: 30)),
       user: const SafeUser(
         id: 'invitee-1',
         name: 'أحمد',
@@ -1446,7 +1447,7 @@ class _FakeAuthRepository extends AuthRepository {
     return OtpRequestResult(
       phone: phone,
       purpose: purpose,
-      expiresAt: DateTime.now().add(const Duration(minutes: 5)),
+      expiresAt: appNow().add(const Duration(minutes: 5)),
       delivery: 'WHATSAPP',
       deliveryStatus: otpDeliveryStatus,
     );
@@ -1484,7 +1485,7 @@ class _FakeAuthRepository extends AuthRepository {
     return OtpRequestResult(
       phone: phone,
       purpose: 'LOGIN',
-      expiresAt: DateTime.now().add(const Duration(minutes: 5)),
+      expiresAt: appNow().add(const Duration(minutes: 5)),
       delivery: 'WHATSAPP',
       deliveryStatus: otpDeliveryStatus,
       accountSetupRequired: inviteAccountSetupRequired,

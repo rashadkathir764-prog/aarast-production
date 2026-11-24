@@ -9,6 +9,7 @@ import 'package:aarast_mobile/core/security/app_lock_gate.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/storage/sensitive_value_vault.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
+import 'package:aarast_mobile/core/utils/app_clock.dart';
 import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
 import 'package:aarast_mobile/features/auth/models/auth_otp.dart';
 import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
@@ -396,7 +397,7 @@ class _Repo extends AuthRepository {
   }) async => OtpRequestResult(
     phone: phone,
     purpose: purpose,
-    expiresAt: DateTime.now().add(const Duration(minutes: 5)),
+    expiresAt: appNow().add(const Duration(minutes: 5)),
     delivery: 'WHATSAPP',
     deliveryStatus: 'PENDING',
   );

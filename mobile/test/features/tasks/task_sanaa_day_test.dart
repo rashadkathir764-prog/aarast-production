@@ -24,6 +24,7 @@ WeddingTask _due(DateTime day) => WeddingTask(
 void main() {
   // Friday 13 November 22:30 UTC: Saturday 14 November in Sana'a.
   setUp(() => pinAppClock(DateTime.utc(2026, 11, 13, 22, 30)));
+  tearDown(resetAppClock);
 
   testWidgets('«بكرة» is tomorrow in Sana\'a', (tester) async {
     await tester.pumpWidget(

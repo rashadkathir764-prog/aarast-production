@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:aarast_mobile/core/network/api_client.dart';
+import 'package:aarast_mobile/core/utils/app_clock.dart';
 import 'package:aarast_mobile/features/finance/data/finance_api.dart';
 import 'package:aarast_mobile/features/finance/data/funding_api.dart';
 import 'package:aarast_mobile/features/finance/models/funding_source.dart';
@@ -869,7 +870,7 @@ class _FakeFundingApi extends FundingApi {
                 fundingSourceId: item.fundingSourceId,
                 amount: item.amount,
                 status: status,
-                paidAt: status == RepaymentStatus.paid ? DateTime.now() : null,
+                paidAt: status == RepaymentStatus.paid ? appNow() : null,
               )
             : item,
     ]);

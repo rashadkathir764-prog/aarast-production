@@ -5,6 +5,7 @@ import 'package:aarast_mobile/core/offline/offline_sync_service.dart';
 import 'package:aarast_mobile/core/offline/offline_tables.dart';
 import 'package:aarast_mobile/core/routing/app_router.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
+import 'package:aarast_mobile/core/utils/app_clock.dart';
 import 'package:aarast_mobile/features/finance/data/finance_api.dart';
 import 'package:aarast_mobile/features/finance/data/finance_local_data_source.dart';
 import 'package:aarast_mobile/features/finance/data/funding_api.dart';
@@ -31,7 +32,7 @@ class _NoNetwork extends ApiClient {
 }
 
 String _day(int offset) {
-  final now = DateTime.now();
+  final now = appNow();
   return DateTime.utc(now.year, now.month, now.day + offset).toIso8601String();
 }
 

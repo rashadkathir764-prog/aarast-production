@@ -1,5 +1,6 @@
 import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
+import 'package:aarast_mobile/core/utils/app_clock.dart';
 import 'package:aarast_mobile/features/finance/data/finance_api.dart';
 import 'package:aarast_mobile/core/routing/app_router.dart';
 import 'package:aarast_mobile/features/finance/screens/budget_category_details_screen.dart';
@@ -25,7 +26,7 @@ import 'package:provider/provider.dart';
 // the mahr inside it. The server's figures for each mode, as it sends them.
 
 MoneySummary ownerPlan({required bool inside}) {
-  final dueDay = DateTime.now().add(const Duration(days: 30));
+  final dueDay = appNow().add(const Duration(days: 30));
   return MoneySummary(
     planId: 'plan-1',
     currency: 'YER',

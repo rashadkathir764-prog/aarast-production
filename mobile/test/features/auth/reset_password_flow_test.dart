@@ -1,4 +1,5 @@
 import 'package:aarast_mobile/core/experience_v3/aarast_journey.dart';
+import 'package:aarast_mobile/core/utils/app_clock.dart';
 import 'package:aarast_mobile/core/widgets/aarast_pressable.dart';
 import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
 import 'package:aarast_mobile/features/auth/models/auth_response.dart';
@@ -45,7 +46,7 @@ class _FakeAuthRepository extends AuthRepository {
     return OtpRequestResult(
       phone: phone,
       purpose: 'RESET_PASSWORD',
-      expiresAt: DateTime.now().add(const Duration(minutes: 5)),
+      expiresAt: appNow().add(const Duration(minutes: 5)),
       delivery: delivery,
       code: delivery == 'LOCAL_DEV' ? '123456' : null,
       message: deliveryMessage,
@@ -567,7 +568,7 @@ void main() {
     await repository.rememberCodeRequest(
       phone: '+967777000111',
       purpose: 'RESET_PASSWORD',
-      at: DateTime.now(),
+      at: appNow(),
     );
     await _pumpResetScreen(tester, repository);
 

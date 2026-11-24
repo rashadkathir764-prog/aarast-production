@@ -296,6 +296,7 @@ void _pendingScreenTests() {
   ) async {
     _tallPhone(tester);
     pinAppClock(DateTime(2026, 10, 22, 10));
+    addTearDown(resetAppClock);
     final world = await _World.create(
       pending: (
         requestedAt: DateTime(2026, 10, 19, 9),
@@ -324,6 +325,7 @@ void _pendingScreenTests() {
   testWidgets('w06 names unsent changes before signing out', (tester) async {
     _tallPhone(tester);
     pinAppClock(DateTime(2026, 10, 22, 10));
+    addTearDown(resetAppClock);
     final world = await _World.create(
       pending: (
         requestedAt: DateTime(2026, 10, 19, 9),
@@ -357,6 +359,7 @@ void _pendingScreenTests() {
   ) async {
     _tallPhone(tester);
     pinAppClock(DateTime(2026, 10, 22, 10));
+    addTearDown(resetAppClock);
     final world = await _World.create(
       pending: (
         requestedAt: DateTime(2026, 10, 19, 9),
@@ -535,7 +538,7 @@ class _Repository extends AuthRepository {
   Future<({DateTime requestedAt, DateTime scheduledFor})>
   requestAccountDeletion() async {
     requestCalls += 1;
-    final now = DateTime.now();
+    final now = appNow();
     return (requestedAt: now, scheduledFor: now.add(const Duration(days: 30)));
   }
 

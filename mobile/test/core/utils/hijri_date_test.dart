@@ -1,4 +1,5 @@
 import 'package:aarast_mobile/core/diagnostics/app_logger.dart';
+import 'package:aarast_mobile/core/utils/app_clock.dart';
 import 'package:aarast_mobile/core/utils/hijri_date.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -70,7 +71,7 @@ void main() {
     final last = HijriDate.lastDayInTable;
     final deadline = DateTime.utc(last.year - 2, last.month, last.day);
     expect(
-      DateTime.now().toUtc().isBefore(deadline),
+      appNow().toUtc().isBefore(deadline),
       isTrue,
       reason:
           'The Umm al-Qura table in hijri_date.dart ends on $last: add the '

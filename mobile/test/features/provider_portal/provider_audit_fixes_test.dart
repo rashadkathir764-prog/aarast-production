@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
+import 'package:aarast_mobile/core/utils/app_clock.dart';
 import 'package:aarast_mobile/features/chat/data/chat_api.dart';
 import 'package:aarast_mobile/features/chat/data/chat_realtime_client.dart';
 import 'package:aarast_mobile/features/chat/models/chat_models.dart';
@@ -94,9 +95,7 @@ void main() {
           _quoteJson(
             status: 'RESPONDED',
             offers: [
-              _offerJson(
-                validUntil: DateTime.now().add(const Duration(days: 5)),
-              ),
+              _offerJson(validUntil: appNow().add(const Duration(days: 5))),
             ],
           ),
         ],
@@ -155,7 +154,7 @@ void main() {
           find.byKey(const Key('provider-offer-message')),
           'تصوير ليلة كاملة',
         );
-        final before = DateTime.now();
+        final before = appNow();
         await _sendOffer(tester);
 
         expect(api.createdOffers, hasLength(1));
@@ -174,7 +173,7 @@ void main() {
             status: 'RESPONDED',
             offers: [
               _offerJson(
-                validUntil: DateTime.now().subtract(const Duration(days: 1)),
+                validUntil: appNow().subtract(const Duration(days: 1)),
               ),
             ],
           ),
@@ -195,7 +194,7 @@ void main() {
       await tester.tap(find.byKey(const Key('provider-offer-validity-14')));
       await tester.pumpAndSettle();
 
-      final before = DateTime.now();
+      final before = appNow();
       await _sendOffer(tester);
 
       expect(api.updatedOfferIds, ['offer-1']);
@@ -209,7 +208,7 @@ void main() {
     testWidgets('editing an open offer keeps its end date by default', (
       tester,
     ) async {
-      final ends = DateTime.now().add(const Duration(days: 4));
+      final ends = appNow().add(const Duration(days: 4));
       final api = _PortalApi(
         hasBooking: false,
         quotes: [

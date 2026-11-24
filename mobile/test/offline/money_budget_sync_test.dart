@@ -6,6 +6,7 @@ import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/offline/local_database_json.dart';
 import 'package:aarast_mobile/core/offline/offline_sync_service.dart';
 import 'package:aarast_mobile/core/offline/offline_tables.dart';
+import 'package:aarast_mobile/core/utils/app_clock.dart';
 import 'package:aarast_mobile/core/utils/plan_day.dart';
 import 'package:aarast_mobile/features/finance/data/finance_api.dart';
 import 'package:aarast_mobile/features/finance/data/finance_local_data_source.dart';
@@ -117,7 +118,7 @@ void main() {
           },
         );
       }
-      final today = DateTime.now();
+      final today = appNow();
       final start = DateTime(today.year, today.month, today.day);
       final schedules = [
         {

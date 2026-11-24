@@ -469,6 +469,7 @@ void main() {
     tester,
   ) async {
     pinAppClock(DateTime(2026, 11, 1, 10));
+    addTearDown(resetAppClock);
     final api = _Api(_view());
     await _pump(tester, PlanEventsProvider(api: api));
     final readsBefore = api.reads;

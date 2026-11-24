@@ -1,4 +1,5 @@
 import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
+import 'package:aarast_mobile/core/utils/app_clock.dart';
 import 'package:aarast_mobile/features/tasks/models/wedding_task.dart';
 import 'package:aarast_mobile/features/tasks/widgets/task_checklist_section.dart';
 import 'package:aarast_mobile/features/tasks/widgets/task_postpone.dart';
@@ -74,7 +75,7 @@ void main() {
   testWidgets('postponing a task due later never moves it earlier', (
     tester,
   ) async {
-    final today = DateUtils.dateOnly(DateTime.now());
+    final today = DateUtils.dateOnly(appNow());
     final later = _task.copyWith(dueDate: today.add(const Duration(days: 14)));
     await _pump(tester, JourneyProfile.groom, TaskPostponeSheet(task: later));
 

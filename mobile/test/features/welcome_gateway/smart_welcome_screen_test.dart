@@ -1,3 +1,4 @@
+import 'package:aarast_mobile/core/utils/app_clock.dart';
 import 'package:aarast_mobile/core/utils/plan_day.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -776,7 +777,7 @@ void main() {
     await tester.enterText(find.byType(TextField).first, 'محمد');
     await tester.pumpAndSettle();
 
-    final now = DateTime.now();
+    final now = appNow();
     final month = DateTime(now.year, now.month + 2);
     await _tap(tester, arabicMonthName(month.month));
     expect(
@@ -801,7 +802,7 @@ void main() {
     await tester.enterText(find.byType(TextField).first, 'محمد');
     await tester.pumpAndSettle();
 
-    final now = DateTime.now();
+    final now = appNow();
     final lastOnScreen = DateTime(now.year, now.month + 5);
     await _tap(tester, 'موعدنا بعد ${arabicMonthName(lastOnScreen.month)}');
     expect(find.text('اختر شهر العرس'), findsOneWidget);
@@ -987,7 +988,7 @@ void main() {
     await _tapKey(tester, 'persona-groom');
     await tester.enterText(find.byType(TextField).first, 'محمد');
     await tester.pumpAndSettle();
-    final now = DateTime.now();
+    final now = appNow();
     final month = DateTime(now.year, now.month + 2);
     await _tap(tester, arabicMonthName(month.month));
     final day = DateTime(month.year, month.month, 15);
@@ -1131,7 +1132,7 @@ void main() {
     await _tapKey(tester, 'persona-bride');
     await tester.enterText(find.byType(TextField).first, 'سلمى');
     await tester.pumpAndSettle();
-    final now = DateTime.now();
+    final now = appNow();
     final month = DateTime(now.year, now.month + 2);
     await _tap(tester, arabicMonthName(month.month));
     final day = DateTime(month.year, month.month, 15);
@@ -1256,7 +1257,7 @@ void main() {
     expect(find.text('اكتب اسمك واختر الشهر'), findsNothing);
     expect(find.text('اختر الشهر'), findsOneWidget);
 
-    final now = DateTime.now();
+    final now = appNow();
     final month = DateTime(now.year, now.month + 2);
     await _tap(tester, arabicMonthName(month.month));
     await _pickDay(tester, DateTime(month.year, month.month, 15));
@@ -1292,7 +1293,7 @@ void main() {
   testWidgets('progress kept with a day now past comes back without the day, '
       'at the step that asks for it', (tester) async {
     final preferences = await SharedPreferences.getInstance();
-    final today = DateTime.now();
+    final today = appNow();
     await GuestOnboardingStorage(preferences).saveProgress(
       GuestOnboardingDraft.quickLocalPlanSetup(
         planName: 'عرس سامي',
@@ -1339,7 +1340,7 @@ void main() {
           currency: 'YER',
           mahr: DraftMahr(
             total: '3000000',
-            remainingDueDate: DateTime(DateTime.now().year + 1, 3, 1),
+            remainingDueDate: DateTime(appNow().year + 1, 3, 1),
           ),
         ),
         step: 'mahr',

@@ -4,6 +4,7 @@ import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/session/safe_user.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
+import 'package:aarast_mobile/core/utils/app_clock.dart';
 import 'package:aarast_mobile/features/account_contexts/data/account_contexts_api.dart';
 import 'package:aarast_mobile/features/account_contexts/models/account_context.dart';
 import 'package:aarast_mobile/features/account_contexts/providers/account_context_controller.dart';
@@ -329,7 +330,7 @@ class _Api extends NotificationsApi {
     int page = 1,
     int limit = 20,
   }) async {
-    final at = DateTime.now().subtract(const Duration(hours: 2));
+    final at = appNow().subtract(const Duration(hours: 2));
     return NotificationsPage(
       items: [
         for (var index = 1; index <= count; index++)

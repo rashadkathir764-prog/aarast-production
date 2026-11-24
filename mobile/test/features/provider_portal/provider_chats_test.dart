@@ -3,6 +3,7 @@ import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/session/safe_user.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
+import 'package:aarast_mobile/core/utils/app_clock.dart';
 import 'package:aarast_mobile/features/chat/data/chat_api.dart';
 import 'package:aarast_mobile/features/chat/data/chat_realtime_client.dart';
 import 'package:aarast_mobile/features/chat/models/chat_models.dart';
@@ -26,7 +27,7 @@ import 'provider_requests_test.dart' show RequestsApi, offerJson, quoteJson;
 // come from his own request list; no voice note anywhere (F14).
 
 const _providerUser = 'provider-user-1';
-final _now = DateTime.now();
+final _now = appNow();
 
 Map<String, dynamic> _conversationJson({
   String id = 'conversation-1',
@@ -137,7 +138,7 @@ class _ChatApi extends ChatApi {
       'conversationId': conversationId,
       'senderUserId': _providerUser,
       'body': body,
-      'createdAt': DateTime.now().toUtc().toIso8601String(),
+      'createdAt': appNow().toUtc().toIso8601String(),
     });
   }
 }

@@ -1,6 +1,7 @@
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/offline/offline_contract.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
+import 'package:aarast_mobile/core/utils/app_clock.dart';
 import 'package:aarast_mobile/features/marketplace/models/marketplace_models.dart';
 import 'package:aarast_mobile/features/provider_portal/data/provider_offer_queue.dart';
 import 'package:aarast_mobile/features/provider_portal/providers/provider_dashboard_provider.dart';
@@ -444,7 +445,7 @@ void main() {
         ..replaced = [
           quoteJson(
             name: 'عادل الريمي',
-            createdAt: DateTime.now().subtract(const Duration(days: 8)),
+            createdAt: appNow().subtract(const Duration(days: 8)),
           ),
         ];
       await dashboard.loadDashboard();

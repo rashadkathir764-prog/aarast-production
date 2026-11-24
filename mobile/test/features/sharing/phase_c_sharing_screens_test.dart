@@ -5,6 +5,7 @@ import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/core/session/safe_user.dart';
+import 'package:aarast_mobile/core/utils/app_clock.dart';
 import 'package:aarast_mobile/core/widgets/aarast_pressable.dart';
 import 'package:aarast_mobile/features/sharing/data/sharing_api.dart';
 import 'package:aarast_mobile/features/sharing/models/plan_access_permissions.dart';
@@ -340,9 +341,7 @@ void main() {
         invites: [
           _invite(
             deliveryStatus: 'UNCERTAIN',
-            deliveryRetryAvailableAt: DateTime.now().add(
-              const Duration(seconds: 2),
-            ),
+            deliveryRetryAvailableAt: appNow().add(const Duration(seconds: 2)),
           ),
         ],
       );
@@ -470,10 +469,7 @@ void main() {
       _setTallView(tester);
       final api = _FakeSharingApi(
         invites: [
-          _invite(
-            deliveryStatus: 'DELIVERED',
-            deliveryAttemptedAt: DateTime.now(),
-          ),
+          _invite(deliveryStatus: 'DELIVERED', deliveryAttemptedAt: appNow()),
         ],
       );
 

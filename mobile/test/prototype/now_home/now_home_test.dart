@@ -4,8 +4,6 @@
 @Tags(['golden'])
 library;
 
-import 'dart:typed_data';
-
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/offline/local_database.dart';
 import 'package:aarast_mobile/core/offline/local_database_json.dart';
@@ -399,25 +397,6 @@ AarastNotification _n(
     updatedAt: at,
     readAt: unread ? null : at,
   );
-}
-
-/// The usual golden comparison, but a diff of at most [tolerance] (a
-/// fraction of the pixels) still passes.
-class _TolerantComparator extends LocalFileComparator {
-  _TolerantComparator(super.testFile, this.tolerance);
-
-  final double tolerance;
-
-  @override
-  Future<bool> compare(Uint8List imageBytes, Uri golden) async {
-    final result = await GoldenFileComparator.compareLists(
-      imageBytes,
-      await getGoldenBytes(golden),
-    );
-    if (result.passed || result.diffPercent <= tolerance) return true;
-    final error = await generateFailureOutput(result, golden, basedir);
-    throw FlutterError(error);
-  }
 }
 
 class _FakeSync extends OfflineSyncService {
@@ -925,16 +904,8 @@ void main() {
 
   testWidgets('assistant answer', (tester) async {
     SharedPreferences.setMockInitialValues({});
-    // The question's bubble carries the clock time it was asked (the screen
-    // reads DateTime.now()), so these few pixels change every minute. Only
-    // this shot tolerates a difference that small; a moved or missing widget
-    // is far above it.
-    final before = goldenFileComparator;
-    goldenFileComparator = _TolerantComparator(
-      (before as LocalFileComparator).basedir.resolve('now_home_test.dart'),
-      0.0005,
-    );
-    addTearDown(() => goldenFileComparator = before);
+    // The question's bubble carries the time it was asked, read from
+    // appNow, which this folder pins (flutter_test_config.dart).
     await _shot(
       tester,
       'assistant_answer',

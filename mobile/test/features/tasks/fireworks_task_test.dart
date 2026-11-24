@@ -1,5 +1,6 @@
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
+import 'package:aarast_mobile/core/utils/app_clock.dart';
 import 'package:aarast_mobile/features/tasks/data/task_timeline_api.dart';
 import 'package:aarast_mobile/features/tasks/models/task_checklist_item.dart';
 import 'package:aarast_mobile/features/tasks/models/wedding_task.dart';
@@ -79,7 +80,7 @@ WeddingTask _task(String title) => WeddingTask(
   priority: 'MEDIUM',
   createdAt: DateTime(2026, 10, 1),
   updatedAt: DateTime(2026, 10, 1),
-  dueDate: DateTime.now().add(const Duration(days: 30)),
+  dueDate: appNow().add(const Duration(days: 30)),
   responsibleName: 'صالح',
   checklist: const [
     TaskChecklistItem(

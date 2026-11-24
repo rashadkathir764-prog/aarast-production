@@ -4,6 +4,7 @@ import 'package:aarast_mobile/app.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/session/session_teardown_coordinator.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
+import 'package:aarast_mobile/core/utils/app_clock.dart';
 import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
 import 'package:aarast_mobile/core/session/safe_user.dart';
 import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
@@ -392,7 +393,7 @@ class _SessionRepository extends AuthRepository {
     role: 'USER',
     status: 'ACTIVE',
   );
-  static final requestedAt = DateTime.now();
+  static final requestedAt = appNow();
   static final scheduledFor = requestedAt.add(const Duration(days: 30));
 
   Future<void> Function() localClear = _completeImmediately;

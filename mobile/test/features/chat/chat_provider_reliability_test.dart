@@ -6,6 +6,7 @@ import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/core/session/safe_user.dart';
+import 'package:aarast_mobile/core/utils/app_clock.dart';
 import 'package:aarast_mobile/features/chat/data/chat_api.dart';
 import 'package:aarast_mobile/features/chat/data/chat_outbox.dart';
 import 'package:aarast_mobile/features/chat/data/chat_realtime_client.dart';
@@ -1423,7 +1424,7 @@ void main() {
                       url: 'https://example.invalid/a.png',
                       contentType: 'image/png',
                       byteSize: 10,
-                      expiresAt: DateTime.now().add(const Duration(days: 1)),
+                      expiresAt: appNow().add(const Duration(days: 1)),
                     ),
                   ],
                 ),

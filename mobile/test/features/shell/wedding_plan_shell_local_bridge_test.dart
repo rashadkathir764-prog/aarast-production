@@ -2,6 +2,7 @@ import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/routing/app_router.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
+import 'package:aarast_mobile/core/utils/app_clock.dart';
 import 'package:aarast_mobile/features/account_contexts/data/account_contexts_api.dart';
 import 'package:aarast_mobile/features/account_contexts/models/account_context.dart';
 import 'package:aarast_mobile/features/account_contexts/providers/account_context_controller.dart';
@@ -27,7 +28,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final preferences = await SharedPreferences.getInstance();
     final storage = GuestOnboardingStorage(preferences);
-    final weddingDate = DateTime.now().add(const Duration(days: 20));
+    final weddingDate = appNow().add(const Duration(days: 20));
     const planId = 'local-guest-cold-shell';
     const planName = 'خطة اختبار الهاتف';
     await storage.saveDraft(

@@ -22,6 +22,7 @@ import 'support/preview_fonts.dart';
 
 Future<void> _pumpGateway(WidgetTester tester) async {
   pinAppClock(DateTime(2026, 10, 26, 12));
+  addTearDown(resetAppClock);
   SharedPreferences.setMockInitialValues({});
   final prefs = await SharedPreferences.getInstance();
 

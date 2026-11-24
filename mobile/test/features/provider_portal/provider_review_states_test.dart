@@ -1,6 +1,7 @@
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
+import 'package:aarast_mobile/core/utils/app_clock.dart';
 import 'package:aarast_mobile/features/chat/data/chat_api.dart';
 import 'package:aarast_mobile/features/chat/data/chat_realtime_client.dart';
 import 'package:aarast_mobile/features/chat/models/chat_models.dart';
@@ -33,7 +34,7 @@ void main() {
     testWidgets('says when it was sent and that the notice comes here', (
       tester,
     ) async {
-      final now = DateTime.now();
+      final now = appNow();
       final api = _Api(
         status: 'PENDING',
         createdAt: DateTime(now.year, now.month, now.day, 10),
@@ -102,7 +103,7 @@ void main() {
 
     testWidgets('after «أرسلت التعديل» it says when he last sent it, not when '
         'he applied (finding 1)', (tester) async {
-      final now = DateTime.now();
+      final now = appNow();
       final api = _Api(
         status: 'PENDING',
         createdAt: now.subtract(const Duration(days: 20)),
@@ -213,7 +214,7 @@ void main() {
   group('p09 needs changes', () {
     testWidgets('each note under its field, his fields to fix, and «أرسلت '
         'التعديل» back to review (B-01)', (tester) async {
-      final now = DateTime.now();
+      final now = appNow();
       final api = _Api(
         status: 'NEEDS_CHANGES',
         fieldNotes: const {
@@ -523,7 +524,7 @@ void main() {
     testWidgets('since when, why, and the confirmed weddings ahead', (
       tester,
     ) async {
-      final now = DateTime.now();
+      final now = appNow();
       final api = _Api(
         status: 'SUSPENDED',
         reviewNote: '3 بلاغات عن تأخير تسليم الصور.',
@@ -620,7 +621,7 @@ void main() {
 }
 
 MarketplaceBooking _booking(String id, String status, int daysAhead) {
-  final day = DateTime.now().add(Duration(days: daysAhead));
+  final day = appNow().add(Duration(days: daysAhead));
   return MarketplaceBooking.fromJson({
     'id': id,
     'quoteRequestId': 'quote-$id',

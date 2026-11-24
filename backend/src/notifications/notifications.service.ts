@@ -40,7 +40,11 @@ import {
   isPlanPartnerRole,
   seesWholePlan,
 } from "../modules/collaboration/public/collaboration-permission.port";
-import { isPushNotificationType, pushNotBefore } from "../push/push-notification.policy";
+import {
+  isPushNotificationType,
+  isQuietHoursExempt,
+  pushNotBefore,
+} from "../push/push-notification.policy";
 import {
   assertActiveMutationActorInTransaction,
   isLiveAccount,
@@ -1139,6 +1143,10 @@ export class NotificationsService implements NotificationsPort {
       aggregateId: notification.id,
       payload: {
         notificationId: notification.id,
+        // A retry that would land in quiet hours waits for 09:00 too.
+        ...(isQuietHoursExempt(notification.type)
+          ? {}
+          : { heldThroughQuietHours: true }),
       },
       ...(notBefore ? { nextAttemptAt: notBefore } : {}),
     });

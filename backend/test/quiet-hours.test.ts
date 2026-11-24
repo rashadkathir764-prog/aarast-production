@@ -9,6 +9,7 @@ import { QuoteRequestExpiryScheduler } from "../src/marketplace/quote-request-ex
 import { NotificationRemindersScheduler } from "../src/notifications/notification-reminders.scheduler";
 import { OutboxEventTypes } from "../src/platform/outbox/outbox.constants";
 import { OutboxService } from "../src/platform/outbox/outbox.service";
+import { OutboxWorker } from "../src/platform/outbox/outbox.worker";
 import {
   pushNotBefore,
   isQuietHoursExempt,
@@ -152,6 +153,85 @@ test("the money push types of 51dfa3fb are held at night too", async () => {
   const push = events.find((event) => event.type === OutboxEventTypes.pushNotificationRequested);
   assert.ok(push);
   assert.equal(push.nextAttemptAt.toISOString(), aden("09:00", "2026-11-25").toISOString());
+});
+
+test("a held push is marked so on its outbox row; chat and a booking request are not", async () => {
+  const held = await writeAt(aden("13:00"), NotificationType.TASK_DUE_SOON);
+  const heldPush = held.find((event) => event.type === OutboxEventTypes.pushNotificationRequested);
+  assert.equal(heldPush?.payload.heldThroughQuietHours, true);
+  for (const type of [NotificationType.CHAT_MESSAGE_RECEIVED, NotificationType.BOOKING_REQUESTED]) {
+    const events = await writeAt(aden("13:00"), type);
+    const push = events.find((event) => event.type === OutboxEventTypes.pushNotificationRequested);
+    assert.equal(push?.payload.heldThroughQuietHours, undefined, type);
+  }
+});
+
+/** The next attempt the worker gives a push that failed at `at`. */
+async function retryAt(at: Date, payload: Record<string, unknown>, attemptCount = 1) {
+  let data: Record<string, any> | undefined;
+  const worker = new OutboxWorker(
+    {
+      outboxEvent: {
+        updateMany: async ({ data: written }: { data: Record<string, any> }) => {
+          data = written;
+          return { count: 1 };
+        },
+      },
+    } as never,
+    {
+      dispatch: async () => {
+        const error = new Error("PushDeliveryRetryRequired");
+        error.name = "PushDeliveryRetryRequired";
+        throw error;
+      },
+    } as never,
+  );
+  mock.timers.enable({ apis: ["Date"], now: at });
+  try {
+    await (worker as any).process({
+      id: "event-1",
+      type: OutboxEventTypes.pushNotificationRequested,
+      aggregateType: "notification",
+      aggregateId: "notification-1",
+      payload,
+      status: "PROCESSING",
+      attemptCount,
+      nextAttemptAt: at,
+      lockedAt: at,
+      lockedBy: (worker as any).workerId,
+      processedAt: null,
+      lastError: null,
+      createdAt: at,
+      updatedAt: at,
+    });
+  } finally {
+    mock.timers.reset();
+  }
+  assert.equal(data?.status, "PENDING");
+  return data!.nextAttemptAt as Date;
+}
+
+test("a held push whose retry falls in quiet hours waits for 09:00; chat and a day retry do not", async () => {
+  const held = { notificationId: "notification-1", heldThroughQuietHours: true };
+  // Failed a moment before 21:00: the retry would land in the night.
+  assert.equal(
+    (await retryAt(new Date(aden("21:00").getTime() - 500), held)).toISOString(),
+    aden("09:00", "2026-11-25").toISOString(),
+  );
+  assert.equal(
+    (await retryAt(aden("23:30"), held, 4)).toISOString(),
+    aden("09:00", "2026-11-25").toISOString(),
+  );
+  // In the day the retry keeps its backoff.
+  assert.equal(
+    (await retryAt(aden("13:00"), held)).toISOString(),
+    new Date(aden("13:00").getTime() + 1_000).toISOString(),
+  );
+  // A chat message's push (no hold) retries at night too.
+  assert.equal(
+    (await retryAt(aden("23:30"), { notificationId: "notification-1" })).toISOString(),
+    new Date(aden("23:30").getTime() + 1_000).toISOString(),
+  );
 });
 
 function cronOf(scheduler: object, method: string): string {

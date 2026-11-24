@@ -118,6 +118,9 @@ export class PushDeliveryService implements PushDeliveryPort {
     ) {
       return;
     }
+    // RA-BE-185: a push held through quiet hours, or retried, whose notice
+    // was read meanwhile tells the person nothing new.
+    if (notification.readAt) return;
     const preference = await this.prisma.notificationPreference.findUnique({
       where: { userId: notification.userId },
       select: { pushEnabled: true },

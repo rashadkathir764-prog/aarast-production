@@ -524,3 +524,61 @@ test("an overdue task and the wedding day have their own lock-screen words", () 
   // Never a name or an amount on the lock screen.
   for (const copy of [overdue, day]) assert.doesNotMatch(copy.body, /\d/u);
 });
+
+// RA-BE-185: a push held for the morning (or retried) after its notice was
+// read on another phone or in the app tells nothing new; it is not sent.
+test("a push whose notification was read before it goes out is not sent", async () => {
+  let sends = 0;
+  let installationReads = 0;
+  const service = new PushDeliveryService(
+    {
+      notification: {
+        findUnique: async () => ({
+          id: "notification-read",
+          userId: "user-1",
+          weddingPlanId: "plan-1",
+          type: NotificationType.TASK_DUE_SOON,
+          priority: "NORMAL",
+          title: "title",
+          body: "body",
+          entityType: "task",
+          entityId: "task-1",
+          routeTarget: null,
+          data: {},
+          readAt: new Date("2026-11-24T05:00:00.000Z"),
+          archivedAt: null,
+          dedupeKey: "dedupe-read",
+          createdAt: new Date("2026-11-23T19:00:00.000Z"),
+          updatedAt: new Date("2026-11-24T05:00:00.000Z"),
+        }),
+      },
+      notificationPreference: {
+        findUnique: async () => ({ pushEnabled: true }),
+      },
+      pushInstallation: {
+        findMany: async () => {
+          installationReads += 1;
+          return [
+            {
+              id: "installation-1",
+              fid: "fid-1",
+              updatedAt: new Date("2026-11-20T00:00:00.000Z"),
+            },
+          ];
+        },
+      },
+    } as never,
+    {
+      enabled: true,
+      sendEachForMulticast: async () => {
+        sends += 1;
+        return { successCount: 1, failureCount: 0, responses: [{ success: true }] };
+      },
+    } as never,
+  );
+
+  await service.dispatchNotification("notification-read");
+
+  assert.equal(sends, 0);
+  assert.equal(installationReads, 0);
+});

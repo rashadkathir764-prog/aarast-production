@@ -6,6 +6,7 @@ import {
   outboxBacklog,
   outboxDispatchTotal,
 } from '../observability/metrics';
+import { isQuietHour, quietHoursEnd } from '../../shared-kernel/time/quiet-hours';
 import { PrismaService } from '../database/prisma.service';
 import { OutboxDispatcher } from './outbox.dispatcher';
 
@@ -117,9 +118,7 @@ export class OutboxWorker {
         },
         data: {
           status: terminal ? 'FAILED' : 'PENDING',
-          nextAttemptAt: new Date(
-            Date.now() + outboxRetryDelayMs(event.attemptCount),
-          ),
+          nextAttemptAt: outboxNextAttemptAt(event, new Date()),
           lockedAt: null,
           lockedBy: null,
           lastError: outboxFailureCode(error),
@@ -131,6 +130,31 @@ export class OutboxWorker {
       });
     }
   }
+}
+
+/**
+ * When a failed event is tried again. RA-BE-185: a push held through quiet
+ * hours (its row says so, `heldThroughQuietHours`) whose retry would land
+ * from 21:00 to 09:00 in Aden waits for 09:00, as its first try did; chat
+ * and a booking request are never held.
+ */
+export function outboxNextAttemptAt(event: OutboxEvent, failedAt: Date): Date {
+  const next = new Date(
+    failedAt.getTime() + outboxRetryDelayMs(event.attemptCount),
+  );
+  return heldThroughQuietHours(event) && isQuietHour(next)
+    ? quietHoursEnd(next)
+    : next;
+}
+
+function heldThroughQuietHours(event: OutboxEvent): boolean {
+  const payload = event.payload;
+  return (
+    payload !== null &&
+    typeof payload === 'object' &&
+    !Array.isArray(payload) &&
+    payload.heldThroughQuietHours === true
+  );
 }
 
 export function outboxRetryDelayMs(attemptCount: number): number {

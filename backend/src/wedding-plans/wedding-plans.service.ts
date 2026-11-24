@@ -237,7 +237,7 @@ export class WeddingPlansService {
       return created;
     });
 
-    return this.toResponse(plan);
+    return this.toResponse(plan, { ownerUserId: currentUser.id });
   }
 
   async findMine(
@@ -245,7 +245,9 @@ export class WeddingPlansService {
   ): Promise<WeddingPlanResponse[]> {
     const plans = await listOwnedWeddingPlans(this.prisma, currentUser.id);
 
-    return plans.map((plan) => this.toResponse(plan));
+    return plans.map((plan) =>
+      this.toResponse(plan, { ownerUserId: currentUser.id }),
+    );
   }
 
   async findAccessible(
@@ -595,7 +597,9 @@ export class WeddingPlansService {
 
     return {
       user: result.user,
-      activeWeddingPlan: this.toResponse(result.plan),
+      activeWeddingPlan: this.toResponse(result.plan, {
+        ownerUserId: currentUser.id,
+      }),
       budgetCategories: result.budgetCategories.map((category) =>
         this.toBudgetCategoryResponse(category),
       ),
@@ -1123,7 +1127,9 @@ export class WeddingPlansService {
 
     return {
       user,
-      activeWeddingPlan: this.toResponse(plan),
+      activeWeddingPlan: this.toResponse(plan, {
+        ownerUserId: currentUser.id,
+      }),
       budgetCategories: budgetCategories.map((category) =>
         this.toBudgetCategoryResponse(category),
       ),
@@ -1390,11 +1396,20 @@ export class WeddingPlansService {
     });
   }
 
+  /**
+   * RA-BE-158: money shows only to a reader who may see it: the plan's owner
+   * named by id, or a shared reader whose permission says so. With no
+   * reader named it is hidden; it used to show.
+   */
   private toResponse(
     plan: WeddingPlan,
-    context?: PlanAccessContext,
+    reader?: PlanAccessContext | { ownerUserId: string },
   ): WeddingPlanResponse {
-    const canViewMoney = !context || this.permissions.canViewMoney(context);
+    const canViewMoney =
+      reader !== undefined &&
+      ("plan" in reader
+        ? this.permissions.canViewMoney(reader)
+        : reader.ownerUserId === plan.ownerUserId);
 
     return {
       id: plan.id,

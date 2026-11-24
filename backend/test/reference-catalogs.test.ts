@@ -44,6 +44,22 @@ test('money starter reference defaults are stable and audience-scoped', () => {
   );
 });
 
+// RA-MO-325 (Q-35, D124): the home and the honeymoon are the groom's to
+// settle in a Yemeni wedding; the bride's list offers them but does not tick
+// them for her. Her other recommended items are unchanged.
+test("the bride's list offers the home and the honeymoon without recommending them", () => {
+  const byKey = new Map(moneyStarterDefaults.map((item) => [item.key, item]));
+  for (const key of ['bride-home', 'bride-honeymoon']) {
+    const item = byKey.get(key);
+    assert.ok(item, key);
+    assert.equal(item.showForBride, true, key);
+    assert.equal(item.isRecommended, false, key);
+  }
+  for (const key of ['groom-home', 'groom-honeymoon', 'bride-trousseau', 'bride-dress']) {
+    assert.equal(byKey.get(key)?.isRecommended, true, key);
+  }
+});
+
 test('task templates cover every role with a due offset before the wedding', () => {
   assert.deepEqual(
     systemCatalogs.map((catalog) => catalog.key),

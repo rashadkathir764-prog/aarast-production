@@ -46,4 +46,16 @@ void main() {
   test('the managed catalog wins, minus the mahr and the optional rows', () {
     expect(moneyStarterPlanItemNames(_managed(), 'GROOM'), ['قاعة الرجال']);
   });
+
+  // RA-MO-325 (Q-35): the home and the honeymoon are offered in the bride's
+  // list but not ticked for her; the groom's stay recommended.
+  test("the bride's plan does not start with the home or the honeymoon", () {
+    final bride = moneyStarterPlanItemNames(null, 'BRIDE');
+    expect(bride, contains('فستان العروسة'));
+    expect(bride, isNot(contains('تجهيز المنزل')));
+    expect(bride, isNot(contains('شهر العسل')));
+    final groom = moneyStarterPlanItemNames(null, 'GROOM');
+    expect(groom, contains('تجهيز المنزل'));
+    expect(groom, contains('شهر العسل'));
+  });
 }

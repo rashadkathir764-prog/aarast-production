@@ -122,9 +122,9 @@ const groups: GroupSeed[] = [
     persona: 'BRIDE',
     items: [
       ['bride-trousseau', 'جهاز العروسة', 'package-open', true],
-      ['bride-home', 'تجهيز المنزل', 'home', true],
+      ['bride-home', 'تجهيز المنزل', 'home'],
       ['bride-room', 'تجهيز غرفة العروسة', 'bed-double'],
-      ['bride-honeymoon', 'شهر العسل', 'plane', true],
+      ['bride-honeymoon', 'شهر العسل', 'plane'],
       ['bride-gifts', 'الهدايا', 'gift'],
       ['bride-transport', 'المواصلات', 'navigation'],
       ['bride-guest-stay', 'إقامة الضيوف', 'hotel'],

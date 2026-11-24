@@ -524,8 +524,7 @@ const _brideCatalog = MoneyStarterCatalog(
           id: 'bride-home',
           name: 'تجهيز المنزل',
           icon: LucideIcons.home,
-          // G12 (R2): the home, as the groom's.
-          recommended: true,
+          // RA-MO-325: offered, not ticked: the home is the groom's to settle.
         ),
         MoneyStarterCategory(
           id: 'bride-room',
@@ -536,7 +535,6 @@ const _brideCatalog = MoneyStarterCatalog(
           id: 'bride-honeymoon',
           name: 'شهر العسل',
           icon: LucideIcons.plane,
-          recommended: true,
         ),
         MoneyStarterCategory(
           id: 'bride-gifts',

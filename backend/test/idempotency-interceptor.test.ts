@@ -1333,3 +1333,90 @@ test("an in-flight owner that never completes fails with a retryable 503", async
     (error: unknown) => error instanceof ServiceUnavailableException,
   );
 });
+
+test("C-1: a committed 5xx resent after the in-flight window is a coded 409 the phone shows", async () => {
+  const store = new FakeIdempotencyStore();
+  const interceptor = new IdempotencyInterceptor(store as any);
+  const executions = { count: 0 };
+
+  await assert.rejects(
+    () =>
+      firstValueFrom(
+        interceptor.intercept(
+          context("u1", "req-committed-5xx-stuck"),
+          commitThenFail(new InternalServerErrorException("failed"), executions),
+        ),
+      ),
+    (error: unknown) => error instanceof InternalServerErrorException,
+  );
+  const row = store.row("u1", "req-committed-5xx-stuck");
+  assert.ok(row);
+  // The phone resends long after the first try: the reservation is no
+  // longer a request in flight, its outcome is unknown.
+  row.createdAt = new Date(Date.now() - 60 * 60 * 1_000);
+
+  let refusal: unknown;
+  await assert.rejects(
+    () =>
+      firstValueFrom(
+        interceptor.intercept(
+          context("u1", "req-committed-5xx-stuck"),
+          handler(() => {
+            executions.count += 1;
+            return of({ duplicated: true });
+          }),
+        ),
+      ),
+    (error: unknown) => {
+      refusal = error;
+      return error instanceof ConflictException;
+    },
+  );
+  const answer = (refusal as ConflictException).getResponse() as Record<
+    string,
+    unknown
+  >;
+  assert.equal((refusal as ConflictException).getStatus(), 409);
+  assert.equal(answer.code, "IDEMPOTENCY_OUTCOME_UNKNOWN");
+  assert.equal(
+    answer.message,
+    "ما ندري إذا انحفظ هذا التعديل. شيك وإذا ما انحفظ سوّه من جديد",
+  );
+  assert.equal(executions.count, 1, "the resend did not run the work again");
+  assert.equal(
+    store.row("u1", "req-committed-5xx-stuck")?.id,
+    row.id,
+    "the reservation stays for reconciliation",
+  );
+});
+
+test("C-1: a committed 5xx resent within the in-flight window is still the retryable 503", async () => {
+  const store = new FakeIdempotencyStore();
+  const interceptor = new IdempotencyInterceptor(store as any);
+  (interceptor as any).delay = async () => {};
+  const executions = { count: 0 };
+
+  await assert.rejects(() =>
+    firstValueFrom(
+      interceptor.intercept(
+        context("u1", "req-committed-5xx-young"),
+        commitThenFail(new InternalServerErrorException("failed"), executions),
+      ),
+    ),
+  );
+
+  await assert.rejects(
+    () =>
+      firstValueFrom(
+        interceptor.intercept(
+          context("u1", "req-committed-5xx-young"),
+          handler(() => {
+            executions.count += 1;
+            return of({ duplicated: true });
+          }),
+        ),
+      ),
+    (error: unknown) => error instanceof ServiceUnavailableException,
+  );
+  assert.equal(executions.count, 1);
+});

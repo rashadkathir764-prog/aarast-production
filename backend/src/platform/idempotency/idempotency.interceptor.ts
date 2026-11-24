@@ -74,6 +74,13 @@ const SAFE_REPLAY_HEADERS = [
 // normal mutation's duration; a slower winner falls through to a RETRYABLE 503.
 const REPLAY_POLL_INTERVAL_MS = 100;
 const REPLAY_MAX_ATTEMPTS = 30;
+// C-1: a reservation still open after the poll window is no request in
+// flight: its request ended with a server failure after a commit (or its
+// process died). Its outcome is unknown until reconciliation, so a resend
+// is refused for good with a coded 409 the phone shows (and lets the person
+// discard), instead of a 503 that kept the phone's queue waiting forever.
+const IN_FLIGHT_WINDOW_MS = REPLAY_POLL_INTERVAL_MS * REPLAY_MAX_ATTEMPTS;
+const IDEMPOTENCY_OUTCOME_UNKNOWN = 'IDEMPOTENCY_OUTCOME_UNKNOWN';
 const RESERVATION_TTL_HOURS = boundedHours(
   'IDEMPOTENCY_RESERVATION_TTL_HOURS',
   24,
@@ -211,6 +218,10 @@ export class IdempotencyInterceptor implements NestInterceptor {
     path: string,
     requestHash: string,
   ): Promise<Acquisition> {
+    // C-1: the reservation's age is judged against this request's arrival,
+    // so a request that waits for a reservation in flight is never turned
+    // away for its own polling time.
+    const arrivedAt = Date.now();
     for (let attempt = 0; attempt < REPLAY_MAX_ATTEMPTS; attempt++) {
       try {
         const reservation = await this.prisma.idempotencyKey.create({
@@ -271,12 +282,21 @@ export class IdempotencyInterceptor implements NestInterceptor {
         if (!existing) {
           continue;
         }
+        if (existing.createdAt.getTime() <= arrivedAt - IN_FLIGHT_WINDOW_MS) {
+          throw new ConflictException({
+            statusCode: 409,
+            code: IDEMPOTENCY_OUTCOME_UNKNOWN,
+            message:
+              'ما ندري إذا انحفظ هذا التعديل. شيك وإذا ما انحفظ سوّه من جديد',
+          });
+        }
         await this.delay(REPLAY_POLL_INTERVAL_MS);
       }
     }
     // The in-flight owner never finished within the poll budget. Fail with a
     // RETRYABLE status so the offline-sync client retries (and then replays)
-    // later — never a 4xx, which the client treats as a permanent drop.
+    // later — never a 4xx, which the client treats as a permanent drop. A
+    // resend after the window is answered above (C-1).
     throw new ServiceUnavailableException(
       'A request with this idempotency key is still in progress.',
     );

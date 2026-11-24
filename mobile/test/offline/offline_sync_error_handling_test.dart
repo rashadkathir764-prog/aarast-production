@@ -568,4 +568,73 @@ void main() {
       isNotNull,
     );
   });
+
+  // C-1: a create whose first try failed after the server committed keeps
+  // its reservation open. The resend used to take a 503 («not now») for
+  // good, which held every change behind it; the server now refuses it for
+  // good with IDEMPOTENCY_OUTCOME_UNKNOWN.
+  test('a change whose outcome is unknown is refused for the person to '
+      'drop, and the queue goes on past it', () async {
+    final database = await _freshDb();
+    final stuck = await database.enqueueSync(
+      entityType: 'task',
+      operation: 'create',
+      endpoint: '/wedding-plans/plan-1/tasks',
+      method: 'POST',
+      payload: {'title': 'حجز القاعة'},
+      planId: 'plan-1',
+      localEntityId: 'local-stuck',
+    );
+    await database.saveCachedItem(
+      table: OfflineTables.cachedTasks,
+      json: {'id': 'local-stuck', 'title': 'حجز القاعة'},
+      dirty: true,
+    );
+    // Its first try was answered with a server error after a commit.
+    await database.markSyncItemFailed(stuck.id, 'ما وصلنا رد سليم.');
+    await database.enqueueSync(
+      entityType: 'task',
+      operation: 'update',
+      endpoint: '/tasks/t2',
+      method: 'PATCH',
+      payload: {'title': 'شراء الورد'},
+      planId: 'plan-1',
+      localEntityId: 't2',
+    );
+    final adapter = _ScriptedAdapter([
+      (_) => _status(
+        409,
+        '{"statusCode":409,"code":"IDEMPOTENCY_OUTCOME_UNKNOWN",'
+        '"message":"ما ندري إذا انحفظ هذا التعديل. شيك وإذا ما انحفظ سوّه من جديد"}',
+      ),
+      (_) => _ok('{"id":"t2","title":"شراء الورد"}'),
+    ]);
+    final service = _service(database, adapter);
+    await service.ensureCacheOwner('user-A');
+
+    await service.syncPendingChanges();
+
+    expect(adapter.received.map((call) => call.path), [
+      '/wedding-plans/plan-1/tasks',
+      '/tasks/t2',
+    ]);
+    expect(await database.pendingSyncCount(), 0);
+    expect(service.blockedCount, 1);
+    final refused = (await service.loadPendingChanges()).single;
+    expect(refused.id, stuck.id);
+    expect(refused.blocked, isTrue);
+    expect(refused.reason, contains('ما ندري إذا انحفظ هذا التعديل'));
+
+    await service.discardBlockedChange(stuck.id);
+
+    expect(await database.blockedSyncItems(), isEmpty);
+    expect(
+      await database.readCachedItem(
+        table: OfflineTables.cachedTasks,
+        id: 'local-stuck',
+      ),
+      isNull,
+    );
+    expect(service.blockedCount, 0);
+  });
 }

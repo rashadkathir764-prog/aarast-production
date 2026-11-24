@@ -12,7 +12,7 @@ function idempotencyCleanupWithLock(locked: boolean) {
   let deleteCalls = 0;
   let deleteWhere: unknown;
   let countCalls = 0;
-  let countWhere: unknown;
+  const countWheres: unknown[] = [];
   const transactionClient = {
     $queryRaw: async () => [{ locked }],
     idempotencyKey: {
@@ -23,8 +23,10 @@ function idempotencyCleanupWithLock(locked: boolean) {
       },
       count: async ({ where }: { where: unknown }) => {
         countCalls += 1;
-        countWhere = where;
-        return 2;
+        countWheres.push(where);
+        // The expired tombstones, then the reservations left open past an
+        // hour (C-1).
+        return countCalls === 1 ? 2 : 4;
       },
     },
   };
@@ -37,7 +39,7 @@ function idempotencyCleanupWithLock(locked: boolean) {
     deleteCalls: () => deleteCalls,
     deleteWhere: () => deleteWhere,
     countCalls: () => countCalls,
-    countWhere: () => countWhere,
+    countWhere: (call = 0) => countWheres[call],
   };
 }
 
@@ -58,7 +60,9 @@ test('idempotency cleanup deletes only expired completed keys while holding the 
   };
   assert.deepEqual(where.completedAt, { not: null });
   assert.ok(where.expiresAt?.lt instanceof Date);
-  assert.equal(fixture.countCalls(), 1);
+  // Changed on purpose (C-1): a second count measures the reservations left
+  // open past an hour; the first is still the expired tombstones.
+  assert.equal(fixture.countCalls(), 2);
   const countWhere = fixture.countWhere() as {
     completedAt?: null;
     expiresAt?: { lt?: unknown };
@@ -70,6 +74,29 @@ test('idempotency cleanup deletes only expired completed keys while holding the 
   assert.ok(metric);
   const value = await metric.get();
   assert.equal(value.values[0]?.value, 2);
+});
+
+test('C-1: idempotency cleanup measures reservations left open for more than an hour', async () => {
+  const fixture = idempotencyCleanupWithLock(true);
+  const before = Date.now();
+  await fixture.scheduler.removeExpiredKeys();
+  assert.equal(fixture.countCalls(), 2);
+  const stalledWhere = fixture.countWhere(1) as {
+    completedAt?: null;
+    createdAt?: { lt?: unknown };
+  };
+  assert.equal(stalledWhere.completedAt, null);
+  assert.ok(stalledWhere.createdAt?.lt instanceof Date);
+  const cutoff = (stalledWhere.createdAt.lt as Date).getTime();
+  assert.ok(cutoff <= before - 60 * 60 * 1_000 + 1_000);
+  assert.ok(cutoff >= before - 60 * 60 * 1_000 - 1_000);
+
+  const metric = metricsRegistry.getSingleMetric(
+    'aarast_idempotency_stalled_reservations',
+  );
+  assert.ok(metric, 'the gauge the alert reads is registered');
+  const value = await metric.get();
+  assert.equal(value.values[0]?.value, 4);
 });
 
 test('scheduled jobs use distinct PostgreSQL advisory lock namespaces', () => {

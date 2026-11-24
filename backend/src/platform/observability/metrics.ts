@@ -99,6 +99,15 @@ export const idempotencyAmbiguousTombstones = new Gauge({
   registers: [metricsRegistry],
 });
 
+// C-1: a reservation open past the hour ended with a server failure after a
+// commit (or a crash); the phone shows its change as «ما ندري إذا انحفظ»
+// until it is reconciled (`npm run prod:reconcile-idempotency`).
+export const idempotencyStalledReservations = new Gauge({
+  name: "aarast_idempotency_stalled_reservations",
+  help: "Idempotency reservations left uncompleted for more than one hour.",
+  registers: [metricsRegistry],
+});
+
 export const mediaUploadCleanupBacklog = new Gauge({
   name: "aarast_media_upload_cleanup_backlog",
   help: "Media upload tickets currently eligible for durable object cleanup.",

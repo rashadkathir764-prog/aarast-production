@@ -44,3 +44,14 @@ test("Alertmanager requires an operator-supplied receiver config", () => {
     /\.\/alertmanager\/alertmanager\.yml:\/etc\/alertmanager\/alertmanager\.yml:ro/,
   );
 });
+
+test("C-1: an alert fires on idempotency reservations left open past an hour", async () => {
+  const alerts = await readFile(
+    new URL("./prometheus/alerts.yml", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    alerts,
+    /- alert: IdempotencyReservationsStalled\n\s+expr: max\(aarast_idempotency_stalled_reservations\) > 0\n/,
+  );
+});

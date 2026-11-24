@@ -1,9 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
 import { PrismaService } from '../database/prisma.service';
-import { idempotencyAmbiguousTombstones } from '../observability/metrics';
+import {
+  idempotencyAmbiguousTombstones,
+  idempotencyStalledReservations,
+} from '../observability/metrics';
 
 const CLEANUP_INTERVAL_MS = 60 * 60 * 1_000;
+// C-1: an open reservation older than this is no request in flight.
+const STALLED_RESERVATION_AGE_MS = 60 * 60 * 1_000;
 
 @Injectable()
 export class IdempotencyCleanupScheduler {
@@ -37,11 +42,20 @@ export class IdempotencyCleanupScheduler {
           expiresAt: { lt: now },
         },
       });
-      return { deletedCount: result.count, ambiguousCount };
+      const stalledCount = await tx.idempotencyKey.count({
+        where: {
+          completedAt: null,
+          createdAt: {
+            lt: new Date(now.getTime() - STALLED_RESERVATION_AGE_MS),
+          },
+        },
+      });
+      return { deletedCount: result.count, ambiguousCount, stalledCount };
     });
 
     if (!snapshot) return;
     idempotencyAmbiguousTombstones.set(snapshot.ambiguousCount);
+    idempotencyStalledReservations.set(snapshot.stalledCount);
     if (snapshot.ambiguousCount > 0) {
       this.logger.warn(
         `Detected ${snapshot.ambiguousCount} ambiguous idempotency tombstone(s)`,

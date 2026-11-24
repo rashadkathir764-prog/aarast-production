@@ -72,3 +72,15 @@ groups:
         annotations:
           summary: "Durable outbox has failed events"
           description: "At least one event exhausted all retry attempts."
+
+      # C-1 (RA-BE-143): a change whose request failed with a server error
+      # after it committed keeps its idempotency reservation open; the phone
+      # shows it as «ما ندري إذا انحفظ» until an operator reconciles it.
+      - alert: IdempotencyReservationsStalled
+        expr: max(aarast_idempotency_stalled_reservations) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Idempotency reservations left open for more than an hour"
+          description: "{{ $value }} change(s) have an unknown outcome. Reconcile each with npm run prod:reconcile-idempotency (list, inspect, then release or complete)."

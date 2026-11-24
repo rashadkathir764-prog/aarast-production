@@ -14,6 +14,7 @@ import 'package:aarast_mobile/features/chat/providers/chat_provider.dart';
 import 'package:aarast_mobile/features/chat/screens/chat_screen.dart';
 import 'package:aarast_mobile/features/chat/screens/quote_conversation_entry_screen.dart';
 import 'package:aarast_mobile/features/chat/widgets/conversation_list_view.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -1069,6 +1070,47 @@ void main() {
         chat.dispose();
       },
     );
+
+    // C-1: a message whose first send failed after the server committed
+    // it is answered, on its resend, IDEMPOTENCY_OUTCOME_UNKNOWN for good.
+    // It fails with its words kept and no longer holds its conversation.
+    test('C-1: a message whose outcome is unknown fails with its words and '
+        'the reason, and the conversation goes on', () async {
+      final (chat, api, outbox, _) = await outboxOf([
+        waiting('conversation-a', 'أول'),
+        waiting('conversation-b', 'ثاني'),
+      ]);
+      final path = '/api/v1/conversations/conversation-a/messages';
+      api.down['conversation-a'] = ApiException.fromDio(
+        DioException(
+          requestOptions: RequestOptions(path: path, method: 'POST'),
+          type: DioExceptionType.badResponse,
+          response: Response(
+            requestOptions: RequestOptions(path: path, method: 'POST'),
+            statusCode: 409,
+            data: {
+              'statusCode': 409,
+              'code': 'IDEMPOTENCY_OUTCOME_UNKNOWN',
+              'message':
+                  'ما ندري إذا انحفظ هذا التعديل. شيك وإذا ما انحفظ سوّه من جديد',
+            },
+          ),
+        ),
+      );
+
+      await chat.flushOutbox();
+
+      expect(api.sent, ['conversation-a:أول', 'conversation-b:ثاني']);
+      expect(outbox.read('user-1').single.isRefused, isTrue);
+      api.down.clear();
+      await chat.flushOutbox();
+      expect(api.sent, hasLength(2), reason: 'a refused message is not resent');
+      final refused = await chat.takeRefused('conversation-a');
+      expect(refused?.text, 'أول');
+      expect(refused?.reason, contains('ما ندري إذا انحفظ'));
+      expect(outbox.read('user-1'), isEmpty);
+      chat.dispose();
+    });
 
     test(
       'RA-MO-347: a transient failure waits, with a longer wait each time',

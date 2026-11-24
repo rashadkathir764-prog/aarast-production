@@ -158,4 +158,18 @@ void main() {
     expect(find.text('السمرة'), findsNothing);
     expect(find.text('ابدأ يومك'), findsOneWidget);
   });
+
+  // RA-MO-354: 22:00 UTC on the 13th is 01:00 on the 14th in Sana'a; the
+  // top line read the phone's date, a day before the count under it.
+  testWidgets('y06\'s top line is today in Sana\'a', (tester) async {
+    pinAppClock(DateTime.utc(2027, 1, 13, 22));
+    addTearDown(resetAppClock);
+    await _pump(tester, WeddingMoment.week);
+
+    expect(find.text('الخميس 14 يناير'), findsOneWidget);
+    expect(
+      find.text('سبعة أيام على عرسك.\nمن اليوم الرئيسية تمشي معك ليلة ليلة.'),
+      findsOneWidget,
+    );
+  });
 }

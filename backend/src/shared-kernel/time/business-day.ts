@@ -19,3 +19,8 @@ export function startOfRiyadhDay(now = new Date()): Date {
 export function endOfRiyadhDay(start: Date): Date {
   return new Date(start.getTime() + DAY_MS - 1);
 }
+
+/** The business day [start] opens (`startOfRiyadhDay`), as `YYYY-MM-DD`. */
+export function riyadhCalendarDay(start: Date): string {
+  return new Date(start.getTime() + RIYADH_OFFSET_MS).toISOString().slice(0, 10);
+}

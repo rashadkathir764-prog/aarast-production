@@ -210,6 +210,24 @@ void main() {
     );
   });
 
+  // RA-MO-353: the week's first day was a local midnight less 7 × 24 hours;
+  // across the autumn clock change that is 01:00 of the first day, so the
+  // event on it fell out. Run under TZ=Europe/Berlin to see it.
+  test('a clock change in the wedding week keeps its first day', () {
+    final view = PlanEventsView.fromJson({
+      'weddingPlanId': 'plan-1',
+      'canEdit': true,
+      'items': [
+        {'id': 'aqd', 'type': 'AQD', 'date': '2027-10-27'},
+        {'id': 'before', 'type': 'LUNCH', 'date': '2027-10-26'},
+      ],
+      'suggestions': const [],
+    });
+    expect(view.weekOf(DateTime(2027, 11, 3)).map((event) => event.id), [
+      'aqd',
+    ]);
+  });
+
   test('the week is the days before the wedding and its day', () {
     final view = _view();
     final wedding = DateTime(2027, 1, 21);

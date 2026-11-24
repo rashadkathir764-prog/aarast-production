@@ -177,15 +177,22 @@ class _MoneyPaymentsTabState extends State<_MoneyPaymentsTab> {
     final weddingMonth = weddingDay == null
         ? null
         : DateTime(weddingDay.year, weddingDay.month);
+    // RA-MO-355: «بعد العرس» is from the day after the wedding, not the month
+    // after its month; and once the day has passed everything left is after
+    // it, so the dates go by their own months (a year of repayments read as
+    // one column).
+    final runsToWedding =
+        weddingDay != null && daysUntilPlanDay(weddingDay) >= 0;
     DateTime monthOf(DateTime day) => DateTime(day.year, day.month);
     final months = <DateTime, List<MoneyObligation>>{};
     final afterWedding = <MoneyObligation>[];
     for (final line in dated) {
-      final month = monthOf(line.dueDate!);
-      if (weddingMonth != null && month.isAfter(weddingMonth)) {
+      final due = line.dueDate!;
+      if (runsToWedding &&
+          DateUtils.dateOnly(due).isAfter(DateUtils.dateOnly(weddingDay))) {
         afterWedding.add(line);
       } else {
-        months.putIfAbsent(month, () => []).add(line);
+        months.putIfAbsent(monthOf(due), () => []).add(line);
       }
     }
     Widget lines(List<MoneyObligation> rows, {Key? key}) => JourneyBox(

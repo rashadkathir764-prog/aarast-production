@@ -7,6 +7,7 @@ import '../../../core/offline/offline_contract.dart';
 import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/offline/offline_tables.dart';
 import '../../../core/offline/sync_queue.dart';
+import '../../../core/utils/plan_day.dart';
 import '../../../core/utils/text_limits.dart';
 import '../models/task_checklist_item.dart';
 import '../models/task_summary.dart';
@@ -208,7 +209,8 @@ class TaskTimelineApi {
       if (isPrivate) 'isPrivate': true,
       if (description != null && description.trim().isNotEmpty)
         'description': description.trim(),
-      if (dueDate != null) 'dueDate': dueDate.toIso8601String(),
+      // RA-BE-184: the day with its zone, not read in the server's.
+      if (dueDate != null) 'dueDate': planDayToUtcIso(dueDate),
       if (taskCategory != null && taskCategory.trim().isNotEmpty)
         'taskCategory': taskCategory.trim(),
     };

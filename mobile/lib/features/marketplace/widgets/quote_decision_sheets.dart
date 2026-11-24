@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/preferences/device_preferences.dart';
 import '../../../core/utils/app_clock.dart';
+import '../../../core/utils/plan_day.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/hijri_date.dart';
 import '../../../core/utils/money_formatters.dart';
@@ -77,7 +78,7 @@ class _BookingRequestSheetState extends State<BookingRequestSheet> {
           ? initial
           : today,
       firstDate: today,
-      lastDate: today.add(const Duration(days: 1095)),
+      lastDate: addPlanDays(today, 1095),
     );
   }
 

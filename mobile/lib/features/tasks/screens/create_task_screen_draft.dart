@@ -10,7 +10,7 @@ enum _When { week, month, date, none }
 
 DateTime _endOfWeek(DateTime today) {
   final days = (DateTime.thursday - today.weekday) % 7;
-  return DateUtils.dateOnly(today).add(Duration(days: days));
+  return addPlanDays(today, days);
 }
 
 DateTime _endOfMonth(DateTime today) =>

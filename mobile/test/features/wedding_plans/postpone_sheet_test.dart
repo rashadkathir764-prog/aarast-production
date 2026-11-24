@@ -1,5 +1,6 @@
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
+import 'package:aarast_mobile/core/utils/app_clock.dart';
 import 'package:aarast_mobile/features/tasks/tasks_api.dart';
 import 'package:aarast_mobile/features/wedding_plans/data/wedding_plans_api.dart';
 import 'package:aarast_mobile/features/wedding_plans/models/wedding_plan.dart';
@@ -90,7 +91,10 @@ class _Dashboard extends DashboardSummaryProvider {
   Future<void> loadDashboard(String weddingPlanId, {sharedMember}) async {}
 }
 
-Future<(_Tasks, _Plans)> _open(WidgetTester tester) async {
+Future<(_Tasks, _Plans)> _open(
+  WidgetTester tester, {
+  DateTime? weddingDate,
+}) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = const Size(390, 900);
   addTearDown(tester.view.reset);
@@ -116,7 +120,7 @@ Future<(_Tasks, _Plans)> _open(WidgetTester tester) async {
                 onPressed: () => showPostponeSheet(
                   context,
                   planId: 'plan-1',
-                  weddingDate: _oldDay,
+                  weddingDate: weddingDate ?? _oldDay,
                 ),
                 child: const Text('open'),
               ),
@@ -131,18 +135,26 @@ Future<(_Tasks, _Plans)> _open(WidgetTester tester) async {
   return (tasks, plans);
 }
 
-Future<void> _pickApril15(WidgetTester tester) async {
+Future<void> _pickApril15(WidgetTester tester) => _pick(tester, '04/15/2027');
+
+Future<void> _pick(WidgetTester tester, String day) async {
   await tester.tap(find.byKey(const ValueKey('postpone-new-day')));
   await tester.pumpAndSettle();
-  // The picker opens on the old day plus a month: move to April.
+  // The picker opens on the old day plus a month: move to the day.
   await tester.tap(find.byIcon(Icons.edit_outlined));
   await tester.pumpAndSettle();
-  await tester.enterText(find.byType(TextField).last, '04/15/2027');
+  await tester.enterText(find.byType(TextField).last, day);
   await tester.tap(find.text('OK'));
   await tester.pumpAndSettle();
 }
 
 void main() {
+  // RA-MO-351: the picker's day was the phone's; its clock is pinned, so
+  // the sheet reads the same day every year (it broke alone after
+  // 2027-02-20, when the old day plus a month fell before today).
+  setUp(() => pinAppClock(DateTime.utc(2026, 11, 24, 9)));
+  tearDown(resetAppClock);
+
   testWidgets('g03 shows what moves and keeps payments on their dates', (
     tester,
   ) async {
@@ -200,5 +212,67 @@ void main() {
       {'weddingDate': '2027-04-15', 'moveOpenTasks': true},
     ]);
     expect(find.text('تأجيل العرس'), findsNothing);
+  });
+
+  // RA-MO-351: more than a month after the wedding, the old day plus a
+  // month is before today, the first day the picker allows: it failed its
+  // own assertion. RA-MO-354: and today is Sana'a's (01:00 on the 30th
+  // there, still the 29th on this phone).
+  testWidgets('after the wedding the picker opens on today in Sana\'a', (
+    tester,
+  ) async {
+    pinAppClock(DateTime.utc(2027, 3, 29, 22));
+    await _open(tester);
+
+    // After the day it is no postponing: the day is put right.
+    expect(find.text('تعديل تاريخ العرس'), findsOneWidget);
+    expect(find.text('تأجيل العرس'), findsNothing);
+    expect(find.byKey(const ValueKey('postpone-no-date')), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('postpone-new-day')));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.byType(DatePickerDialog), findsOneWidget);
+    expect(find.text('Tue, Mar 30'), findsOneWidget);
+  });
+
+  testWidgets('the picker never opens past the last day it allows', (
+    tester,
+  ) async {
+    await _open(tester, weddingDate: DateTime(2030, 12, 20));
+
+    await tester.tap(find.byKey(const ValueKey('postpone-new-day')));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.text('Wed, Jan 1'), findsOneWidget);
+  });
+
+  // RA-BE-183 (Q-47): a wedding put off with no new day yet has none.
+  testWidgets('«تأجل وما حددنا موعد» clears the day', (tester) async {
+    final (_, plans) = await _open(tester);
+
+    final noDate = find.byKey(const ValueKey('postpone-no-date'));
+    await tester.ensureVisible(noDate);
+    await tester.tap(noDate);
+    await tester.pumpAndSettle();
+
+    expect(plans.saved, [
+      {'weddingDate': null},
+    ]);
+    expect(find.text('تأجيل العرس'), findsNothing);
+  });
+
+  // RA-MO-356: «بعد عيد الأضحى» was said on the Eid itself.
+  testWidgets('the Eid is named on its own day', (tester) async {
+    await _open(tester);
+
+    await _pick(tester, '05/16/2027');
+    expect(find.text('يوم عيد الأضحى · 10 ذو الحجة'), findsOneWidget);
+
+    await _pick(tester, '03/09/2027');
+    expect(find.text('يوم عيد الفطر · 1 شوال'), findsOneWidget);
+
+    await _pick(tester, '05/17/2027');
+    expect(find.text('بعد عيد الأضحى · 11 ذو الحجة'), findsOneWidget);
   });
 }

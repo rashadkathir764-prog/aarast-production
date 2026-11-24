@@ -45,11 +45,12 @@ int _homeMoment(WeddingPlanStage stage, {required bool startingOut}) {
 }
 
 /// What moves the plan into each of [_homeMoments]: the basics, then the
-/// calendar (D112's wedding window is the six days before the day).
+/// calendar (D112's wedding window is the seven days before the day,
+/// `weddingWeekDays`).
 const _homeMomentWhy = [
   'لين تحط الميزانية وأول بند وأول مهمة وأول ضيف',
   'بعد الأساسيات، لين يبقى أسبوع على العرس',
-  'الأيام الستة قبل العرس',
+  'الأيام السبعة قبل العرس',
   'يوم العرس نفسه',
   'بعده: الباقي من الدفعات، وتقييم المزودين',
 ];

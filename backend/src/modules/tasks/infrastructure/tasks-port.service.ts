@@ -264,8 +264,9 @@ export class TasksPortService implements TasksPort {
     weddingPlanId: string,
     days: number,
     readerUserId: string,
+    startOfToday: Date,
   ): Promise<number> {
-    return shiftOpenTaskDates(tx, weddingPlanId, days, readerUserId);
+    return shiftOpenTaskDates(tx, weddingPlanId, days, readerUserId, startOfToday);
   }
 
   async countPlanTasks(

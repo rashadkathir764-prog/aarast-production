@@ -137,7 +137,7 @@ async function run() {
     const res = await request('POST', '/api/v1/wedding-plans', {
       title: 'Sharing Smoke Plan',
       city: 'Sanaa',
-      weddingDate: '2026-12-30T00:00:00.000Z',
+      weddingDate: '2030-12-30T00:00:00.000Z',
       estimatedBudget: '1500000.00',
     }, ownerToken);
     check('owner creates wedding plan - HTTP 201', res.status === 201);

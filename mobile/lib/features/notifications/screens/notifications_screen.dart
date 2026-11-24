@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import '../../../core/config/app_feature_flags.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/utils/app_clock.dart';
+import '../../../core/utils/plan_day.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_toast.dart';
@@ -541,7 +542,7 @@ List<(String, List<AarastNotification>)> groupNotificationsByTime(
   DateTime now,
 ) {
   final today = DateUtils.dateOnly(now);
-  final weekStart = today.subtract(const Duration(days: 6));
+  final weekStart = addPlanDays(today, -6);
   final todays = <AarastNotification>[];
   final week = <AarastNotification>[];
   final older = <AarastNotification>[];

@@ -25,7 +25,11 @@ import '../../sharing/sharing_api.dart'
 import '../widgets/logout_sheet.dart';
 import '../widgets/participant_account_sections.dart';
 import '../../wedding_plans/wedding_plans_api.dart'
-    show DashboardSummaryProvider, showPlanSwitcherSheet, showPostponeSheet;
+    show
+        DashboardSummaryProvider,
+        postponeActionTitle,
+        showPlanSwitcherSheet,
+        showPostponeSheet;
 
 part 'more_screen.rows.dart';
 
@@ -137,11 +141,14 @@ class _MoreScreenState extends State<MoreScreen> {
                       : '${plan.otherParticipants}',
                   onTap: () => context.push(AppRouter.sharing(planId)),
                 ),
-                // g03 moves a set day; without one, w10 picks it.
+                // g03 moves a set day; without one, w10 picks it. After
+                // the day it puts the day right (RA-MO-351).
                 _Row(
                   key: const ValueKey('account-postpone'),
                   icon: LucideIcons.calendarClock,
-                  title: 'تأجيل العرس',
+                  title: plan?.weddingDate == null
+                      ? 'تأجيل العرس'
+                      : postponeActionTitle(plan!.weddingDate!),
                   onTap: plan?.weddingDate == null
                       ? () => context.push(AppRouter.planCenter(planId))
                       : () => showPostponeSheet(

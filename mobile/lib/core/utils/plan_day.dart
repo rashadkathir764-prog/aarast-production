@@ -22,10 +22,30 @@ DateTime? planDayFromJson(Object? value) {
   return DateTime(day.year, day.month, day.day);
 }
 
+/// A due day sent to the server (RA-BE-184): midnight UTC of that calendar
+/// day, with its zone, the value the server has always kept for a day the
+/// phone picked. It was sent without one, and so read in the server's zone.
+String planDayToUtcIso(DateTime day) =>
+    DateTime.utc(day.year, day.month, day.day).toIso8601String();
+
+/// The calendar day [days] after [day] (before it when negative), counted on
+/// its calendar fields (RA-MO-353). Taking 24 hours at a time from a local
+/// midnight lands on 23:00 of the day before across a daylight-saving
+/// change, and that day is the one read.
+DateTime addPlanDays(DateTime day, int days) =>
+    DateTime(day.year, day.month, day.day + days);
+
+/// The time on Sana'a's clock (D11), whatever zone the phone is set to: a
+/// UTC value whose fields read as the hour in Sana'a (UTC+3, no daylight
+/// saving), for what is said by the hour there, as «الآن» in the day's
+/// programme (RA-MO-354).
+DateTime sanaaClock({DateTime? now}) =>
+    (now ?? appNow()).toUtc().add(const Duration(hours: 3));
+
 /// Today in Sana'a (D11): the calendar day the server counts the wedding
 /// from (`startOfRiyadhDay`), whatever zone the phone is set to.
 DateTime sanaaToday({DateTime? now}) {
-  final at = (now ?? appNow()).toUtc().add(const Duration(hours: 3));
+  final at = sanaaClock(now: now);
   return DateTime(at.year, at.month, at.day);
 }
 

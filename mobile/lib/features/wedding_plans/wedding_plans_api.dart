@@ -46,4 +46,5 @@ export 'widgets/dashboard/aarast_dashboard_view.dart'
         DashboardHomeFunding,
         DashboardHomeMahr,
         MahrHomeSide;
-export 'widgets/postpone_sheet.dart' show showPostponeSheet;
+export 'widgets/postpone_sheet.dart'
+    show postponeActionTitle, showPostponeSheet;

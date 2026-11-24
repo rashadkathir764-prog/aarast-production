@@ -1,9 +1,14 @@
+import 'package:flutter/foundation.dart';
+
+import '../diagnostics/app_logger.dart';
+
 /// Hijri dates on the Umm al-Qura calendar, the one Yemenis read on their
 /// phones, for the wedding date's Hijri line and the Ramadan warning.
 ///
 /// The month starts are the official Umm al-Qura table for 1446 to 1452
 /// (generated with hijri-converter 2.3.1). Dates outside it return null:
-/// the app then simply does not show a Hijri line.
+/// the app then simply does not show a Hijri line, and says so once in its
+/// log (RA-MO-356), so a table run out is seen and not only missed.
 class HijriDate {
   const HijriDate(this.year, this.month, this.day);
 
@@ -41,12 +46,12 @@ class HijriDate {
       final start = _startOf(i);
       if (!day.isBefore(start)) {
         final next = _startOf(i + 1);
-        if (!day.isBefore(next)) return null;
+        if (!day.isBefore(next)) return _outsideTable();
         final row = _starts[i];
         return HijriDate(row.$1, row.$2, day.difference(start).inDays + 1);
       }
     }
-    return null;
+    return _outsideTable();
   }
 
   /// The Ramadan that contains [date] or starts after it, as (first day,
@@ -58,8 +63,34 @@ class HijriDate {
       final end = _startOf(i + 1);
       if (day.isBefore(end)) return (_startOf(i), end);
     }
+    return _outsideTable();
+  }
+
+  /// The last day the table covers (the day before its closing row).
+  static DateTime get lastDayInTable {
+    final close = _starts.last;
+    return DateTime.utc(close.$3, close.$4, close.$5 - 1);
+  }
+
+  static bool _warnedOutsideTable = false;
+
+  /// The one place a day outside the table is handled: nothing is shown,
+  /// and the app's log is told once per run (every build would repeat it).
+  static Null _outsideTable() {
+    if (!_warnedOutsideTable) {
+      _warnedOutsideTable = true;
+      AppLogger.global?.log(
+        level: AppLogLevel.warning,
+        category: AppLogCategory.state,
+        name: 'hijri_outside_table',
+        attributes: {'lastDayInTable': lastDayInTable.toIso8601String()},
+      );
+    }
     return null;
   }
+
+  @visibleForTesting
+  static void debugResetOutsideTableWarning() => _warnedOutsideTable = false;
 
   static DateTime _startOf(int i) {
     final r = _starts[i];

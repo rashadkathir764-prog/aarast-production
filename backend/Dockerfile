@@ -33,6 +33,10 @@ ARG AARAST_GIT_REVISION=development-unversioned
 WORKDIR /app
 
 ENV NODE_ENV=production
+# RA-BE-184: a date sent without a zone is read in the process's zone. The
+# server's days are Sana'a's (UTC+3) by its own arithmetic, so the process
+# itself runs on UTC, whatever the host is set to.
+ENV TZ=UTC
 
 RUN if [ "$AARAST_GIT_REVISION" != "development-unversioned" ]; then \
       if [ "${#AARAST_GIT_REVISION}" -ne 40 ]; then \

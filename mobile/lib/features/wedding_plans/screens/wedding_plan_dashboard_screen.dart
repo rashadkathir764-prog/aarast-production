@@ -28,7 +28,6 @@ import '../../sharing/sharing_api.dart' show SharedMember;
 import '../../wedding_day/wedding_day_api.dart' show PlanEventsProvider;
 import '../data/mahr_moment_ledger.dart';
 import '../data/plan_bookings_lookup.dart';
-import '../data/wedding_moment_ledger.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../models/dashboard_summary.dart';
@@ -37,6 +36,7 @@ import '../providers/dashboard_summary_provider.dart';
 import '../widgets/dashboard/aarast_dashboard_view.dart';
 import '../widgets/plan_assistant_entry.dart';
 import '../widgets/push_off_card.dart';
+import '../utils/wedding_moment_watch.dart';
 
 /// b07, once the day has passed: what is left to pay, from the money read.
 /// RA-MO-92 (D59, D102): with the owner's own figure ([ownerOutstanding],
@@ -281,29 +281,12 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
     }
   }
 
-  /// The plan, moment and wedding date y06/y07 last looked at.
-  String? _weddingMomentSignature;
+  /// y06 on entering the wedding week, y07 on the day (D65).
+  final _weddingMoments = WeddingMomentWatch();
 
-  /// y06 on entering the wedding week, y07 on the day: each once per phone
-  /// for this plan and date (D65), opened over the home.
   void _watchWeddingMoment(String planId, DateTime? weddingDate) {
-    if (_isLocalGuestPlan || weddingDate == null) return;
-    final stage = resolveWeddingPlanStage(weddingDate, now: appNow()).stage;
-    final moment = switch (stage) {
-      WeddingPlanStage.finalWeek => WeddingMoment.week,
-      WeddingPlanStage.weddingDay => WeddingMoment.day,
-      _ => null,
-    };
-    if (moment == null) return;
-    final signature = '$planId:${moment.name}:$weddingDate';
-    if (signature == _weddingMomentSignature) return;
-    _weddingMomentSignature = signature;
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final ledger = WeddingMomentLedger(await SharedPreferences.getInstance());
-      final first = await ledger.firstTime(planId, moment, weddingDate);
-      if (!first || !mounted) return;
-      await context.push<void>(AppRouter.weddingMoment(planId, moment));
-    });
+    if (_isLocalGuestPlan) return;
+    _weddingMoments.watch(context, planId: planId, weddingDate: weddingDate);
   }
 
   Future<void> _loadLocalDashboard() async {
@@ -668,6 +651,12 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
               onOpenReviews: _isLocalGuestPlan || summary.acceptedProviders == 0
                   ? null
                   : () => context.push(AppRouter.planReviews(selectedPlanId)),
+              // RA-MO-356: after the wedding, the owner is offered the
+              // memories; the plan's page asks, with what is still owed
+              // (G15), and archives it. A plan kept on the phone has none.
+              onArchivePlan: _isLocalGuestPlan || !summary.permissions.isOwner
+                  ? null
+                  : () => context.push(AppRouter.planCenter(selectedPlanId)),
               // D72: a suggestion opens its item's requests, where it is
               // booked; the owner may answer it away.
               onOpenSuggestion: (item) => context.push(

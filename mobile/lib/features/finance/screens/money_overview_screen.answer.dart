@@ -568,7 +568,7 @@ class _MoneyLine extends StatelessWidget {
     final anyShort = dues.any((line) => short.contains(line.id));
     final endDay = toWedding != null
         ? weddingDate!
-        : today.add(Duration(days: span.round()));
+        : addPlanDays(today, span.round());
     return Semantics(
       label:
           '${arabicCount(dues.length, one: 'دفعة وحدة', two: 'دفعتين', few: 'دفعات', many: 'دفعة')} من اليوم لين ${toWedding != null ? 'العرس' : _dayWords(endDay)}'

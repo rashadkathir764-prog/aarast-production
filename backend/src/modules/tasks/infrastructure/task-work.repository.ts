@@ -2,6 +2,7 @@ import { Prisma, WeddingTaskPriority, WeddingTaskStatus } from '@prisma/client';
 import type { LiveAuthorizationFilter } from '../../collaboration/public/collaboration-permission.port';
 import { ListQueryDto, pageArgs } from '../../../platform/http/list-query.dto';
 import { PrismaService } from '../../../platform/database/prisma.service';
+import { riyadhCalendarDay } from '../../../shared-kernel/time/business-day';
 
 export interface TaskCreateValues {
   weddingPlanId: string;
@@ -292,20 +293,30 @@ export function findChecklistItemById(tx: Prisma.TransactionClient, id: string) 
  * statement. Done and cancelled tasks keep their history. Private tasks move
  * too (the wedding moved for both sides), but the count covers only the
  * tasks the reader sees.
+ *
+ * RA-BE-182 (Q-46): only the tasks due from [startOfToday] (the start of
+ * today in Sana'a, `startOfRiyadhDay`) on; one already late stays where it
+ * is. A wedding moved earlier never pushes a task into the past: it lands on
+ * today, written as the phone writes a due day (UTC midnight of that day,
+ * which reads as the same day in Sana'a), and its reminder moves by what the
+ * task itself moved.
  */
 export async function shiftOpenTaskDates(
   client: Prisma.TransactionClient,
   weddingPlanId: string,
   days: number,
   readerUserId: string,
+  startOfToday: Date,
 ): Promise<number> {
+  const today = riyadhCalendarDay(startOfToday);
   const moved = await client.$queryRaw<Array<{ privateToUserId: string | null }>>`
     UPDATE "WeddingTask"
-    SET "dueDate" = "dueDate" + make_interval(days => ${days}::int),
-        "reminderAt" = "reminderAt" + make_interval(days => ${days}::int),
+    SET "dueDate" = GREATEST("dueDate" + make_interval(days => ${days}::int), ${today}::date::timestamp),
+        "reminderAt" = "reminderAt"
+          + (GREATEST("dueDate" + make_interval(days => ${days}::int), ${today}::date::timestamp) - "dueDate"),
         "updatedAt" = NOW()
     WHERE "weddingPlanId" = ${weddingPlanId}
-      AND "dueDate" IS NOT NULL
+      AND "dueDate" >= ${startOfToday}::timestamp
       AND "status" IN ('TODO', 'IN_PROGRESS')
     RETURNING "privateToUserId"`;
   return moved.filter(

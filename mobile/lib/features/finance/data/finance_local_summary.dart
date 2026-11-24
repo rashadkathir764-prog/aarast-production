@@ -1,3 +1,4 @@
+import '../../../core/utils/plan_day.dart';
 import '../models/wedding_cost.dart';
 import 'finance_money_rules.dart';
 
@@ -44,7 +45,7 @@ class LocalPaymentScheduleSummary {
       final dueDate = dateTimeOrNull(schedule['dueDate']);
       return dueDate != null && !dueDate.isBefore(today);
     }).toList();
-    final dueSoonEnd = today.add(const Duration(days: 7));
+    final dueSoonEnd = addPlanDays(today, 7);
     final dueSoonCount = upcoming.where((schedule) {
       final dueDate = dateTimeOrNull(schedule['dueDate']);
       return dueDate != null && !dueDate.isAfter(dueSoonEnd);

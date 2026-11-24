@@ -90,7 +90,7 @@ async function run() {
     const res = await request('POST', '/api/v1/wedding-plans', {
       title: 'Guests Smoke Plan',
       city: 'Aden',
-      weddingDate: '2026-12-20T00:00:00.000Z',
+      weddingDate: '2030-12-20T00:00:00.000Z',
       estimatedBudget: '800000',
     }, accessToken);
     check('POST /api/v1/wedding-plans - HTTP 201', res.status === 201);

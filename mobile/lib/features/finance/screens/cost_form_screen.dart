@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/forms/aarast_form_draft_store.dart';
 import '../../../core/forms/aarast_form_success.dart';
+import '../../../core/utils/plan_day.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/routing/pop_or_go.dart';
 import '../../../core/utils/amount_words.dart';
@@ -650,7 +651,7 @@ class _CostFormScreenState extends State<CostFormScreen> {
   }) async {
     releaseFieldFocus();
     final now = DateUtils.dateOnly(appNow());
-    final lastDate = last ?? now.add(const Duration(days: 3650));
+    final lastDate = last ?? addPlanDays(now, 3650);
     final wanted = initial ?? now;
     final picked = await showDatePicker(
       context: context,

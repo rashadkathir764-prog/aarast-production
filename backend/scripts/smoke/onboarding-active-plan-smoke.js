@@ -115,7 +115,7 @@ async function run() {
         city: 'Sanaa',
         district: 'Old City',
       },
-      weddingDate: '2026-12-20T00:00:00.000Z',
+      weddingDate: '2030-12-20T00:00:00.000Z',
       priorities: ['budget', 'tasks', 'providers'],
       estimatedBudget: '1500000',
       currency: 'YER',

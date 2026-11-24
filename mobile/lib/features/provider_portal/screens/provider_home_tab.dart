@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/utils/app_clock.dart';
+import '../../../core/utils/plan_day.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/offer_ends.dart';
 import '../../marketplace/marketplace_api.dart'
@@ -118,9 +119,7 @@ class ProviderHomeTab extends StatelessWidget {
               (booking) =>
                   booking.isConfirmed &&
                   !booking.eventDate.isBefore(today) &&
-                  booking.eventDate.isBefore(
-                    today.add(const Duration(days: 7)),
-                  ),
+                  booking.eventDate.isBefore(addPlanDays(today, 7)),
             )
             .toList()
           ..sort((a, b) => a.eventDate.compareTo(b.eventDate));

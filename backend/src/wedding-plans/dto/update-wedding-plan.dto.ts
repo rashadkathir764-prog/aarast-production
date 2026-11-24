@@ -30,10 +30,14 @@ export class UpdateWeddingPlanDto {
   @IsOptional()
   location?: Record<string, unknown> | null;
 
+  /**
+   * RA-BE-183 (Q-47): null is «تأجل وما حددنا موعد»: the wedding has no day
+   * again, so no countdown and no reminder of its day.
+   */
   @IsString()
   @MaxLength(40)
   @IsOptional()
-  weddingDate?: string;
+  weddingDate?: string | null;
 
   @IsArray()
   @ArrayMaxSize(12)

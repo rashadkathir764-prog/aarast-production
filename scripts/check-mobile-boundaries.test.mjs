@@ -2483,7 +2483,9 @@ const trackedOwnerApiContracts = [
       },
       {
         uri: 'widgets/postpone_sheet.dart',
-        show: ['showPostponeSheet'],
+        // postponeActionTitle: «حسابي» names the action as its sheet does,
+        // «تعديل تاريخ العرس» after the wedding day (RA-MO-351).
+        show: ['postponeActionTitle', 'showPostponeSheet'],
       },
     ],
   },
@@ -2733,7 +2735,13 @@ const trackedCollaborationBatchContracts = [
   {
     source: 'mobile/lib/features/more/screens/more_screen.dart',
     target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
-    show: ['DashboardSummaryProvider', 'showPlanSwitcherSheet', 'showPostponeSheet'],
+    // postponeActionTitle (RA-MO-351): the row reads as its sheet does.
+    show: [
+      'DashboardSummaryProvider',
+      'postponeActionTitle',
+      'showPlanSwitcherSheet',
+      'showPostponeSheet',
+    ],
   },
   {
     source: 'mobile/lib/features/more/widgets/participant_account_sections.dart',

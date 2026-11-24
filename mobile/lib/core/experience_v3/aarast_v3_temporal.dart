@@ -1,4 +1,5 @@
 import '../utils/app_clock.dart';
+import '../utils/plan_day.dart';
 
 enum AarastTemporalSection { now, today, week, later, completed }
 
@@ -23,7 +24,7 @@ AarastTemporalSection aarastDeadlineSection({
   final due = aarastDateOnly(dueDate);
   if (due.isBefore(today)) return AarastTemporalSection.now;
   if (due == today) return AarastTemporalSection.today;
-  if (due.isBefore(today.add(const Duration(days: 8)))) {
+  if (due.isBefore(addPlanDays(today, 8))) {
     return AarastTemporalSection.week;
   }
   return AarastTemporalSection.later;
@@ -45,7 +46,7 @@ AarastTemporalSection aarastActivitySection({
   final today = aarastDateOnly(current);
   final occurred = aarastDateOnly(occurredAt);
   if (occurred == today) return AarastTemporalSection.today;
-  if (!occurred.isBefore(today.subtract(const Duration(days: 6)))) {
+  if (!occurred.isBefore(addPlanDays(today, -6))) {
     return AarastTemporalSection.week;
   }
   return AarastTemporalSection.later;

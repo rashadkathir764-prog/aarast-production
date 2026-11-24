@@ -63,6 +63,10 @@ import {
 import { withinCharacters } from "../shared-kernel/text/text-length";
 import { daysBetween } from "../shared-kernel/voice/day-words";
 import {
+  riyadhCalendarDay,
+  startOfRiyadhDay,
+} from "../shared-kernel/time/business-day";
+import {
   raiseWeddingEventVersion,
   shiftPlanEventDates,
 } from "../modules/planning/infrastructure/plan-events.repository";
@@ -186,6 +190,7 @@ export class WeddingPlansService {
         : null;
     const city =
       this.optionalText(dto.city) ?? cityFromWeddingLocation(location);
+    const weddingDate = this.weddingDateToSet(dto.weddingDate, null);
 
     const plan = await runSerializableTransaction(this.prisma, async (tx) => {
       await assertActiveMutationActorForUpdateInTransaction(
@@ -199,7 +204,7 @@ export class WeddingPlansService {
           ...(dto.location !== undefined
             ? { location: location ?? Prisma.DbNull }
             : {}),
-          weddingDate: this.optionalDate(dto.weddingDate),
+          weddingDate,
           priorities: this.normalizePriorities(dto.priorities),
           estimatedBudget: this.optionalPositiveBudget(dto.estimatedBudget),
           budgetIncludesMahr: this.budgetIncludesMahr(
@@ -351,6 +356,7 @@ export class WeddingPlansService {
             : undefined;
 
       const previousWeddingDate = context.plan.weddingDate;
+      const startOfToday = startOfRiyadhDay();
       const plan = await updateWeddingPlan(tx, id, {
           ...(dto.title !== undefined
             ? { title: this.requiredText(dto.title, "title") }
@@ -360,7 +366,13 @@ export class WeddingPlansService {
             ? { location: location ?? Prisma.DbNull }
             : {}),
           ...(dto.weddingDate !== undefined
-            ? { weddingDate: this.optionalDate(dto.weddingDate) }
+            ? {
+                weddingDate: this.weddingDateToSet(
+                  dto.weddingDate,
+                  previousWeddingDate,
+                  startOfToday,
+                ),
+              }
             : {}),
           ...(dto.priorities !== undefined
             ? { priorities: this.normalizePriorities(dto.priorities) }
@@ -387,10 +399,18 @@ export class WeddingPlansService {
       ) {
         await raiseWeddingEventVersion(tx, id);
       }
+      // RA-BE-183 (Q-47): a wedding postponed with no new day keeps its
+      // events and tasks where they are; nothing moves without a day.
       if (previousWeddingDate && plan.weddingDate) {
         const days = daysBetween(previousWeddingDate, plan.weddingDate);
         if (days !== 0) {
-          await shiftPlanEventDates(tx, id, days);
+          // RA-BE-182 (Q-46): what is from today on moves; the past stays.
+          await shiftPlanEventDates(
+            tx,
+            id,
+            days,
+            riyadhCalendarDay(startOfToday),
+          );
           // RA-BE-116: its open tasks too when the person said so, by the
           // date's own difference, with the right that moves the date.
           if (dto.moveOpenTasks === true) {
@@ -399,6 +419,7 @@ export class WeddingPlansService {
               id,
               days,
               currentUser.id,
+              startOfToday,
             );
           }
         }
@@ -508,6 +529,7 @@ export class WeddingPlansService {
       dto.selectedCategories,
     );
     const now = new Date();
+    const weddingDate = this.weddingDateToSet(dto.weddingDate, null);
 
     const result = await runSerializableTransaction(this.prisma, async (tx) => {
       await assertActiveMutationActorForUpdateInTransaction(
@@ -523,7 +545,7 @@ export class WeddingPlansService {
           ...(dto.location !== undefined
             ? { location: location ?? Prisma.DbNull }
             : {}),
-          weddingDate: this.optionalDate(dto.weddingDate),
+          weddingDate,
           priorities: this.normalizePriorities(dto.priorities),
           estimatedBudget: this.optionalPositiveBudget(dto.estimatedBudget),
           budgetIncludesMahr: this.budgetIncludesMahr(
@@ -1182,8 +1204,32 @@ export class WeddingPlansService {
     return value;
   }
 
-  private optionalDate(value: string | undefined): Date | null {
-    if (value === undefined) return null;
+  /**
+   * The wedding's day as it is set or changed. RA-BE-183 (Q-47): null is a
+   * wedding postponed with no day yet. RA-BE-184: a day before today in
+   * Sana'a is refused here, not only by the phone's picker; the day already
+   * held (an edit after the wedding sends it again) is not a change.
+   */
+  private weddingDateToSet(
+    value: string | null | undefined,
+    current: Date | null,
+    startOfToday = startOfRiyadhDay(),
+  ): Date | null {
+    const day = this.optionalDate(value);
+    if (day === null) return null;
+    if (current !== null && daysBetween(current, day) === 0) return day;
+    if (daysBetween(startOfToday, day) < 0) {
+      throw new BadRequestException({
+        statusCode: 400,
+        code: "WEDDING_DATE_IN_PAST",
+        message: "يوم العرس ما يكون قبل اليوم.",
+      });
+    }
+    return day;
+  }
+
+  private optionalDate(value: string | null | undefined): Date | null {
+    if (value === undefined || value === null) return null;
     const timestamp = Date.parse(value);
     if (Number.isNaN(timestamp)) {
       throw new BadRequestException(

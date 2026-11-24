@@ -32,6 +32,7 @@ import '../../wedding_day/wedding_day_api.dart' show PlanEventsProvider;
 import '../providers/dashboard_summary_provider.dart';
 import '../providers/plan_read_view_provider.dart';
 import '../utils/plan_pulse_sync.dart';
+import '../utils/wedding_moment_watch.dart';
 import '../widgets/plan_assistant_entry.dart';
 
 part 'participant_home_screen.cards.dart';
@@ -52,6 +53,9 @@ class _ParticipantHomeScreenState extends State<ParticipantHomeScreen> {
   /// q12, kept for this visit once taken from the controller.
   AccountContextPermissionChange? _change;
   bool _takingChange = false;
+
+  /// Q-18 (RA-MO-356): the partner is greeted by y06 and y07 as the owner.
+  final _weddingMoments = WeddingMomentWatch();
 
   @override
   void initState() {
@@ -226,6 +230,22 @@ class _ParticipantHomeScreenState extends State<ParticipantHomeScreen> {
     final role = summary?.permissions.role;
     // The other side of the couple taking part in this plan (D112, Q-18).
     final partner = role == 'GROOM' || role == 'BRIDE';
+    // RA-MO-356 (Q-18): the partner's wedding is theirs too: the week's
+    // programme and y06/y07 as on the owner's home. Not on a memory.
+    final partnerWeek =
+        partner &&
+        !selected.isOwnerMemory &&
+        date != null &&
+        days != null &&
+        days > 0 &&
+        days <= weddingWeekDays;
+    if (partner && !selected.isOwnerMemory) {
+      _weddingMoments.watch(
+        context,
+        planId: widget.weddingPlanId,
+        weddingDate: date,
+      );
+    }
 
     final children = <Widget>[
       _Greeting(
@@ -388,6 +408,34 @@ class _ParticipantHomeScreenState extends State<ParticipantHomeScreen> {
         ]);
       } else if (!canTasks && selected.permissions.canViewPlan) {
         children.addAll(_planTasks(context, voice));
+      }
+      // b04 «برنامج الأسبوع» for the partner (Q-18), as y06 lists it.
+      if (partnerWeek) {
+        final program = context
+            .watch<PlanEventsProvider?>()
+            ?.viewOf(widget.weddingPlanId)
+            ?.weekOf(date);
+        if (program != null && program.isNotEmpty) {
+          children.addAll([
+            const JourneySectionTitle('برنامج الأسبوع'),
+            JourneyList(
+              key: const ValueKey('participant-week-program'),
+              children: [
+                for (final event in program)
+                  JourneyListRow(
+                    icon: event.type.icon,
+                    color: voice.accent,
+                    soft: voice.soft,
+                    title: event.name(context.journeyProfile),
+                    subtitle: [
+                      formatArabicWeekday(event.date!),
+                      ?event.placeLabel,
+                    ].join(' · '),
+                  ),
+              ],
+            ),
+          ]);
+        }
       }
       // q18 «برنامج اليوم»: the day's events, read by every member (D52, D65).
       if (weddingDay) {

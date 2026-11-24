@@ -70,6 +70,7 @@ class AarastDashboardView extends StatelessWidget {
     this.events,
     this.weekBookings,
     this.onOpenEvents,
+    this.onArchivePlan,
     super.key,
   });
 
@@ -133,6 +134,11 @@ class AarastDashboardView extends StatelessWidget {
   /// b07 «قيّم مزودينك».
   final VoidCallback? onOpenReviews;
 
+  /// After the wedding, the way to put the plan in «الذكريات» (RA-MO-356);
+  /// null where the reader may not (only its owner archives a plan, and a
+  /// plan kept on the phone has no memories).
+  final VoidCallback? onArchivePlan;
+
   /// D72: a suggested item, opened where it is booked.
   final ValueChanged<DashboardEssential>? onOpenSuggestion;
 
@@ -156,12 +162,14 @@ class AarastDashboardView extends StatelessWidget {
       profile: context.journeyProfile,
     );
     final planStage = resolveWeddingPlanStage(summary.weddingDate, now: now);
-    // b04 and b05: the six days before the wedding and its day.
+    // b04 and b05: the seven days before the wedding and its day.
     final weddingDate = summary.weddingDate;
     final window = weddingDate != null && planStage.isWeddingWindow
         ? planStage.daysUntilWedding ?? 0
         : null;
-    final today = DateUtils.dateOnly(now ?? appNow());
+    // RA-MO-354: today in Sana'a, as the server and the stage count it; the
+    // phone's own date put «الليلة» on the night before for three hours.
+    final today = sanaaToday(now: now ?? appNow());
     // A due payment the server named leads the next step, and the money
     // card then does not repeat it.
     final payment =
@@ -361,9 +369,48 @@ class AarastDashboardView extends StatelessWidget {
                         onOpen: () => onOpenPayment?.call(owedAfter),
                       ),
                     ],
+                    // RA-MO-352 (Q-46): the events after the day (الصبحية)
+                    // while one of them is still to come.
+                    if (events?.afterOf(weddingDate!) case final after?
+                        when after.any(
+                          (event) => !event.date!.isBefore(today),
+                        )) ...[
+                      const SizedBox(height: AarastV3Space.x3),
+                      _WeekProgram(
+                        key: const ValueKey('aarast-dashboard-after-program'),
+                        title: 'برنامج بعد العرس',
+                        nightly: false,
+                        events: after,
+                        today: today,
+                        onEdit: events!.canEdit ? onOpenEvents : null,
+                      ),
+                    ],
                     if (onOpenReviews != null) ...[
                       const SizedBox(height: AarastV3Space.x3),
                       _RateProvidersCard(onTap: onOpenReviews!),
+                    ],
+                    // RA-MO-356: the wedding is done; its plan can go to the
+                    // memories (the confirmation, with what is still owed,
+                    // is where the plan is archived).
+                    if (onArchivePlan case final archive?) ...[
+                      const SizedBox(height: AarastV3Space.x3),
+                      JourneyList(
+                        children: [
+                          JourneyListRow(
+                            key: const ValueKey('aarast-home-after-memories'),
+                            icon: LucideIcons.archive,
+                            color: AarastV3Color.textMuted,
+                            soft: AarastV3Color.paperQuiet,
+                            title: context.say(
+                              'حط الخطة في الذكريات',
+                              'حطي الخطة في الذكريات',
+                            ),
+                            subtitle: 'تبقى محفوظة للقراءة، وما تنعدل بعدها.',
+                            subtitleMaxLines: 2,
+                            onTap: archive,
+                          ),
+                        ],
+                      ),
                     ],
                     // b07 keeps only the debt and the providers to rate;
                     // the planning cards are done with, and

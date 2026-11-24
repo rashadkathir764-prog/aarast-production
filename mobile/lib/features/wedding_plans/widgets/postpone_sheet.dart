@@ -7,7 +7,6 @@ import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/preferences/device_preferences.dart';
 import '../../../core/routing/app_router.dart';
-import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/hijri_date.dart';
@@ -24,7 +23,8 @@ import '../providers/wedding_plans_provider.dart';
 /// calls, not one: the date, then the open tasks by the same days. The
 /// payments keep their own dates (C3) and the bookings for the old day are
 /// named so the groom can ask each provider for the new one. Returns true
-/// once the date moved.
+/// once the date moved, or was cleared by «تأجل وما حددنا موعد» (Q-47).
+/// After the wedding the same sheet puts its day right (RA-MO-351).
 Future<bool> showPostponeSheet(
   BuildContext context, {
   required String planId,
@@ -36,6 +36,12 @@ Future<bool> showPostponeSheet(
   );
   return moved == true;
 }
+
+/// The action's name: «تأجيل العرس», and after the wedding day «تعديل تاريخ
+/// العرس» (RA-MO-351), the day being put right, not postponed. The same
+/// in «حسابي» and on the sheet it opens.
+String postponeActionTitle(DateTime weddingDate) =>
+    daysUntilPlanDay(weddingDate) < 0 ? 'تعديل تاريخ العرس' : 'تأجيل العرس';
 
 class _PostponeSheet extends StatefulWidget {
   const _PostponeSheet({required this.planId, required this.oldDay});
@@ -90,14 +96,27 @@ class _PostponeSheetState extends State<_PostponeSheet> {
 
   int? get _days => weddingDateShiftDays(widget.oldDay, _newDay);
 
+  /// The wedding day has passed: the day is put right, not postponed.
+  bool get _afterWedding => daysUntilPlanDay(widget.oldDay) < 0;
+
   Future<void> _pick() async {
-    final now = appNow();
-    final today = DateTime(now.year, now.month, now.day);
+    // RA-MO-354: today in Sana'a, as the server counts the plan's days.
+    final today = sanaaToday();
+    final last = DateTime(today.year + 5);
+    // RA-MO-351: the old day plus a month, but never before today (a month
+    // after the wedding it was, and the picker failed its own assertion)
+    // nor after the last day allowed.
+    final proposed = _newDay ?? addPlanDays(widget.oldDay, 30);
+    final initial = proposed.isBefore(today)
+        ? today
+        : proposed.isAfter(last)
+        ? last
+        : proposed;
     final picked = await showDatePicker(
       context: context,
-      initialDate: _newDay ?? widget.oldDay.add(const Duration(days: 30)),
+      initialDate: initial,
       firstDate: today,
-      lastDate: DateTime(now.year + 5),
+      lastDate: last,
     );
     if (picked == null || !mounted) return;
     setState(() {
@@ -140,14 +159,49 @@ class _PostponeSheetState extends State<_PostponeSheet> {
     Navigator.of(context).pop(true);
   }
 
+  /// RA-BE-183 (Q-47): the wedding is put off with no new day yet (money,
+  /// the war): the day is cleared, so the countdown and the reminders of
+  /// its day stop and the home is back to «no day yet». Nothing moves: the
+  /// events and the tasks keep their days until a new one is set.
+  Future<void> _clearDay() async {
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    final plans = context.read<WeddingPlansProvider>();
+    final dashboard = context.read<DashboardSummaryProvider>();
+    final updated = await plans.updateWeddingPlan(widget.planId, {
+      'weddingDate': null,
+    });
+    if (!mounted) return;
+    if (updated == null) {
+      setState(() {
+        _saving = false;
+        _error =
+            plans.errorMessage ??
+            'ما قدرنا نشيل الموعد. '
+                '${context.say('جرّب', 'جرّبي')} مرة ثانية.';
+      });
+      return;
+    }
+    await dashboard.loadDashboard(widget.planId);
+    if (!mounted) return;
+    AarastToast.showSuccess(
+      context,
+      'شلنا موعد العرس. لما يتحدد ${context.say('حطه', 'حطيه')} من «عرسي».',
+    );
+    Navigator.of(context).pop(true);
+  }
+
   @override
   Widget build(BuildContext context) {
     final next = _newDay;
     final days = _days;
     final showHijri = context.read<DevicePreferences?>()?.showHijri ?? true;
     final hint = next == null || !showHijri ? null : _seasonLine(next);
+    final afterWedding = _afterWedding;
     return JourneySheetBody(
-      title: 'تأجيل العرس',
+      title: postponeActionTitle(widget.oldDay),
       subtitle: 'نرتب كل شيء على الموعد الجديد',
       children: [
         Row(
@@ -244,26 +298,42 @@ class _PostponeSheetState extends State<_PostponeSheet> {
         const SizedBox(height: AarastV3Space.x4),
         JourneyButton(
           key: const ValueKey('postpone-apply'),
-          label: context.say('أجّل العرس', 'أجّلي العرس'),
+          label: afterWedding
+              ? context.say('غيّر التاريخ', 'غيّري التاريخ')
+              : context.say('أجّل العرس', 'أجّلي العرس'),
           large: true,
           expand: true,
           loading: _saving,
           onPressed: days == null || _saving ? null : _apply,
         ),
+        if (!afterWedding) ...[
+          const SizedBox(height: AarastV3Space.x2),
+          Center(
+            child: JourneyTextAction(
+              key: const ValueKey('postpone-no-date'),
+              label: 'تأجل وما حددنا موعد',
+              color: AarastV3Color.textMuted,
+              onPressed: _saving ? null : _clearDay,
+            ),
+          ),
+        ],
       ],
     );
   }
 }
 
 /// «بعد عيد الفطر · 8 ذو القعدة»: where the new day falls in the Hijri year,
-/// with the seasons a Yemeni wedding plans around.
+/// with the seasons a Yemeni wedding plans around. The Eid's own day is
+/// named as itself (RA-MO-356: «بعد عيد الأضحى» was said on the day).
 String? _seasonLine(DateTime day) {
   final hijri = HijriDate.fromGregorian(day);
   if (hijri == null) return null;
   final season = switch (hijri.month) {
     9 => 'في رمضان',
+    10 when hijri.day == 1 => 'يوم عيد الفطر',
     10 || 11 => 'بعد عيد الفطر',
     12 when hijri.day < 10 => 'قبل عيد الأضحى',
+    12 when hijri.day == 10 => 'يوم عيد الأضحى',
     12 => 'بعد عيد الأضحى',
     _ => null,
   };

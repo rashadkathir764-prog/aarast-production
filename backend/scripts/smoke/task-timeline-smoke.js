@@ -95,7 +95,7 @@ async function run() {
     const res = await request('POST', '/api/v1/wedding-plans', {
       title: 'Task Timeline Smoke Plan',
       city: 'Sanaa',
-      weddingDate: '2026-12-25T00:00:00.000Z',
+      weddingDate: '2030-12-25T00:00:00.000Z',
     }, token);
     check('POST /api/v1/wedding-plans - HTTP 201', res.status === 201);
     check('created wedding plan has id', typeof res.body?.id === 'string');

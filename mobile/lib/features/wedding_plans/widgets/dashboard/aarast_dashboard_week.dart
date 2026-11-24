@@ -178,27 +178,39 @@ class _WeddingSkyHero extends StatelessWidget {
 }
 
 /// b04 «برنامج الأسبوع» (y12's nights): each event of the wedding week by its
-/// day, «الليلة» on today's, the passed ones quiet with a tick.
+/// day, «الليلة» on today's, the passed ones quiet with a tick. After the
+/// wedding the same list is the events after its day (RA-MO-352), today's
+/// read «اليوم» since a morning is no night.
 class _WeekProgram extends StatelessWidget {
   const _WeekProgram({
     required this.events,
     required this.today,
     required this.onEdit,
+    this.title = 'برنامج الأسبوع',
+    this.nightly = true,
+    super.key,
   });
 
   final List<PlanEvent> events;
+
+  /// Today in Sana'a (RA-MO-354).
   final DateTime today;
   final VoidCallback? onEdit;
+  final String title;
+
+  /// Today's event is «الليلة» (the week's nights), else «اليوم».
+  final bool nightly;
 
   @override
   Widget build(BuildContext context) {
     final profile = context.journeyProfile;
     return Column(
-      key: const ValueKey('aarast-dashboard-week-program'),
+      // The week's own key, unless the list was given one of its own.
+      key: key == null ? const ValueKey('aarast-dashboard-week-program') : null,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         JourneySectionTitle(
-          'برنامج الأسبوع',
+          title,
           action: onEdit == null ? null : 'تعديل',
           onAction: onEdit,
           actionColor: context.accent.primary,
@@ -214,6 +226,7 @@ class _WeekProgram extends StatelessWidget {
                   profile: profile,
                   tonight: event.isOn(today),
                   passed: event.date!.isBefore(today),
+                  nightly: nightly,
                 ),
             ],
           ),
@@ -228,12 +241,14 @@ class _WeekRow extends StatelessWidget {
     required this.profile,
     required this.tonight,
     required this.passed,
+    required this.nightly,
   });
 
   final PlanEvent event;
   final JourneyProfile profile;
   final bool tonight;
   final bool passed;
+  final bool nightly;
 
   @override
   Widget build(BuildContext context) {
@@ -305,7 +320,7 @@ class _WeekRow extends StatelessWidget {
                     if (tonight) ...[
                       const SizedBox(width: AarastV3Space.x2),
                       JourneyTag(
-                        label: event.isMain ? 'اليوم' : 'الليلة',
+                        label: event.isMain || !nightly ? 'اليوم' : 'الليلة',
                         color: AarastV3Color.brandAccentStrong,
                         soft: AarastV3Color.brandAccentSoft,
                       ),
@@ -473,7 +488,8 @@ class _DayProgram extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final profile = context.journeyProfile;
-    final moments = programMoments(events, now);
+    // RA-MO-354: the hour in Sana'a, where the day's events happen.
+    final moments = programMoments(events, sanaaClock(now: now));
     final accent = context.accent;
     return Column(
       key: const ValueKey('aarast-dashboard-day-program'),

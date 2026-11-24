@@ -158,7 +158,7 @@ DateTime? taskStarterDueDate(
       daysLeft > 0) {
     lead = (daysBefore * daysLeft / longestDaysBefore).round();
   }
-  final due = wedding.subtract(Duration(days: lead));
+  final due = addPlanDays(wedding, -lead);
   return due.isBefore(todayDate) ? todayDate : due;
 }
 

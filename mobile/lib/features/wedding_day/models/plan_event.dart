@@ -236,12 +236,22 @@ class PlanEventsView {
   /// fewer): the program covers the day the moment opens (RA-MO-211).
   List<PlanEvent> weekOf(DateTime weddingDate) {
     final day = DateUtils.dateOnly(weddingDate);
-    final first = day.subtract(const Duration(days: weddingWeekDays));
+    final first = addPlanDays(day, -weddingWeekDays);
     return [
       for (final event in items)
         if (event.date case final date?
             when !date.isBefore(first) && !date.isAfter(day))
           event,
+    ];
+  }
+
+  /// RA-MO-352 (Q-46): the events after the wedding's day (الصبحية, a lunch
+  /// after it), in order: the programme of the home after the wedding.
+  List<PlanEvent> afterOf(DateTime weddingDate) {
+    final day = DateUtils.dateOnly(weddingDate);
+    return [
+      for (final event in items)
+        if (event.date case final date? when date.isAfter(day)) event,
     ];
   }
 
@@ -259,7 +269,8 @@ class PlanEventsView {
 enum PlanEventMoment { done, now, next }
 
 /// b05: the item that started last is «الآن», the ones before it are done,
-/// the ones after it wait. Events without a time never lead.
+/// the ones after it wait. Events without a time never lead. [now] is the
+/// hour where the events happen, Sana'a's (`sanaaClock`), not the phone's.
 List<PlanEventMoment> programMoments(List<PlanEvent> program, DateTime now) {
   final minutes = now.hour * 60 + now.minute;
   var current = -1;

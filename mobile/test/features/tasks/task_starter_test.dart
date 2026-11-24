@@ -52,6 +52,21 @@ void main() {
     );
   });
 
+  // RA-MO-353: 30 days of 24 hours from a local midnight, across the spring
+  // clock change, landed on 23:00 of the 10th in Berlin: the task was saved
+  // for the 10th, not the 11th. Run under TZ=Europe/Berlin to see it.
+  test('a wedding across a clock change keeps the task on its day', () {
+    expect(
+      taskStarterDueDate(DateTime(2027, 4, 10), 30, DateTime(2027, 1, 1)),
+      DateTime(2027, 3, 11),
+    );
+    // And across the autumn one.
+    expect(
+      taskStarterDueDate(DateTime(2027, 11, 5), 10, DateTime(2027, 9, 1)),
+      DateTime(2027, 10, 26),
+    );
+  });
+
   test('built-in suggested tasks carry their task category', () {
     final templates = {
       for (final group in taskStarterGroupsFor(null, TaskStarterPersona.groom))

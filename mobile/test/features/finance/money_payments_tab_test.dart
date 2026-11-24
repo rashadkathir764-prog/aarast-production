@@ -4,6 +4,7 @@ import 'package:aarast_mobile/core/offline/offline_sync_service.dart';
 import 'package:aarast_mobile/core/offline/offline_tables.dart';
 import 'package:aarast_mobile/core/routing/app_router.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
+import 'package:aarast_mobile/core/utils/app_clock.dart';
 import 'package:aarast_mobile/core/utils/plan_day.dart';
 import 'package:aarast_mobile/features/finance/data/finance_api.dart';
 import 'package:aarast_mobile/features/finance/data/finance_local_data_source.dart';
@@ -13,6 +14,9 @@ import 'package:aarast_mobile/features/finance/providers/finance_provider.dart';
 import 'package:aarast_mobile/features/finance/providers/funding_provider.dart';
 import 'package:aarast_mobile/features/finance/screens/cost_payment_screens.dart';
 import 'package:aarast_mobile/features/finance/screens/money_overview_screen.dart';
+import 'package:aarast_mobile/features/wedding_plans/data/wedding_plans_api.dart';
+import 'package:aarast_mobile/features/wedding_plans/models/dashboard_summary.dart';
+import 'package:aarast_mobile/features/wedding_plans/providers/dashboard_summary_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -221,7 +225,53 @@ class _App {
   String get location => router.state.uri.toString();
 }
 
-Future<_App> _open(WidgetTester tester, FinanceProvider provider) async {
+/// The plan's home summary, for the wedding's day the months run to.
+class _Home extends DashboardSummaryProvider {
+  _Home(this.weddingDate)
+    : super(weddingPlansApi: WeddingPlansApi(_NoNetwork()));
+
+  final DateTime weddingDate;
+
+  @override
+  DashboardSummary? get summary => DashboardSummary(
+    planId: _planId,
+    title: 'عرس محمد',
+    status: 'PLANNING',
+    progressPercentage: 0,
+    weddingDate: weddingDate,
+    daysRemaining: null,
+    totalTasks: 0,
+    completedTasks: 0,
+    overdueTasks: 0,
+    todayTasks: 0,
+    guestCount: 0,
+    confirmedGuests: 0,
+    providerCount: 0,
+    quoteRequestsCount: 0,
+    participantCount: 1,
+    unreadNotificationsCount: 0,
+    importantItems: const [],
+    planProviders: const [],
+    importantNotifications: const [],
+    permissions: const DashboardPermissionSummary(
+      isOwner: true,
+      role: 'OWNER',
+      canViewMoney: true,
+      canManageTasks: true,
+      canManageGuests: true,
+      canManageProviders: true,
+      canManageMembers: true,
+      canManageMoney: true,
+      canManagePlan: true,
+    ),
+  );
+}
+
+Future<_App> _open(
+  WidgetTester tester,
+  FinanceProvider provider, {
+  DateTime? weddingDate,
+}) async {
   tester.view.physicalSize = const Size(320, 760);
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
@@ -266,6 +316,10 @@ Future<_App> _open(WidgetTester tester, FinanceProvider provider) async {
         ChangeNotifierProvider(
           create: (_) => FundingProvider(FundingApi(_NoNetwork())),
         ),
+        if (weddingDate != null)
+          ChangeNotifierProvider<DashboardSummaryProvider>(
+            create: (_) => _Home(weddingDate),
+          ),
       ],
       child: MaterialApp.router(
         theme: AppTheme.light(),
@@ -571,5 +625,68 @@ void main() {
       AppRouter.moneySchedulePay(_planId, 'k-hall', 's-late'),
     );
     semantics.dispose();
+  });
+
+  // RA-MO-355: «بعد العرس» began with the month after the wedding's, so a
+  // date two days after it, in its own month, read «شهر العرس».
+  testWidgets('«بعد العرس» starts the day after the wedding', (tester) async {
+    pinAppClock(DateTime.utc(2027, 1, 5, 9));
+    addTearDown(resetAppClock);
+    final provider = await tester.runAsync(_plan);
+    // The photographer's date is the 30th, two days after the wedding.
+    await _open(tester, provider!, weddingDate: DateTime(2027, 1, 28));
+    await _payments(tester);
+
+    final after = find.byKey(const ValueKey('money-due-after'));
+    await _show(tester, after);
+    expect(
+      find.descendant(
+        of: after,
+        matching: find.byKey(const ValueKey('money-due-s-photo')),
+      ),
+      findsOneWidget,
+    );
+    final month = find.byKey(const ValueKey('money-due-month-2027-1'));
+    await _show(tester, month);
+    expect(
+      find.descendant(
+        of: month,
+        matching: find.byKey(const ValueKey('money-due-s-next')),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: month,
+        matching: find.byKey(const ValueKey('money-due-s-photo')),
+      ),
+      findsNothing,
+    );
+  });
+
+  // RA-MO-355: after the wedding every date fell in one «بعد العرس» column,
+  // so a year of payments read as one month.
+  testWidgets('after the wedding the dates are by their own months', (
+    tester,
+  ) async {
+    pinAppClock(DateTime.utc(2027, 1, 5, 9));
+    addTearDown(resetAppClock);
+    final provider = await tester.runAsync(_plan);
+    await _open(tester, provider!, weddingDate: DateTime(2026, 12, 20));
+    await _payments(tester);
+
+    expect(find.byKey(const ValueKey('money-due-after')), findsNothing);
+    final month = find.byKey(const ValueKey('money-due-month-2027-1'));
+    await _show(tester, month);
+    for (final id in ['s-next', 's-photo']) {
+      expect(
+        find.descendant(
+          of: month,
+          matching: find.byKey(ValueKey('money-due-$id')),
+        ),
+        findsOneWidget,
+      );
+    }
+    expect(tester.takeException(), isNull);
   });
 }

@@ -249,7 +249,14 @@ export class TasksService {
         weddingPlanId,
         currentUser,
       );
-      return shiftOpenTaskDates(tx, weddingPlanId, days, currentUser.id);
+      // RA-BE-182: from today in Sana'a on, as the wedding's own move.
+      return shiftOpenTaskDates(
+        tx,
+        weddingPlanId,
+        days,
+        currentUser.id,
+        startOfRiyadhDay(),
+      );
     });
     return { shifted };
   }

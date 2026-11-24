@@ -17,7 +17,7 @@ Future<DateTime?> pickTaskDate(BuildContext context, {DateTime? initial}) {
     context: context,
     initialDate: start,
     firstDate: today,
-    lastDate: today.add(const Duration(days: 3650)),
+    lastDate: addPlanDays(today, 3650),
     locale: const Locale('ar'),
   );
 }
@@ -49,10 +49,10 @@ class TaskPostponeSheet extends StatelessWidget {
     // today or was already late; a later task moves a day from its own.
     final options = [
       from == today
-          ? ('بكرة', today.add(const Duration(days: 1)))
-          : ('بعد يوم', from.add(const Duration(days: 1))),
-      ('بعد ثلاثة أيام', from.add(const Duration(days: 3))),
-      ('بعد أسبوع', from.add(const Duration(days: 7))),
+          ? ('بكرة', addPlanDays(today, 1))
+          : ('بعد يوم', addPlanDays(from, 1)),
+      ('بعد ثلاثة أيام', addPlanDays(from, 3)),
+      ('بعد أسبوع', addPlanDays(from, 7)),
     ];
     return JourneySheetBody(
       title: context.say('لمتى تأجلها؟', 'لمتى تأجلينها؟'),

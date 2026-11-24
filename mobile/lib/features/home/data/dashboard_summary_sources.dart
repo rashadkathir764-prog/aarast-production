@@ -511,7 +511,7 @@ class LocalDashboardMetrics {
             a['dueDate'],
           )!.compareTo(_dateTimeOrNull(b['dueDate'])!),
         );
-    final dueSoonEnd = today.add(const Duration(days: 7));
+    final dueSoonEnd = addPlanDays(today, 7);
     final overduePaymentSchedulesCount = pendingSchedules.where((schedule) {
       return _dateOnly(_dateTimeOrNull(schedule['dueDate'])!).isBefore(today);
     }).length;

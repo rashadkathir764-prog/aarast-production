@@ -8,7 +8,6 @@ import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/preferences/device_preferences.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/routing/pop_or_go.dart';
-import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/hijri_date.dart';
@@ -87,7 +86,9 @@ class _WeddingMomentScreenState extends State<WeddingMomentScreen> {
         ?.date;
     final showHijri = context.watch<DevicePreferences?>()?.showHijri ?? true;
     final profile = context.journeyProfile;
-    final today = DateUtils.dateOnly(appNow());
+    // RA-MO-354: the top line is today in Sana'a, the day the count under
+    // it is read from; the phone's date was a day behind for three hours.
+    final today = sanaaToday();
     final week = widget.moment == WeddingMoment.week;
 
     String where(PlanEvent event, String first) =>

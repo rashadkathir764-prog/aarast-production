@@ -4,6 +4,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/utils/amount_words.dart';
 import '../../../core/utils/app_clock.dart';
+import '../../../core/utils/plan_day.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/currency_label.dart';
@@ -214,7 +215,7 @@ class _FundingSourceFormSheetState extends State<FundingSourceFormSheet> {
       context: context,
       initialDate: _firstRepayment,
       firstDate: now,
-      lastDate: now.add(const Duration(days: 3650)),
+      lastDate: addPlanDays(now, 3650),
       locale: const Locale('ar'),
     );
     if (picked != null && mounted) setState(() => _firstRepayment = picked);
@@ -229,7 +230,7 @@ class _FundingSourceFormSheetState extends State<FundingSourceFormSheet> {
       initialDate: current == null || current.isBefore(now) ? now : current,
       // A promise already late keeps its day; a new one is today or later.
       firstDate: current != null && current.isBefore(now) ? current : now,
-      lastDate: now.add(const Duration(days: 3650)),
+      lastDate: addPlanDays(now, 3650),
       locale: const Locale('ar'),
     );
     if (picked != null && mounted) setState(() => _expectedAt = picked);

@@ -43,7 +43,7 @@ class _MoveDueDateSheetState extends State<MoveDueDateSheet> {
     final today = sanaaToday();
     final picked = await showDatePicker(
       context: context,
-      initialDate: _day ?? today.add(const Duration(days: 7)),
+      initialDate: _day ?? addPlanDays(today, 7),
       firstDate: today,
       lastDate: DateTime(today.year + 3),
       locale: const Locale('ar'),
@@ -71,8 +71,8 @@ class _MoveDueDateSheetState extends State<MoveDueDateSheet> {
     final first = widget.firstDue;
     final wedding = widget.weddingDate;
     final choices = <(String, String, DateTime)>[
-      ('week', 'بعد أسبوع', today.add(const Duration(days: 7))),
-      ('weeks', 'بعد أسبوعين', today.add(const Duration(days: 14))),
+      ('week', 'بعد أسبوع', addPlanDays(today, 7)),
+      ('weeks', 'بعد أسبوعين', addPlanDays(today, 14)),
       if (wedding != null && !wedding.isBefore(today))
         ('wedding', 'يوم العرس', DateUtils.dateOnly(wedding)),
       if (first != null && !first.isBefore(today))
@@ -194,8 +194,8 @@ class _DueReminderSheetState extends State<DueReminderSheet> {
         ('three', 'قبلها بثلاثة أيام', 3),
         ('week', 'قبلها بأسبوع', 7),
       ])
-        if (!due.subtract(Duration(days: days)).isBefore(today))
-          (key, label, due.subtract(Duration(days: days))),
+        if (!addPlanDays(due, -days).isBefore(today))
+          (key, label, addPlanDays(due, -days)),
     ];
     return JourneySheetBody(
       title: 'متى نذكّرك؟',

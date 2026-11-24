@@ -39,6 +39,7 @@ import 'package:aarast_mobile/features/wedding_plans/screens/wedding_plan_dashbo
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../support/screen_reader.dart';
 import 'package:provider/provider.dart';
@@ -562,6 +563,66 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  // RA-MO-356 (Q-18): the partner keeps the participant's home, and had no
+  // wedding week on it: no programme of the nights and no y06/y07, which
+  // only the owner's home opened.
+  testWidgets('Q-18: the partner reads the wedding week and is greeted by '
+      'y06; a helper is not', (tester) async {
+    final today = sanaaToday();
+    String day(DateTime value) =>
+        '${value.year}-${value.month.toString().padLeft(2, '0')}-'
+        '${value.day.toString().padLeft(2, '0')}';
+    final events = [
+      {
+        'id': 's',
+        'type': 'SAMRA',
+        'date': day(DateTime(today.year, today.month, today.day + 1)),
+        'timeSlot': 'AFTER_ISHA',
+        'placeLabel': 'الديوان',
+      },
+      {
+        'id': 'w',
+        'type': 'WEDDING',
+        'date': day(DateTime(today.year, today.month, today.day + 3)),
+      },
+    ];
+    final partner = await _Harness.create(
+      role: 'BRIDE',
+      daysRemaining: 3,
+      events: events,
+    );
+    await partner.pump(tester, routed: true);
+
+    // y06 is open over the home, which is under it.
+    final week = find.byKey(
+      const ValueKey('participant-week-program'),
+      skipOffstage: false,
+    );
+    expect(week, findsOneWidget);
+    expect(
+      find.descendant(
+        of: week,
+        matching: find.text('السمرة', skipOffstage: false),
+        skipOffstage: false,
+      ),
+      findsOneWidget,
+    );
+    expect(partner.opened, ['/wedding-plans/$_planId/moments/week']);
+    expect(tester.takeException(), isNull);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    final helper = await _Harness.create(daysRemaining: 3, events: events);
+    await helper.pump(tester, routed: true);
+    expect(
+      find.byKey(
+        const ValueKey('participant-week-program'),
+        skipOffstage: false,
+      ),
+      findsNothing,
+    );
+    expect(helper.opened, isEmpty);
+  });
+
   testWidgets(
     'q12: a right the owner opened is told once, from the kept path',
     (tester) async {
@@ -903,6 +964,9 @@ class _Harness {
   final _TasksApi tasksApi;
   final TaskTimelineProvider tasks;
 
+  /// The pages pushed over the shell, when it is [pump]ed with a router.
+  final opened = <String>[];
+
   static Future<_Harness> create({
     AccountContextPersona persona = AccountContextPersona.groom,
     String title = 'عرس محمد',
@@ -1007,12 +1071,36 @@ class _Harness {
     WidgetTester tester, {
     double textScale = 1,
     bool tall = true,
+    bool routed = false,
   }) async {
     if (tall) {
       tester.view.physicalSize = const Size(420, 1600);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
     }
+    Widget scaled(BuildContext context, Widget? child) => MediaQuery(
+      data: MediaQuery.of(
+        context,
+      ).copyWith(textScaler: TextScaler.linear(textScale)),
+      child: child!,
+    );
+    // [routed]: the shell under a router, so a page it pushes (y06, y07)
+    // is recorded in [opened].
+    final router = routed
+        ? GoRouter(
+            routes: [
+              GoRoute(path: '/', builder: (_, _) => const MainShell()),
+              GoRoute(
+                path: '/wedding-plans/:id/moments/:moment',
+                builder: (_, state) {
+                  opened.add(state.uri.toString());
+                  return const SizedBox.shrink();
+                },
+              ),
+            ],
+          )
+        : null;
+    if (router != null) addTearDown(router.dispose);
     await tester.pumpWidget(
       MultiProvider(
         providers: [
@@ -1031,15 +1119,9 @@ class _Harness {
         // The app's root profile (B5): the plan's colours, the reader's
         // voice, as `AarastApp` provides them.
         child: AarastPlanProfileScope(
-          child: MaterialApp(
-            builder: (context, child) => MediaQuery(
-              data: MediaQuery.of(
-                context,
-              ).copyWith(textScaler: TextScaler.linear(textScale)),
-              child: child!,
-            ),
-            home: const MainShell(),
-          ),
+          child: router == null
+              ? MaterialApp(builder: scaled, home: const MainShell())
+              : MaterialApp.router(builder: scaled, routerConfig: router),
         ),
       ),
     );

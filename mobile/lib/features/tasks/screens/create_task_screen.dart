@@ -383,7 +383,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
       context: context,
       initialDate: initial,
       firstDate: DateTime(today.year - 1),
-      lastDate: today.add(const Duration(days: 3650)),
+      lastDate: addPlanDays(today, 3650),
       locale: const Locale('ar'),
     );
     if (picked == null || !mounted) return;

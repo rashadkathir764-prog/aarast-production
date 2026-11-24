@@ -55,7 +55,10 @@ const member = {
 } as any;
 const context = { plan: planningPlan, isOwner: false, sharedMember: member };
 
-test("a contributor plan update records one privacy-safe PLAN event inside the plan transaction", async () => {
+test("a contributor plan update records one privacy-safe PLAN event inside the plan transaction", async (t) => {
+  // RA-BE-184: a wedding day before today is refused, so the fixture's day
+  // (2026-12-20) is read on the fixture's own clock, not the calendar's.
+  t.mock.timers.enable({ apis: ["Date"], now: originalUpdatedAt });
   const operations: string[] = [];
   const updatedPlan = {
     ...planningPlan,

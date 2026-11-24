@@ -44,10 +44,9 @@ void main() {
     expect(ok, isTrue);
     expect(api.sent, hasLength(1));
     expect(api.sent.single.keys, ['dueDate']);
-    expect(
-      DateTime.parse(api.sent.single['dueDate'] as String),
-      DateTime(2026, 12, 20),
-    );
+    // RA-BE-184: the day goes with its zone (it went as a bare local time,
+    // read in the server's zone).
+    expect(api.sent.single['dueDate'], '2026-12-20T00:00:00.000Z');
   });
 
   test('an edit sends the fields the person changed', () async {

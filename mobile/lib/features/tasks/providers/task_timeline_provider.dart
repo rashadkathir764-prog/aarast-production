@@ -8,6 +8,7 @@ import '../../../core/session/session_scoped_change_notifier.dart';
 import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/arabic_for.dart';
+import '../../../core/utils/plan_day.dart';
 import '../data/task_timeline_api.dart';
 import '../models/task_checklist_item.dart';
 import '../models/task_starter_catalog.dart';
@@ -432,7 +433,8 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
       payload = <String, dynamic>{
         'title': title.trim(),
         'description': description,
-        'dueDate': dueDate?.toIso8601String(),
+        // RA-BE-184: the day with its zone, not read in the server's.
+        'dueDate': dueDate == null ? null : planDayToUtcIso(dueDate),
         'taskCategory': normalizedCategory,
         'status': status,
         'priority': priority,
@@ -451,6 +453,8 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
       // go as the phone held it, so «أجّلها» from a copy a little old
       // reopened a task the partner had finished since, and brought back a
       // title or an assignment someone else had changed.
+      String? dueDay(DateTime? day) =>
+          day == null ? null : planDayToUtcIso(day);
       String? named(String? value, String? assignee) =>
           assignee == null ? value : null;
       final responsible = {
@@ -478,9 +482,10 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
       payload = <String, dynamic>{
         if (title.trim() != previousTask.title.trim()) 'title': title.trim(),
         if (description != previousTask.description) 'description': description,
-        if (dueDate?.toIso8601String() !=
-            previousTask.dueDate?.toIso8601String())
-          'dueDate': dueDate?.toIso8601String(),
+        // RA-BE-184: compared and sent as the day with its zone; the same
+        // day picked again is no change.
+        if (dueDay(dueDate) != dueDay(previousTask.dueDate))
+          'dueDate': dueDay(dueDate),
         if (normalizedCategory !=
             _taskCategoryForPayload(previousTask.taskCategory))
           'taskCategory': normalizedCategory,

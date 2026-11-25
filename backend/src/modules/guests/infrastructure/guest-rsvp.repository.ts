@@ -101,6 +101,22 @@ export function recordRsvpAnswer(tx: Tx, guestId: string, answer: RsvpAnswer) {
   });
 }
 
+/**
+ * RA-BE-190: how many of the plan's guests have answered since [since], by
+ * the wedding or by any occasion, this answer included.
+ */
+export function countGuestsAnsweredSince(tx: Tx, weddingPlanId: string, since: Date) {
+  return tx.guest.count({
+    where: {
+      weddingPlanId,
+      OR: [
+        { respondedAt: { gte: since } },
+        { eventInvites: { some: { respondedAt: { gte: since } } } },
+      ],
+    },
+  });
+}
+
 // D116: the record of what each guest was told.
 
 const invitationSendSelect = {

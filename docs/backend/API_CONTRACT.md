@@ -3342,7 +3342,12 @@ without an account.
   link works and the page reloads the invitation as it is now), leaving the
   wedding reply as it is. The plan owner is notified (`GUEST_RESPONDED`, the
   event named in the title) when the reply changes the attendance or the
-  companions; the same reply sent again notifies nobody (RA-BE-87).
+  companions; the same reply sent again notifies nobody (RA-BE-87). The
+  replies of one hour are one notice for the plan, not one per guest
+  (RA-BE-174, RA-BE-190): it names the guest while only one has answered in
+  the hour, and once a second has, it says replies came, names no one and
+  opens `/wedding-plans/:planId/guests/attendance`; the next hour starts a
+  new one.
 - `GET /api/v1/public/rsvp/:token/card-photo` (no auth, 60/min) redirects
   (`302`) to a signed read of the card photo valid for 120 seconds; the
   bucket keeps the photo private. `404 RSVP_CARD_PHOTO_NOT_FOUND` when the

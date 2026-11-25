@@ -132,6 +132,20 @@ function fakeDatabase() {
         guests.set(where.id, row);
         return row;
       },
+      // RA-BE-190: the guests of a plan who answered since an instant, by the
+      // wedding or by any occasion.
+      count: async ({ where }: any) => {
+        const since = where.OR[0].respondedAt.gte as Date;
+        return [...guests.values()].filter(
+          (row) =>
+            row.weddingPlanId === where.weddingPlanId &&
+            ((row.respondedAt && row.respondedAt >= since) ||
+              eventInvites.some(
+                (invite) =>
+                  invite.guestId === row.id && invite.respondedAt && invite.respondedAt >= since,
+              )),
+        ).length;
+      },
       updateMany: async ({ where, data }: any) => {
         const row = guests.get(where.id);
         if (row && row.linkOpenedAt === where.linkOpenedAt) {
@@ -679,7 +693,7 @@ test("the owner is told once per change of reply, never for the same reply again
   await at("10:06", () => rsvp.respond(token, "CONFIRMED", 2));
   assert.equal(db.notifications.length, 1, "the same reply again tells nothing new");
   const key = db.notifications[0].dedupeKey;
-  assert.match(key, /^owner-1:guest-responded:guest-1:/);
+  assert.match(key, /^owner-1:guest-responded:plan-1:hour-/);
   assert.equal(db.notifications[0].mergeIntoExisting, true);
 
   await at("10:20", () => rsvp.respond(token, "CONFIRMED", 3));
@@ -700,6 +714,62 @@ test("the owner is told once per change of reply, never for the same reply again
   assert.equal(db.notifications.length, 2);
   assert.notEqual(db.notifications[1].dedupeKey, key);
   assert.match(db.notifications[1].title.masculine, /أكّد حضوره في الغداء/);
+});
+
+// RA-BE-190: 300 guests answering in an evening were 300 rows in the owner's
+// inbox. The replies of one hour are one notice for the plan: the first
+// names the guest; once a second guest has answered it says that replies
+// came and opens the attendance screen; the next hour starts a new one.
+test("RA-BE-190: the replies of every guest in one hour are one notice for the plan", async () => {
+  const db = fakeDatabase();
+  db.guests.set("guest-2", {
+    ...db.guests.get("guest-1"),
+    id: "guest-2",
+    name: "خالي أحمد",
+    normalizedPhone: "+967777000222",
+    rsvpTokenHash: null,
+    rsvpLinkHash: null,
+  });
+  const rsvp = service(db);
+  const first = tokenOf((await rsvp.createInvitationLink(owner, "guest-1")).url);
+  const second = tokenOf((await rsvp.createInvitationLink(owner, "guest-2")).url);
+  const at = async (time: string, answer: () => Promise<unknown>) => {
+    mock.timers.enable({ apis: ["Date"], now: new Date(`2026-12-01T${time}:00Z`) });
+    try {
+      await answer();
+    } finally {
+      mock.timers.reset();
+    }
+  };
+
+  await at("10:05", () => rsvp.respond(first, "CONFIRMED", 2));
+  assert.equal(db.notifications.length, 1);
+  assert.match(db.notifications[0].title.masculine, /عمي صالح أكّد حضوره/);
+  assert.match(db.notifications[0].routeTarget, /\/guests\/view\/guest-1$/);
+  const key = db.notifications[0].dedupeKey;
+
+  // A second guest in the same hour: the same row, now about replies.
+  await at("10:30", () => rsvp.respond(second, "DECLINED", 0));
+  assert.equal(db.notifications.length, 1, "one notice for the plan's hour");
+  assert.equal(db.notifications[0].dedupeKey, key);
+  assert.equal(db.notifications[0].mergeIntoExisting, true);
+  assert.match(db.notifications[0].title, /ردود/);
+  assert.equal(db.notifications[0].entityType, "wedding_plan");
+  assert.equal(db.notifications[0].entityId, "plan-1");
+  assert.equal(db.notifications[0].routeTarget, "/wedding-plans/plan-1/guests/attendance");
+  // It names no guest and counts none: the lock screen and the inbox stay clean.
+  assert.doesNotMatch(JSON.stringify(db.notifications[0]), /عمي صالح|خالي أحمد/);
+
+  // The first guest changes their answer: still the one plural notice.
+  await at("10:50", () => rsvp.respond(first, "DECLINED", 0));
+  assert.equal(db.notifications.length, 1);
+  assert.equal(db.notifications[0].routeTarget, "/wedding-plans/plan-1/guests/attendance");
+
+  // The next hour starts again with the guest's name.
+  await at("11:02", () => rsvp.respond(second, "CONFIRMED", 1));
+  assert.equal(db.notifications.length, 2);
+  assert.notEqual(db.notifications[1].dedupeKey, key);
+  assert.match(db.notifications[1].title.masculine, /خالي أحمد أكّد حضوره/);
 });
 
 // RA-BE-174: a week after the wedding the link stops opening: it names the

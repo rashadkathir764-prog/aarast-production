@@ -76,6 +76,7 @@ import {
   findRsvpGuestByTokenHash,
   listGuestInvitationSends,
   markRsvpLinkOpened,
+  countGuestsAnsweredSince,
   recordRsvpAnswer,
   replaceRsvpLink,
   sendEvents,
@@ -914,26 +915,12 @@ export class GuestRsvpService {
         confirmed &&
         (guest.weddingAnsweredVersion ?? wedding?.version ?? 1) < (wedding?.version ?? 1);
       if (replyChanged(guest, updated) || reconfirmed) {
-        await this.notifications.createNotificationInTransaction(tx, {
-          userId: plan.ownerUserId,
-          weddingPlanId: plan.id,
-          type: NotificationType.GUEST_RESPONDED,
-          priority: NotificationPriority.NORMAL,
-          // The plan's guests are its own side's (a bride's plan: women), and
-          // its owner reads in that same form (D55), so the reader's form
-          // names the guest too.
-          title: confirmed
-            ? gendered(`${guest.name} أكّد حضوره`, `${guest.name} أكّدت حضورها`)
-            : gendered(`${guest.name} اعتذر عن الحضور`, `${guest.name} اعتذرت عن الحضور`),
-          body:
-            confirmed && companions > 0
-              ? gendered(`ومعه ${companions} من المرافقين.`, `ومعها ${companions} من المرافقات.`)
-              : "الرد وصل من رابط الدعوة.",
-          entityType: "guest",
-          entityId: guest.id,
-          routeTarget: noticeRoutes.guest(plan.id, guest.id),
-          data: { guestId: guest.id, weddingPlanId: plan.id, attendance },
-          ...this.replyNoticeKey(plan.ownerUserId, guest.id, respondedAt),
+        await this.notifyOwnerOfReply(tx, plan, guest, {
+          confirmed,
+          companions,
+          respondedAt,
+          eventLabel: null,
+          planEventId: null,
         });
       }
       return this.publicView(
@@ -990,38 +977,12 @@ export class GuestRsvpService {
     const context = await this.invitationContext(tx, plan.id, guest.id);
     if (changed) {
       const event = context.events.find((candidate) => candidate.id === planEventId);
-      const label = event ? planEventLabel(event) : "المناسبة";
-      await this.notifications.createNotificationInTransaction(tx, {
-        userId: plan.ownerUserId,
-        weddingPlanId: plan.id,
-        type: NotificationType.GUEST_RESPONDED,
-        priority: NotificationPriority.NORMAL,
-        title: answer.confirmed
-          ? gendered(
-              `${guest.name} أكّد حضوره في ${label}`,
-              `${guest.name} أكّدت حضورها في ${label}`,
-            )
-          : gendered(
-              `${guest.name} اعتذر عن ${label}`,
-              `${guest.name} اعتذرت عن ${label}`,
-            ),
-        body:
-          answer.confirmed && answer.companions > 0
-            ? gendered(
-                `ومعه ${answer.companions} من المرافقين.`,
-                `ومعها ${answer.companions} من المرافقات.`,
-              )
-            : "الرد وصل من رابط الدعوة.",
-        entityType: "guest",
-        entityId: guest.id,
-        routeTarget: noticeRoutes.guest(plan.id, guest.id),
-        data: {
-          guestId: guest.id,
-          weddingPlanId: plan.id,
-          planEventId,
-          attendance: answer.confirmed ? "CONFIRMED" : "DECLINED",
-        },
-        ...this.replyNoticeKey(plan.ownerUserId, guest.id, answer.respondedAt),
+      await this.notifyOwnerOfReply(tx, plan, guest, {
+        confirmed: answer.confirmed,
+        companions: answer.companions,
+        respondedAt: answer.respondedAt,
+        eventLabel: event ? planEventLabel(event) : "المناسبة",
+        planEventId,
       });
     }
     return this.publicView(token, current, plan, context);
@@ -1238,16 +1199,87 @@ export class GuestRsvpService {
   }
 
   /**
-   * RA-BE-174: one guest's reply changes in one hour are one notice to the
-   * owner, saying the last of them (any of the guest's occasions); the
-   * next hour starts a new one.
+   * RA-BE-174, RA-BE-190: the owner hears of the guests' replies in one
+   * notice per plan per hour (300 guests are not 300 rows). While one guest
+   * has answered in the hour it names them and says the last of their
+   * changes (any of their occasions); once a second has, it says that
+   * replies came and opens the attendance screen, naming no one. The next
+   * hour starts a new one.
    */
-  private replyNoticeKey(ownerUserId: string, guestId: string, respondedAt: Date) {
-    const hour = Math.floor(respondedAt.getTime() / 3_600_000);
-    return {
-      dedupeKey: `${ownerUserId}:guest-responded:${guestId}:hour-${hour}`,
+  private async notifyOwnerOfReply(
+    tx: Prisma.TransactionClient,
+    plan: WeddingPlan,
+    guest: RsvpGuest,
+    reply: {
+      confirmed: boolean;
+      companions: number;
+      respondedAt: Date;
+      /** The occasion's name, null for the wedding. */
+      eventLabel: string | null;
+      planEventId: string | null;
+    },
+  ): Promise<void> {
+    const hour = Math.floor(reply.respondedAt.getTime() / 3_600_000);
+    const answered = await countGuestsAnsweredSince(
+      tx,
+      plan.id,
+      new Date(hour * 3_600_000),
+    );
+    const base = {
+      userId: plan.ownerUserId,
+      weddingPlanId: plan.id,
+      type: NotificationType.GUEST_RESPONDED,
+      priority: NotificationPriority.NORMAL,
+      dedupeKey: `${plan.ownerUserId}:guest-responded:${plan.id}:hour-${hour}`,
       mergeIntoExisting: true,
     };
+    if (answered > 1) {
+      await this.notifications.createNotificationInTransaction(tx, {
+        ...base,
+        title: "وصلتك ردود جديدة من الضيوف",
+        body: gendered("شوف كم بيحضر.", "شوفي كم بيحضر."),
+        entityType: "wedding_plan",
+        entityId: plan.id,
+        routeTarget: noticeRoutes.guestAttendance(plan.id),
+        data: { weddingPlanId: plan.id, replies: true },
+      });
+      return;
+    }
+    const { confirmed, companions, eventLabel } = reply;
+    // The plan's guests are its own side's (a bride's plan: women), and its
+    // owner reads in that same form (D55), so the reader's form names the
+    // guest too.
+    const title =
+      eventLabel === null
+        ? confirmed
+          ? gendered(`${guest.name} أكّد حضوره`, `${guest.name} أكّدت حضورها`)
+          : gendered(`${guest.name} اعتذر عن الحضور`, `${guest.name} اعتذرت عن الحضور`)
+        : confirmed
+          ? gendered(
+              `${guest.name} أكّد حضوره في ${eventLabel}`,
+              `${guest.name} أكّدت حضورها في ${eventLabel}`,
+            )
+          : gendered(
+              `${guest.name} اعتذر عن ${eventLabel}`,
+              `${guest.name} اعتذرت عن ${eventLabel}`,
+            );
+    await this.notifications.createNotificationInTransaction(tx, {
+      ...base,
+      title,
+      body:
+        confirmed && companions > 0
+          ? gendered(`ومعه ${companions} من المرافقين.`, `ومعها ${companions} من المرافقات.`)
+          : "الرد وصل من رابط الدعوة.",
+      entityType: "guest",
+      entityId: guest.id,
+      routeTarget: noticeRoutes.guest(plan.id, guest.id),
+      data: {
+        guestId: guest.id,
+        weddingPlanId: plan.id,
+        ...(reply.planEventId ? { planEventId: reply.planEventId } : {}),
+        attendance: confirmed ? "CONFIRMED" : "DECLINED",
+      },
+    });
   }
 
   private invalidCompanions(allowed: number): BadRequestException {

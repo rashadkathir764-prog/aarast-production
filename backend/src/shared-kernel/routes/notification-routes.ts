@@ -37,7 +37,7 @@ export const NOTIFICATION_ROUTES = {
   LOAN_REPAYMENT_OVERDUE: ['/wedding-plans/:planId/money/funding'],
   WEDDING_COUNTDOWN: ['/wedding-plans/:planId/dashboard'],
   BOOKING_UPDATED: ['/wedding-plans/:planId/providers/requests?quote=:quoteRequestId', '/providers?quoteId=:quoteRequestId', '/provider/requests/:quoteRequestId', '/wedding-plans/:planId/providers/requests', '/providers', '/provider/dashboard?tab=:tab'],
-  GUEST_RESPONDED: ['/wedding-plans/:planId/guests/view/:guestId'],
+  GUEST_RESPONDED: ['/wedding-plans/:planId/guests/view/:guestId', '/wedding-plans/:planId/guests/attendance'],
   QUOTE_REQUEST_EXPIRING: ['/provider/requests/:quoteRequestId'],
   BOOKING_REQUESTED: ['/provider/requests/:quoteRequestId'],
   REVIEW_RECEIVED: ['/provider/reviews/:reviewId'],
@@ -101,6 +101,10 @@ export const noticeRoutes = {
   },
   guest(weddingPlanId: string, guestId: string): string {
     return `/wedding-plans/${part(weddingPlanId)}/guests/view/${part(guestId)}`;
+  },
+  /** w38 «كم بيحضر؟»: where the guests' answers of an hour are read together. */
+  guestAttendance(weddingPlanId: string): string {
+    return `/wedding-plans/${part(weddingPlanId)}/guests/attendance`;
   },
   sharing(weddingPlanId: string): string {
     return `/wedding-plans/${part(weddingPlanId)}/sharing`;

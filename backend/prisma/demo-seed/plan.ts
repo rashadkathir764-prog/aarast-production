@@ -174,8 +174,10 @@ async function seedTask(tx: Tx, planKey: string, spec: PlanSpec, task: TaskSpec)
     responsibleName: task.responsibleName ?? null,
     privateToUserId: null,
     linkedBudgetCategoryId: task.linkedItem ? demoId('cat', `${spec.key}-${task.linkedItem}`) : null,
-    linkedCostId: task.linkedPayment ? demoId('cost', `${spec.key}-${task.linkedPayment.cost}`) : null,
-    linkedScheduleId: task.linkedPayment ? demoId('sched', `${spec.key}-${task.linkedPayment.schedule}`) : null,
+    // RA-BE-180 made these references: the cost and its date are seeded
+    // later (seedPlanCosts, after the marketplace), which links them then.
+    linkedCostId: null,
+    linkedScheduleId: null,
     autoClosedAt: null,
   } as const;
   await tx.weddingTask.upsert({ where: { id }, create: { id, ...data }, update: data });
@@ -501,6 +503,17 @@ export async function seedPlanCosts(prisma: PrismaClient, spec: PlanSpec): Promi
   for (const item of spec.items) {
     if (!item.cost) continue;
     await seedCost(prisma, planKey, spec, item, item.cost);
+  }
+  // A task's payment link points at a cost and a date that exist only now.
+  for (const task of spec.tasks) {
+    if (!task.linkedPayment) continue;
+    await prisma.weddingTask.update({
+      where: { id: taskId(spec.key, task.key) },
+      data: {
+        linkedCostId: demoId('cost', `${spec.key}-${task.linkedPayment.cost}`),
+        linkedScheduleId: demoId('sched', `${spec.key}-${task.linkedPayment.schedule}`),
+      },
+    });
   }
 }
 

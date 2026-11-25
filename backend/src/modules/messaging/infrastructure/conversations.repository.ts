@@ -127,14 +127,61 @@ export class ConversationsRepository {
     });
   }
 
-  setConversationBlocked(tx: Prisma.TransactionClient, conversationId: string, userId: string, providerSide: boolean, enabled: boolean) {
-    return tx.conversation.update({
+  /**
+   * RA-BE-139: one block write over the threads it reaches (the plan's with
+   * the provider, or the one thread), each only where it changes. A
+   * customer-side unblock lifts its blocker's block (or one whose blocker is
+   * gone) and leaves a helper's own block on his thread.
+   */
+  setConversationBlocked(
+    tx: Prisma.TransactionClient,
+    conversationIds: readonly string[],
+    userId: string,
+    providerSide: boolean,
+    enabled: boolean,
+    at: Date,
+  ) {
+    const id = { in: [...conversationIds] };
+    const write: Prisma.ConversationUpdateManyArgs = providerSide
+      ? enabled
+        ? { where: { id, providerSideBlockedAt: null }, data: { providerSideBlockedAt: at } }
+        : { where: { id, providerSideBlockedAt: { not: null } }, data: { providerSideBlockedAt: null } }
+      : enabled
+        ? {
+            where: { id, customerSideBlockedAt: null },
+            data: { customerSideBlockedAt: at, customerSideBlockedById: userId },
+          }
+        : {
+            where: {
+              id,
+              customerSideBlockedAt: { not: null },
+              OR: [{ customerSideBlockedById: userId }, { customerSideBlockedById: null }],
+            },
+            data: { customerSideBlockedAt: null, customerSideBlockedById: null },
+          };
+    return tx.conversation.updateMany(write);
+  }
+
+  findConversationBlockState(tx: Prisma.TransactionClient, conversationId: string) {
+    return tx.conversation.findUniqueOrThrow({
       where: { id: conversationId },
-      data: providerSide
-        ? { providerSideBlockedAt: enabled ? new Date() : null }
-        : { customerSideBlockedAt: enabled ? new Date() : null, customerSideBlockedById: enabled ? userId : null },
       select: { customerSideBlockedAt: true, customerSideBlockedById: true, providerSideBlockedAt: true },
     });
+  }
+
+  /**
+   * RA-BE-139: every thread of the plan with the provider, locked in id
+   * order, for a block that reaches them all (the caller's own thread is
+   * already locked and is among them).
+   */
+  async lockPlanProviderThreads(tx: Prisma.TransactionClient, weddingPlanId: string, providerId: string) {
+    const rows = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT "id" FROM "Conversation"
+      WHERE "scope" = 'PLAN' AND "weddingPlanId" = ${weddingPlanId} AND "providerId" = ${providerId}
+      ORDER BY "id" ASC
+      FOR UPDATE
+    `);
+    return rows.map((row) => row.id);
   }
 
   reportConversation(tx: Prisma.TransactionClient, conversationId: string, reporterUserId: string, reason: string) {

@@ -35,6 +35,9 @@ export function upsertPlanConversationContext(
 }
 
 // RA-BE-139 (Q-33 (أ)): a helper's own thread with the provider in the plan.
+// A new one starts with the plan's block with the provider: the provider's
+// side from any thread of the plan with him (his block reaches them all),
+// the owner's side as it stands on the shared thread.
 export function upsertPlanHelperConversationContext(
   tx: ConversationLifecycleClient,
   input: EnsureConversationContextInput,
@@ -44,12 +47,23 @@ export function upsertPlanHelperConversationContext(
   return tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
     INSERT INTO "Conversation" (
       "id", "scope", "weddingPlanId", "providerId", "createdByUserId",
-      "helperThread", "helperUserId", "lastActivityAt", "createdAt", "updatedAt"
-    ) VALUES (
+      "helperThread", "helperUserId", "lastActivityAt", "createdAt", "updatedAt",
+      "customerSideBlockedAt", "customerSideBlockedById", "providerSideBlockedAt"
+    )
+    SELECT
       ${conversationId()}, 'PLAN'::"ConversationScope",
       ${input.weddingPlanId}, ${input.providerId}, ${input.requesterUserId},
-      true, ${helperUserId}, ${activityAt}, ${activityAt}, ${activityAt}
-    )
+      true, ${helperUserId}, ${activityAt}, ${activityAt}, ${activityAt},
+      shared."customerSideBlockedAt", shared."customerSideBlockedById",
+      (
+        SELECT max("providerSideBlockedAt") FROM "Conversation"
+        WHERE "scope" = 'PLAN' AND "weddingPlanId" = ${input.weddingPlanId}
+          AND "providerId" = ${input.providerId}
+      )
+    FROM (SELECT 1) AS one
+    LEFT JOIN "Conversation" shared
+      ON shared."scope" = 'PLAN' AND shared."weddingPlanId" = ${input.weddingPlanId}
+     AND shared."providerId" = ${input.providerId} AND NOT shared."helperThread"
     ON CONFLICT ("weddingPlanId", "providerId", "helperUserId") WHERE "scope" = 'PLAN' AND "helperThread"
     DO UPDATE SET
       "lastActivityAt" = GREATEST("Conversation"."lastActivityAt", EXCLUDED."lastActivityAt"),

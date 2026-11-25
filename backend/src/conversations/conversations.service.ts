@@ -596,13 +596,34 @@ export class ConversationsService {
           participants: 'SHARE',
         },
       );
+      const providerSide = access.side === 'PROVIDER';
       // RA-BE-169: the customer's side block is its blocker's to lift.
+      const writesThisThread =
+        providerSide ||
+        customerSideBlockWrite(current, currentUser.id, enabled) === 'WRITE';
+      // RA-BE-139: the provider's, the owner's and a partner's block is the
+      // plan's with the provider, so it reaches every thread of the plan
+      // with him (a helper's too) in this one transaction; a helper's own
+      // block stays on his thread.
+      const planWide =
+        current.scope === ConversationScope.PLAN &&
+        current.weddingPlanId !== null &&
+        (providerSide || isPlanOwnerSide(current, currentUser.id));
+      const threadIds = planWide
+        ? await this.repository.lockPlanProviderThreads(
+            tx, current.weddingPlanId as string, current.providerId,
+          )
+        : writesThisThread
+          ? [conversationId]
+          : [];
+      if (threadIds.length > 0) {
+        await this.repository.setConversationBlocked(
+          tx, threadIds, currentUser.id, providerSide, enabled, new Date(),
+        );
+      }
       const conversation =
-        access.side === 'PROVIDER' ||
-        customerSideBlockWrite(current, currentUser.id, enabled) === 'WRITE'
-          ? await this.repository.setConversationBlocked(
-              tx, conversationId, currentUser.id, access.side === 'PROVIDER', enabled,
-            )
+        threadIds.length > 0
+          ? await this.repository.findConversationBlockState(tx, conversationId)
           : current;
       return {
         conversationId,
@@ -1142,6 +1163,20 @@ export class ConversationsService {
         logoUrl: conversation.provider.logoUrl,
       },
       counterpart,
+      // RA-BE-139: a helper's own thread says whose request it is to the
+      // plan's other readers, by the name they read for him everywhere; a
+      // null name is an erased member («عضو سابق», RA-BE-178). The provider
+      // reads the requester as the counterpart already.
+      throughHelper:
+        access.side === 'CUSTOMER' &&
+        conversation.helperThread &&
+        conversation.helperUserId !== currentUserId
+          ? {
+              name: conversation.helperUser
+                ? toApplicationUserSummary(conversation.helperUser).name
+                : null,
+            }
+          : null,
       quoteRequestCount: conversation._count.quoteRequests,
       latestQuoteRequest: latestQuote
         ? this.toQuoteRequestResponse(latestQuote, access)
@@ -1373,6 +1408,18 @@ export class ConversationsService {
       attachments,
     };
   }
+}
+
+/** RA-BE-139: the plan's owner or a partner: the side whose block is the plan's. */
+function isPlanOwnerSide(
+  conversation: Pick<ConversationRecord, 'weddingPlan'>,
+  userId: string,
+): boolean {
+  const plan = conversation.weddingPlan;
+  if (!plan) return false;
+  if (plan.ownerUserId === userId) return true;
+  const member = plan.sharedMembers.find((candidate) => candidate.userId === userId);
+  return member ? isPlanPartnerRole(member.role) : false;
 }
 
 /**

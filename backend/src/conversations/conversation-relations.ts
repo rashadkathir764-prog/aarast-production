@@ -97,6 +97,8 @@ export type ConversationRecord = Conversation & {
   provider: ConversationProvider;
   weddingPlan: ConversationPlan | null;
   accountRequester: AppIdentity | null;
+  /** RA-BE-139: whose own thread this is; null for the shared one or once he is erased. */
+  helperUser: AppIdentity | null;
   participants: Array<ConversationParticipant & { user: AppIdentity }>;
   quoteRequests: QuoteRequestWithRequester[];
   /** RA-BE-139: everyone who asked in this conversation. */
@@ -182,6 +184,7 @@ export class ConversationRelationsService {
     const users = await this.identitiesFor(client, [
       ...[...providers.values()].flatMap((provider) => (provider.userId ? [provider.userId] : [])),
       ...rows.flatMap((row) => (row.accountRequesterUserId ? [row.accountRequesterUserId] : [])),
+      ...rows.flatMap((row) => (row.helperUserId ? [row.helperUserId] : [])),
       ...rows.flatMap((row) => row.participants.map((participant) => participant.userId)),
       ...rows.flatMap((row) =>
         row.messages.flatMap((message) => (message.senderUserId ? [message.senderUserId] : [])),
@@ -215,6 +218,7 @@ export class ConversationRelationsService {
         accountRequester: row.accountRequesterUserId
           ? (users.get(row.accountRequesterUserId) ?? null)
           : null,
+        helperUser: row.helperUserId ? (users.get(row.helperUserId) ?? null) : null,
         participants: row.participants.map((participant) => ({
           ...participant,
           user: required(users.get(participant.userId), 'Conversation participant'),

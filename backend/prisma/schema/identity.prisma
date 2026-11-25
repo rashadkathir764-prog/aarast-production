@@ -118,6 +118,7 @@ model User {
   quoteRequests                QuoteRequest[]
   accountConversations         Conversation[]                @relation("ConversationAccountRequester")
   createdConversations         Conversation[]                @relation("ConversationCreatedBy")
+  helperConversations          Conversation[]                @relation("ConversationHelper")
   customerBlockedConversations Conversation[]                @relation("ConversationCustomerBlockedBy")
   reviewedProviders            Provider[]                    @relation("ProviderReviewedBy")
   assignedWeddingTasks         WeddingTask[]                 @relation("AssignedWeddingTasks")

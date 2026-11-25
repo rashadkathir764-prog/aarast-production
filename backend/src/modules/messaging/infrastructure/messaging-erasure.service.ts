@@ -91,5 +91,11 @@ export class MessagingErasureService implements MessagingErasurePort {
       where: { customerSideBlockedById: userId },
       data: { customerSideBlockedById: null },
     });
+    // RA-BE-139: a helper's own thread stays a helper's thread, with no one
+    // named; his requests in it passed to the plan's owner (D112).
+    await tx.conversation.updateMany({
+      where: { helperUserId: userId },
+      data: { helperUserId: null },
+    });
   }
 }

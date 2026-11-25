@@ -10,6 +10,8 @@ function conversationId(): string {
   return `conv_${randomUUID().replaceAll('-', '')}`;
 }
 
+// RA-BE-139 (Q-33 (أ)): the plan's one thread with the provider for its
+// owner and partners.
 export function upsertPlanConversationContext(
   tx: ConversationLifecycleClient,
   input: EnsureConversationContextInput,
@@ -18,13 +20,37 @@ export function upsertPlanConversationContext(
   return tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
     INSERT INTO "Conversation" (
       "id", "scope", "weddingPlanId", "providerId", "createdByUserId",
-      "lastActivityAt", "createdAt", "updatedAt"
+      "helperThread", "lastActivityAt", "createdAt", "updatedAt"
     ) VALUES (
       ${conversationId()}, 'PLAN'::"ConversationScope",
       ${input.weddingPlanId}, ${input.providerId}, ${input.requesterUserId},
-      ${activityAt}, ${activityAt}, ${activityAt}
+      false, ${activityAt}, ${activityAt}, ${activityAt}
     )
-    ON CONFLICT ("weddingPlanId", "providerId") WHERE "scope" = 'PLAN'
+    ON CONFLICT ("weddingPlanId", "providerId") WHERE "scope" = 'PLAN' AND NOT "helperThread"
+    DO UPDATE SET
+      "lastActivityAt" = GREATEST("Conversation"."lastActivityAt", EXCLUDED."lastActivityAt"),
+      "updatedAt" = GREATEST("Conversation"."updatedAt", EXCLUDED."updatedAt")
+    RETURNING "id"
+  `);
+}
+
+// RA-BE-139 (Q-33 (أ)): a helper's own thread with the provider in the plan.
+export function upsertPlanHelperConversationContext(
+  tx: ConversationLifecycleClient,
+  input: EnsureConversationContextInput,
+  helperUserId: string,
+  activityAt: Date,
+) {
+  return tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+    INSERT INTO "Conversation" (
+      "id", "scope", "weddingPlanId", "providerId", "createdByUserId",
+      "helperThread", "helperUserId", "lastActivityAt", "createdAt", "updatedAt"
+    ) VALUES (
+      ${conversationId()}, 'PLAN'::"ConversationScope",
+      ${input.weddingPlanId}, ${input.providerId}, ${input.requesterUserId},
+      true, ${helperUserId}, ${activityAt}, ${activityAt}, ${activityAt}
+    )
+    ON CONFLICT ("weddingPlanId", "providerId", "helperUserId") WHERE "scope" = 'PLAN' AND "helperThread"
     DO UPDATE SET
       "lastActivityAt" = GREATEST("Conversation"."lastActivityAt", EXCLUDED."lastActivityAt"),
       "updatedAt" = GREATEST("Conversation"."updatedAt", EXCLUDED."updatedAt")

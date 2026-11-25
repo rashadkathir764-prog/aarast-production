@@ -19,6 +19,12 @@ export interface EnsureConversationContextInput {
   requesterUserId: string;
   providerId: string;
   weddingPlanId: string | null;
+  /**
+   * RA-BE-139 (Q-33 (أ)): in a plan, the helper whose own thread with the
+   * provider the request goes to; null for the plan's owner and partners,
+   * who share one thread (and for a request without a plan).
+   */
+  helperUserId: string | null;
   activityAt?: Date;
 }
 

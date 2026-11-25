@@ -253,10 +253,14 @@ test('messaging locks the owned conversations, lists their attachments, deletes 
     'conversationEvent.updateMany',
     'conversation.updateMany',
     'conversation.updateMany',
+    'conversation.updateMany',
   ]);
   assert.deepEqual(calls[1][1], { where: { message: { conversationId: { in: ['conversation-1'] } } }, orderBy: { id: 'asc' }, select: { id: true } });
   assert.deepEqual(calls[7][1], { where: { createdByUserId: 'user-1' }, data: { createdByUserId: null } });
   assert.deepEqual(calls[8][1], { where: { customerSideBlockedById: 'user-1' }, data: { customerSideBlockedById: null } });
+  // RA-BE-139: a helper's own thread stays a helper's thread, with no one
+  // named (his requests in it pass to the plan's owner).
+  assert.deepEqual(calls[9][1], { where: { helperUserId: 'user-1' }, data: { helperUserId: null } });
 });
 
 test('notifications lists the owned notifications, deletes them, and owns the preference row', async () => {

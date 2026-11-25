@@ -25,6 +25,7 @@ import {
   updateConversationActivity,
   upsertAccountConversationContext,
   upsertPlanConversationContext,
+  upsertPlanHelperConversationContext,
 } from '../modules/messaging/infrastructure/conversation-lifecycle.repository';
 
 /** The owners a new conversation's core participants are read from: planning for the plan owner, marketplace for the provider account. */
@@ -42,9 +43,13 @@ export async function ensureConversationContext(
   const scope = input.weddingPlanId
     ? ConversationScope.PLAN
     : ConversationScope.ACCOUNT;
-  const rows = input.weddingPlanId
-    ? await upsertPlanConversationContext(tx, input, activityAt)
-    : await upsertAccountConversationContext(tx, input, activityAt);
+  // RA-BE-139 (Q-33 (أ)): in a plan, the owner and the partners share one
+  // thread with the provider and each helper has his own.
+  const rows = !input.weddingPlanId
+    ? await upsertAccountConversationContext(tx, input, activityAt)
+    : input.helperUserId
+      ? await upsertPlanHelperConversationContext(tx, input, input.helperUserId, activityAt)
+      : await upsertPlanConversationContext(tx, input, activityAt);
   const conversation = rows[0];
   if (!conversation) {
     throw new Error('ConversationContextUpsertFailed');

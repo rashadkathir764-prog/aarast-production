@@ -19,7 +19,11 @@ import { runSerializableTransaction } from "../platform/database/serializable-tr
 import type { ConversationLifecyclePort } from "../modules/messaging/public/conversation-lifecycle.port";
 import type { NotificationsPort } from "../modules/notifications/public/notifications.port";
 import { PrismaService } from "../platform/database/prisma.service";
-import type { CollaborationPermissionPort as PermissionService } from "../modules/collaboration/public/collaboration-permission.port";
+import {
+  type CollaborationPermissionPort as PermissionService,
+  isPlanPartnerRole,
+  type PlanAccessContext,
+} from "../modules/collaboration/public/collaboration-permission.port";
 import type { CatalogReadPort } from "../modules/catalog/public/catalog-read.port";
 import type { MarketplaceRelationsService } from "./marketplace-relations";
 import { MARKETPLACE_QUOTE_INCLUDE } from "./marketplace.contracts";
@@ -58,6 +62,20 @@ export interface QuoteRequestMutationGuard {
   /** Catalog locks the requested city; planning's owner is read for the user locks. */
   catalog: CatalogReadPort;
   history?: ContributionHistoryService;
+}
+
+/**
+ * RA-BE-139 (Q-33 (أ)): the plan's owner and partners ask into one shared
+ * thread with the provider; any other member (a helper, family) into his
+ * own, so he reads his requests' conversation and not theirs.
+ */
+export function planThreadHelperUserId(
+  planContext: Pick<PlanAccessContext, "isOwner" | "sharedMember"> | null,
+  requesterUserId: string,
+): string | null {
+  const member = planContext?.sharedMember;
+  if (!planContext || planContext.isOwner || !member) return null;
+  return isPlanPartnerRole(member.role) ? null : requesterUserId;
 }
 
 export function createQuoteRequestInTransaction(
@@ -156,6 +174,7 @@ export function createQuoteRequestInTransaction(
       requesterUserId: input.requesterId,
       providerId,
       weddingPlanId,
+      helperUserId: planThreadHelperUserId(planContext, input.requesterId),
     });
 
     // Logical identity: requester + provider + plan + service (including

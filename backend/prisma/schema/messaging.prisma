@@ -29,6 +29,12 @@ model Conversation {
   accountRequesterUserId  String?
   providerId              String
   createdByUserId         String?
+  // RA-BE-139 (Q-33 (أ)): a plan's thread with a provider is its owner's and
+  // partners' (false), or one helper's own (true, keyed by helperUserId).
+  // The helper's id is emptied when his account is erased; the thread stays
+  // a helper's, so it never folds into the owner's.
+  helperThread            Boolean                   @default(false)
+  helperUserId            String?
   lastActivityAt          DateTime                  @default(now())
   closedAt                DateTime?
   // Q-42 (أ): the conversation stays open to writing after a request is
@@ -45,6 +51,7 @@ model Conversation {
   accountRequester        User?                     @relation("ConversationAccountRequester", fields: [accountRequesterUserId], references: [id], onDelete: Cascade)
   provider                Provider                  @relation(fields: [providerId], references: [id], onDelete: Cascade)
   createdBy               User?                     @relation("ConversationCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  helperUser              User?                     @relation("ConversationHelper", fields: [helperUserId], references: [id], onDelete: SetNull)
   customerSideBlockedBy   User?                     @relation("ConversationCustomerBlockedBy", fields: [customerSideBlockedById], references: [id], onDelete: SetNull)
   quoteRequests           QuoteRequest[]
   participants            ConversationParticipant[]
@@ -54,6 +61,7 @@ model Conversation {
 
   @@index([weddingPlanId, providerId])
   @@index([accountRequesterUserId, providerId])
+  @@index([helperUserId])
   @@index([providerId, lastActivityAt])
   @@index([lastActivityAt, createdAt, id])
 }

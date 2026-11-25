@@ -7,6 +7,9 @@
 import 'dart:async';
 
 import 'package:aarast_mobile/core/network/api_client.dart';
+import 'package:aarast_mobile/core/offline/local_database_contract.dart';
+import 'package:aarast_mobile/core/offline/local_database_json.dart';
+import 'package:aarast_mobile/core/offline/offline_sync_service.dart';
 import 'package:aarast_mobile/core/session/safe_user.dart';
 import 'package:aarast_mobile/core/session/session_teardown_coordinator.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
@@ -54,9 +57,27 @@ class _SlowServerRepository extends AuthRepository {
   }
 }
 
+/// Records which account the phone's local copy is bound to.
+class _RecordingSync extends OfflineSyncService {
+  _RecordingSync(LocalDatabase database)
+    : super(
+        database: database,
+        apiClient: ApiClient(tokenProvider: () async => null),
+      );
+
+  final owners = <String>[];
+
+  @override
+  Future<void> ensureCacheOwner(String userId) async {
+    owners.add(userId);
+    await super.ensureCacheOwner(userId);
+  }
+}
+
 Future<(AuthController, _SlowServerRepository, List<String>)> _controller({
   SafeUser? cachedUser = _cached,
   String? token = 'restored-access-token',
+  OfflineSyncService? offlineSyncService,
 }) async {
   SharedPreferences.setMockInitialValues({});
   final preferences = await SharedPreferences.getInstance();
@@ -77,6 +98,7 @@ Future<(AuthController, _SlowServerRepository, List<String>)> _controller({
           clears.add('keeping unsent'),
       clearGuestDraft: () async {},
     ),
+    offlineSyncService: offlineSyncService,
   );
   return (controller, repository, clears);
 }
@@ -139,6 +161,34 @@ void main() {
     expect(controller.status, AuthStatus.authenticated);
     expect(controller.user?.id, 'user-a');
     expect(clears, isEmpty);
+  });
+
+  test('an account opened with no network has its local copy bound to it, '
+      'so what was queued is sent when the network comes back', () async {
+    // Before, only the server's answer bound it: opened offline, the queue
+    // never left the phone, no retry ran, and the money and plan clean-ups
+    // skipped, until the app was restarted online.
+    SharedPreferences.setMockInitialValues({});
+    final database = JsonLocalDatabase(await SharedPreferences.getInstance());
+    await database.initialize();
+    final sync = _RecordingSync(database);
+    addTearDown(sync.dispose);
+    final (controller, repository, _) = await _controller(
+      offlineSyncService: sync,
+    );
+    addTearDown(controller.dispose);
+
+    final restore = controller.restoreSession();
+    await _settle();
+    expect(sync.owners, ['user-a'], reason: 'bound as the account opens');
+
+    repository.answer.completeError(
+      const ApiException('ما فيه نت', isNetworkFailure: true),
+    );
+    await restore;
+
+    expect(controller.status, AuthStatus.authenticated);
+    expect(sync.owners, ['user-a']);
   });
 
   test(

@@ -39,6 +39,13 @@ mixin _AuthSession on _AuthControllerCore {
     // (401) ends the session. A token without an account read before still
     // waits, since there is nothing to open on.
     if (_user != null) {
+      // The phone's local copy is this account's from the moment it opens:
+      // opened with no network, the queue, its retry and the plan and money
+      // clean-ups all wait on the owner, and the server may not answer in
+      // this run at all. The server's answer binds it again (the same id is
+      // nothing to do; another one wipes the copy first).
+      await _offlineSyncService?.ensureCacheOwner(_user!.id);
+      if (!_isCurrentSessionOperation(operation)) return;
       _status = AuthStatus.authenticated;
       notifyListeners();
     }

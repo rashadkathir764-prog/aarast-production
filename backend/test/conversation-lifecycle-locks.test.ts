@@ -60,6 +60,8 @@ test('the lifecycle implementation binds the locks next to the two lifecycle ope
       'lockConversationForShareInTransaction',
       'lockConversationForUpdateInTransaction',
       'recordConversationEvent',
+      // RA-BE-170 (Q-42 أ): when the conversation's notices stop.
+      'setConversationPushStopInTransaction',
     ],
   );
 });

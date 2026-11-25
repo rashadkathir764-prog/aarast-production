@@ -110,7 +110,8 @@ import { AuthOtpRepository, type OtpClaimResult } from "../../infrastructure/aut
 import { AuthChallengeRepository } from "../../infrastructure/auth-challenge.repository";
 import { AuthSessionRepository, type LockedRefreshTokenRow, type LockedRefreshTokenFamily } from "../../infrastructure/auth-session.repository";
 import { AdminTrustedDeviceRepository } from "../../infrastructure/admin-trusted-device.repository";
-import { IdentityTransientDeliveryAdapter } from "../identity-transient-delivery.adapter";
+import type { IdentityTransientDeliveryAdapter } from "../identity-transient-delivery.adapter";
+import { IDENTITY_TRANSIENT_DELIVERY_IMPLEMENTATION } from "../identity-transient-delivery.internal.module";
 import { PHONE_CHANGED_NOTICE } from "./phone-change-notice";
 
 export interface AuthResponse {
@@ -275,7 +276,10 @@ export class AuthService implements IdentityAuthPort, OnModuleDestroy {
     @Inject(COLLABORATION_PERMISSION_PORT)
     private readonly collaboration: CollaborationPermissionPort,
     // RA-BE-141: the WhatsApp notice to the number an account left, on the
-    // WhatsApp messages' own daily budget.
+    // WhatsApp messages' own daily budget. Identity's own adapter, reached by
+    // the one token its internal module exports (R6); the public port stays
+    // Collaboration's.
+    @Inject(IDENTITY_TRANSIENT_DELIVERY_IMPLEMENTATION)
     private readonly transientDelivery: IdentityTransientDeliveryAdapter,
   ) {}
 

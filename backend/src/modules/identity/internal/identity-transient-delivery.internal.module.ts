@@ -16,7 +16,6 @@ export const IDENTITY_TRANSIENT_DELIVERY_IMPLEMENTATION = Symbol(
       useExisting: IdentityTransientDeliveryAdapter,
     },
   ],
-  // RA-BE-141: the adapter itself serves identity's own phone-change notice.
-  exports: [IDENTITY_TRANSIENT_DELIVERY_IMPLEMENTATION, IdentityTransientDeliveryAdapter],
+  exports: [IDENTITY_TRANSIENT_DELIVERY_IMPLEMENTATION],
 })
 export class IdentityTransientDeliveryInternalModule {}

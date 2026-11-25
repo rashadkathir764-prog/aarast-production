@@ -7,6 +7,8 @@
 -- deleted and its 30 days are over (Q-45), or the plan's owner, or the
 -- account the cost is private to, asked for the account's deletion and its
 -- day has come (D63). For any other cost it refuses, and nothing is deleted.
+-- The days are stored as UTC without a zone (Prisma), so they are compared
+-- with the UTC time, whatever the server's TimeZone.
 --
 -- The function is SECURITY DEFINER, owned by the role that runs this
 -- migration (the migrator in production), with a fixed search_path. The
@@ -38,9 +40,9 @@ BEGIN
     LEFT JOIN "User" holder ON holder."id" = cost."privateToUserId"
     WHERE cost."id" = erased_cost_id
       AND (
-        (plan."deletionRequestedAt" IS NOT NULL AND plan."deletionScheduledFor" <= now())
-        OR (owner."deletionRequestedAt" IS NOT NULL AND owner."deletionScheduledFor" <= now())
-        OR (holder."deletionRequestedAt" IS NOT NULL AND holder."deletionScheduledFor" <= now())
+        (plan."deletionRequestedAt" IS NOT NULL AND plan."deletionScheduledFor" <= (now() AT TIME ZONE 'UTC'))
+        OR (owner."deletionRequestedAt" IS NOT NULL AND owner."deletionScheduledFor" <= (now() AT TIME ZONE 'UTC'))
+        OR (holder."deletionRequestedAt" IS NOT NULL AND holder."deletionScheduledFor" <= (now() AT TIME ZONE 'UTC'))
       )
   ) THEN
     RAISE EXCEPTION 'CostPayment is append-only: cost % is not being erased', erased_cost_id;

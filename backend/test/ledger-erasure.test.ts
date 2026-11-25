@@ -32,9 +32,9 @@ test("the eraser runs as its owner, on a fixed path, for a cost being erased onl
   assert.match(eraser, /SECURITY DEFINER\s+SET search_path = public, pg_temp/);
   assert.match(eraser, /REVOKE ALL ON FUNCTION "aarast_erase_cost_ledger"\(TEXT\) FROM PUBLIC;/);
   for (const due of [
-    /plan\."deletionRequestedAt" IS NOT NULL AND plan\."deletionScheduledFor" <= now\(\)/,
-    /owner\."deletionRequestedAt" IS NOT NULL AND owner\."deletionScheduledFor" <= now\(\)/,
-    /holder\."deletionRequestedAt" IS NOT NULL AND holder\."deletionScheduledFor" <= now\(\)/,
+    /plan\."deletionRequestedAt" IS NOT NULL AND plan\."deletionScheduledFor" <= \(now\(\) AT TIME ZONE 'UTC'\)/,
+    /owner\."deletionRequestedAt" IS NOT NULL AND owner\."deletionScheduledFor" <= \(now\(\) AT TIME ZONE 'UTC'\)/,
+    /holder\."deletionRequestedAt" IS NOT NULL AND holder\."deletionScheduledFor" <= \(now\(\) AT TIME ZONE 'UTC'\)/,
   ]) {
     assert.match(eraser, due);
   }

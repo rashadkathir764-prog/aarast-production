@@ -573,11 +573,11 @@ rewrite as permission to restore a removed live model.
 | `LoanRepayment` | 10 | `id`, `fundingSourceId`, `paidAt`, `createdAt`, `updatedAt` |
 | `WeddingTask` | 27 | `id`, `weddingPlanId`, `assigneeUserId`, `reminderAt`, `privateToUserId`, `linkedBudgetCategoryId`, `linkedCostId`, `linkedScheduleId` |
 | `WeddingTaskChecklistItem` | 8 | `id`, `taskId`, `createdAt`, `updatedAt` |
-| `SharedMember` | 18 | `id`, `weddingPlanId`, `userId`, `createdAt`, `updatedAt` |
+| `SharedMember` | 19 | `id`, `weddingPlanId`, `userId`, `createdAt`, `updatedAt` |
 | `ContributorHistoryScope` | 11 | `id`, `weddingPlanId`, `historyCoverageStartsAt`, `archivedAt`, `deletedAt`, `createdAt`, `updatedAt` |
 | `ContributorTenure` | 17 | `id`, `historyScopeId`, `actorUserId`, `sharedMemberId`, `joinedAt`, `trackingStartedAt`, `endedAt`, `createdAt` |
 | `ContributionEvent` | 20 | `id`, `historyScopeId`, `contributorTenureId`, `entityId`, `occurredAt`, `capturedAt` |
-| `PlanInvite` | 30 | `id`, `weddingPlanId`, `inviterUserId`, `inviteeUserId`, `expiresAt`, `acceptedAt`, `declinedAt`, `revokedAt` |
+| `PlanInvite` | 31 | `id`, `weddingPlanId`, `inviterUserId`, `inviteeUserId`, `expiresAt`, `acceptedAt`, `declinedAt`, `revokedAt` |
 | `OtpCode` | 14 | `id`, `expiresAt`, `consumedAt`, `createdAt`, `updatedAt`, `planInviteId` |
 | `NotificationPreference` | 13 | `id`, `userId`, `createdAt`, `updatedAt` |
 | `PushInstallation` | 10 | `id`, `userId`, `lastSeenAt`, `sessionId`, `createdAt`, `updatedAt` |

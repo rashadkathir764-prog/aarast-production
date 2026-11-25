@@ -103,7 +103,10 @@ export class PushDeliveryService implements PushDeliveryPort {
     });
   }
 
-  async dispatchNotification(notificationId: string): Promise<void> {
+  async dispatchNotification(
+    notificationId: string,
+    alreadyDeliveredInstallationIds: readonly string[] = [],
+  ): Promise<void> {
     if (!this.firebase.enabled) return;
 
     // The push preference and the installations are notifications' own
@@ -132,7 +135,10 @@ export class PushDeliveryService implements PushDeliveryPort {
       orderBy: { createdAt: "asc" },
       select: { id: true, fid: true, updatedAt: true },
     });
-    const fids = installations.map((item) => item.fid);
+    // RA-BE-190: a retry goes to the phones the earlier try did not reach.
+    const reached = new Set(alreadyDeliveredInstallationIds);
+    const targets = installations.filter((item) => !reached.has(item.id));
+    const fids = targets.map((item) => item.fid);
     if (fids.length === 0) return;
 
     const permanentFailures = new Set<string>();
@@ -145,7 +151,10 @@ export class PushDeliveryService implements PushDeliveryPort {
           ...this.messagePayload(notification),
         });
         response.responses.forEach((item, responseIndex) => {
-          if (item.success) return;
+          if (item.success) {
+            reached.add(targets[index + responseIndex]!.id);
+            return;
+          }
           const code = item.error?.code;
           if (code && PERMANENT_FCM_ERRORS.has(code)) {
             permanentFailures.add(batchFids[responseIndex]!);
@@ -184,8 +193,14 @@ export class PushDeliveryService implements PushDeliveryPort {
       });
     }
     if (transientFailure) {
-      const error = new Error("PushDeliveryRetryRequired");
+      const error = new Error("PushDeliveryRetryRequired") as Error & {
+        deliveredInstallationIds: string[];
+      };
       error.name = "PushDeliveryRetryRequired";
+      // Only those still registered: a phone that went away is not listed.
+      error.deliveredInstallationIds = installations
+        .filter((item) => reached.has(item.id))
+        .map((item) => item.id);
       throw error;
     }
   }

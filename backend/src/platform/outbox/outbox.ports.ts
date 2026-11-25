@@ -21,7 +21,10 @@ export interface OutboxRealtimeSink {
 }
 
 export interface OutboxPushSink {
-  dispatchNotification(notificationId: string): Promise<void>;
+  dispatchNotification(
+    notificationId: string,
+    alreadyDeliveredInstallationIds?: readonly string[],
+  ): Promise<void>;
   /**
    * D112 (Q-11): the account's sessions were ended at [revokedAt]; its
    * push registrations made before then are let go, except [keepFid], the

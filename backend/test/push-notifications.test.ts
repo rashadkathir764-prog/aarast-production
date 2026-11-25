@@ -582,3 +582,86 @@ test("a push whose notification was read before it goes out is not sent", async 
   assert.equal(sends, 0);
   assert.equal(installationReads, 0);
 });
+
+// RA-BE-190: a retry after one phone failed told the phones it had already
+// reached a second time. The delivery now names the installations it
+// reached, and the retry sends to the others only.
+function retryService(sentTo: string[][], failing: Set<string>) {
+  const installations = ["a", "b", "c"].map((name) => ({
+    id: `installation-${name}`,
+    fid: `fid-${name}`,
+    updatedAt: new Date("2026-07-29T00:00:00.000Z"),
+  }));
+  return new PushDeliveryService(
+    {
+      notification: {
+        findUnique: async () => ({
+          id: "notification-1",
+          userId: "user-1",
+          type: NotificationType.TASK_ASSIGNED,
+          data: null,
+          readAt: null,
+        }),
+      },
+      notificationPreference: { findUnique: async () => ({ pushEnabled: true }) },
+      pushInstallation: { findMany: async () => installations },
+    } as never,
+    {
+      enabled: true,
+      sendEachForMulticast: async (message: any) => {
+        sentTo.push(message.fids);
+        return {
+          successCount: 0,
+          failureCount: 0,
+          responses: message.fids.map((fid: string) =>
+            failing.has(fid)
+              ? { success: false, error: { code: "messaging/internal-error" } }
+              : { success: true },
+          ),
+        };
+      },
+    } as never,
+  );
+}
+
+test("a retry sends only to the installations the first try did not reach", async () => {
+  const sentTo: string[][] = [];
+  const failing = new Set(["fid-b"]);
+  const service = retryService(sentTo, failing);
+
+  let first: any;
+  await assert.rejects(
+    () => service.dispatchNotification("notification-1"),
+    (error: any) => {
+      first = error;
+      return error.name === "PushDeliveryRetryRequired";
+    },
+  );
+  assert.deepEqual(sentTo[0], ["fid-a", "fid-b", "fid-c"]);
+  assert.deepEqual(first.deliveredInstallationIds, ["installation-a", "installation-c"]);
+
+  // The retry knows who was reached; the one that failed fails again.
+  await assert.rejects(
+    () => service.dispatchNotification("notification-1", first.deliveredInstallationIds),
+    (error: any) => {
+      first = error;
+      return true;
+    },
+  );
+  assert.deepEqual(sentTo[1], ["fid-b"], "only the phone that failed is tried again");
+  assert.deepEqual(first.deliveredInstallationIds, [
+    "installation-a",
+    "installation-c",
+  ]);
+
+  // And when it comes through, nothing else is sent and nothing is thrown.
+  failing.clear();
+  await service.dispatchNotification("notification-1", first.deliveredInstallationIds);
+  assert.deepEqual(sentTo[2], ["fid-b"]);
+  await service.dispatchNotification("notification-1", [
+    "installation-a",
+    "installation-b",
+    "installation-c",
+  ]);
+  assert.equal(sentTo.length, 3, "every phone was reached: nothing more goes out");
+});

@@ -9,6 +9,7 @@ import {
 import { isQuietHour, quietHoursEnd } from '../../shared-kernel/time/quiet-hours';
 import { PrismaService } from '../database/prisma.service';
 import { OutboxDispatcher } from './outbox.dispatcher';
+import { OutboxRetryWithProgress } from './outbox-retry';
 
 const batchSize = 100;
 const maxAttempts = 8;
@@ -119,6 +120,15 @@ export class OutboxWorker {
         data: {
           status: terminal ? 'FAILED' : 'PENDING',
           nextAttemptAt: outboxNextAttemptAt(event, new Date()),
+          // RA-BE-190: what the failed try finished is kept for the next.
+          ...(error instanceof OutboxRetryWithProgress
+            ? {
+                payload: {
+                  ...(jsonRecord(event.payload) ?? {}),
+                  ...error.payloadPatch,
+                } as Prisma.InputJsonObject,
+              }
+            : {}),
           lockedAt: null,
           lockedBy: null,
           lastError: outboxFailureCode(error),
@@ -145,6 +155,12 @@ export function outboxNextAttemptAt(event: OutboxEvent, failedAt: Date): Date {
   return heldThroughQuietHours(event) && isQuietHour(next)
     ? quietHoursEnd(next)
     : next;
+}
+
+function jsonRecord(value: Prisma.JsonValue): Prisma.JsonObject | null {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+    ? value
+    : null;
 }
 
 function heldThroughQuietHours(event: OutboxEvent): boolean {

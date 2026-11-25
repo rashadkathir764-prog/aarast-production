@@ -1,6 +1,7 @@
 import { Inject, Injectable, Optional } from "@nestjs/common";
 import { OutboxEvent, Prisma } from "@prisma/client";
 import { OutboxEventTypes } from "./outbox.constants";
+import { OutboxRetryWithProgress } from "./outbox-retry";
 import {
   OUTBOX_PUSH_SINK,
   OUTBOX_REALTIME_SINK,
@@ -65,7 +66,27 @@ export class OutboxDispatcher {
           error.name = "PushDeliveryUnavailable";
           throw error;
         }
-        await this.pushDelivery.dispatchNotification(notificationId);
+        const delivered = deliveredInstallationIds(payload);
+        try {
+          await this.pushDelivery.dispatchNotification(notificationId, delivered);
+        } catch (error) {
+          // RA-BE-190: the phones reached stay on the row; the retry sends
+          // to the others only.
+          const reached = (error as { deliveredInstallationIds?: unknown })
+            ?.deliveredInstallationIds;
+          if (
+            error instanceof Error &&
+            error.name === "PushDeliveryRetryRequired" &&
+            Array.isArray(reached)
+          ) {
+            throw new OutboxRetryWithProgress(error.name, {
+              pushDeliveredInstallationIds: reached.filter(
+                (id): id is string => typeof id === "string",
+              ),
+            });
+          }
+          throw error;
+        }
         return;
       }
       case OutboxEventTypes.conversationAccessRevoked: {
@@ -127,6 +148,13 @@ export class OutboxDispatcher {
         throw new Error("UnsupportedOutboxEventType");
     }
   }
+}
+
+function deliveredInstallationIds(value: Prisma.JsonObject): string[] {
+  const ids = value.pushDeliveredInstallationIds;
+  return Array.isArray(ids)
+    ? ids.filter((id): id is string => typeof id === "string")
+    : [];
 }
 
 function requiredTextArray(value: Prisma.JsonObject, key: string): string[] {

@@ -588,3 +588,69 @@ test("outbox cleanup removes only old processed receipts and old failed events",
   assert.ok(failed.updatedAt.lt instanceof Date);
   assert.equal(JSON.stringify(where).includes("PENDING"), false);
 });
+
+// RA-BE-190: the phones a push reached are kept on the outbox row, so its
+// retry sends to the others only.
+test("a push retry carries the installations already reached and sends only to the rest", async () => {
+  const seen: Array<[string, readonly string[] | undefined]> = [];
+  const dispatcher = new OutboxDispatcher(new ConversationRealtimePublisher(), {
+    dispatchNotification: async (
+      notificationId: string,
+      delivered?: readonly string[],
+    ) => {
+      seen.push([notificationId, delivered]);
+      const error = new Error("PushDeliveryRetryRequired") as Error & {
+        deliveredInstallationIds: string[];
+      };
+      error.name = "PushDeliveryRetryRequired";
+      error.deliveredInstallationIds = [...(delivered ?? []), "installation-new"];
+      throw error;
+    },
+  } as never);
+
+  await assert.rejects(
+    () =>
+      dispatcher.dispatch(
+        event(OutboxEventTypes.pushNotificationRequested, {
+          notificationId: "notification-1",
+          pushDeliveredInstallationIds: ["installation-old"],
+        }),
+      ),
+    (error: any) => {
+      assert.equal(error.name, "PushDeliveryRetryRequired");
+      assert.deepEqual(error.payloadPatch, {
+        pushDeliveredInstallationIds: ["installation-old", "installation-new"],
+      });
+      return true;
+    },
+  );
+  assert.deepEqual(seen, [["notification-1", ["installation-old"]]]);
+
+  const written: any[] = [];
+  const worker = new OutboxWorker(
+    {
+      outboxEvent: {
+        updateMany: async ({ data }: any) => {
+          written.push(data);
+          return { count: 1 };
+        },
+      },
+    } as never,
+    dispatcher,
+  );
+  await (worker as any).process({
+    ...event(OutboxEventTypes.pushNotificationRequested, {
+      notificationId: "notification-1",
+      heldThroughQuietHours: true,
+    }),
+    status: "PROCESSING",
+    attemptCount: 1,
+    lockedBy: (worker as any).workerId,
+  });
+  assert.equal(written[0].status, "PENDING");
+  assert.deepEqual(written[0].payload, {
+    notificationId: "notification-1",
+    heldThroughQuietHours: true,
+    pushDeliveredInstallationIds: ["installation-new"],
+  });
+});

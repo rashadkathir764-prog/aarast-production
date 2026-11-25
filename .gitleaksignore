@@ -69,4 +69,6 @@ c69888e5538dbc911d9dea89ba2d4ba5a9f4f746:backend/test/auth-otp-mode.test.ts:gene
 c69888e5538dbc911d9dea89ba2d4ba5a9f4f746:backend/test/auth-otp-mode.test.ts:generic-api-key:983
 c69888e5538dbc911d9dea89ba2d4ba5a9f4f746:backend/test/contribution-actor-reference.test.ts:generic-api-key:63
 c69888e5538dbc911d9dea89ba2d4ba5a9f4f746:backend/test/contribution-actor-reference.test.ts:generic-api-key:67
+# The JWT fixture from da99a5045a606a6e79388572ebf9df7775cc3f9e (RA-BE-149
+# lifetime test); the current source uses the descriptive test secret instead.
 da99a5045a606a6e79388572ebf9df7775cc3f9e:backend/test/auth-refresh-wiring.test.ts:generic-api-key:266

@@ -57,7 +57,9 @@ async function main(): Promise<void> {
       passwordHash: `media-lifecycle-${runId}`,
     },
   });
-  const key = `chat-image/${user.id}/${randomUUID()}.webp`;
+  // RA-BE-178: a private key is opaque, as newMediaKey hands it out; the
+  // ticket below names its owner.
+  const key = `chat-image/${randomUUID()}/${randomUUID()}.webp`;
   const disabled = deferred();
   const commitRequested = deferred();
   let disableCommitted = false;

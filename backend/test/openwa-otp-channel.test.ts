@@ -59,6 +59,72 @@ test('OpenWA OTP uses only the transient route and never echoes the code', async
   assert.equal('code' in result, false);
 });
 
+// RA-MO-360: the text said «لا تشارك» (the groom's word to a bride too), not
+// how long the code lives, nor what it is for.
+async function sentText(
+  purpose: string,
+  env: Record<string, string | undefined> = {},
+): Promise<string> {
+  const previous = process.env.OTP_EXPIRES_MINUTES;
+  if ('OTP_EXPIRES_MINUTES' in env) {
+    if (env.OTP_EXPIRES_MINUTES === undefined) delete process.env.OTP_EXPIRES_MINUTES;
+    else process.env.OTP_EXPIRES_MINUTES = env.OTP_EXPIRES_MINUTES;
+  }
+  try {
+    let text = '';
+    const channel = new OpenWaOtpChannel(config, async (_url, init) => {
+      text = JSON.parse(init?.body as string).text;
+      return new Response(
+        JSON.stringify({
+          messageId: 'wa-message-id',
+          timestamp: 1706868000,
+          deliveryStatus: 'DELIVERED',
+        }),
+        { status: 201, headers: { 'content-type': 'application/json' } },
+      );
+    });
+    await channel.deliver('+967777123456', '654321', purpose);
+    return text;
+  } finally {
+    if (previous === undefined) delete process.env.OTP_EXPIRES_MINUTES;
+    else process.env.OTP_EXPIRES_MINUTES = previous;
+  }
+}
+
+test('OpenWA OTP text names the action, the five minutes and speaks to both genders', async () => {
+  const actions: Record<string, string> = {
+    REGISTER: 'لإنشاء حسابك',
+    LOGIN: 'لتسجيل الدخول',
+    VERIFY_PHONE: 'لتوثيق رقمك',
+    RESET_PASSWORD: 'لاستعادة كلمة المرور',
+    CURRENT_PHONE_PROOF: 'لتأكيد رقمك الحالي',
+    INVITE_ACCESS: 'لقبول الدعوة',
+    ADMIN_LOGIN: 'لدخول الإدارة',
+    ADMIN_RESET_PASSWORD: 'لاستعادة كلمة مرور الإدارة',
+  };
+  const seen = new Set<string>();
+  for (const [purpose, action] of Object.entries(actions)) {
+    const text = await sentText(purpose, { OTP_EXPIRES_MINUTES: undefined });
+    assert.ok(text.includes('654321'), purpose);
+    assert.ok(text.includes(action), `${purpose}: ${text}`);
+    assert.ok(text.includes('5 دقائق'), `${purpose}: ${text}`);
+    assert.ok(text.includes('اعّرست'), purpose);
+    // The masculine «لا تشارك» of the old text; the neutral «لا تعطيه لأحد».
+    assert.doesNotMatch(text, /تشارك|أعرست/, purpose);
+    assert.ok(text.includes('لا تعطيه لأحد'), `${purpose}: ${text}`);
+    seen.add(text);
+  }
+  assert.equal(seen.size, Object.keys(actions).length, 'each action has its own text');
+});
+
+test('OpenWA OTP text says the lifetime the code really has', async () => {
+  assert.ok((await sentText('LOGIN', { OTP_EXPIRES_MINUTES: '10' })).includes('10 دقائق'));
+  assert.ok((await sentText('LOGIN', { OTP_EXPIRES_MINUTES: '15' })).includes('15 دقيقة'));
+  assert.ok((await sentText('LOGIN', { OTP_EXPIRES_MINUTES: '2' })).includes('دقيقتين'));
+  // Out of range falls back to the default, as the stored expiry does.
+  assert.ok((await sentText('LOGIN', { OTP_EXPIRES_MINUTES: 'abc' })).includes('5 دقائق'));
+});
+
 test('OpenWA OTP requires a complete acknowledgement on every 2xx response', async () => {
   for (const body of [
     JSON.stringify({ queued: true }),

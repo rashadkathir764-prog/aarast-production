@@ -71,6 +71,7 @@ import {
 import {
   type OtpDeliveryResult,
   OtpDeliveryUncertainError,
+  otpValidMinutes,
 } from "../../../../platform/otp-transport/otp-delivery";
 import { OpenWaOtpChannel } from "../../../../platform/otp-transport/openwa-otp.channel";
 import { WhatsAppOtpChannel } from "../../../../platform/otp-transport/whatsapp-otp.channel";
@@ -1614,7 +1615,7 @@ export class AuthService implements IdentityAuthPort, OnModuleDestroy {
     const codeHash = await bcryptjs.hash(code, 10);
     const now = new Date();
     const expiresAt = new Date(
-      now.getTime() + this.getOtpExpiryMinutes() * 60 * 1000,
+      now.getTime() + otpValidMinutes() * 60 * 1000,
     );
 
     const otp = await this.replaceActiveOtp(
@@ -2697,12 +2698,6 @@ export class AuthService implements IdentityAuthPort, OnModuleDestroy {
     const configured = (process.env.AUTH_DEV_OTP_CODE ?? "").trim();
     if (/^\d{6}$/.test(configured)) return configured;
     return "123456";
-  }
-
-  private getOtpExpiryMinutes(): number {
-    const configured = Number(process.env.OTP_EXPIRES_MINUTES ?? 5);
-    if (!Number.isFinite(configured) || configured < 1) return 5;
-    return Math.min(Math.floor(configured), 60);
   }
 
   private getOtpMaxAttempts(): number {

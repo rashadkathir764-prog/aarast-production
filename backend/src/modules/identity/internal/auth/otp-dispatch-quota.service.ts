@@ -13,6 +13,7 @@ import {
   otpGlobalDailyLimit,
 } from '../../../../platform/config/runtime-environment';
 import { PrismaService } from '../../../../platform/database/prisma.service';
+import { otpMinutesWords } from '../../../../platform/otp-transport/otp-delivery';
 import { otpDeliveryUnavailableError } from '../../public/auth-error';
 import type { OtpDispatchContext } from '../../public/identity-auth.port';
 import type { OtpCapacity } from '../../public/otp-capacity.port';
@@ -77,7 +78,7 @@ function counted(
 export function otpWaitWords(retryAfterSeconds: number): string {
   const minutes = Math.max(1, Math.ceil(retryAfterSeconds / 60));
   if (minutes < 60) {
-    return counted(minutes, 'دقيقة', 'دقيقتين', 'دقائق', 'دقيقة');
+    return otpMinutesWords(minutes);
   }
   return counted(Math.ceil(minutes / 60), 'ساعة', 'ساعتين', 'ساعات', 'ساعة');
 }

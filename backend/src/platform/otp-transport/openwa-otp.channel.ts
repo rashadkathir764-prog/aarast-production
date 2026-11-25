@@ -1,9 +1,38 @@
-import { OtpDeliveryResult, OtpDeliveryUncertainError } from './otp-delivery';
+import {
+  OtpDeliveryResult,
+  OtpDeliveryUncertainError,
+  otpMinutesWords,
+  otpValidMinutes,
+} from './otp-delivery';
 import { loadOpenWaOtpConfig, OpenWaOtpConfig } from './openwa-otp-config';
 import {
   OpenWaTransientDeliveryUncertainError,
   sendOpenWaTransientText,
 } from './openwa-transient-text';
+
+/**
+ * RA-MO-360: what a code is for, in words that fit a man and a woman alike
+ * («لإنشاء حسابك», never a verb in one gender). A purpose the table does not
+ * know is said as the plain check of the number.
+ */
+const ACTION_BY_PURPOSE: Readonly<Record<string, string>> = {
+  REGISTER: 'لإنشاء حسابك',
+  LOGIN: 'لتسجيل الدخول',
+  VERIFY_PHONE: 'لتوثيق رقمك',
+  RESET_PASSWORD: 'لاستعادة كلمة المرور',
+  CURRENT_PHONE_PROOF: 'لتأكيد رقمك الحالي',
+  INVITE_ACCESS: 'لقبول الدعوة',
+  ADMIN_LOGIN: 'لدخول الإدارة',
+  ADMIN_RESET_PASSWORD: 'لاستعادة كلمة مرور الإدارة',
+};
+
+function otpText(code: string, purpose: string): string {
+  const action = ACTION_BY_PURPOSE[purpose] ?? 'للتحقق من رقمك';
+  return (
+    `رمز اعّرست ${action}: ${code}\n` +
+    `صالح ${otpMinutesWords(otpValidMinutes())}. لا تعطيه لأحد.`
+  );
+}
 
 /**
  * Temporary MVP channel backed by the Aarast-hardened OpenWA fork.
@@ -27,7 +56,7 @@ export class OpenWaOtpChannel {
   async deliver(
     phone: string,
     code: string,
-    _purpose: string,
+    purpose: string,
   ): Promise<OtpDeliveryResult> {
     // The bootstrap replaces a directory-mounted credential file atomically.
     // Resolve it for every operation so a long-running backend adopts the new
@@ -37,7 +66,7 @@ export class OpenWaOtpChannel {
       await sendOpenWaTransientText(
         {
           phone,
-          text: `رمز التحقق في اعّرست: ${code}\nلا تشارك هذا الرمز مع أي شخص.`,
+          text: otpText(code, purpose),
         },
         config,
         this.fetchImplementation,

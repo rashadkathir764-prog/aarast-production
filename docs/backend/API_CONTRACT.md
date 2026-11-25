@@ -3547,8 +3547,13 @@ approved photos; the women's album «حفلات النساء» is read by a brid
 ## Quote Conversations And Media
 
 Conversations begin only with a real quote request; open or unsolicited
-messaging is excluded. A `PLAN` conversation is unique by WeddingPlan and
-Provider. An `ACCOUNT` conversation is unique by requester account and
+messaging is excluded. A `PLAN` conversation is unique by WeddingPlan,
+Provider and requester side (RA-BE-139, Q-33 (أ)): the plan's owner and its
+partners (the groom and the bride members) share one thread with the
+provider, and each other member who asks (a helper, family) has his own. So a
+provider can hold several conversations with one plan, each showing its own
+requester as `latestQuoteRequest.user`, and the owner's inbox lists one row per
+thread. An `ACCOUNT` conversation is unique by requester account and
 Provider. Creating a QuoteRequest creates or reuses that context inside the
 same transaction, so opening chat never mutates server state.
 
@@ -3614,7 +3619,11 @@ QuoteRequest as the conversation identity. Unread counts include human messages
 only; system events update activity but not unread.
 
 For `PLAN`, access is derived live from plan ownership, explicit
-`SharedMember.canManageProviders`, or `Provider.userId`. For `ACCOUNT`, access
+`SharedMember.canManageProviders`, or `Provider.userId`: the owner and a
+partner who manages providers read every thread of the plan, any other member
+who manages providers only the threads of his own requests (his own thread,
+and a shared thread the 2026-11-25 split left his requests in), and a
+provider's message notifies the same readers. For `ACCOUNT`, access
 is limited to the requester and linked provider account. Participant rows store
 joined/revoked/read/mute state only. Removing `canManageProviders` revokes the
 participant and forces current sockets out of the room. This permission is

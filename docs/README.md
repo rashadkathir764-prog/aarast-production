@@ -17,6 +17,7 @@
 | المجال | الوثائق |
 |---|---|
 | المنتج | [رحلة العروسة والعريس](project/JOURNEY_PROFILE.md)، [رحلة المزود](project/PROVIDER_JOURNEY.md)، `project/research/` |
+| المرجع التنافسي | [تطبيقات الأعراس العشرة](project/research/competitive/README.md): المصفوفة، وسجل الممارسات بحالاتها، والفرص المؤجلة. يُرجع إليه قبل تطوير أي قسم |
 | الخادم | [العقد](backend/API_CONTRACT.md)، [قاعدة البيانات](backend/DATABASE.md)، [التشغيل](backend/README.md)، [الأوامر](SCRIPTS.md) |
 | الجوال | [التصميم](frontend/DESIGN_SYSTEM.md)، [المسارات](frontend/MOBILE_ROUTES.md)، [البنية](frontend/MOBILE_ARCHITECTURE.md)، [بدون نت](frontend/OFFLINE_SQLITE.md)، [البدء](frontend/MOBILE.md) |
 | الإدارة | [اللوحة](frontend/ADMIN_WEB.md)، [المسارات](frontend/ADMIN_ROUTES.md) |

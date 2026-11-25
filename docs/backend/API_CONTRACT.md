@@ -295,7 +295,11 @@ it, and its refreshes keep that end (RA-AD-26).
   the answer reaches whoever holds it (RA-BE-21); otherwise it moves the
   account (`phone`, `phoneVerifiedAt`) and revokes every application session
   (`USER_SESSIONS_REVOKED`), returning `{ changed: true, phone }`; a wrong
-  code is the usual OTP failure and changes nothing. An administrator's phone
+  code is the usual OTP failure and changes nothing. RA-BE-141: after the
+  move, with `AUTH_OTP_MODE=openwa`, the number the account left gets one
+  WhatsApp message «رقم حسابك في اعّرست تغيّر…» that names no new number
+  (on the WhatsApp messages' daily budget, RA-BE-34); a message that fails is
+  logged and the move stands. An administrator's phone
   is the admin account's second factor and recovery: both steps answer `403
   ADMIN_PHONE_CHANGE_REFUSED`, and it changes with the admin provisioning only
   (RA-BE-19). The account signs in again with the new number and the same

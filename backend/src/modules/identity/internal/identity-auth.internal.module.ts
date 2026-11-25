@@ -15,6 +15,7 @@ import {
 import { PrismaModule } from '../../../platform/database/prisma.module';
 import { CollaborationPermissionPublicModule } from '../../collaboration/public/collaboration-permission-public.module';
 import { MessagingRealtimePublicModule } from '../../messaging/public/messaging-realtime-public.module';
+import { IdentityTransientDeliveryInternalModule } from './identity-transient-delivery.internal.module';
 
 export const IDENTITY_AUTH_IMPLEMENTATION = Symbol(
   'IDENTITY_AUTH_IMPLEMENTATION',
@@ -26,6 +27,8 @@ export const OTP_CAPACITY_IMPLEMENTATION = Symbol('OTP_CAPACITY_IMPLEMENTATION')
     PrismaModule,
     MessagingRealtimePublicModule,
     CollaborationPermissionPublicModule,
+    // RA-BE-141: the WhatsApp notice to the number an account left.
+    IdentityTransientDeliveryInternalModule,
     PassportModule,
     // RA-BE-149: each purpose signs with its own key derived from JWT_SECRET.
     JwtModule.registerAsync({

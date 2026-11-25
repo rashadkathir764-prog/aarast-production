@@ -110,6 +110,9 @@ import { AuthOtpRepository, type OtpClaimResult } from "../../infrastructure/aut
 import { AuthChallengeRepository } from "../../infrastructure/auth-challenge.repository";
 import { AuthSessionRepository, type LockedRefreshTokenRow, type LockedRefreshTokenFamily } from "../../infrastructure/auth-session.repository";
 import { AdminTrustedDeviceRepository } from "../../infrastructure/admin-trusted-device.repository";
+import { IDENTITY_TRANSIENT_DELIVERY_IMPLEMENTATION } from "../identity-transient-delivery.internal.module";
+import type { IdentityTransientDeliveryPort } from "../../public/identity-transient-delivery.port";
+import { PHONE_CHANGED_NOTICE } from "./phone-change-notice";
 
 export interface AuthResponse {
   user: SafeUser;
@@ -272,6 +275,9 @@ export class AuthService implements IdentityAuthPort, OnModuleDestroy {
     private readonly realtime: MessagingRealtimePort,
     @Inject(COLLABORATION_PERMISSION_PORT)
     private readonly collaboration: CollaborationPermissionPort,
+    // RA-BE-141: the WhatsApp notice to the number an account left.
+    @Inject(IDENTITY_TRANSIENT_DELIVERY_IMPLEMENTATION)
+    private readonly transientDelivery: IdentityTransientDeliveryPort,
   ) {}
 
   /**
@@ -1351,6 +1357,7 @@ export class AuthService implements IdentityAuthPort, OnModuleDestroy {
         : await this.assertPhoneChangePassword(currentUser.id, currentPassword, device);
     const now = new Date();
     let outcome: "changed" | "invalid" | "currentInvalid";
+    let previousPhone: string | null = null;
     try {
       outcome = await runSerializableTransaction(this.prisma, async (tx) => {
         const [actor] = await lockUserLifecycleRowsForUpdateInTransaction(tx, [
@@ -1390,6 +1397,7 @@ export class AuthService implements IdentityAuthPort, OnModuleDestroy {
         // RA-BE-21: only now, the number's code proven, may the answer say
         // the number has an account; it reaches whoever holds that number.
         await this.assertPhoneFree(tx, currentUser.id, phone);
+        previousPhone = (await this.users.findById(tx, currentUser.id))?.phone ?? null;
         const changed = await this.users.changePhone(tx, currentUser.id, phone, now);
         if (changed.count !== 1) {
           throw new UnauthorizedException("User not found");
@@ -1424,7 +1432,31 @@ export class AuthService implements IdentityAuthPort, OnModuleDestroy {
     if (passwordThrottleSubject !== null) {
       await this.loginThrottle.clear(passwordThrottleSubject, "application", device);
     }
+    if (previousPhone !== null && previousPhone !== phone) {
+      await this.tellPreviousPhone(previousPhone);
+    }
     return { changed: true, phone };
+  }
+
+  /**
+   * RA-BE-141: the number the account left is told on WhatsApp, without the
+   * new number, so a change its owner did not make does not pass unseen.
+   * Only OpenWA sends free text (the Meta channel takes approved templates
+   * only); the message counts on the WhatsApp messages' own daily budget
+   * (RA-BE-34). The change is made: a message that fails is logged, not
+   * raised.
+   */
+  private async tellPreviousPhone(previousPhone: string): Promise<void> {
+    if (this.getOtpMode() !== "openwa") return;
+    try {
+      await this.transientDelivery.send({ phone: previousPhone, text: PHONE_CHANGED_NOTICE });
+    } catch (error) {
+      this.logger.warn(
+        `The old number was not told of a phone change (${
+          error instanceof Error ? error.name : "unknown error"
+        })`,
+      );
+    }
   }
 
   /** RA-BE-141: claims the code sent to the account's current number. */

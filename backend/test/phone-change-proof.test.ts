@@ -49,7 +49,10 @@ function matches(row: OtpRow, where: any): boolean {
   return true;
 }
 
-function harness(options: { passwordHash?: string | null } = {}) {
+function harness(
+  options: { passwordHash?: string | null; deliveryFails?: boolean } = {},
+) {
+  const notices: Array<{ phone: string; text: string }> = [];
   const user = {
     id: "user-1",
     phone: CURRENT_PHONE,
@@ -140,6 +143,12 @@ function harness(options: { passwordHash?: string | null } = {}) {
     },
     { consume: async () => undefined },
     { disconnectUser: () => undefined },
+    {
+      send: async (input: { phone: string; text: string }) => {
+        notices.push(input);
+        if (options.deliveryFails) throw new Error("OpenWA is down");
+      },
+    },
   );
   const session = {
     id: user.id,
@@ -159,6 +168,7 @@ function harness(options: { passwordHash?: string | null } = {}) {
     otps,
     throttle,
     addCode,
+    notices,
     get transactions() {
       return transactions;
     },
@@ -272,4 +282,62 @@ test("RA-BE-141: the current number's code goes to the account's own number", as
   await h.service.requestCurrentPhoneCode(h.session);
 
   assert.deepEqual(sent, [{ phone: CURRENT_PHONE, purpose: OtpPurpose.CURRENT_PHONE_PROOF }]);
+});
+
+// RA-BE-141: the old number is told on WhatsApp that the account moved, so
+// its owner learns of a change they did not make. The message names no new
+// number. It goes through OpenWA (the free-text channel) on the messages'
+// own daily budget, and a failed message never undoes the change.
+
+async function withOtpMode<T>(mode: string, run: () => Promise<T>): Promise<T> {
+  const previous = process.env.AUTH_OTP_MODE;
+  process.env.AUTH_OTP_MODE = mode;
+  try {
+    return await run();
+  } finally {
+    process.env.AUTH_OTP_MODE = previous;
+  }
+}
+
+function moveWithCodes(h: ReturnType<typeof harness>) {
+  h.addCode(CURRENT_PHONE, OtpPurpose.CURRENT_PHONE_PROOF, "111111");
+  h.addCode(NEW_PHONE, OtpPurpose.VERIFY_PHONE, "222222");
+  return h.service.confirmPhoneChange(h.session, NEW_PHONE, "222222", { currentCode: "111111" });
+}
+
+test("RA-BE-141: after the move the old number is told, without the new one", async () => {
+  const h = harness();
+  await withOtpMode("openwa", () => moveWithCodes(h));
+  assert.equal(h.notices.length, 1);
+  assert.equal(h.notices[0].phone, CURRENT_PHONE);
+  assert.match(h.notices[0].text, /^رقم حسابك في اعّرست تغيّر/);
+  const digits = NEW_PHONE.replace(/\D/g, "");
+  for (const part of [NEW_PHONE, digits, digits.slice(-9), digits.slice(-4)]) {
+    assert.equal(h.notices[0].text.includes(part), false, `the notice must not carry ${part}`);
+  }
+});
+
+test("RA-BE-141: a notice that fails leaves the move made", async () => {
+  const h = harness({ deliveryFails: true });
+  const moved = await withOtpMode("openwa", () => moveWithCodes(h));
+  assert.deepEqual(moved, { changed: true, phone: NEW_PHONE });
+  assert.equal(h.user.phone, NEW_PHONE);
+  assert.equal(h.notices.length, 1);
+});
+
+test("RA-BE-141: no notice for a move refused, nor where WhatsApp takes templates only", async () => {
+  const refused = harness();
+  refused.addCode(CURRENT_PHONE, OtpPurpose.CURRENT_PHONE_PROOF, "111111");
+  refused.addCode(NEW_PHONE, OtpPurpose.VERIFY_PHONE, "222222");
+  await withOtpMode("openwa", () =>
+    assert.rejects(
+      refused.service.confirmPhoneChange(refused.session, NEW_PHONE, "999999", { currentCode: "111111" }),
+    ),
+  );
+  assert.equal(refused.notices.length, 0);
+
+  const templatesOnly = harness();
+  await withOtpMode("whatsapp", () => moveWithCodes(templatesOnly));
+  assert.equal(templatesOnly.user.phone, NEW_PHONE);
+  assert.equal(templatesOnly.notices.length, 0);
 });

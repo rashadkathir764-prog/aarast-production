@@ -159,6 +159,8 @@ export function authService(
   loginThrottle: unknown,
   otpDispatchQuota: unknown,
   realtime: unknown,
+  // RA-BE-141: the WhatsApp notice to the old number; by default it goes nowhere.
+  transientDelivery: unknown = { send: async () => undefined },
 ): AuthService {
   return new AuthService(
     prisma as any,
@@ -167,6 +169,7 @@ export function authService(
     otpDispatchQuota as any,
     realtime as any,
     realPermissions,
+    transientDelivery as any,
   );
 }
 

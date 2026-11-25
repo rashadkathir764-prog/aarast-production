@@ -60,6 +60,8 @@ const authService = new AuthService(
   { consume: async () => undefined } as any,
   realtime as any,
   new PermissionService(prisma as any, ownerPorts.plans),
+  // RA-BE-141: the old number's WhatsApp notice goes nowhere here.
+  { send: async () => undefined },
 );
 
 function authenticatedAdmin(user: any) {

@@ -167,6 +167,19 @@ function recordingTx(
         return { count: planIds.length };
       },
     },
+    // RA-OP-32: the erased plans go on the re-deletion list.
+    erasedPlan: {
+      createMany: async ({ data, skipDuplicates }: any) => {
+        calls.push("erasedPlan.record");
+        assert.deepEqual(
+          data.map((row: any) => row.weddingPlanId).sort(),
+          [...planIds].sort(),
+        );
+        assert.ok(data.every((row: any) => row.erasedAt instanceof Date));
+        assert.equal(skipDuplicates, true);
+        return { count: planIds.length };
+      },
+    },
     provider: {
       findMany: async () =>
         [...(graph.providerIds ?? [])].sort().map((id) => ({ id })),
@@ -603,6 +616,8 @@ test("account deletion clears plan children before plans and deletes the user la
     "the deleting contributor tenure closes before user deletion",
   );
   assert.ok(at("conversation") < at("weddingPlan"));
+  // RA-OP-32: the plans are listed for re-deletion once they are gone.
+  assert.ok(at("weddingPlan") < at("erasedPlan.record"));
   assert.ok(
     at("conversationAttachmentMedia") < at("conversation"),
     "conversation media is scheduled before its attachment cascades",

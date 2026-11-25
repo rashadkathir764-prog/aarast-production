@@ -82,6 +82,11 @@ function planStore(status: WeddingPlanStatus = WeddingPlanStatus.PLANNING) {
       }
       throw new Error(`Unexpected query: ${text}`);
     },
+    // RA-OP-32: the re-deletion list holds the plan only once it is erased.
+    erasedPlan: {
+      findUnique: async ({ where }: any) =>
+        erased && where.weddingPlanId === row.id ? { weddingPlanId: row.id } : null,
+    },
   };
   return { row, tx, markErased: () => (erased = true) };
 }

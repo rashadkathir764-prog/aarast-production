@@ -141,6 +141,10 @@ model ConversationReport {
   reporterUserId String
   reason         String                   @db.Text
   status         ConversationReportStatus @default(OPEN)
+  // Q-50 (أ), D124: why the team closed it, sent to the reporter; null while
+  // open and on the reports closed before 2026-11-25.
+  closingNote    String?                  @db.Text
+  closedAt       DateTime?
   createdAt      DateTime                 @default(now())
   updatedAt      DateTime                 @updatedAt
   conversation   Conversation             @relation(fields: [conversationId], references: [id], onDelete: Cascade)

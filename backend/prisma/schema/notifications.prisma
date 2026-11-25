@@ -47,6 +47,8 @@ enum NotificationType {
   FUNDING_EXPECTED
   // RA-BE-152: his name, logo, cover, city or category change approved or refused.
   PROVIDER_PROFILE_CHANGE_REVIEWED
+  // Q-50 (أ), D124: the team closed his report on a conversation, with its reason.
+  CONVERSATION_REPORT_CLOSED
 }
 
 enum NotificationPriority {

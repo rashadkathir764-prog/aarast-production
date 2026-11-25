@@ -94,6 +94,9 @@ export interface AdminConversationReportView {
   conversationId: string;
   reason: string;
   status: AdminConversationReportRow['status'];
+  /** Q-50 (أ): why it was closed, as its reporter was told; null while open. */
+  closingNote: string | null;
+  closedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
   reporter: {
@@ -434,6 +437,8 @@ export class AdminOwners {
         conversationId: row.conversationId,
         reason: row.reason,
         status: row.status,
+        closingNote: row.closingNote,
+        closedAt: row.closedAt,
         createdAt: row.createdAt,
         updatedAt: row.updatedAt,
         reporter: {

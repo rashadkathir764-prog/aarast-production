@@ -1122,6 +1122,8 @@ export class NotificationsService implements NotificationsPort {
       case NotificationType.BOOKING_REQUESTED:
       case NotificationType.REVIEW_RECEIVED:
       case NotificationType.REVIEW_REPLIED:
+      // Q-50 (أ): what came of a report on a conversation is the messages'.
+      case NotificationType.CONVERSATION_REPORT_CLOSED:
         return "providerMessagesEnabled";
       // RA-BE-190: a customer's booking reminders are the «الحجوزات» switch;
       // every other booking notice, and the provider's own reminders (his one

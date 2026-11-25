@@ -5,6 +5,8 @@ import {
 } from '@nestjs/common';
 import {
   ConversationReportStatus,
+  NotificationPriority,
+  NotificationType,
   Prisma,
   type ProviderCategory,
   ReviewStatus,
@@ -19,6 +21,8 @@ import {
 } from '../modules/marketplace/public/provider-review-rating';
 import type { AdminReviewRow } from '../modules/marketplace/public/marketplace-admin.port';
 import { PrismaService } from '../platform/database/prisma.service';
+import type { NotificationsPort } from '../modules/notifications/public/notifications.port';
+import { noticeRoutes } from '../shared-kernel/routes/notification-routes';
 import { runAuthorizedAdminMutation } from '../modules/backoffice/public/admin-mutation-gate';
 import { recordAdminAuditChange } from '../modules/backoffice/public/admin-audit-change';
 import { AdminOwners } from './admin-owners';
@@ -34,7 +38,10 @@ import {
   AdminCategoryDto,
   AdminCityDto,
 } from './dto/admin-catalog.dto';
-import { AdminConversationReportStatusDto } from './dto/admin-conversation-report.dto';
+import {
+  AdminConversationReportStatusDto,
+  CONVERSATION_REPORT_CLOSING_NOTE_MAX_LENGTH,
+} from './dto/admin-conversation-report.dto';
 import { AdminListedProviderDto } from './dto/admin-listed-provider.dto';
 import { AdminReviewStatusDto } from './dto/admin-review.dto';
 import { AdminServiceDto } from './dto/admin-service.dto';
@@ -43,6 +50,7 @@ export class AdminMutationExecutor {
   constructor(
     private readonly prisma: PrismaService,
     private readonly owners: AdminOwners,
+    private readonly notifications: Pick<NotificationsPort, 'createNotificationInTransaction'>,
   ) {}
 
   /**
@@ -315,11 +323,31 @@ export class AdminMutationExecutor {
     );
   }
 
+  /**
+   * Q-50 (أ), D124 (RA-AD-22): a report is closed («تمت المراجعة» or «ما
+   * فيه شيء») with the reason its reporter is told, as a notification under
+   * his messages switch and the quiet hours; the reason and its time are kept
+   * on the report. Reopening it clears both and tells no one.
+   */
   async updateConversationReportStatus(
     currentUser: AuthenticatedUser,
     id: string,
     dto: AdminConversationReportStatusDto,
   ) {
+    const status = this.parseConversationReportStatus(dto.status);
+    const closing = status !== ConversationReportStatus.OPEN;
+    const note = dto.note?.trim() || null;
+    if (closing && !note) {
+      throw new BadRequestException({
+        code: 'CONVERSATION_REPORT_CLOSING_NOTE_REQUIRED',
+        message: 'Closing a report needs the reason its reporter is told',
+      });
+    }
+    if (note && note.length > CONVERSATION_REPORT_CLOSING_NOTE_MAX_LENGTH) {
+      throw new BadRequestException(
+        `The reason has at most ${CONVERSATION_REPORT_CLOSING_NOTE_MAX_LENGTH} characters`,
+      );
+    }
     return runAuthorizedAdminMutation(
       this.prisma,
       this.owners.accounts,
@@ -331,13 +359,47 @@ export class AdminMutationExecutor {
         if (!locked) {
           throw new NotFoundException('Conversation report not found');
         }
-        const status = this.parseConversationReportStatus(dto.status);
         const updated = await this.owners.messaging.setConversationReportStatusInTransaction(
           tx,
           id,
-          status,
+          {
+            status,
+            closingNote: closing ? note : null,
+            closedAt: closing ? new Date() : null,
+          },
         );
-        recordAdminAuditChange({ status: locked.status }, { status: updated.status });
+        // The reason is the team's words to the reporter: the audit keeps
+        // that it was given, as the other decisions' codes (RA-AD-23).
+        recordAdminAuditChange(
+          { status: locked.status },
+          { status: updated.status, closingNoteGiven: closing },
+        );
+        if (closing && note) {
+          const provider = await this.owners.marketplace.findProviderAccount(
+            tx,
+            locked.providerId,
+          );
+          await this.notifications.createNotificationInTransaction(tx, {
+            userId: locked.reporterUserId,
+            type: NotificationType.CONVERSATION_REPORT_CLOSED,
+            priority: NotificationPriority.NORMAL,
+            title: 'راجعنا بلاغك',
+            body: note,
+            entityType: 'ConversationReport',
+            entityId: id,
+            routeTarget: noticeRoutes.conversation(locked.conversationId),
+            data: {
+              conversationReportId: id,
+              conversationId: locked.conversationId,
+              status,
+              // The provider who reported reads it among his own notices.
+              ...(provider?.userId === locked.reporterUserId
+                ? { recipientAudience: 'PROVIDER' }
+                : {}),
+            },
+            dedupeKey: `conversation-report:${id}:${status}`,
+          });
+        }
         return updated;
       },
     );

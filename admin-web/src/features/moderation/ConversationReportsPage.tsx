@@ -5,7 +5,8 @@
 // reaches him, as a06's «إيقاف») for whom holds PROVIDERS_WRITE, and the
 // customer's account page, where disabling lives. The reported message, «احذف الرسالة» and the history on the same
 // party wait for B-41. Closing the report stays: «ما فيه شيء» (dismissed)
-// and «تمت المراجعة».
+// and «تمت المراجعة», each with the reason its reporter is told (Q-50 (أ),
+// D124), sent to him as a notification.
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -76,8 +77,6 @@ function ChatReports() {
   const [result, setResult] = useState<Page | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
     setError(null);
@@ -125,17 +124,10 @@ function ChatReports() {
     return canOpenUsers ? <Link to={`/users/${user.id}`}>{user.name}</Link> : user.name;
   }
 
-  async function close(report: ConversationReport, status: ConversationReport['status']) {
-    setBusy(true);
-    setActionError(null);
-    try {
-      await updateConversationReportStatus(report.id, status);
-      await load();
-    } catch (value) {
-      setActionError(value instanceof Error ? value.message : 'ما قدرنا نقفل البلاغ.');
-    } finally {
-      setBusy(false);
-    }
+  /** The dialog shows a failure itself and stays open with the reason typed. */
+  async function close(report: ConversationReport, status: ConversationReport['status'], note: string) {
+    await updateConversationReportStatus(report.id, status, note);
+    await load();
   }
 
   function reporterLink(report: ConversationReport) {
@@ -166,7 +158,6 @@ function ChatReports() {
               highlight={(report) => report.id === selectedId}
               onRowClick={(report) => {
                 setSelectedId(report.id);
-                setActionError(null);
               }}
               rowLabel={(report) => `اقرأ بلاغ ${report.reason}`}
               renderRow={(report) => [
@@ -248,15 +239,26 @@ function ChatReports() {
                 ) : null}
                 <Can permission={AdminPermission.CONVERSATION_REPORTS_WRITE}>
                   <div className="desk-report__actions">
-                    <DeskButton disabled={busy} onClick={() => void close(selected, 'REVIEWED')}>
-                      تمت المراجعة
-                    </DeskButton>
-                    <DeskButton tone="soft" disabled={busy} onClick={() => void close(selected, 'DISMISSED')}>
-                      ما فيه شيء
-                    </DeskButton>
+                    {(
+                      [
+                        ['REVIEWED', 'تمت المراجعة', 'تمت مراجعة البلاغ', 'teal'],
+                        ['DISMISSED', 'ما فيه شيء', 'ما فيه شيء في البلاغ', 'soft'],
+                      ] as const
+                    ).map(([status, label, title, tone]) => (
+                      <ConfirmDialog
+                        key={status}
+                        title={title}
+                        effects={['يتقفل البلاغ ويطلع من المفتوحة.', 'يوصل المبلّغ السبب في تنبيه.']}
+                        needsNote
+                        noteMaxLength={500} // CONVERSATION_REPORT_CLOSING_NOTE_MAX_LENGTH
+                        noteLabel="السبب (يوصل المبلّغ)"
+                        confirmLabel="اقفل البلاغ"
+                        trigger={<DeskButton tone={tone}>{label}</DeskButton>}
+                        onConfirm={(note) => close(selected, status, note)}
+                      />
+                    ))}
                   </div>
                 </Can>
-                {actionError ? <DeskNote tone="coral">{actionError}</DeskNote> : null}
               </Panel>
             ) : null}
           </div>

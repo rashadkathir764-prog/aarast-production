@@ -18,8 +18,30 @@ export type AdminConversationReportRow = ConversationReport & {
 
 export type AdminConversationReportStatusRow = Pick<
   ConversationReport,
-  'id' | 'conversationId' | 'reason' | 'status' | 'createdAt' | 'updatedAt'
+  | 'id'
+  | 'conversationId'
+  | 'reason'
+  | 'status'
+  | 'closingNote'
+  | 'closedAt'
+  | 'createdAt'
+  | 'updatedAt'
 >;
+
+/** A locked report: its status (the audit's «before») and whom closing it tells. */
+export interface LockedConversationReport {
+  status: ConversationReportStatus;
+  reporterUserId: string;
+  conversationId: string;
+  providerId: string;
+}
+
+/** Q-50 (أ): a status with its closing reason and time (both null while open). */
+export interface ConversationReportStatusChange {
+  status: ConversationReportStatus;
+  closingNote: string | null;
+  closedAt: Date | null;
+}
 
 // Messaging owns conversations and their reports. The back office triages
 // reports and learns which conversations a provider decision revokes through
@@ -43,16 +65,17 @@ export interface MessagingAdminPort {
   ): Promise<AdminConversationReportRow[]>;
   /**
    * Locks the report FOR UPDATE and returns its status (the audit log's
-   * «before», RA-AD-23); null when it does not exist.
+   * «before», RA-AD-23), its reporter and its conversation's provider (whom
+   * closing it tells, Q-50); null when it does not exist.
    */
   lockConversationReportForUpdateInTransaction(
     tx: Prisma.TransactionClient,
     reportId: string,
-  ): Promise<{ status: ConversationReportStatus } | null>;
+  ): Promise<LockedConversationReport | null>;
   setConversationReportStatusInTransaction(
     tx: Prisma.TransactionClient,
     reportId: string,
-    status: ConversationReportStatus,
+    change: ConversationReportStatusChange,
   ): Promise<AdminConversationReportStatusRow>;
   /** The provider's conversations, by id. */
   listProviderConversationIds(

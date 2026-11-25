@@ -3,6 +3,8 @@ import { type ConversationReportStatus, Prisma } from '@prisma/client';
 import type {
   AdminConversationReportRow,
   AdminConversationReportStatusRow,
+  ConversationReportStatusChange,
+  LockedConversationReport,
   MessagingAdminPort,
 } from '../public/messaging-admin.port';
 
@@ -57,13 +59,14 @@ export class MessagingAdminService implements MessagingAdminPort {
   async lockConversationReportForUpdateInTransaction(
     tx: Prisma.TransactionClient,
     reportId: string,
-  ): Promise<{ status: ConversationReportStatus } | null> {
-    const rows = await tx.$queryRaw<Array<{ status: ConversationReportStatus }>>(
+  ): Promise<LockedConversationReport | null> {
+    const rows = await tx.$queryRaw<LockedConversationReport[]>(
       Prisma.sql`
-        SELECT "status"
-        FROM "ConversationReport"
-        WHERE "id" = ${reportId}
-        FOR UPDATE
+        SELECT r."status", r."reporterUserId", r."conversationId", c."providerId"
+        FROM "ConversationReport" r
+        JOIN "Conversation" c ON c."id" = r."conversationId"
+        WHERE r."id" = ${reportId}
+        FOR UPDATE OF r
       `,
     );
     return rows.length === 1 ? rows[0]! : null;
@@ -72,16 +75,22 @@ export class MessagingAdminService implements MessagingAdminPort {
   async setConversationReportStatusInTransaction(
     tx: Prisma.TransactionClient,
     reportId: string,
-    status: ConversationReportStatus,
+    change: ConversationReportStatusChange,
   ): Promise<AdminConversationReportStatusRow> {
     return tx.conversationReport.update({
       where: { id: reportId },
-      data: { status },
+      data: {
+        status: change.status,
+        closingNote: change.closingNote,
+        closedAt: change.closedAt,
+      },
       select: {
         id: true,
         conversationId: true,
         reason: true,
         status: true,
+        closingNote: true,
+        closedAt: true,
         createdAt: true,
         updatedAt: true,
       },

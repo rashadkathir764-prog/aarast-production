@@ -356,9 +356,19 @@ test('messaging locks a report before its status is set', async () => {
     await service.lockConversationReportForUpdateInTransaction(found.client, 'report-1'),
     { status: ConversationReportStatus.OPEN },
   );
-  await service.setConversationReportStatusInTransaction(found.client, 'report-1', ConversationReportStatus.REVIEWED);
+  // Q-50 (أ): the status is written with its closing reason and time.
+  const closedAt = new Date('2026-11-25T10:00:00Z');
+  await service.setConversationReportStatusInTransaction(found.client, 'report-1', {
+    status: ConversationReportStatus.REVIEWED,
+    closingNote: 'نبهنا المزود',
+    closedAt,
+  });
   assert.match((found.calls[0]?.[1] as any).sql, /FROM "ConversationReport"[\s\S]*FOR UPDATE/);
-  assert.deepEqual((found.calls[1]?.[1] as any).data, { status: ConversationReportStatus.REVIEWED });
+  assert.deepEqual((found.calls[1]?.[1] as any).data, {
+    status: ConversationReportStatus.REVIEWED,
+    closingNote: 'نبهنا المزود',
+    closedAt,
+  });
 
   assert.deepEqual(await service.listProviderConversationIds(found.client, 'provider-1'), ['c1', 'c2']);
   assert.deepEqual(found.calls[2], [

@@ -184,19 +184,31 @@ describe('ConversationReportsPage (a11)', () => {
     expect(screen.queryByRole('button', { name: 'إيقاف' })).not.toBeInTheDocument();
   });
 
-  it('closes a report as handled or as nothing, and says why when it fails', async () => {
+  // Q-50 (أ), D124: closing takes the reason, and the reason reaches the reporter.
+  it('closes a report as handled or as nothing with the reason its reporter is told, and says why when it fails', async () => {
     vi.mocked(updateConversationReportStatus).mockRejectedValueOnce(new Error('تعذر التحديث الآن.'));
     renderReports();
     await screen.findByRole('heading', { name: 'كلام غير لائق' });
 
     fireEvent.click(screen.getByRole('button', { name: 'ما فيه شيء' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('تعذر التحديث الآن.');
-    expect(updateConversationReportStatus).toHaveBeenCalledWith('r1', 'DISMISSED');
+    const nothing = screen.getByRole('dialog', { name: 'ما فيه شيء في البلاغ' });
+    expect(nothing).toHaveTextContent('يوصل المبلّغ السبب في تنبيه.');
+    const confirmNothing = within(nothing).getByRole('button', { name: 'اقفل البلاغ' });
+    // No reason, no closing.
+    expect(confirmNothing).toBeDisabled();
+    fireEvent.change(within(nothing).getByRole('textbox'), { target: { value: 'ما لقينا مخالفة في المحادثة' } });
+    fireEvent.click(confirmNothing);
+    expect(await within(nothing).findByRole('alert')).toHaveTextContent('تعذر التحديث الآن.');
+    expect(updateConversationReportStatus).toHaveBeenCalledWith('r1', 'DISMISSED', 'ما لقينا مخالفة في المحادثة');
+    fireEvent.click(within(nothing).getByRole('button', { name: 'تراجع' }));
 
     vi.mocked(updateConversationReportStatus).mockResolvedValue({} as ConversationReport);
     fireEvent.click(screen.getByRole('button', { name: 'تمت المراجعة' }));
+    const handled = screen.getByRole('dialog', { name: 'تمت مراجعة البلاغ' });
+    fireEvent.change(within(handled).getByRole('textbox'), { target: { value: 'نبهنا المزود' } });
+    fireEvent.click(within(handled).getByRole('button', { name: 'اقفل البلاغ' }));
     await waitFor(() =>
-      expect(updateConversationReportStatus).toHaveBeenLastCalledWith('r1', 'REVIEWED'),
+      expect(updateConversationReportStatus).toHaveBeenLastCalledWith('r1', 'REVIEWED', 'نبهنا المزود'),
     );
   });
 

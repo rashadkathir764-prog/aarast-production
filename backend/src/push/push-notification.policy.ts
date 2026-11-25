@@ -46,6 +46,9 @@ const PUSH_CHANNEL_BY_TYPE: ReadonlyMap<NotificationType, PushAndroidChannelId> 
     // and the portal.
     [NotificationType.PROVIDER_APPROVED, MESSAGES],
     [NotificationType.PROVIDER_REJECTED, MESSAGES],
+    // Q-50 (أ), D124: the reporter hears what came of his report; it waits
+    // on no one, so it is held through the quiet hours.
+    [NotificationType.CONVERSATION_REPORT_CLOSED, MESSAGES],
   ]);
 
 /**
@@ -281,6 +284,12 @@ export function pushNotificationCopy(
       return {
         title: "ما اعتمدنا ملفك",
         body: "تفاصيله في اعّرست.",
+      };
+    // Q-50: the team's reason stays in the app, never on the lock screen.
+    case NotificationType.CONVERSATION_REPORT_CLOSED:
+      return {
+        title: "راجعنا بلاغك",
+        body: "اللي سويناه في اعّرست.",
       };
     default:
       throw new Error("UnsupportedPushNotificationType");

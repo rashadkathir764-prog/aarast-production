@@ -136,7 +136,7 @@ export class AdminService {
     @Inject(NOTIFICATIONS_PORT) private readonly notifications: NotificationsPort,
     private readonly owners: AdminOwners,
   ) {
-    this.mutations = new AdminMutationExecutor(prisma, owners);
+    this.mutations = new AdminMutationExecutor(prisma, owners, notifications);
     this.claims = new AdminProviderClaims({ prisma, owners, notifications });
     this.featured = new AdminFeaturedPlacements({ prisma, owners, notifications });
     this.portfolio = new AdminPortfolioReview({ prisma, owners, notifications });

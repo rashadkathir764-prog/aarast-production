@@ -3826,6 +3826,18 @@ returns the admin refresh token.
 filed it, `{ kind: 'CUSTOMER', user: { id, name, phone } | null }` (the
 customer who opened the conversation).
 
+Q-50 (أ), D124: the operations role reads the reports
+(`CONVERSATION_REPORTS_READ`); closing stays `CONVERSATION_REPORTS_WRITE`
+(the moderator). `PATCH /admin/conversation-reports/:id/status` to `REVIEWED`
+or `DISMISSED` needs `note` (trimmed, 1 to 500 characters; else 400
+`CONVERSATION_REPORT_CLOSING_NOTE_REQUIRED`). The report keeps it as
+`closingNote` with `closedAt`, and its reporter gets a
+`CONVERSATION_REPORT_CLOSED` notification («راجعنا بلاغك», the note as its
+body, opening `/conversations/:conversationId`), under his messages switch
+(`providerMessagesEnabled`) and pushed on the messages channel, held through
+the quiet hours with generic lock-screen words. `OPEN` clears both and tells no
+one. A report closed before 2026-11-25 has neither.
+
 The audit log (`GET /admin/audit-logs`) keeps the decision as well as the
 route (RA-AD-23): `reason` is the body's `reason`, else its `note`, on every
 row of the action, and the SUCCEEDED row carries `before` and `after`, the

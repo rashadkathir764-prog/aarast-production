@@ -10,6 +10,8 @@ type AccountReport = {
   id: string;
   reason: string;
   status: AdminConversationReportView['status'];
+  /** Q-50 (أ): the reason it was closed with, as its reporter was told. */
+  closingNote: string | null;
   createdAt: Date;
   direction: 'FILED' | 'AGAINST';
   /** The other party: a business, or the person's name. */
@@ -30,6 +32,7 @@ function accountReport(
     id: report.id,
     reason: report.reason,
     status: report.status,
+    closingNote: report.closingNote,
     createdAt: report.createdAt,
   };
   const reported = report.reported;

@@ -46,6 +46,9 @@ export type ConversationReport = {
   conversationId: string;
   reason: string;
   status: 'OPEN' | 'REVIEWED' | 'DISMISSED';
+  /** Q-50 (أ): why it was closed, as its reporter was told; null while open. */
+  closingNote: string | null;
+  closedAt: string | null;
   createdAt: string;
   updatedAt: string;
   reporter: {
@@ -201,12 +204,14 @@ export function resolveAssistantReport(id: string) {
   });
 }
 
+/** Q-50 (أ), D124: closing takes `note`, the reason its reporter is told. */
 export function updateConversationReportStatus(
   id: string,
   status: ConversationReport['status'],
+  note?: string,
 ) {
   return apiRequest<ConversationReport>(
     `/admin/conversation-reports/${id}/status`,
-    { method: 'PATCH', body: { status } },
+    { method: 'PATCH', body: note === undefined ? { status } : { status, note } },
   );
 }

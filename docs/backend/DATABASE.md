@@ -622,7 +622,7 @@ rewrite as permission to restore a removed live model.
 | `ConversationEvent` | 14 | `id`, `conversationId`, `quoteRequestId`, `quoteOfferId`, `actorUserId`, `occurredAt`, `createdAt` |
 | `ChatMessage` | 11 | `id`, `conversationId`, `senderUserId`, `editedAt`, `deletedAt`, `createdAt`, `updatedAt` |
 | `ChatAttachment` | 7 | `id`, `messageId`, `createdAt` |
-| `ConversationReport` | 9 | `id`, `conversationId`, `reporterUserId`, `createdAt`, `updatedAt` |
+| `ConversationReport` | 11 | `id`, `conversationId`, `reporterUserId`, `closedAt`, `createdAt`, `updatedAt` |
 
 Total models: 77
 <!-- DOCS-SYNC:END -->

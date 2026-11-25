@@ -35,6 +35,9 @@ const rolePermissions: Record<AdminRole, readonly AdminPermission[]> = {
     AdminPermission.CATALOG_READ,
     AdminPermission.CATALOG_WRITE,
     AdminPermission.REVIEWS_READ,
+    // Q-50 (أ), D124: operations suspends and disables, so it reads the
+    // reports it acts on; closing them stays the moderator's.
+    AdminPermission.CONVERSATION_REPORTS_READ,
   ],
   MODERATOR: [
     AdminPermission.DASHBOARD_READ,

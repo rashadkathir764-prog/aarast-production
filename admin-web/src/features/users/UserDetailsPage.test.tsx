@@ -102,7 +102,7 @@ describe('UserDetailsPage (a13)', () => {
         provider: { id: 'prov-1', businessName: 'استوديو ضوء', status: 'ACTIVE', city: { nameAr: 'صنعاء' }, primaryCategory: { nameAr: 'التصوير' } },
         reports: [
           { id: 'r-1', reason: 'سب وشتم', status: 'OPEN', createdAt: '2026-10-23T08:00:00.000Z', direction: 'AGAINST', counterpart: 'قاعة الريان' },
-          { id: 'r-2', reason: 'ما رد', status: 'REVIEWED', createdAt: '2026-10-10T08:00:00.000Z', direction: 'FILED', counterpart: 'فرقة الأفراح' },
+          { id: 'r-2', reason: 'ما رد', status: 'REVIEWED', closingNote: 'نبهنا الفرقة', createdAt: '2026-10-10T08:00:00.000Z', direction: 'FILED', counterpart: 'فرقة الأفراح' },
         ],
         sessions: { application: 2, admin: 0, lastLoginAt: '2026-10-24T06:10:00.000Z' },
       }),
@@ -120,6 +120,8 @@ describe('UserDetailsPage (a13)', () => {
     expect(within(reports).getByText('بلاغ عليه من قاعة الريان · أمس')).toBeVisible();
     expect(within(reports).getByText(/بلاغ منه على فرقة الأفراح · /)).toBeVisible();
     expect(within(reports).getByText(/تمت المراجعة/)).toBeVisible();
+    // Q-50 (أ): the reason it was closed with, as its reporter was told.
+    expect(within(reports).getByText('السبب: نبهنا الفرقة')).toBeVisible();
     const sessions = screen.getByRole('region', { name: 'الدخول' });
     expect(sessions).toHaveTextContent('أجهزة داخل منها التطبيق2');
     expect(sessions).toHaveTextContent('آخر دخول9:10');

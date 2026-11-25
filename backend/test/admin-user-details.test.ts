@@ -32,6 +32,8 @@ function view(
     conversationId: `c-${id}`,
     reason: `سبب ${id}`,
     status: 'OPEN',
+    closingNote: null,
+    closedAt: null,
     createdAt: now,
     updatedAt: now,
     reporter: { ...reporter, phone: null, avatarUrl: null },

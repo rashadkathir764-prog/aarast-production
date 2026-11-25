@@ -53,6 +53,8 @@ export const NOTIFICATION_ROUTES = {
   FUNDING_EXPECTED: ['/wedding-plans/:planId/money/funding'],
   // RA-BE-152: his name, logo, cover, city or category change decided (p35).
   PROVIDER_PROFILE_CHANGE_REVIEWED: ['/provider/dashboard?tab=profile'],
+  // Q-50 (أ): the team closed his report on this conversation, with its reason.
+  CONVERSATION_REPORT_CLOSED: ['/conversations/:conversationId'],
 } as const satisfies Record<NotificationType, readonly string[]>;
 
 const part = (value: string) => encodeURIComponent(value);

@@ -179,6 +179,7 @@ export function UserDetailsPage() {
             {user.reports.map((report) => (
               <li key={report.id}>
                 <TwoLine main={report.reason} sub={reportLine(report)} />
+                {report.closingNote ? <DeskNote>{`السبب: ${report.closingNote}`}</DeskNote> : null}
               </li>
             ))}
           </ul>

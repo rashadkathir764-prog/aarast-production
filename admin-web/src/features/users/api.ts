@@ -28,6 +28,8 @@ type AdminUserReport = {
   id: string;
   reason: string;
   status: 'OPEN' | 'REVIEWED' | 'DISMISSED';
+  /** Q-50 (أ): the reason it was closed with, as its reporter was told. */
+  closingNote?: string | null;
   createdAt: string;
   direction: 'FILED' | 'AGAINST';
   /** The other party: a business, or the customer's name. */

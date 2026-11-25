@@ -6,6 +6,7 @@ import { validate } from 'class-validator';
 import { AdminCategoryDto, AdminCityDto } from '../src/admin/dto/admin-catalog.dto';
 import { AdminReviewActionDto } from '../src/admin/dto/admin-review-action.dto';
 import { AdminServiceDto } from '../src/admin/dto/admin-service.dto';
+import { SUPPORTED_CURRENCIES } from '../src/shared-kernel/money/currency';
 
 // RA-AD-16: the back office's own writes took text of any length. A city's
 // Arabic name sits in a unique btree index, whose row stops near 2.7 KB, so a
@@ -29,7 +30,6 @@ const cases: Array<[string, new () => object, Record<string, unknown>, string, n
   ['service', AdminServiceDto, {}, 'title', 160],
   ['service', AdminServiceDto, {}, 'description', 2000],
   ['service', AdminServiceDto, {}, 'priceUnit', 120],
-  ['service', AdminServiceDto, {}, 'currency', 8],
   ['provider decision', AdminReviewActionDto, {}, 'reason', 2000],
   ['provider decision', AdminReviewActionDto, {}, 'note', 2000],
 ];
@@ -40,3 +40,15 @@ for (const [name, Dto, base, field, limit] of cases) {
     assert.deepEqual(await refused(Dto, { ...base, [field]: 'ا'.repeat(limit + 1) }), [field]);
   });
 }
+
+// RA-BE-149 (D124): a service's currency was free text of up to 8; it is one
+// of the product's currencies (supported-currency.test.ts), so any other
+// text, of any length, is refused.
+test("a service's currency is one of the product's", async () => {
+  for (const currency of SUPPORTED_CURRENCIES) {
+    assert.deepEqual(await refused(AdminServiceDto, { currency }), []);
+  }
+  for (const currency of ['ا'.repeat(8), 'ا'.repeat(9), 'EUR', 'yer']) {
+    assert.deepEqual(await refused(AdminServiceDto, { currency }), ['currency']);
+  }
+});

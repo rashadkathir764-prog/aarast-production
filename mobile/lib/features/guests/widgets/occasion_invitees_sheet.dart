@@ -104,18 +104,60 @@ class _OccasionInviteesSheetState extends State<OccasionInviteesSheet> {
     return JourneySheetBody(
       title: 'مدعوين ${widget.label}',
       subtitle: '${words.count(_chosen.length)} من ${_guests.length}',
-      bottom: JourneyButton(
-        key: const ValueKey('invitees-save'),
-        label: _saving
-            ? 'نحفظ $_done من $changed'
-            : changed == 0
-            ? 'ما تغيّر شي'
-            : 'حفظ المدعوين (${words.count(changed)})',
-        expand: true,
-        large: true,
-        loading: _saving,
-        onPressed: _saving || changed == 0 ? null : _save,
+      // A failed save is said over its button, in view, not at the end of
+      // a long list.
+      bottom: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (_error case final error?) ...[
+            Text(
+              error,
+              key: const ValueKey('invitees-error'),
+              style: JourneyType.of(
+                JourneyType.small,
+                weight: JourneyType.bold,
+                color: AarastV3Color.danger,
+              ),
+            ),
+            const SizedBox(height: AarastV3Space.x2),
+          ],
+          JourneyButton(
+            key: const ValueKey('invitees-save'),
+            label: _saving
+                ? 'نحفظ $_done من $changed'
+                : changed == 0
+                ? 'ما تغيّر شي'
+                : 'حفظ المدعوين (${words.count(changed)})',
+            expand: true,
+            large: true,
+            loading: _saving,
+            onPressed: _saving || changed == 0 ? null : _save,
+          ),
+        ],
       ),
+      // RA-MO-367: the guests are built as they come into view (D99: up to
+      // 5000 in a plan).
+      itemCount: _guests.length,
+      itemBuilder: (context, index) {
+        final guest = _guests[index];
+        return CheckboxListTile(
+          key: ValueKey('invitees-guest-${guest.id}'),
+          value: _chosen.contains(guest.id),
+          onChanged: _saving
+              ? null
+              : (value) => setState(
+                  () => value == true
+                      ? _chosen.add(guest.id)
+                      : _chosen.remove(guest.id),
+                ),
+          title: Text(guest.name, style: JourneyType.of(JourneyType.body)),
+          activeColor: context.accent.primary,
+          contentPadding: EdgeInsets.zero,
+          controlAffinity: ListTileControlAffinity.leading,
+          dense: true,
+        );
+      },
       children: [
         if (groups.isNotEmpty) ...[
           const JourneySectionTitle('مجموعة كاملة'),
@@ -147,35 +189,6 @@ class _OccasionInviteesSheetState extends State<OccasionInviteesSheet> {
             ),
             icon: LucideIcons.userPlus,
           ),
-        for (final guest in _guests)
-          CheckboxListTile(
-            key: ValueKey('invitees-guest-${guest.id}'),
-            value: _chosen.contains(guest.id),
-            onChanged: _saving
-                ? null
-                : (value) => setState(
-                    () => value == true
-                        ? _chosen.add(guest.id)
-                        : _chosen.remove(guest.id),
-                  ),
-            title: Text(guest.name, style: JourneyType.of(JourneyType.body)),
-            activeColor: context.accent.primary,
-            contentPadding: EdgeInsets.zero,
-            controlAffinity: ListTileControlAffinity.leading,
-            dense: true,
-          ),
-        if (_error case final error?) ...[
-          const SizedBox(height: AarastV3Space.x2),
-          Text(
-            error,
-            key: const ValueKey('invitees-error'),
-            style: JourneyType.of(
-              JourneyType.small,
-              weight: JourneyType.bold,
-              color: AarastV3Color.danger,
-            ),
-          ),
-        ],
       ],
     );
   }

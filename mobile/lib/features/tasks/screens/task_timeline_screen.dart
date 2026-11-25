@@ -144,48 +144,71 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
         ? tasks
         : tasks.where((task) => _personKey(task, userId) == person).toList();
 
-    final Widget body;
+    // RA-MO-367: the list's rows are slivers, built as they come into view.
+    final List<Widget> body;
     if (provider.isLoading && tasks.isEmpty) {
-      body = const JourneyListState(
-        phase: JourneyListPhase.loading,
-        section: JourneySection.tasks,
-      );
+      body = const [
+        SliverToBoxAdapter(
+          child: JourneyListState(
+            phase: JourneyListPhase.loading,
+            section: JourneySection.tasks,
+          ),
+        ),
+      ];
     } else if (provider.loadErrorMessage != null && tasks.isEmpty) {
-      body = JourneyListState(
-        phase: JourneyListPhase.error,
-        section: JourneySection.tasks,
-        onRetry: () => provider.load(widget.weddingPlanId),
-      );
+      body = [
+        SliverToBoxAdapter(
+          child: JourneyListState(
+            phase: JourneyListPhase.error,
+            section: JourneySection.tasks,
+            onRetry: () => provider.load(widget.weddingPlanId),
+          ),
+        ),
+      ];
     } else if (tasks.isEmpty) {
-      body = JourneyListState(
-        phase: JourneyListPhase.empty,
-        section: JourneySection.tasks,
-        emptyIcon: LucideIcons.listChecks,
-        emptyTitle: 'ما فيه مهام بعد',
-        emptyAction: context.say('أضف مهمة', 'أضيفي مهمة'),
-        onEmptyAction: _add,
-      );
+      body = [
+        SliverToBoxAdapter(
+          child: JourneyListState(
+            phase: JourneyListPhase.empty,
+            section: JourneySection.tasks,
+            emptyIcon: LucideIcons.listChecks,
+            emptyTitle: 'ما فيه مهام بعد',
+            emptyAction: context.say('أضف مهمة', 'أضيفي مهمة'),
+            onEmptyAction: _add,
+          ),
+        ),
+      ];
     } else {
       final groups = groupTasks(visible, today);
       body = _byMonth
-          ? _MonthsTimeline(
-              tasks: visible,
-              onOpen: (task) => context.push(
-                AppRouter.taskDetails(widget.weddingPlanId, task.id),
-                extra: task,
+          ? [
+              SliverToBoxAdapter(
+                child: _MonthsTimeline(
+                  tasks: visible,
+                  onOpen: (task) => context.push(
+                    AppRouter.taskDetails(widget.weddingPlanId, task.id),
+                    extra: task,
+                  ),
+                ),
               ),
-            )
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                for (final entry in groups.entries)
-                  if (isOpenTaskGroup(entry.key)) ...[
-                    TaskGroupTitle(group: entry.key, count: entry.value.length),
-                    _taskBox(provider, entry.value, person, selfLetter),
-                  ],
-                if (groups[TaskGroup.done] case final finished?) ...[
-                  const SizedBox(height: AarastV3Space.x1),
-                  Align(
+            ]
+          : [
+              for (final entry in groups.entries)
+                if (isOpenTaskGroup(entry.key)) ...[
+                  SliverToBoxAdapter(
+                    child: TaskGroupTitle(
+                      group: entry.key,
+                      count: entry.value.length,
+                    ),
+                  ),
+                  _taskBox(provider, entry.value, person, selfLetter),
+                ],
+              if (groups[TaskGroup.done] case final finished?) ...[
+                const SliverToBoxAdapter(
+                  child: SizedBox(height: AarastV3Space.x1),
+                ),
+                SliverToBoxAdapter(
+                  child: Align(
                     alignment: AlignmentDirectional.centerStart,
                     child: JourneyTextAction(
                       key: const ValueKey('tasks-toggle-done'),
@@ -199,12 +222,15 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
                       onPressed: () => setState(() => _showDone = !_showDone),
                     ),
                   ),
-                  if (_showDone)
-                    _taskBox(provider, finished, person, selfLetter),
-                ],
-                if (groups[TaskGroup.cancelled] case final cancelled?) ...[
-                  const SizedBox(height: AarastV3Space.x1),
-                  Align(
+                ),
+                if (_showDone) _taskBox(provider, finished, person, selfLetter),
+              ],
+              if (groups[TaskGroup.cancelled] case final cancelled?) ...[
+                const SliverToBoxAdapter(
+                  child: SizedBox(height: AarastV3Space.x1),
+                ),
+                SliverToBoxAdapter(
+                  child: Align(
                     alignment: AlignmentDirectional.centerStart,
                     child: JourneyTextAction(
                       key: const ValueKey('tasks-toggle-cancelled'),
@@ -219,13 +245,13 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
                           setState(() => _showCancelled = !_showCancelled),
                     ),
                   ),
-                  if (_showCancelled)
-                    _taskBox(provider, cancelled, person, selfLetter),
-                ],
-                // Critique مه2: no standing line teaching the swipe; the
-                // task's circle is the way to finish it, the swipe a shortcut.
+                ),
+                if (_showCancelled)
+                  _taskBox(provider, cancelled, person, selfLetter),
               ],
-            );
+              // Critique مه2: no standing line teaching the swipe; the
+              // task's circle is the way to finish it, the swipe a shortcut.
+            ];
     }
 
     return AarastScreenFrame(
@@ -233,120 +259,137 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
       child: RefreshIndicator(
         color: context.accent.primary,
         onRefresh: () => provider.load(widget.weddingPlanId),
-        child: ListView(
+        child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(
-            AarastV3Space.x4,
-            AarastV3Space.x3,
-            AarastV3Space.x4,
-            AarastV3Density.pageBottomWithQuickAction,
-          ),
-          children: [
-            JourneyTabHeader(
-              title: 'المهام',
-              status: _statusLine(
-                visible,
-                today,
-                context.journeyProfile,
-                filtered: person != _everyone,
+          slivers: [
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(
+                AarastV3Space.x4,
+                AarastV3Space.x3,
+                AarastV3Space.x4,
+                AarastV3Density.pageBottomWithQuickAction,
               ),
-              actions: [
-                if (tasks.isNotEmpty)
-                  JourneyRoundButton(
-                    key: const Key('tasks-share-summary'),
-                    icon: LucideIcons.share2,
-                    tooltip: context.say(
-                      'شارك المهام على واتساب',
-                      'شاركي المهام على واتساب',
-                    ),
-                    // What the screen shows, so «خلصنا X من Y» matches it.
-                    onPressed: () => _share(visible, person),
+              sliver: SliverMainAxisGroup(
+                slivers: [
+                  SliverList.list(
+                    children: [
+                      JourneyTabHeader(
+                        title: 'المهام',
+                        status: _statusLine(
+                          visible,
+                          today,
+                          context.journeyProfile,
+                          filtered: person != _everyone,
+                        ),
+                        actions: [
+                          if (tasks.isNotEmpty)
+                            JourneyRoundButton(
+                              key: const Key('tasks-share-summary'),
+                              icon: LucideIcons.share2,
+                              tooltip: context.say(
+                                'شارك المهام على واتساب',
+                                'شاركي المهام على واتساب',
+                              ),
+                              // What the screen shows, so «خلصنا X من Y» matches it.
+                              onPressed: () => _share(visible, person),
+                            ),
+                          if (widget.showHeaderAdd)
+                            JourneyRoundButton(
+                              key: const Key('tasks-add'),
+                              icon: LucideIcons.plus,
+                              tooltip: 'مهمة جديدة',
+                              onPressed: _add,
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: AarastV3Space.x3),
+                      // A task assigned to a participant shows «عضو مشارك» until the
+                      // plan's members are read; a failed read leaves every one of
+                      // them under that one placeholder, and a filter chip by that
+                      // name, with nothing saying a name is missing rather than
+                      // absent.
+                      if (membersUnread) ...[
+                        JourneyNote(
+                          key: const ValueKey('tasks-members-unread'),
+                          icon: LucideIcons.userX,
+                          color: AarastV3Color.textMuted,
+                          soft: AarastV3Color.paper,
+                          text:
+                              'ما قدرنا نجيب أسماء المشاركين، فاللي عليهم مهام يطلعون '
+                              '«عضو مشارك». المهام ومواعيدها صحيحة.',
+                        ),
+                        Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: JourneyTextAction(
+                            key: const ValueKey('tasks-members-retry'),
+                            label: context.say(
+                              'جرّب مرة ثانية',
+                              'جرّبي مرة ثانية',
+                            ),
+                            icon: LucideIcons.refreshCw,
+                            color: context.accent.primary,
+                            onPressed: () => context
+                                .read<SharingProvider?>()
+                                ?.loadMembers(widget.weddingPlanId),
+                          ),
+                        ),
+                        const SizedBox(height: AarastV3Space.x3),
+                      ],
+                      if ((provider.loadErrorMessage != null ||
+                              provider.isStale) &&
+                          tasks.isNotEmpty) ...[
+                        JourneyListNotice(
+                          offline: provider.loadErrorMessage == null,
+                          keepsChanges: true,
+                          onRetry: () => provider.load(widget.weddingPlanId),
+                        ),
+                        const SizedBox(height: AarastV3Space.x3),
+                      ],
+                      if (tasks.isNotEmpty) ...[
+                        _TasksHero(tasks: visible, today: today),
+                        const SizedBox(height: AarastV3Space.x3),
+                        JourneyTabSwitch(
+                          key: const ValueKey('tasks-view'),
+                          labels: const ['القائمة', 'الوقت'],
+                          selected: _byMonth ? 1 : 0,
+                          color: context.accent.primary,
+                          onSelected: (index) =>
+                              setState(() => _byMonth = index == 1),
+                        ),
+                        const SizedBox(height: AarastV3Space.x3),
+                        _PeopleFilter(
+                          people: people,
+                          selected: person,
+                          onSelected: (value) =>
+                              setState(() => _person = value),
+                        ),
+                        const SizedBox(height: AarastV3Space.x1),
+                      ],
+                      // RA-MO-184: only once the plan's tasks are known. While they
+                      // were still being read, or the read had failed with nothing
+                      // to show, the card offered the ready-made tasks against an
+                      // empty list: none was marked «في خطتك» and adding them made a
+                      // second copy of each (the server adds what it is sent).
+                      if (tasks.length < _starterTaskThreshold &&
+                          !provider.isLoading &&
+                          !(tasks.isEmpty &&
+                              provider.loadErrorMessage != null)) ...[
+                        const SizedBox(height: AarastV3Space.x2),
+                        _StarterTasksCard(
+                          onOpen: () => _openTaskStarterSheet(
+                            context,
+                            provider,
+                            widget.weddingPlanId,
+                          ),
+                        ),
+                        const SizedBox(height: AarastV3Space.x2),
+                      ],
+                    ],
                   ),
-                if (widget.showHeaderAdd)
-                  JourneyRoundButton(
-                    key: const Key('tasks-add'),
-                    icon: LucideIcons.plus,
-                    tooltip: 'مهمة جديدة',
-                    onPressed: _add,
-                  ),
-              ],
+                  ...body,
+                ],
+              ),
             ),
-            const SizedBox(height: AarastV3Space.x3),
-            // A task assigned to a participant shows «عضو مشارك» until the
-            // plan's members are read; a failed read leaves every one of
-            // them under that one placeholder, and a filter chip by that
-            // name, with nothing saying a name is missing rather than
-            // absent.
-            if (membersUnread) ...[
-              JourneyNote(
-                key: const ValueKey('tasks-members-unread'),
-                icon: LucideIcons.userX,
-                color: AarastV3Color.textMuted,
-                soft: AarastV3Color.paper,
-                text:
-                    'ما قدرنا نجيب أسماء المشاركين، فاللي عليهم مهام يطلعون '
-                    '«عضو مشارك». المهام ومواعيدها صحيحة.',
-              ),
-              Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: JourneyTextAction(
-                  key: const ValueKey('tasks-members-retry'),
-                  label: context.say('جرّب مرة ثانية', 'جرّبي مرة ثانية'),
-                  icon: LucideIcons.refreshCw,
-                  color: context.accent.primary,
-                  onPressed: () => context
-                      .read<SharingProvider?>()
-                      ?.loadMembers(widget.weddingPlanId),
-                ),
-              ),
-              const SizedBox(height: AarastV3Space.x3),
-            ],
-            if ((provider.loadErrorMessage != null || provider.isStale) &&
-                tasks.isNotEmpty) ...[
-              JourneyListNotice(
-                offline: provider.loadErrorMessage == null,
-                keepsChanges: true,
-                onRetry: () => provider.load(widget.weddingPlanId),
-              ),
-              const SizedBox(height: AarastV3Space.x3),
-            ],
-            if (tasks.isNotEmpty) ...[
-              _TasksHero(tasks: visible, today: today),
-              const SizedBox(height: AarastV3Space.x3),
-              JourneyTabSwitch(
-                key: const ValueKey('tasks-view'),
-                labels: const ['القائمة', 'الوقت'],
-                selected: _byMonth ? 1 : 0,
-                color: context.accent.primary,
-                onSelected: (index) => setState(() => _byMonth = index == 1),
-              ),
-              const SizedBox(height: AarastV3Space.x3),
-              _PeopleFilter(
-                people: people,
-                selected: person,
-                onSelected: (value) => setState(() => _person = value),
-              ),
-              const SizedBox(height: AarastV3Space.x1),
-            ],
-            // RA-MO-184: only once the plan's tasks are known. While they
-            // were still being read, or the read had failed with nothing
-            // to show, the card offered the ready-made tasks against an
-            // empty list: none was marked «في خطتك» and adding them made a
-            // second copy of each (the server adds what it is sent).
-            if (tasks.length < _starterTaskThreshold &&
-                !provider.isLoading &&
-                !(tasks.isEmpty && provider.loadErrorMessage != null)) ...[
-              const SizedBox(height: AarastV3Space.x2),
-              _StarterTasksCard(
-                onOpen: () => _openTaskStarterSheet(
-                  context,
-                  provider,
-                  widget.weddingPlanId,
-                ),
-              ),
-              const SizedBox(height: AarastV3Space.x2),
-            ],
-            body,
           ],
         ),
       ),
@@ -359,21 +402,19 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
     String person,
     String selfLetter,
   ) {
-    return JourneyBox(
-      padding: EdgeInsets.zero,
-      child: Column(
-        children: [
-          for (var index = 0; index < tasks.length; index++) ...[
-            if (index > 0)
-              const Divider(
-                height: AarastV3Space.hair,
-                indent: 16,
-                endIndent: 16,
-                color: AarastV3Color.line,
-              ),
+    // RA-MO-367: the box is the JourneyBox's surface around a lazy list.
+    return DecoratedSliver(
+      decoration: JourneyBox.decorationOf(),
+      sliver: SliverList.separated(
+        itemCount: tasks.length,
+        separatorBuilder: (context, index) => const Divider(
+          height: AarastV3Space.hair,
+          indent: 16,
+          endIndent: 16,
+          color: AarastV3Color.line,
+        ),
+        itemBuilder: (context, index) =>
             _swipeable(provider, tasks[index], person, selfLetter),
-          ],
-        ],
       ),
     );
   }

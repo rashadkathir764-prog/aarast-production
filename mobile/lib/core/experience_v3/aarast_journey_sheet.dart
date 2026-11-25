@@ -91,7 +91,9 @@ Future<bool> confirmLeaveUnsaved(
 /// tall sheet never overflows. A plain choice of two (camera or gallery)
 /// goes without a [title]; [trailing] sits at the far end of the title
 /// (a loan's edit button). [bottom] stays under the scrolling content, so a
-/// long list keeps its main action in reach.
+/// long list keeps its main action in reach. A long list of rows (an
+/// occasion's guests, RA-MO-367) goes in [itemCount] and [itemBuilder],
+/// after [children]: its rows are built as they come into view.
 class JourneySheetBody extends StatelessWidget {
   const JourneySheetBody({
     required this.title,
@@ -99,8 +101,10 @@ class JourneySheetBody extends StatelessWidget {
     this.subtitle,
     this.trailing,
     this.bottom,
+    this.itemCount = 0,
+    this.itemBuilder,
     super.key,
-  });
+  }) : assert(itemCount == 0 || itemBuilder != null);
 
   /// The sheet's top corner radius.
   static const radius = 28.0;
@@ -110,6 +114,10 @@ class JourneySheetBody extends StatelessWidget {
   final Widget? trailing;
   final Widget? bottom;
   final List<Widget> children;
+
+  /// The lazy rows after [children], built by [itemBuilder].
+  final int itemCount;
+  final IndexedWidgetBuilder? itemBuilder;
 
   @override
   Widget build(BuildContext context) {
@@ -147,39 +155,7 @@ class JourneySheetBody extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Flexible(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(
-                  AarastV3Space.x5,
-                  AarastV3Space.x2,
-                  AarastV3Space.x5,
-                  0,
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const _JourneySheetHandle(),
-                    if (hasHeading) ...[
-                      const SizedBox(height: AarastV3Space.x3),
-                      if (trailing case final trailing?)
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(child: heading),
-                            const SizedBox(width: AarastV3Space.x2),
-                            trailing,
-                          ],
-                        )
-                      else
-                        heading,
-                    ],
-                    const SizedBox(height: AarastV3Space.x4),
-                    ...children,
-                  ],
-                ),
-              ),
-            ),
+            Flexible(child: _scrolling(heading, hasHeading)),
             if (bottom case final bottom?)
               Padding(
                 padding: const EdgeInsets.fromLTRB(
@@ -193,6 +169,64 @@ class JourneySheetBody extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  static const _padding = EdgeInsets.fromLTRB(
+    AarastV3Space.x5,
+    AarastV3Space.x2,
+    AarastV3Space.x5,
+    0,
+  );
+
+  /// The scrolling part: the handle, the heading and [children], then the
+  /// lazy rows when there are any.
+  Widget _scrolling(Widget heading, bool hasHeading) {
+    final top = <Widget>[
+      const _JourneySheetHandle(),
+      if (hasHeading) ...[
+        const SizedBox(height: AarastV3Space.x3),
+        if (trailing case final trailing?)
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: heading),
+              const SizedBox(width: AarastV3Space.x2),
+              trailing,
+            ],
+          )
+        else
+          heading,
+      ],
+      const SizedBox(height: AarastV3Space.x4),
+      ...children,
+    ];
+    final rows = itemBuilder;
+    if (rows == null || itemCount == 0) {
+      return SingleChildScrollView(
+        padding: _padding,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: top,
+        ),
+      );
+    }
+    // Shrink-wrapped to the sheet's own height, and still lazy: the sheet
+    // bounds it, so only the rows in view (and its cache) are built.
+    return CustomScrollView(
+      shrinkWrap: true,
+      slivers: [
+        SliverPadding(
+          padding: _padding,
+          sliver: SliverMainAxisGroup(
+            slivers: [
+              SliverList.list(children: top),
+              SliverList.builder(itemCount: itemCount, itemBuilder: rows),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

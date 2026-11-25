@@ -121,15 +121,29 @@ class JourneyBox extends StatelessWidget {
   /// ([AarastV3Space.hair]) for a card that sits on the canvas.
   final double borderWidth;
 
+  /// The surface itself, for a list drawn on it lazily (RA-MO-367: a
+  /// `DecoratedSliver` around a `SliverList`), so both draw one box.
+  static BoxDecoration decorationOf({
+    Color color = AarastV3Color.paper,
+    double radius = AarastV3Radius.card,
+    Color? borderColor,
+    double borderWidth = AarastV3Space.half,
+  }) => BoxDecoration(
+    color: color,
+    borderRadius: BorderRadius.circular(radius),
+    border: borderColor == null
+        ? null
+        : Border.all(color: borderColor, width: borderWidth),
+  );
+
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
-      decoration: BoxDecoration(
+      decoration: decorationOf(
         color: color,
-        borderRadius: BorderRadius.circular(radius),
-        border: borderColor == null
-            ? null
-            : Border.all(color: borderColor!, width: borderWidth),
+        radius: radius,
+        borderColor: borderColor,
+        borderWidth: borderWidth,
       ),
       child: Padding(padding: padding, child: child),
     );

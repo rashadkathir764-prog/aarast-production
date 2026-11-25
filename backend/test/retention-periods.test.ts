@@ -5,6 +5,10 @@ import { test } from "node:test";
 import { removeExpiredAdminAudit } from "../src/modules/backoffice/infrastructure/admin-audit-retention.scheduler";
 import { removeExpiredPlanInvites } from "../src/modules/collaboration/infrastructure/plan-invite-retention.scheduler";
 import { removeOldReadNotifications } from "../src/modules/notifications/infrastructure/notifications-retention.scheduler";
+import {
+  chatRetentionCutoff,
+  removeStaleChatMessagesBatch,
+} from "../src/modules/messaging/infrastructure/chat-retention.scheduler";
 import { OutboxCleanupScheduler } from "../src/platform/outbox/outbox-cleanup.scheduler";
 
 // RA-BE-179 (Q-45, D124): personal data had no end: invitations that
@@ -74,4 +78,54 @@ test("RA-BE-179: a failed outbox event goes 30 days after its last attempt", asy
   // The processed receipts keep their seven days.
   const processed = where.OR.find((branch: any) => branch.status === "PROCESSED");
   assert.ok(processed.processedAt.lt.getTime() <= Date.now() - 7 * DAY_MS);
+});
+
+// RA-BE-179: chat messages were kept for as long as the plan or the account.
+// They now go two years after their conversation's last activity.
+test("RA-BE-179: chat messages go two years after the conversation's last activity, attachments scheduled first", async () => {
+  assert.equal(
+    chatRetentionCutoff(NOW).toISOString(),
+    "2024-11-24T09:00:00.000Z",
+    "two years, with a day's margin",
+  );
+  const calls: any[] = [];
+  const tx: any = {
+    chatMessage: {
+      findMany: async (query: any) => {
+        calls.push(["find", query.where, query.take]);
+        return [
+          { id: "m1", attachments: [{ id: "a1" }, { id: "a2" }] },
+          { id: "m2", attachments: [] },
+        ];
+      },
+      deleteMany: async ({ where }: any) => {
+        calls.push(["delete", where]);
+        return { count: 2 };
+      },
+    },
+  };
+  const media = {
+    scheduleChatAttachmentDeletion: async (ids: string[]) => {
+      calls.push(["media", ids]);
+    },
+  };
+  assert.equal(await removeStaleChatMessagesBatch(tx, media, NOW), 2);
+  assert.deepEqual(calls, [
+    [
+      "find",
+      { conversation: { lastActivityAt: { lt: new Date("2024-11-24T09:00:00.000Z") } } },
+      500,
+    ],
+    ["media", ["a1", "a2"]],
+    ["delete", { id: { in: ["m1", "m2"] } }],
+  ]);
+
+  // Nothing stale: no file is scheduled and nothing is deleted.
+  const idle: any = { chatMessage: { findMany: async () => [] } };
+  const untouched = {
+    scheduleChatAttachmentDeletion: async () => {
+      throw new Error("no file to schedule");
+    },
+  };
+  assert.equal(await removeStaleChatMessagesBatch(idle, untouched, NOW), 0);
 });

@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ChatRetentionScheduler } from '../infrastructure/chat-retention.scheduler';
 import { ConversationRelationsService } from '../../../conversations/conversation-relations';
 import { ConversationsGateway } from '../../../conversations/conversations.gateway';
 import { ConversationsService } from '../../../conversations/conversations.service';
@@ -30,7 +31,8 @@ import { PlanReadPublicModule } from '../../planning/public/plan-read-public.mod
     PlanReadPublicModule,
     CollaborationPermissionPublicModule,
   ],
-  providers: [ConversationRelationsService, ConversationsService, ConversationsGateway],
+  // RA-BE-179: chat messages go two years after the conversation's last activity.
+  providers: [ConversationRelationsService, ConversationsService, ConversationsGateway, ChatRetentionScheduler],
   exports: [ConversationsService],
 })
 export class MessagingConversationsInternalModule {}

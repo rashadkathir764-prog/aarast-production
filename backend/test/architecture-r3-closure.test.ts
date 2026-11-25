@@ -80,7 +80,8 @@ test('Task 8 Messaging metadata owns conversation controllers and providers exac
   // conversation shows through their owners' ports (its includes are gone).
   assert.deepEqual(
     metadataNames(internal, MODULE_METADATA.PROVIDERS),
-    ['ConversationRelationsService', 'ConversationsGateway', 'ConversationsService'],
+    // RA-BE-179: + the daily retention of chat messages.
+    ['ChatRetentionScheduler', 'ConversationRelationsService', 'ConversationsGateway', 'ConversationsService'],
   );
 });
 

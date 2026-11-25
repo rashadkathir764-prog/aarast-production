@@ -194,6 +194,9 @@ assert.match(privacyHtml, /الدعوات التي انتهت ولم تُقبل:
 assert.match(privacyHtml, /التنبيهات المقروءة: 180 يومًا بعد قراءتها/);
 assert.match(privacyHtml, /سجل تدقيق الإدارة: سنتان/);
 assert.match(privacyHtml, /الرسائل التي فشل إرسالها من الخادم: 30 يومًا/);
+// RA-BE-179: chat messages and their photos go two years after the last
+// activity in the conversation.
+assert.match(privacyHtml, /رسائل المحادثات مع المزوّدين وصورها: سنتان بعد آخر نشاط/);
 assert.match(privacyHtml, /حذف خطة العرس[\s\S]*?30 يومًا[\s\S]*?ترجعها/);
 // RA-BE-178 (D112): what a deleted account recorded in another person's
 // plan stays there, without its name.
@@ -203,6 +206,8 @@ assert.match(privacyHtml, /«مزود محذوف»/);
 // erases again what was deleted.
 assert.match(privacyHtml, /النسخ الاحتياطية[\s\S]*?حتى 90 يومًا/);
 assert.match(privacyHtml, /نعيد حذف كل حساب حُذف/);
+// RA-OP-32: a plan deleted after the backup is erased again too.
+assert.match(privacyHtml, /نعيد حذف كل حساب حُذف وكل خطة حُذفت/);
 assert.match(privacyHtml, /120 يومًا/);
 assert.match(publicCss, /font-family:/);
 

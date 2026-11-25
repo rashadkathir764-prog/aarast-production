@@ -3556,6 +3556,10 @@ same transaction, so opening chat never mutates server state.
   clears it. `closedAt` and `CONVERSATION_CLOSED` are a different thing, and
   live: erasing a provider's account closes his conversations, and a closed
   one refuses a message.
+- Chat messages (and their attachments, whose files are scheduled for
+  deletion first) are deleted two years after their conversation's last
+  activity, by a daily job (RA-BE-179); the conversation, its participants and
+  its request events stay, with no messages.
 - The chat pushes of one conversation share an Android collapse key and tag
   and an iOS thread id, so the phone shows one grouped alert (RA-BE-190).
 - `GET /api/v1/conversations/:id/attachments/:attachmentId/download` refreshes a

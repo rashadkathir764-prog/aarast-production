@@ -3703,7 +3703,10 @@ because it outlives its uploader (D112); whose it is lives in its upload ticket,
 checked on every verify and consume. Public images keep
 `<purpose>/<userId>/<UUID>.<ext>`, checked by address. Private objects stored
 before 2026-11-25 keep the `<purpose>/<userId>/` path they were given; they are
-not moved.
+not moved. Such a key is still taken on verify and consume when its `<userId>`
+is the caller's own (an upload made before the change whose message or receipt
+waits in a phone's queue), and its ticket still proves the owner; another
+account's id is refused.
 Conversation/message responses replace it with a signed GET URL that expires
 after 120 seconds and include `expiresAt`; they never expose the storage key.
 All responses carrying these links use `Cache-Control: private, no-store`.

@@ -162,9 +162,13 @@ export function assertOwnedMediaKey(
   userId: string,
 ): void {
   const normalized = value.trim();
+  const ownId = userId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // A private upload made before 2026-11-25 and not yet sent (a queued
+  // message or receipt) keeps its `<purpose>/<own id>/` path; refusing it
+  // would block that queued change for good (D85). Only the caller's own id.
   const owner = isPrivateMediaPurpose(purpose)
-    ? UUID_PATTERN
-    : userId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    ? `(?:${UUID_PATTERN}|${ownId})`
+    : ownId;
   const expected = new RegExp(
     `^${purpose}/${owner}/${UUID_PATTERN}\\.(?:jpg|png|webp)$`,
     'i',

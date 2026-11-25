@@ -82,9 +82,16 @@ for (const purpose of ["cost-receipt", "chat-image"] as const) {
 test("RA-BE-178: a private key is the opaque shape and nothing else", () => {
   const segment = "550e8400-e29b-41d4-a716-446655440000";
   const file = "0b1c2d3e-4f50-4a61-8b72-938495a6b7c8.webp";
+  // An upload made before the change and not yet sent (a message or a
+  // receipt waiting in a phone's queue) keeps the old shape under its own
+  // uploader's id: it is taken, or the queued change would be a 400 that
+  // stays blocked (D85). Its ticket still proves who owns it.
+  assert.doesNotThrow(() =>
+    assertOwnedMediaKey(`chat-image/user-1/${file}`, "chat-image", "user-1"),
+  );
   for (const refused of [
-    // The old shape, with an id in the path, is no longer handed out.
-    `chat-image/user-1/${file}`,
+    // The old shape under someone else's id is not this account's.
+    `chat-image/user-2/${file}`,
     `https://cdn.example.test/chat-image/${segment}/${file}`,
     `chat-image/${segment}/../${file}`,
     `cost-receipt/${segment}/${file}`,

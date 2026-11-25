@@ -156,10 +156,15 @@ async function run() {
       media.verify?.headers?.['cache-control'] === 'private, no-store',
     );
     check('chat upload returns no public URL', media.verify?.body?.publicUrl === null);
+    // RA-BE-178: a new private upload is keyed under an opaque segment, never
+    // its uploader's id; its ticket keeps who owns it.
     check(
       'verified chat upload returns opaque owned reference',
       typeof media.verify?.body?.attachmentRef === 'string' &&
-        media.verify.body.attachmentRef.startsWith(`chat-image/${requester.user.id}/`),
+        /^chat-image\/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\//.test(
+          media.verify.body.attachmentRef,
+        ) &&
+        !media.verify.body.attachmentRef.includes(requester.user.id),
     );
     const verifiedKey = media.verify?.body?.key;
     const verifiedTicket = verifiedKey

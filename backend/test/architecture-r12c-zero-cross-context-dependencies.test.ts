@@ -506,6 +506,7 @@ test('R12C Task 3 lifecycle port exposes one runtime token and one singleton pub
         'lockConversationForShareInTransaction',
         'findConversationProviderId',
         'isConversationBlockedInTransaction',
+        'setConversationPushStopInTransaction',
       ],
     );
     assert.deepEqual(Reflect.getMetadata('exports', publicModule.ConversationLifecyclePublicModule), [port.CONVERSATION_LIFECYCLE_PORT]);
@@ -537,18 +538,21 @@ test('R12C Task 3 lifecycle delegate preserves exact tx, input, promise, return 
     lockConversationForShareInTransaction: 'lockConversationForShare',
     findConversationProviderId: 'findConversationProviderId',
     isConversationBlockedInTransaction: 'isConversationBlocked',
+    setConversationPushStopInTransaction: 'setConversationPushStop',
   } as const;
   for (const [method, legacyName] of Object.entries(delegates)) {
     const original = legacy[legacyName];
     const tx = Object.freeze({ transactionIdentity: Symbol(method) });
     const input = Object.freeze({ inputIdentity: Symbol(method) });
+    // The push stop alone carries a third argument, the instant it begins.
+    const extra = method === 'setConversationPushStopInTransaction' ? [Object.freeze({ endsAtIdentity: Symbol(method) })] : [];
     const value = Object.freeze({ resultIdentity: Symbol(method) });
     const expected = Promise.resolve(value);
     const error = new Error('same error ' + method);
     const calls: unknown[][] = [];
     try {
       legacy[legacyName] = (...args: unknown[]) => { calls.push(args); return expected; };
-      const result = implementation[method](tx, input);
+      const result = implementation[method](tx, input, ...extra);
       assert.equal(result, expected);
       assert.equal(await result, value);
       assert.equal(calls.length, 1);
@@ -558,14 +562,17 @@ test('R12C Task 3 lifecycle delegate preserves exact tx, input, promise, return 
       if (method === 'ensureConversationContext') {
         assert.equal(calls[0].length, 3);
         assert.deepEqual(calls[0][2], owners);
+      } else if (extra.length > 0) {
+        assert.equal(calls[0].length, 3);
+        assert.equal(calls[0][2], extra[0]);
       } else {
         assert.equal(calls[0].length, 2);
       }
       legacy[legacyName] = () => { throw error; };
-      assert.throws(() => implementation[method](tx, input), caught => caught === error);
+      assert.throws(() => implementation[method](tx, input, ...extra), caught => caught === error);
       const rejection = Promise.reject(error);
       legacy[legacyName] = () => rejection;
-      const rejected = implementation[method](tx, input);
+      const rejected = implementation[method](tx, input, ...extra);
       assert.equal(rejected, rejection);
       await assert.rejects(rejected, caught => caught === error);
     } finally {

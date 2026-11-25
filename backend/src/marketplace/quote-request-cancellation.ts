@@ -26,6 +26,7 @@ import {
 import type { CollaborationScopePort } from "../modules/collaboration/public/collaboration-scope.port";
 import { findContributorProviderQuoteIds } from "./marketplace-contributor-quote-scope";
 import type { MarketplaceRelationsService } from "./marketplace-relations";
+import { settleConversationPush } from "./conversation-push-window";
 import {
   assertQuoteRequestTransition,
   lockQuoteRequestTransitionRow,
@@ -172,6 +173,7 @@ export function cancelQuoteRequestInTransaction(
       dedupeKey: `quote-request:${quote.id}:cancelled`,
       data: { status: QuoteRequestStatus.CANCELLED },
     });
+    await settleConversationPush(tx, lifecycle, existing.conversationId, cancelledAt);
     if (planContext && history) {
       await history.recordForContextInTransaction(tx, planContext, {
         section: ContributionSection.PROVIDERS,

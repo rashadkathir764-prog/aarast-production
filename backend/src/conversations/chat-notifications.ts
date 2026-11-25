@@ -35,3 +35,15 @@ export function chatMessageNotification(args: {
     dedupeKey: `chat:${args.messageId}:${args.recipientId}`,
   };
 }
+
+/**
+ * Q-42 (أ), RA-BE-170: a conversation whose request or booking ended stays
+ * open to writing, but 30 days on its messages make no notice or phone alert
+ * (`pushStopsAt`, set when everything in it ended, cleared by new activity).
+ */
+export function conversationMakesNotices(
+  conversation: { pushStopsAt: Date | null },
+  at: Date,
+): boolean {
+  return !conversation.pushStopsAt || at.getTime() < conversation.pushStopsAt.getTime();
+}

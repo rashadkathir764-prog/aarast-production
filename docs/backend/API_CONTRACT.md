@@ -3547,6 +3547,17 @@ same transaction, so opening chat never mutates server state.
   outbox event is written for that recipient. Before deciding, notification
   creation locks the recipient `User` row `FOR SHARE` and re-reads the current
   preference.
+- A conversation whose request was declined, cancelled or expired, or whose
+  booking was declined, cancelled or over, stays open to writing (Q-42 (أ),
+  RA-BE-170). When nothing else in it is alive (no request waiting, no accepted
+  offer without a finished booking), `Conversation.pushStopsAt` is set 30 days
+  on, and from then its messages write no chat notification (inbox or phone);
+  a new request, an offer, a revised or accepted one, or a booking asked again
+  clears it. `closedAt` and `CONVERSATION_CLOSED` are a different thing, and
+  live: erasing a provider's account closes his conversations, and a closed
+  one refuses a message.
+- The chat pushes of one conversation share an Android collapse key and tag
+  and an iOS thread id, so the phone shows one grouped alert (RA-BE-190).
 - `GET /api/v1/conversations/:id/attachments/:attachmentId/download` refreshes a
   private attachment link after rechecking conversation membership.
 - `PATCH /api/v1/conversations/:id/read`, `/mute`, and `/block` update participant

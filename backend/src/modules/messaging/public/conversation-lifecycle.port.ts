@@ -73,4 +73,15 @@ export interface ConversationLifecyclePort {
     tx: ConversationLifecycleClient,
     conversationId: string,
   ): Promise<boolean>;
+  /**
+   * Q-42 (أ), RA-BE-170: from [endsAt] the conversation's messages make no
+   * notice or phone alert (it stays open to writing); null starts them
+   * again. Marketplace says it when a request or booking ends and nothing
+   * else in the conversation is alive, and when one is asked again.
+   */
+  setConversationPushStopInTransaction(
+    tx: ConversationLifecycleClient,
+    conversationId: string,
+    endsAt: Date | null,
+  ): Promise<void>;
 }

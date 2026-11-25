@@ -34,7 +34,7 @@ import {
   assertProviderOperational,
   isProviderOperational,
 } from '../modules/marketplace/public/provider-access-policy';
-import { chatMessageNotification } from './chat-notifications';
+import { chatMessageNotification, conversationMakesNotices } from './chat-notifications';
 import { quoteOfferVersionView } from '../modules/marketplace/public/quote-offer-versions';
 import {
   assertWeddingPlanWritable,
@@ -473,7 +473,7 @@ export class ConversationsService {
           activityKind: 'MESSAGE',
         },
       });
-      if (recipientIds.length > 0) {
+      if (recipientIds.length > 0 && conversationMakesNotices(current, now)) {
         // Whether a recipient still accepts provider messages is
         // notifications' row, read through its port on this transaction.
         const [preferences, participantStates] = await Promise.all([

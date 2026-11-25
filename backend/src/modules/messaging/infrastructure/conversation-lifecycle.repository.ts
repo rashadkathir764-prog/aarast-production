@@ -145,9 +145,21 @@ export function updateConversationActivity(
   tx: ConversationLifecycleClient,
   conversationId: string,
   occurredAt: Date,
+  reopens = false,
 ) {
   return tx.conversation.update({
     where: { id: conversationId },
-    data: { lastActivityAt: occurredAt },
+    data: { lastActivityAt: occurredAt, ...(reopens ? { pushStopsAt: null } : {}) },
+  });
+}
+
+export function setConversationPushStopAt(
+  tx: ConversationLifecycleClient,
+  conversationId: string,
+  pushStopsAt: Date | null,
+) {
+  return tx.conversation.update({
+    where: { id: conversationId },
+    data: { pushStopsAt },
   });
 }

@@ -9,6 +9,7 @@ type Tx = Prisma.TransactionClient;
 
 const bookingQuoteSelect = {
   id: true,
+  conversationId: true,
   userId: true,
   weddingPlanId: true,
   providerId: true,
@@ -45,6 +46,36 @@ export function findBooking(tx: Tx, id: string) {
 }
 
 export type BookingWithQuote = NonNullable<Awaited<ReturnType<typeof findBooking>>>;
+
+/**
+ * Q-42 (أ): whether anything in the conversation is still alive: a request
+ * waiting on an answer or an offer, or an accepted one whose booking was not
+ * asked yet or is asked, confirmed and not yet over (no outcome said).
+ */
+export async function conversationHasLiveWork(tx: Tx, conversationId: string): Promise<boolean> {
+  const live = await tx.quoteRequest.count({
+    where: {
+      conversationId,
+      OR: [
+        { status: { in: ['SENT', 'VIEWED', 'RESPONDED'] } },
+        {
+          status: 'ACCEPTED',
+          OR: [
+            { booking: null },
+            {
+              booking: {
+                status: { in: [BookingStatus.REQUESTED, BookingStatus.CONFIRMED] },
+                completedAt: null,
+                notHappenedAt: null,
+              },
+            },
+          ],
+        },
+      ],
+    },
+  });
+  return live > 0;
+}
 
 /** How many other bookings the provider has confirmed on that day (B-20: the seats taken). */
 export function countConfirmedBookingsOn(
@@ -279,7 +310,10 @@ export function listBookingsToAutoComplete(tx: Tx, before: Date) {
       completedAt: null,
       notHappenedAt: null,
     },
-    include: { quoteOffer: { select: { deliveryDays: true } } },
+    include: {
+      quoteOffer: { select: { deliveryDays: true } },
+      quoteRequest: { select: { conversationId: true } },
+    },
     take: 500,
   });
 }

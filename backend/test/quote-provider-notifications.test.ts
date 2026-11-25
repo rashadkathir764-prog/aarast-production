@@ -1,5 +1,5 @@
 import type { ConversationLifecyclePort } from "../src/modules/messaging/public/conversation-lifecycle.port";
-import { ensureConversationContext, findConversationProviderId, isConversationBlocked, lockConversationForShare, lockConversationForUpdate, recordConversationEvent } from "../src/conversations/conversation-lifecycle";
+import { ensureConversationContext, findConversationProviderId, isConversationBlocked, lockConversationForShare, lockConversationForUpdate, recordConversationEvent, setConversationPushStop } from "../src/conversations/conversation-lifecycle";
 import { marketplaceRelations, marketplaceService, ownerPorts, providerDashboardService, withOwnerTables, catalogWithoutMoneyLinks } from "./support/owner-ports";
 
 const lifecycle: ConversationLifecyclePort = {
@@ -8,6 +8,7 @@ const lifecycle: ConversationLifecyclePort = {
   lockConversationForUpdateInTransaction: lockConversationForUpdate,
   lockConversationForShareInTransaction: lockConversationForShare,
   isConversationBlockedInTransaction: isConversationBlocked,
+  setConversationPushStopInTransaction: setConversationPushStop,
   findConversationProviderId,
 };
 import "reflect-metadata";
@@ -342,6 +343,7 @@ test("provider rejection notifies the requester with the exact quote route", asy
       findUnique: async () => existing,
       findFirst: async () => existing,
       updateMany: async () => ({ count: 1 }),
+      count: async () => 0,
       findUniqueOrThrow: async () => updated,
     },
   };
@@ -1016,7 +1018,8 @@ test("rejecting an offer notifies the provider rather than the requester", async
         status: "REJECTED",
       }),
     },
-    quoteRequest: { updateMany: async () => ({ count: 1 }) },
+    // Q-42 (أ): what else in the conversation is alive, asked after the request ends.
+    quoteRequest: { updateMany: async () => ({ count: 1 }), count: async () => 0 },
     provider: {
       findUnique: async () => providerRow(PROVIDER_USER_ID),
     },
@@ -1078,7 +1081,7 @@ test("rejecting an offer succeeds when the provider has no linked user", async (
         status: "REJECTED",
       }),
     },
-    quoteRequest: { updateMany: async () => ({ count: 1 }) },
+    quoteRequest: { updateMany: async () => ({ count: 1 }), count: async () => 0 },
     provider: { findUnique: async () => providerRow(null) },
   };
   const service = marketplaceService(

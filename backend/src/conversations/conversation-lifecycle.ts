@@ -21,6 +21,7 @@ import {
   insertConversationEvent,
   lockConversationRowForShare,
   lockConversationRowForUpdate,
+  setConversationPushStopAt,
   updateConversationActivity,
   upsertAccountConversationContext,
   upsertPlanConversationContext,
@@ -86,6 +87,27 @@ export async function isConversationBlocked(
   return Boolean(row?.customerSideBlockedAt || row?.providerSideBlockedAt);
 }
 
+/** Q-42 (أ): the instant the conversation stops making notices, or null for never. */
+export async function setConversationPushStop(
+  tx: ConversationLifecycleClient,
+  conversationId: string,
+  endsAt: Date | null,
+): Promise<void> {
+  await setConversationPushStopAt(tx, conversationId, endsAt);
+}
+
+/**
+ * Q-42 (أ): what an event says about the conversation's life. A new request,
+ * a new or revised offer and an accepted one start it again; the ending ones
+ * are marketplace's to settle once it knows nothing else is alive.
+ */
+const REOPENING_EVENT_TYPES: ReadonlySet<ConversationEventType> = new Set([
+  ConversationEventType.QUOTE_REQUEST_CREATED,
+  ConversationEventType.QUOTE_OFFER_RECEIVED,
+  ConversationEventType.QUOTE_OFFER_REVISED,
+  ConversationEventType.QUOTE_OFFER_ACCEPTED,
+]);
+
 export async function findConversationProviderId(
   client: ConversationLifecycleClient,
   conversationId: string,
@@ -103,7 +125,12 @@ export async function recordConversationEvent(
   const event = await findConversationEventByDedupeKey(tx, input.dedupeKey);
   if (inserted.count === 0) return { event, created: false };
 
-  await updateConversationActivity(tx, input.conversationId, occurredAt);
+  await updateConversationActivity(
+    tx,
+    input.conversationId,
+    occurredAt,
+    REOPENING_EVENT_TYPES.has(input.type),
+  );
   await enqueueOutboxEventInTransaction(tx, {
     type: OutboxEventTypes.conversationActivityAvailable,
     aggregateType: 'conversation',

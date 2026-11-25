@@ -1,5 +1,5 @@
 import type { ConversationLifecyclePort } from "../../src/modules/messaging/public/conversation-lifecycle.port";
-import { isConversationBlocked, findConversationProviderId, lockConversationForShare, lockConversationForUpdate } from "../../src/conversations/conversation-lifecycle";
+import { isConversationBlocked, findConversationProviderId, lockConversationForShare, lockConversationForUpdate, setConversationPushStop } from "../../src/conversations/conversation-lifecycle";
 
 const lifecycle: ConversationLifecyclePort = {
   ensureConversationContext: async () => { throw new Error("Unexpected ensureConversationContext"); },
@@ -8,6 +8,7 @@ const lifecycle: ConversationLifecyclePort = {
   lockConversationForShareInTransaction: lockConversationForShare,
   findConversationProviderId,
   isConversationBlockedInTransaction: isConversationBlocked,
+  setConversationPushStopInTransaction: setConversationPushStop,
 };
 import "reflect-metadata";
 

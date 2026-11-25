@@ -18,6 +18,7 @@ import type { NotificationsPort } from "../modules/notifications/public/notifica
 import { PrismaService } from "../platform/database/prisma.service";
 import { type CollaborationPermissionPort as PermissionService, seesWholePlan } from "../modules/collaboration/public/collaboration-permission.port";
 import type { MarketplaceRelationsService } from "./marketplace-relations";
+import { settleConversationPush } from "./conversation-push-window";
 import {
   assertQuoteRequestTransition,
   lockQuoteOfferTransitionRows,
@@ -158,6 +159,7 @@ export async function rejectQuoteOfferInTransaction(
       dedupeKey: `quote-request:${current.quoteRequestId}:rejected`,
       data: { status: QuoteRequestStatus.REJECTED },
     });
+    await settleConversationPush(tx, lifecycle, current.quoteRequest.conversationId, rejectedAt);
     if (planContext && history) {
       await history.recordForContextInTransaction(tx, planContext, {
         section: ContributionSection.PROVIDERS,

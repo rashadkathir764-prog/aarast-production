@@ -6,6 +6,7 @@ import {
   lockConversationForShare,
   lockConversationForUpdate,
   recordConversationEvent,
+  setConversationPushStop,
 } from '../../../conversations/conversation-lifecycle';
 import {
   PROVIDER_READ_PORT,
@@ -58,6 +59,14 @@ export class ConversationLifecycleService implements ConversationLifecyclePort {
 
   isConversationBlockedInTransaction(tx: ConversationLifecycleClient, conversationId: string) {
     return isConversationBlocked(tx, conversationId);
+  }
+
+  setConversationPushStopInTransaction(
+    tx: ConversationLifecycleClient,
+    conversationId: string,
+    endsAt: Date | null,
+  ) {
+    return setConversationPushStop(tx, conversationId, endsAt);
   }
 }
 

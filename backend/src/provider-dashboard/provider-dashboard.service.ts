@@ -58,6 +58,7 @@ import {
   quoteRequestAnswerDeadline,
 } from '../marketplace/quote-lifecycle';
 import { isQuoteOfferExpired } from '../marketplace/quote-offer-expiry';
+import { settleConversationPush } from '../marketplace/conversation-push-window';
 import { quoteOfferCurrencyMismatch } from '../marketplace/quote-offer-currency';
 import {
   parseQuoteOfferLines,
@@ -1341,6 +1342,7 @@ export class ProviderDashboardService {
             ...(declineMessage ? { declineMessage } : {}),
           },
         });
+        await settleConversationPush(tx, this.lifecycle, existing.conversationId, new Date());
         // B-05: «مشغول ذاك اليوم» closes the day too, unless a confirmed
         // booking already holds it (the decline stands either way).
         let dayBlocked = false;

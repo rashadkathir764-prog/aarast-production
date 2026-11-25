@@ -1,5 +1,5 @@
 import type { ConversationLifecyclePort } from "../../src/modules/messaging/public/conversation-lifecycle.port";
-import { isConversationBlocked, ensureConversationContext, findConversationProviderId, lockConversationForShare, lockConversationForUpdate, recordConversationEvent } from "../../src/conversations/conversation-lifecycle";
+import { isConversationBlocked, ensureConversationContext, findConversationProviderId, lockConversationForShare, lockConversationForUpdate, recordConversationEvent, setConversationPushStop } from "../../src/conversations/conversation-lifecycle";
 
 const lifecycle: ConversationLifecyclePort = {
   ensureConversationContext: (tx, input) => ensureConversationContext(tx, input, { plans: ownerPorts.plans, providers: ownerPorts.providers }),
@@ -8,6 +8,7 @@ const lifecycle: ConversationLifecyclePort = {
   lockConversationForShareInTransaction: lockConversationForShare,
   findConversationProviderId,
   isConversationBlockedInTransaction: isConversationBlocked,
+  setConversationPushStopInTransaction: setConversationPushStop,
 };
 import 'reflect-metadata';
 

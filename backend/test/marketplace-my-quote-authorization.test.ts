@@ -1,5 +1,5 @@
 import type { ConversationLifecyclePort } from "../src/modules/messaging/public/conversation-lifecycle.port";
-import { findConversationProviderId, isConversationBlocked, lockConversationForShare, lockConversationForUpdate, recordConversationEvent } from "../src/conversations/conversation-lifecycle";
+import { findConversationProviderId, isConversationBlocked, lockConversationForShare, lockConversationForUpdate, recordConversationEvent, setConversationPushStop } from "../src/conversations/conversation-lifecycle";
 
 const lifecycle: ConversationLifecyclePort = {
   ensureConversationContext: async () => { throw new Error("Unexpected ensureConversationContext"); },
@@ -7,6 +7,7 @@ const lifecycle: ConversationLifecyclePort = {
   lockConversationForUpdateInTransaction: lockConversationForUpdate,
   lockConversationForShareInTransaction: lockConversationForShare,
   isConversationBlockedInTransaction: isConversationBlocked,
+  setConversationPushStopInTransaction: setConversationPushStop,
   findConversationProviderId,
 };
 import "reflect-metadata";
@@ -300,6 +301,8 @@ function cancellationHarness(options: {
         quoteStatus = QuoteRequestStatus.CANCELLED;
         return { count: 1 };
       },
+      // Q-42 (أ): what else in the conversation is alive, asked once the request ends.
+      count: async () => 0,
       findUniqueOrThrow: async () => quote(),
     },
     conversationEvent: {

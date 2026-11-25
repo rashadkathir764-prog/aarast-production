@@ -37,6 +37,10 @@ import {
   PROVIDER_READ_PORT,
   type ProviderReadPort,
 } from "../modules/marketplace/public/provider-read.port";
+import {
+  CONVERSATION_LIFECYCLE_PORT,
+  type ConversationLifecyclePort,
+} from "../modules/messaging/public/conversation-lifecycle.port";
 import { TASKS_PORT, type TasksPort } from "../modules/tasks/public/tasks.port";
 import {
   PLAN_READ_PORT,
@@ -56,6 +60,7 @@ import {
   type BookingAction,
   type BookingResponse,
 } from "./booking-policy";
+import { settleConversationPush } from "./conversation-push-window";
 import {
   BOOKING_REMINDER_MILESTONES,
   bookingAftercareCustomerNotification,
@@ -150,6 +155,8 @@ export class BookingsService {
     private readonly tasks?: TasksPort,
     @Inject(PLAN_READ_PORT)
     private readonly plans?: PlanReadPort,
+    @Inject(CONVERSATION_LIFECYCLE_PORT)
+    private readonly lifecycle?: ConversationLifecyclePort,
   ) {}
 
   // ── Customer ─────────────────────────────────────────────────────────
@@ -204,6 +211,12 @@ export class BookingsService {
       });
       // RA-BE-138: asked for again, the agreement is live again.
       await this.finance.markOfferBookingFellThrough(tx, quote.offers[0].id, null);
+      // Q-42 (أ): a booking asked again is alive, so its chat notifies again.
+      await this.lifecycle?.setConversationPushStopInTransaction(
+        tx,
+        quote.conversationId,
+        null,
+      );
       // RA-BE-48: nothing waits from the booking this row held before.
       await bookings.cancelPendingBookingChanges(tx, booking.id, new Date());
       if (provider.userId) {
@@ -574,6 +587,7 @@ export class BookingsService {
           }
         : { notHappenedAt: now, notHappenedReason: outcome.reason };
       await this.writeAftercare(tx, booking.id, data);
+      await this.settlePush(tx, booking.quoteRequest.conversationId, now);
       const updated = await bookings.requireBooking(tx, booking.id);
       await this.notifications.createNotificationInTransaction(
         tx,
@@ -603,12 +617,16 @@ export class BookingsService {
     const failures: Array<{ bookingId: string; error: unknown }> = [];
     for (const booking of due) {
       try {
-        const moved = await runSerializableTransaction(this.prisma, (tx) =>
-          bookings.completeBookingIfUndecided(tx, booking.id, {
+        const moved = await runSerializableTransaction(this.prisma, async (tx) => {
+          const result = await bookings.completeBookingIfUndecided(tx, booking.id, {
             completedAt: now,
             deliveryDueAt: deliveryDueAt(booking.eventDate, booking.quoteOffer?.deliveryDays),
-          }),
-        );
+          });
+          if (result.count === 1) {
+            await this.settlePush(tx, booking.quoteRequest.conversationId, now);
+          }
+          return result;
+        });
         completed += moved.count;
       } catch (error) {
         failures.push({ bookingId: booking.id, error });
@@ -931,7 +949,18 @@ export class BookingsService {
       );
     }
     await this.syncItemTasks(tx, booking);
+    // Q-42 (أ): a booking that did not stand ends the conversation's alerts
+    // in 30 days, when nothing else in it is alive.
+    if (action !== "CONFIRM") {
+      await this.settlePush(tx, booking.quoteRequest.conversationId, now);
+    }
     return bookings.requireBooking(tx, booking.id);
+  }
+
+  /** Q-42 (أ): the booking ended at [endedAt]; the conversation's alerts end 30 days on, unless it has other live work. */
+  private async settlePush(tx: Tx, conversationId: string, endedAt: Date) {
+    if (!this.lifecycle) return;
+    await settleConversationPush(tx, this.lifecycle, conversationId, endedAt);
   }
 
   /**

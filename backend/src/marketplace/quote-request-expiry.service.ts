@@ -18,6 +18,7 @@ import {
   lockQuoteRequestTransitionRow,
   QUOTE_REQUEST_ANSWER_DAYS,
 } from "./quote-lifecycle";
+import { settleConversationPush } from "./conversation-push-window";
 import {
   quoteRequestExpiredRequesterNotification,
   quoteRequestExpiringProviderNotification,
@@ -137,6 +138,7 @@ export class QuoteRequestExpiryService {
         dedupeKey: `quote-request:${id}:expired`,
         data: { status: QuoteRequestStatus.EXPIRED, answerDays: QUOTE_REQUEST_ANSWER_DAYS },
       });
+      await settleConversationPush(tx, this.lifecycle, request.conversationId, now);
       if (!isQuoteRequestExpiryNoticeTimely(request.expiresAt, now)) return true;
       const recipientId = await this.notifications.resolveProviderUpdateRecipientInTransaction(
         tx,

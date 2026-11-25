@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/network/api_client.dart' show ApiClient;
 import '../../../core/offline/offline_sync_service.dart';
+import '../../../core/push/push_permission_moment.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/storage/auth_storage.dart';
 import '../../../core/utils/amount_words.dart';
@@ -737,6 +738,8 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen>
       allowInitialSingleContext: true,
     );
     if (!mounted) return;
+    // RA-MO-360: a plan made is the reason to say what the alerts are for.
+    context.reachPushPermissionMoment();
     context.go(AppRouter.home);
   }
 

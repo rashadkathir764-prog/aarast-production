@@ -8,6 +8,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
+import 'package:aarast_mobile/core/push/push_messaging_gateway.dart';
+import 'package:aarast_mobile/core/push/push_notifications_controller.dart';
+import 'package:aarast_mobile/core/push/push_registration_api.dart';
+import 'package:dio/dio.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/utils/amount_words.dart';
 import 'package:aarast_mobile/features/finance/data/finance_api.dart';
@@ -106,6 +110,7 @@ Future<GuestOnboardingStorage> _pump(
   bool signedIn = false,
   String initialLocation = '/welcome',
   GuestOnboardingDraft? keptPlan,
+  PushNotificationsController? push,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = size;
@@ -120,6 +125,10 @@ Future<GuestOnboardingStorage> _pump(
       providers: [
         Provider<AuthStorage>.value(value: authStorage),
         Provider<GuestOnboardingStorage>.value(value: storage),
+        if (push != null)
+          ChangeNotifierProvider<PushNotificationsController>.value(
+            value: push,
+          ),
         if (finance != null) Provider<FinanceApi>.value(value: finance),
         if (marketplace != null)
           Provider<MarketplaceApi>.value(value: marketplace),
@@ -977,6 +986,56 @@ void main() {
     expect(await storage.loadDraft(), isNull);
   });
 
+  // RA-MO-360: the first plan made is the reason to say what the alerts are
+  // for; a plan that was not made is not.
+  Future<PushNotificationsController> signedInPush() async {
+    final preferences = await SharedPreferences.getInstance();
+    final push = PushNotificationsController(
+      preferences: preferences,
+      gateway: _AskingGateway(),
+      registrationApi: _NoRegistry(),
+    );
+    addTearDown(push.dispose);
+    await push.initialize();
+    await push.bindAuthenticatedUser('user-1');
+    return push;
+  }
+
+  testWidgets('signed in, the plan made is the moment to say what the alerts '
+      'are for', (tester) async {
+    final push = await signedInPush();
+    await _pump(
+      tester,
+      signedInPlans: _RecordingPlans(succeed: true),
+      push: push,
+    );
+    await _answerUpToReady(tester);
+    expect(push.hasPendingPermissionExplanation, isFalse);
+
+    await _tap(tester, 'افتح خطتي');
+    await tester.pump();
+
+    expect(find.text('opened:/home'), findsOneWidget);
+    expect(push.hasPendingPermissionExplanation, isTrue);
+  });
+
+  testWidgets('signed in, a plan that was not made says nothing of alerts', (
+    tester,
+  ) async {
+    final push = await signedInPush();
+    await _pump(
+      tester,
+      signedInPlans: _RecordingPlans(succeed: false),
+      push: push,
+    );
+    await _answerUpToReady(tester);
+
+    await _tap(tester, 'افتح خطتي');
+    await tester.pump();
+
+    expect(push.hasPendingPermissionExplanation, isFalse);
+  });
+
   // RA-MO-124: the day went as a time with no zone, which the server read in
   // its own zone; it goes as the day, as every plan day does.
   testWidgets('signed in, the wedding day reaches the server as a day', (
@@ -1193,7 +1252,7 @@ void main() {
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
     await tester.pumpAndSettle();
-    await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+    await tester.pump();
 
     final progress = await storage.loadProgress();
     expect(progress?.draft.planName, 'عرس سالم');
@@ -1480,4 +1539,49 @@ class _RecordingFinance extends FinanceApi {
       idMap: const {},
     );
   }
+}
+
+class _AskingGateway implements PushMessagingGateway {
+  @override
+  bool get isAvailable => true;
+
+  @override
+  Stream<void> get tokenChanges => const Stream<void>.empty();
+
+  @override
+  Stream<PushNotificationTap> get notificationTaps =>
+      const Stream<PushNotificationTap>.empty();
+
+  @override
+  Stream<PushForegroundNotification> get foregroundNotifications =>
+      const Stream<PushForegroundNotification>.empty();
+
+  @override
+  Future<void> initialize() async {}
+
+  @override
+  Future<PushAuthorizationStatus> authorizationStatus() async =>
+      PushAuthorizationStatus.notDetermined;
+
+  @override
+  Future<PushAuthorizationStatus> requestPermission() async =>
+      PushAuthorizationStatus.authorized;
+
+  @override
+  Future<String> ensureRegistrationAndGetInstallationId() async => 'fid-1';
+
+  @override
+  Future<PushNotificationTap?> consumeInitialNotificationTap() async => null;
+}
+
+class _NoRegistry implements PushInstallationRegistry {
+  @override
+  Future<void> registerAndroid(String fid, {CancelToken? cancelToken}) async {}
+
+  @override
+  Future<void> unregisterAndroid(
+    String fid, {
+    CancelToken? cancelToken,
+    String? bearerToken,
+  }) async {}
 }

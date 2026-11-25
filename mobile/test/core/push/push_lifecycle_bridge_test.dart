@@ -41,10 +41,12 @@ void main() {
     await _pumpBridge(tester, push: push, router: router, userId: 'user-A');
 
     expect(push.boundUserIds, ['user-A']);
-    // Asked once the account exists, and only once.
-    expect(push.permissionRequests, 1);
+    // RA-MO-360, on purpose: the phone's question no longer comes with the
+    // account (before the person has a reason to say yes); it comes at the
+    // first reminder or plan, after one line (push_permission_moment_test).
+    expect(push.permissionRequests, 0);
     await _pumpBridge(tester, push: push, router: router, userId: 'user-A');
-    expect(push.permissionRequests, 1);
+    expect(push.permissionRequests, 0);
   });
 
   testWidgets('user-A to null unbinds once', (tester) async {

@@ -4,6 +4,9 @@ import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/offline/local_database_json.dart';
 import 'package:aarast_mobile/core/offline/offline_tables.dart';
+import 'package:aarast_mobile/core/push/push_messaging_gateway.dart';
+import 'package:aarast_mobile/core/push/push_notifications_controller.dart';
+import 'package:aarast_mobile/core/push/push_registration_api.dart';
 import 'package:aarast_mobile/core/session/safe_user.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
@@ -22,6 +25,7 @@ import 'package:aarast_mobile/features/wedding_plans/models/active_wedding_plan.
 import 'package:aarast_mobile/features/wedding_plans/models/dashboard_summary.dart';
 import 'package:aarast_mobile/features/wedding_plans/models/onboarding_complete.dart';
 import 'package:aarast_mobile/features/wedding_plans/models/wedding_plan.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
@@ -231,6 +235,52 @@ void main() {
     expect(find.text('عندك خطة على هذا الجوال'), findsNothing);
     expect(harness.finished, ['plan-new']);
     expect(await harness.storage.loadGuestPlan(), isNull);
+  });
+
+  // RA-MO-360: the first plan saved to the account is the reason to say what
+  // the alerts are for; a plan that was dropped is not.
+  Future<PushNotificationsController> signedInPush() async {
+    SharedPreferences.setMockInitialValues({});
+    final push = PushNotificationsController(
+      preferences: await SharedPreferences.getInstance(),
+      gateway: _AskingGateway(),
+      registrationApi: _NoRegistry(),
+    );
+    addTearDown(push.dispose);
+    await push.initialize();
+    await push.bindAuthenticatedUser('user-1');
+    return push;
+  }
+
+  testWidgets('the plan saved to the account is the moment to say what the '
+      'alerts are for', (tester) async {
+    final push = await signedInPush();
+    final harness = await _Harness.create(
+      tester,
+      plans: const [],
+      settle: false,
+      push: push,
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 1));
+
+    expect(harness.finished, ['plan-new']);
+    expect(push.hasPendingPermissionExplanation, isTrue);
+  });
+
+  testWidgets('a phone plan dropped says nothing of alerts', (tester) async {
+    final push = await signedInPush();
+    final harness = await _Harness.create(
+      tester,
+      accountPersona: 'GROOM',
+      draft: _draft.copyWith(planName: 'عرس سلمى', persona: GuestPersona.bride),
+      push: push,
+    );
+    await tester.tap(find.byKey(const ValueKey('local-plan-keep-for-owner')));
+    await _settle(tester);
+
+    expect(harness.finished, [null]);
+    expect(push.hasPendingPermissionExplanation, isFalse);
   });
 
   testWidgets('an archived plan does not count as a plan in the account', (
@@ -540,6 +590,7 @@ class _Harness {
     Future<OnboardingCompleteResponse> Function()? onImport,
     bool startLocally = false,
     bool withDatabase = false,
+    PushNotificationsController? push,
   }) async {
     SharedPreferences.setMockInitialValues({});
     final preferences = await SharedPreferences.getInstance();
@@ -577,6 +628,10 @@ class _Harness {
         providers: [
           ChangeNotifierProvider<AuthController>.value(value: auth),
           Provider<AuthStorage>.value(value: AuthStorage(preferences)),
+          if (push != null)
+            ChangeNotifierProvider<PushNotificationsController>.value(
+              value: push,
+            ),
         ],
         child: MaterialApp(
           theme: AppTheme.light(),
@@ -800,4 +855,49 @@ class _FakeFinanceApi extends FinanceApi {
     for (var i = 0; i < (itemsByPlan[planId] ?? 0); i++)
       BudgetCategory.fromJson({'id': '$planId-$i', 'name': 'بند $i'}),
   ];
+}
+
+class _AskingGateway implements PushMessagingGateway {
+  @override
+  bool get isAvailable => true;
+
+  @override
+  Stream<void> get tokenChanges => const Stream<void>.empty();
+
+  @override
+  Stream<PushNotificationTap> get notificationTaps =>
+      const Stream<PushNotificationTap>.empty();
+
+  @override
+  Stream<PushForegroundNotification> get foregroundNotifications =>
+      const Stream<PushForegroundNotification>.empty();
+
+  @override
+  Future<void> initialize() async {}
+
+  @override
+  Future<PushAuthorizationStatus> authorizationStatus() async =>
+      PushAuthorizationStatus.notDetermined;
+
+  @override
+  Future<PushAuthorizationStatus> requestPermission() async =>
+      PushAuthorizationStatus.authorized;
+
+  @override
+  Future<String> ensureRegistrationAndGetInstallationId() async => 'fid-1';
+
+  @override
+  Future<PushNotificationTap?> consumeInitialNotificationTap() async => null;
+}
+
+class _NoRegistry implements PushInstallationRegistry {
+  @override
+  Future<void> registerAndroid(String fid, {CancelToken? cancelToken}) async {}
+
+  @override
+  Future<void> unregisterAndroid(
+    String fid, {
+    CancelToken? cancelToken,
+    String? bearerToken,
+  }) async {}
 }

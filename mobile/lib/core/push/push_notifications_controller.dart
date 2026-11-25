@@ -170,6 +170,52 @@ class PushNotificationsController extends ChangeNotifier
 
   Future<void> refreshCurrentRegistration() => _queueCurrentRegistration();
 
+  bool _explanationPending = false;
+  bool _explainedThisSession = false;
+
+  /// RA-MO-360: the phone's «اسمح بالإشعارات» question waits for a reason: a
+  /// reminder set, or the first plan made. At that moment ([permissionMomentReached])
+  /// the app says in one line what the alerts are for, and only an «اسمح» on
+  /// that sheet asks the phone ([requestPermissionOnFirstOpen]). True while
+  /// the line waits to be shown.
+  bool get hasPendingPermissionExplanation => _explanationPending;
+
+  /// A moment that gives the question a reason. It explains only where the
+  /// phone would still ask (an account, push working here, never asked,
+  /// notifications neither on nor turned off), and once a session.
+  Future<void> permissionMomentReached() async {
+    await _initializing;
+    if (_explainedThisSession ||
+        _explanationPending ||
+        !isAvailable ||
+        _boundUserId == null ||
+        _preferences.getBool(pushPermissionRequestedPreferenceKey) == true) {
+      return;
+    }
+    final PushAuthorizationStatus status;
+    try {
+      status = await _gateway.authorizationStatus();
+    } on Object {
+      return;
+    }
+    if (status != PushAuthorizationStatus.notDetermined ||
+        _explanationPending ||
+        _explainedThisSession) {
+      return;
+    }
+    _explanationPending = true;
+    notifyListeners();
+  }
+
+  /// The explanation waiting to be shown, once; false when none waits.
+  bool claimPermissionExplanation() {
+    if (!_explanationPending) return false;
+    _explanationPending = false;
+    _explainedThisSession = true;
+    notifyListeners();
+    return true;
+  }
+
   /// w39: the phone has this app's notifications turned off.
   Future<bool> isTurnedOff() async {
     // The first screen asks right after its first frame, while push is

@@ -8,6 +8,7 @@ import '../routing/app_router.dart';
 import '../widgets/aarast_toast.dart';
 import 'push_messaging_gateway.dart';
 import 'push_notifications_controller.dart';
+import 'push_permission_sheet.dart';
 
 final RegExp _pushNotificationId = RegExp(r'^[A-Za-z0-9_-]{1,128}$');
 
@@ -52,7 +53,7 @@ class AarastPushLifecycleBridge extends StatefulWidget {
 class _AarastPushLifecycleBridgeState extends State<AarastPushLifecycleBridge>
     with WidgetsBindingObserver {
   String? _lastBoundUserId;
-  bool _permissionScheduled = false;
+  bool _explanationScheduled = false;
   bool _navigationScheduled = false;
   StreamSubscription<PushForegroundNotification>? _foregroundSubscription;
 
@@ -107,16 +108,15 @@ class _AarastPushLifecycleBridgeState extends State<AarastPushLifecycleBridge>
       (push) => push.hasPendingNotificationsOpen,
     );
 
-    // Notifications belong to an account: ask once someone is signed in,
-    // never on the first screen of a first visit.
-    if (!_permissionScheduled && effectiveUserId != null) {
-      _permissionScheduled = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        context
-            .read<PushNotificationsController>()
-            .requestPermissionOnFirstOpen();
-      });
+    // RA-MO-360: the phone's question is not asked with the account, before
+    // the person has a reason to say yes. A reminder set or the first plan
+    // made says what the alerts are for, and only «اسمح» asks the phone.
+    final explanationPending = context.select<PushNotificationsController, bool>(
+      (push) => push.hasPendingPermissionExplanation,
+    );
+    if (explanationPending && effectiveUserId != null && !_explanationScheduled) {
+      _explanationScheduled = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _explainPermission());
     }
 
     if (_lastBoundUserId != effectiveUserId) {
@@ -152,6 +152,18 @@ class _AarastPushLifecycleBridgeState extends State<AarastPushLifecycleBridge>
     }
 
     return widget.child;
+  }
+
+  Future<void> _explainPermission() async {
+    _explanationScheduled = false;
+    if (!mounted) return;
+    final push = context.read<PushNotificationsController>();
+    // The bridge sits above the navigator: the sheet is the navigator's.
+    final navigator = widget.router.routerDelegate.navigatorKey.currentContext;
+    if (navigator == null || !push.claimPermissionExplanation()) return;
+    if (await showPushPermissionSheet(navigator)) {
+      await push.requestPermissionOnFirstOpen();
+    }
   }
 
   @override

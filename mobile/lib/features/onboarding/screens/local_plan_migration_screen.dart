@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/offline/offline_sync_service.dart';
+import '../../../core/push/push_permission_moment.dart';
 import '../../../core/storage/auth_storage.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../../../core/widgets/aarast_ui.dart';
@@ -165,6 +166,13 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
     _retry();
   }
 
+  /// The migration is over. A plan saved to the account is the reason to say
+  /// what the alerts are for (RA-MO-360); a dropped one ([planId] null) is not.
+  void _finish(String? planId) {
+    if (planId != null) context.reachPushPermissionMoment();
+    widget.onFinished(planId);
+  }
+
   /// The move again without a word on the screen while the plan is open on
   /// the phone. Only a plan with nothing to choose is saved on its own; a
   /// choice (an account with a plan, the other side's plan) stays the
@@ -181,7 +189,7 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
       if (!mounted) return;
       _lifecycle?.dispose();
       _lifecycle = null;
-      widget.onFinished(planId);
+      _finish(planId);
     } on Object {
       // Still offline, or refused: the plan stays open on the phone and its
       // strip still offers saving it.
@@ -238,7 +246,7 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
     try {
       final planId = await _save();
       if (!mounted) return;
-      widget.onFinished(planId);
+      _finish(planId);
     } on _SaveFailure catch (failure) {
       if (!mounted) return;
       _showFailure(failure);
@@ -315,7 +323,7 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
       return;
     }
     if (outcome.keptForOwner) widget.onKeptForOwner?.call();
-    widget.onFinished(outcome.planId);
+    _finish(outcome.planId);
   }
 
   /// The phone's plan is the other side's (the bride's plan on the groom's

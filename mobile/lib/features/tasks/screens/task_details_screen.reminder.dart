@@ -61,6 +61,8 @@ extension _TaskReminder on _TaskDetailsScreenState {
     if (!mounted) return;
     if (ok) {
       AarastToast.showSuccess(context, 'بنذكّرك ${_reminderWords(at)}');
+      // RA-MO-360: a reminder is the reason to say what the alerts are for.
+      context.reachPushPermissionMoment();
     } else {
       AarastToast.showError(
         context,

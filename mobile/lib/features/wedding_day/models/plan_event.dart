@@ -44,6 +44,14 @@ enum PlanEventType {
     custom => 'مناسبة ثانية',
   };
 
+  /// The kind's own word where the plan's words (D55) turned it into
+  /// another occasion's: his night and afternoon, in a bride's plan.
+  String? get groomWord => switch (this) {
+    samra => 'السمرة',
+    maqeel => 'المقيل',
+    _ => null,
+  };
+
   IconData get icon => switch (this) {
     wedding => LucideIcons.partyPopper,
     samra || hafla => LucideIcons.moon,
@@ -158,8 +166,27 @@ class PlanEvent {
 
   bool get isMain => type == PlanEventType.wedding;
 
-  /// Its name: what the couple called it, else its kind's.
-  String name(JourneyProfile profile) => title ?? type.label(profile);
+  /// Its name within its plan: what the couple called it, else its kind's
+  /// in the plan's words (a bride's plan says «الحفلة» for his samra, D55).
+  /// Where another occasion of [planEvents] is already called by that word
+  /// (her own hafla or nashma, or one titled so), his keeps its kind's word:
+  /// a date cannot tell two occasions apart, the name must. The one rule for
+  /// naming an event of a plan; the server's `planEventLabel` says the same.
+  String nameIn(JourneyProfile profile, List<PlanEvent> planEvents) {
+    final own = title?.trim() ?? '';
+    if (own.isNotEmpty) return own;
+    final hers = type.label(profile);
+    final his = type.groomWord;
+    if (his == null || !profile.isBride) return hers;
+    final taken = {
+      for (final other in planEvents)
+        if ((other.title?.trim() ?? '').isNotEmpty)
+          other.title!.trim()
+        else if (other.type.groomWord == null)
+          other.type.label(profile),
+    };
+    return taken.contains(hers) ? his : hers;
+  }
 
   /// «بعد العصر», or the exact hour «4:30 العصر» as «16:30».
   String? get timeLabel {

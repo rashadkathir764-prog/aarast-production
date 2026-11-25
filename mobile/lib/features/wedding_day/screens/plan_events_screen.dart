@@ -107,7 +107,7 @@ class _PlanEventsScreenState extends State<PlanEventsScreen> {
             for (final event in view.items) ...[
               _EventCard(
                 event: event,
-                profile: profile,
+                name: event.nameIn(profile, view.items),
                 onEdit: view.canEdit ? () => _open(event: event) : null,
               ),
               const SizedBox(height: AarastV3Space.x3),
@@ -149,12 +149,14 @@ class _PlanEventsScreenState extends State<PlanEventsScreen> {
 class _EventCard extends StatelessWidget {
   const _EventCard({
     required this.event,
-    required this.profile,
+    required this.name,
     required this.onEdit,
   });
 
   final PlanEvent event;
-  final JourneyProfile profile;
+
+  /// Its name among the plan's events (PlanEvent.nameIn).
+  final String name;
   final VoidCallback? onEdit;
 
   @override
@@ -190,7 +192,7 @@ class _EventCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  event.name(profile),
+                  name,
                   style: JourneyType.of(
                     JourneyType.lead,
                     weight: JourneyType.bold,
@@ -224,7 +226,7 @@ class _EventCard extends StatelessWidget {
           ),
           if (onEdit != null)
             IconButton(
-              tooltip: 'تعديل ${event.name(profile)}',
+              tooltip: 'تعديل $name',
               onPressed: onEdit,
               icon: const Icon(
                 LucideIcons.pencil,

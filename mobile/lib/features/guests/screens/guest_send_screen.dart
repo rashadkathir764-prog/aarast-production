@@ -237,7 +237,7 @@ class _GuestSendScreenState extends State<GuestSendScreen> {
                           key: ValueKey(
                             'send-event-${occasionKey(event, _planId)}',
                           ),
-                          label: guestEventLabel(event, profile),
+                          label: event.nameIn(profile, occasions),
                           selected: eventKey == occasionKey(event, _planId),
                           selectedColor: context.accent.primary,
                           onTap: () => setState(

@@ -17,7 +17,7 @@ import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../../core/utils/name_letter.dart';
 import '../../auth/auth_api.dart' show AuthActionGuard;
-import '../../wedding_day/wedding_day_api.dart' show PlanEventsProvider;
+import '../../wedding_day/wedding_day_api.dart' show PlanEvent;
 import '../../wedding_plans/wedding_plans_api.dart' show publishGuestPlanPulse;
 import '../data/guests_api.dart';
 import '../models/guest.dart';
@@ -335,10 +335,9 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
         // so; alone, it is «الرد».
         JourneySectionTitle(
           _occasions(guest).length > 1
-              ? guestEventLabel(
-                  _occasions(guest).first.event,
-                  context.journeyProfile,
-                )
+              ? _occasions(
+                  guest,
+                ).first.event.nameIn(context.journeyProfile, _planOccasions())
               : 'الرد',
         ),
         Wrap(
@@ -379,7 +378,7 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
           const SizedBox(height: AarastV3Space.x3),
           _OccasionReply(
             key: ValueKey('guest-event-${entry.key}'),
-            label: guestEventLabel(entry.event, context.journeyProfile),
+            label: entry.event.nameIn(context.journeyProfile, _planOccasions()),
             line: _standingLine(context, entry),
             answer: entry.invite.attendanceStatus,
             onAnswer: !guest.editable || provider.isSubmitting
@@ -537,16 +536,14 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
   List<GuestOccasion> _occasions(Guest guest, {bool listen = true}) =>
       guestOccasions(
         guest,
-        planOccasions(
-          Provider.of<PlanEventsProvider?>(
-                context,
-                listen: listen,
-              )?.viewOf(widget.weddingPlanId)?.items ??
-              const [],
-          widget.weddingPlanId,
-        ),
+        _planOccasions(listen: listen),
         widget.weddingPlanId,
       );
+
+  /// The plan's occasions as the guests tab reads them, which an occasion is
+  /// named among (PlanEvent.nameIn).
+  List<PlanEvent> _planOccasions({bool listen = true}) =>
+      planOccasionsOf(context, widget.weddingPlanId, listen: listen);
 
   /// «ما وصلته الدعوة بعد», «وصلته الدعوة، آخرها 3 ديسمبر».
   String _invitationLine(BuildContext context, Guest guest) {

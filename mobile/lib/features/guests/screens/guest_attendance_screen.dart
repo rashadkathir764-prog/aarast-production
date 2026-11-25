@@ -145,7 +145,7 @@ class _GuestAttendanceScreenState extends State<GuestAttendanceScreen> {
       for (final event in occasions.skip(1))
         (
           key: occasionKey(event, planId),
-          label: guestEventLabel(event, profile),
+          label: event.nameIn(profile, occasions),
           counts: occasionCountsOf(
             guests,
             occasions,

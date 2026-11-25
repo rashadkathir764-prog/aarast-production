@@ -81,6 +81,12 @@ class _PlanEventSheetState extends State<PlanEventSheet> {
   bool _saving = false;
   String? _error;
 
+  /// The event as the plan names it: the one being edited, else the one
+  /// being made of [PlanEventSheet.type], named as it will be among the
+  /// plan's events.
+  PlanEvent get _kindEvent =>
+      widget.event ?? PlanEvent(id: null, type: widget.type);
+
   bool get _isMain => widget.type == PlanEventType.wedding;
   bool get _isCustom => widget.type == PlanEventType.custom;
 
@@ -247,7 +253,10 @@ class _PlanEventSheetState extends State<PlanEventSheet> {
     final profile = context.journeyProfile;
     final name = _isCustom
         ? (_title.text.trim().isEmpty ? 'مناسبة ثانية' : _title.text.trim())
-        : (widget.event?.name(profile) ?? widget.type.label(profile));
+        : _kindEvent.nameIn(
+            profile,
+            widget.provider.viewOf(widget.weddingPlanId)?.items ?? const [],
+          );
     final date = _date;
     final hijri = date == null ? null : HijriDate.fromGregorian(date);
     return JourneySheetBody(

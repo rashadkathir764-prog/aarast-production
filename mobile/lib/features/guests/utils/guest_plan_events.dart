@@ -28,52 +28,26 @@ List<GuestFormEvent> guestFormEventsOf(
   return [
     for (final event in view.items)
       if (event.id case final id? when event.type != PlanEventType.wedding)
-        GuestFormEvent(id: id, label: guestEventLabel(event, profile)),
+        GuestFormEvent(id: id, label: event.nameIn(profile, view.items)),
   ];
 }
 
-/// The event's own name, else its kind's («الغداء»).
-String guestEventLabel(PlanEvent event, JourneyProfile profile) {
-  final title = event.title?.trim() ?? '';
-  return title.isNotEmpty ? title : event.type.label(profile);
-}
-
-/// Where the server's word for an event's kind differs from the app's own
-/// (the bride's «النسمة» is spelt alike on both since D116).
+/// Where the server's word for an event's kind differs from the app's own.
 const _serverEventWords = {PlanEventType.custom: 'مناسبة'};
 
-/// D55: the kinds a bride's plan names in her words (`PlanEventType.label`),
-/// and the kind's own word kept where hers is already another occasion's.
-const _brideWordKinds = {
-  PlanEventType.samra: 'السمرة',
-  PlanEventType.maqeel: 'المقيل',
-};
-
-/// An occasion's name as the server tells it to a guest
-/// (`planEventLabel`): the couple's title, else its kind's word, in a
-/// bride's plan hers; a word another occasion of [planEvents] is already
-/// called by is not given twice.
+/// An occasion's name as the server tells it to a guest (`planEventLabel`):
+/// the plan's own name for it ([PlanEvent.nameIn]), but a nameless
+/// occasion of no kind is «مناسبة».
 String _guestWord(
   PlanEvent event,
   JourneyProfile profile,
   List<PlanEvent> planEvents,
 ) {
   final title = event.title?.trim() ?? '';
-  if (title.isNotEmpty) return title;
-  final kindWord = _brideWordKinds[event.type];
-  if (kindWord != null && profile.isBride) {
-    final hers = event.type.label(profile);
-    final taken = {
-      for (final other in planEvents)
-        if ((other.title?.trim() ?? '').isNotEmpty ||
-            !_brideWordKinds.containsKey(other.type))
-          (other.title?.trim() ?? '').isNotEmpty
-              ? other.title!.trim()
-              : _serverEventWords[other.type] ?? other.type.label(profile),
-    };
-    return taken.contains(hers) ? kindWord : hers;
+  if (title.isEmpty && _serverEventWords.containsKey(event.type)) {
+    return _serverEventWords[event.type]!;
   }
-  return _serverEventWords[event.type] ?? event.type.label(profile);
+  return event.nameIn(profile, planEvents);
 }
 
 /// D116: the plan's occasions as the guests tab reads them: the wedding
@@ -280,7 +254,8 @@ Future<GuestFormEvent?> addOccasionFromForm(
     weddingPlanId: weddingPlanId,
     provider: events,
   );
-  final made = (events.viewOf(weddingPlanId)?.items ?? const <PlanEvent>[])
+  final after = events.viewOf(weddingPlanId)?.items ?? const <PlanEvent>[];
+  final made = after
       .where(
         (event) =>
             event.id != null && !event.isMain && !before.contains(event.id),
@@ -288,7 +263,7 @@ Future<GuestFormEvent?> addOccasionFromForm(
       .firstOrNull;
   return made == null
       ? null
-      : GuestFormEvent(id: made.id!, label: guestEventLabel(made, profile));
+      : GuestFormEvent(id: made.id!, label: made.nameIn(profile, after));
 }
 
 /// Reads the plan's events once for the guests screens, when nobody has.

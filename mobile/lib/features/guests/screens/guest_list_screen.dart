@@ -436,7 +436,7 @@ class _GuestListScreenState extends State<GuestListScreen> {
           const SizedBox(height: AarastV3Space.x3),
         ],
         _OccasionSummaryCard(
-          label: guestEventLabel(selected, context.journeyProfile),
+          label: selected.nameIn(context.journeyProfile, occasions),
           showLabel: occasions.length > 1,
           counts: counts,
           onTap: () => context.push(AppRouter.guestAttendance(planId)),
@@ -474,7 +474,7 @@ class _GuestListScreenState extends State<GuestListScreen> {
             child: JourneyTextAction(
               key: const ValueKey('guests-occasion-invitees'),
               label:
-                  '${context.say('اختر', 'اختاري')} مدعوين ${guestEventLabel(selected, context.journeyProfile)}',
+                  '${context.say('اختر', 'اختاري')} مدعوين ${selected.nameIn(context.journeyProfile, occasions)}',
               icon: LucideIcons.userCheck,
               color: context.accent.primary,
               onPressed: provider.isSubmitting
@@ -485,9 +485,9 @@ class _GuestListScreenState extends State<GuestListScreen> {
                         provider: provider,
                         weddingPlanId: planId,
                         eventId: selected.id!,
-                        label: guestEventLabel(
-                          selected,
+                        label: selected.nameIn(
                           context.journeyProfile,
+                          occasions,
                         ),
                       ),
                     ),

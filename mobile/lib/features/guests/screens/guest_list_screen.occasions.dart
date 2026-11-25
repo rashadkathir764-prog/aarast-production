@@ -60,7 +60,7 @@ class _OccasionPicker extends StatelessWidget {
               key: ValueKey(
                 'guests-occasion-${occasionKey(event, weddingPlanId)}',
               ),
-              label: guestEventLabel(event, profile),
+              label: event.nameIn(profile, occasions),
               selected: occasionKey(event, weddingPlanId) == selected,
               selectedColor: context.accent.primary,
               onTap: () => onSelected(occasionKey(event, weddingPlanId)),

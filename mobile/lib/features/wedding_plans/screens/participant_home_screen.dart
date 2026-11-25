@@ -412,10 +412,10 @@ class _ParticipantHomeScreenState extends State<ParticipantHomeScreen> {
       }
       // b04 «برنامج الأسبوع» for the partner (Q-18), as y06 lists it.
       if (partnerWeek) {
-        final program = context
-            .watch<PlanEventsProvider?>()
-            ?.viewOf(widget.weddingPlanId)
-            ?.weekOf(date);
+        final view = context.watch<PlanEventsProvider?>()?.viewOf(
+          widget.weddingPlanId,
+        );
+        final program = view?.weekOf(date);
         if (program != null && program.isNotEmpty) {
           children.addAll([
             const JourneySectionTitle('برنامج الأسبوع'),
@@ -427,7 +427,7 @@ class _ParticipantHomeScreenState extends State<ParticipantHomeScreen> {
                     icon: event.type.icon,
                     color: voice.accent,
                     soft: voice.soft,
-                    title: event.name(context.journeyProfile),
+                    title: event.nameIn(context.journeyProfile, view!.items),
                     subtitle: [
                       formatArabicWeekday(event.date!),
                       ?event.placeLabel,
@@ -440,10 +440,10 @@ class _ParticipantHomeScreenState extends State<ParticipantHomeScreen> {
       }
       // q18 «برنامج اليوم»: the day's events, read by every member (D52, D65).
       if (weddingDay) {
-        final program = context
-            .watch<PlanEventsProvider?>()
-            ?.viewOf(widget.weddingPlanId)
-            ?.dayOf(date);
+        final view = context.watch<PlanEventsProvider?>()?.viewOf(
+          widget.weddingPlanId,
+        );
+        final program = view?.dayOf(date);
         if (program != null && program.isNotEmpty) {
           children.addAll([
             const JourneySectionTitle('برنامج اليوم'),
@@ -455,7 +455,7 @@ class _ParticipantHomeScreenState extends State<ParticipantHomeScreen> {
                     icon: event.type.icon,
                     color: voice.accent,
                     soft: voice.soft,
-                    title: event.name(context.journeyProfile),
+                    title: event.nameIn(context.journeyProfile, view!.items),
                     subtitle: [?event.timeLabel, ?event.placeLabel].join(' · '),
                   ),
               ],

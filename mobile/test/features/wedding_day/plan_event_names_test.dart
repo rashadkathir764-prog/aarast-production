@@ -1,5 +1,4 @@
 import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
-import 'package:aarast_mobile/features/guests/utils/guest_plan_events.dart';
 import 'package:aarast_mobile/features/wedding_day/models/plan_event.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -36,14 +35,77 @@ void main() {
       type: PlanEventType.samra,
       title: 'سهرة البنات',
     );
-    expect(event.name(JourneyProfile.bride), 'سهرة البنات');
-    expect(guestEventLabel(event, JourneyProfile.bride), 'سهرة البنات');
+    expect(event.nameIn(JourneyProfile.bride, const [event]), 'سهرة البنات');
+    const maqeel = PlanEvent(id: 'e2', type: PlanEventType.maqeel);
     expect(
-      guestEventLabel(
-        const PlanEvent(id: 'e2', type: PlanEventType.maqeel),
-        JourneyProfile.bride,
-      ),
+      maqeel.nameIn(JourneyProfile.bride, const [event, maqeel]),
       'النسمة',
     );
+  });
+
+  // One naming rule for an occasion within its plan: a name two occasions
+  // of a bride's plan would share is given once, his keeps its kind's word.
+  group('an occasion is named within its plan', () {
+    final bride = JourneyProfile.of(planPersona: 'BRIDE', readerFeminine: true);
+    PlanEvent event(PlanEventType type, [String? title]) =>
+        PlanEvent(id: '${type.wire}-${title ?? ''}', type: type, title: title);
+    List<String> names(JourneyProfile profile, List<PlanEvent> plan) => [
+      for (final e in plan) e.nameIn(profile, plan),
+    ];
+
+    test('her own hafla or nashma keeps the kind\'s word for his', () {
+      expect(
+        names(bride, [
+          event(PlanEventType.samra),
+          event(PlanEventType.hafla),
+          event(PlanEventType.maqeel),
+          event(PlanEventType.nashma),
+        ]),
+        ['السمرة', 'الحفلة', 'المقيل', 'النسمة'],
+      );
+    });
+
+    test('a title that is already her word keeps his kind\'s word', () {
+      expect(
+        names(bride, [
+          event(PlanEventType.samra),
+          event(PlanEventType.lunch, 'الحفلة'),
+        ]),
+        ['السمرة', 'الحفلة'],
+      );
+    });
+
+    test('without a clash she says her words, as the kind\'s label does', () {
+      expect(
+        names(bride, [
+          event(PlanEventType.wedding),
+          event(PlanEventType.samra),
+          event(PlanEventType.maqeel),
+          event(PlanEventType.custom),
+        ]),
+        ['الزفة', 'الحفلة', 'النسمة', 'مناسبة ثانية'],
+      );
+    });
+
+    test('the groom\'s plan and a plan of no side keep his words', () {
+      for (final profile in [
+        JourneyProfile.groom,
+        JourneyProfile.fromPersona('HELPER'),
+      ]) {
+        expect(
+          names(profile, [
+            event(PlanEventType.samra),
+            event(PlanEventType.hafla),
+            event(PlanEventType.maqeel),
+          ]),
+          ['السمرة', 'الحفلة', 'المقيل'],
+        );
+      }
+    });
+
+    test('a title is kept, trimmed', () {
+      final titled = event(PlanEventType.samra, ' سهرة البنات ');
+      expect(titled.nameIn(bride, [titled]), 'سهرة البنات');
+    });
   });
 }

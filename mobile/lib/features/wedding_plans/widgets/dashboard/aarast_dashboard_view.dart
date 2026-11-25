@@ -304,6 +304,7 @@ class AarastDashboardView extends StatelessWidget {
                         const SizedBox(height: AarastV3Space.x2),
                         _WeekProgram(
                           events: events.weekOf(weddingDate!),
+                          planEvents: events.items,
                           today: today,
                           onEdit: events.canEdit ? onOpenEvents : null,
                         ),
@@ -320,6 +321,7 @@ class AarastDashboardView extends StatelessWidget {
                       const SizedBox(height: AarastV3Space.x2),
                       _DayProgram(
                         events: events.dayOf(weddingDate!),
+                        planEvents: events.items,
                         now: now ?? appNow(),
                         onEdit: events.canEdit ? onOpenEvents : null,
                       ),
@@ -389,6 +391,7 @@ class AarastDashboardView extends StatelessWidget {
                         title: 'برنامج بعد العرس',
                         nightly: false,
                         events: after,
+                        planEvents: events!.items,
                         today: today,
                         onEdit: events!.canEdit ? onOpenEvents : null,
                       ),

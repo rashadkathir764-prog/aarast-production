@@ -2964,11 +2964,12 @@ const trackedPlanningBatchContracts = [
     // D116: the guests tab's occasions, and an occasion made from the form.
     show: ['PlanEvent', 'PlanEventType', 'PlanEventsProvider', 'showPlanEventSheet'],
   },
-  // D116: the guest's page reads each occasion's answer.
+  // D116: the guest's page reads each occasion's answer, and
+  // names each among the plan's occasions (PlanEvent.nameIn).
   {
     source: 'mobile/lib/features/guests/screens/guest_details_screen.dart',
     target: 'mobile/lib/features/wedding_day/wedding_day_api.dart',
-    show: ['PlanEventsProvider'],
+    show: ['PlanEvent'],
   },
   // D116: the guests tab follows one occasion and adds one from «+».
   {

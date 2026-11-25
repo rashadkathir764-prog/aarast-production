@@ -100,7 +100,7 @@ class _WeddingMomentScreenState extends State<WeddingMomentScreen> {
         for (final event in view.weekOf(weddingDate)) {
           rows.add((
             event.type.icon,
-            event.name(profile),
+            event.nameIn(profile, view.items),
             where(event, formatArabicWeekday(event.date!)),
           ));
         }
@@ -108,7 +108,7 @@ class _WeddingMomentScreenState extends State<WeddingMomentScreen> {
         for (final event in view.dayOf(weddingDate)) {
           rows.add((
             event.type.icon,
-            event.name(profile),
+            event.nameIn(profile, view.items),
             where(event, event.timeLabel ?? 'اليوم'),
           ));
         }

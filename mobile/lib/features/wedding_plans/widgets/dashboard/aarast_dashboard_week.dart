@@ -184,6 +184,7 @@ class _WeddingSkyHero extends StatelessWidget {
 class _WeekProgram extends StatelessWidget {
   const _WeekProgram({
     required this.events,
+    required this.planEvents,
     required this.today,
     required this.onEdit,
     this.title = 'برنامج الأسبوع',
@@ -192,6 +193,9 @@ class _WeekProgram extends StatelessWidget {
   });
 
   final List<PlanEvent> events;
+
+  /// All of the plan's events, which each one is named among.
+  final List<PlanEvent> planEvents;
 
   /// Today in Sana'a (RA-MO-354).
   final DateTime today;
@@ -223,7 +227,7 @@ class _WeekProgram extends StatelessWidget {
               for (final event in events)
                 _WeekRow(
                   event: event,
-                  profile: profile,
+                  name: event.nameIn(profile, planEvents),
                   tonight: event.isOn(today),
                   passed: event.date!.isBefore(today),
                   nightly: nightly,
@@ -238,14 +242,14 @@ class _WeekProgram extends StatelessWidget {
 class _WeekRow extends StatelessWidget {
   const _WeekRow({
     required this.event,
-    required this.profile,
+    required this.name,
     required this.tonight,
     required this.passed,
     required this.nightly,
   });
 
   final PlanEvent event;
-  final JourneyProfile profile;
+  final String name;
   final bool tonight;
   final bool passed;
   final bool nightly;
@@ -307,7 +311,7 @@ class _WeekRow extends StatelessWidget {
                   children: [
                     Flexible(
                       child: Text(
-                        event.name(profile),
+                        name,
                         style: JourneyType.of(
                           JourneyType.lead,
                           weight: JourneyType.bold,
@@ -477,11 +481,15 @@ class DashboardWeekBooking {
 class _DayProgram extends StatelessWidget {
   const _DayProgram({
     required this.events,
+    required this.planEvents,
     required this.now,
     required this.onEdit,
   });
 
   final List<PlanEvent> events;
+
+  /// All of the plan's events, which each one is named among.
+  final List<PlanEvent> planEvents;
   final DateTime now;
   final VoidCallback? onEdit;
 
@@ -511,7 +519,7 @@ class _DayProgram extends StatelessWidget {
                 for (var index = 0; index < events.length; index++)
                   _DayRow(
                     event: events[index],
-                    profile: profile,
+                    name: events[index].nameIn(profile, planEvents),
                     moment: moments[index],
                   ),
               ],
@@ -525,12 +533,12 @@ class _DayProgram extends StatelessWidget {
 class _DayRow extends StatelessWidget {
   const _DayRow({
     required this.event,
-    required this.profile,
+    required this.name,
     required this.moment,
   });
 
   final PlanEvent event;
-  final JourneyProfile profile;
+  final String name;
   final PlanEventMoment moment;
 
   @override
@@ -580,7 +588,7 @@ class _DayRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  event.name(profile),
+                  name,
                   style: JourneyType.of(
                     JourneyType.lead,
                     weight: JourneyType.bold,

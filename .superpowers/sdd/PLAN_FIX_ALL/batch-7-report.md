@@ -75,7 +75,7 @@ RELEASE_AUDIT:
 None. The invite goldens use the groom's profile (labels unchanged), and no golden draws the removal gate.
 
 ## Concerns
-- In a bride's plan holding both kinds, the mobile guests tab chips and the wedding-day screens still name each event on its own («الحفلة» twice). Only the guest-facing text and its preview follow the duplicate rule. Changing those screens needs its own frontend reason (D111).
+- Resolved after this report: one naming rule, `PlanEvent.nameIn(profile, planEvents)`, now names every event of a plan (guests chips and screens, plan events screen and sheet, wedding moment, dashboard week and day, partner home); a bride's plan with samra plus hafla reads «السمرة» and «الحفلة», not «الحفلة» twice (`plan_event_names_screens_test.dart`, `plan_event_names_test.dart`). No golden changes.
 - The server labels the wedding row «العرس», while the mobile `occasionText` gives the wedding the app word. This was pre-existing and is not touched.
 - A plan stored with a currency outside the list (none known; only possible through the API before this batch) can no longer send its own currency in `ReplaceMoneyBudgetDto`.
 - Golden tests were not run on Windows here.

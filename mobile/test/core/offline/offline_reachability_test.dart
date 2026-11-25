@@ -80,8 +80,10 @@ void main() {
 
     expect(find.textContaining('بدون نت'), findsNothing);
     // Changed on purpose (Q-32, critique ع3, 2026-11-16): no «الخادم».
+    // Changed on purpose (UX critique): the guests are kept too, so the
+    // line no longer names only the money and the tasks.
     expect(
-      find.text('ما نقدر نوصل الحين. المال والمهام تنحفظ في جوالك'),
+      find.text('ما نقدر نوصل الحين. اللي تسوّيه ينحفظ في جوالك'),
       findsOneWidget,
     );
     expect(find.text('الرد تأخر · اضغط للفحص'), findsOneWidget);
@@ -125,7 +127,7 @@ void main() {
     // with the app's font is test/prototype/now_home (home_offline.png),
     // which shows the sentence whole on two lines.
     final sentence = tester.widget<Text>(
-      find.text('ما نقدر نوصل الحين. المال والمهام تنحفظ في جوالك'),
+      find.text('ما نقدر نوصل الحين. اللي تسوّيه ينحفظ في جوالك'),
     );
     expect(sentence.maxLines, greaterThanOrEqualTo(2));
   });
@@ -161,7 +163,7 @@ void main() {
     await _pumpBanner(tester, service);
 
     expect(
-      find.text('بدون نت. المال والمهام تنحفظ في جوالك لين يرجع'),
+      find.text('بدون نت. اللي تسوّيه ينحفظ في جوالك لين يرجع النت'),
       findsOneWidget,
     );
     expect(find.text('ما فيه نت في الجوال الحين · اضغط للفحص'), findsOneWidget);

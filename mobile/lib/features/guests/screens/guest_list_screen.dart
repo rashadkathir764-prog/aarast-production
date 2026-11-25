@@ -415,6 +415,21 @@ class _GuestListScreenState extends State<GuestListScreen> {
               )
               .where((entry) => entry.count > 0)
               .firstOrNull;
+    // Of the same audience, the ones no message reaches: the summary above
+    // counts them («3 بلا دعوة») and the button only those it reaches («لضيف
+    // واحد»), so the button says the difference instead of leaving it a
+    // riddle (UX critique, guests_list).
+    final unreachable = due == null
+        ? 0
+        : invited
+              .where(
+                (guest) =>
+                    guest.editable &&
+                    !(guest.hasPhone && guestChatCanOpen(guest.phone)) &&
+                    due.audience.includes(standingOf(guest)!),
+              )
+              .length;
+    final noNumber = unreachable > 0 ? ' · $unreachable بدون رقم' : '';
     void openSend([SendAudience? audience]) => context.push(
       AppRouter.guestSend(
         planId,
@@ -448,11 +463,13 @@ class _GuestListScreenState extends State<GuestListScreen> {
               ? null
               : switch (due.audience) {
                   SendAudience.notTold =>
-                    '${context.say('أرسل', 'أرسلي')} الدعوة لـ${words.count(due.count)}',
+                    noNumber.isEmpty
+                        ? '${context.say('أرسل', 'أرسلي')} الدعوة لـ${words.count(due.count)}'
+                        : '${context.say('أرسل', 'أرسلي')} لـ${words.count(due.count)}$noNumber',
                   SendAudience.changed =>
-                    '${context.say('بلّغ', 'بلّغي')} ${words.count(due.count)} بالتغيير',
+                    '${context.say('بلّغ', 'بلّغي')} ${words.count(due.count)} بالتغيير$noNumber',
                   SendAudience.silent =>
-                    '${context.say('ذكّر', 'ذكّري')} ${words.count(due.count)}',
+                    '${context.say('ذكّر', 'ذكّري')} ${words.count(due.count)}$noNumber',
                 },
           onSend: due == null ? null : () => openSend(due.audience),
           allOptions: _isLocalPlan || invited.every((guest) => !guest.editable)

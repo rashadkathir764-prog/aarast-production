@@ -278,7 +278,10 @@ void main() {
         startsWith('1.5'),
       );
       expect(inBudget(tester, 'الميزانية 7'), findsOneWidget);
-      expect(inBudget(tester, 'باقي منها 5'), findsOneWidget);
+      // Changed on purpose (UX critique): «باقي» is what is left to pay;
+      // what of the budget is not set against yet is «فاضي منها».
+      expect(inBudget(tester, 'فاضي منها 5'), findsOneWidget);
+      expect(inBudget(tester, 'باقي منها'), findsNothing);
       // «منها المهر» is the note under «اتفقت على»'s figure.
       expect(inBudget(tester, 'اتفقت على 2'), findsOneWidget);
       expect(inBudget(tester, 'منها المهر 2'), findsOneWidget);
@@ -297,7 +300,7 @@ void main() {
 
       expect(inHero(tester, 'باقي عليك'), findsOneWidget);
       expect(inBudget(tester, 'الميزانية 7'), findsOneWidget);
-      expect(inBudget(tester, 'باقي منها 7'), findsOneWidget);
+      expect(inBudget(tester, 'فاضي منها 7'), findsOneWidget);
       expect(inBudget(tester, 'اتفقت على 2'), findsOneWidget);
       expect(inBudget(tester, 'منها المهر'), findsNothing);
       // The mahr's line says where it is counted; what is left of it is
@@ -376,7 +379,7 @@ void main() {
           .widget<Text>(find.byKey(const ValueKey('money-items-budget-status')))
           .data!;
       expect(status, contains('المهر 2'));
-      expect(status, contains('باقي منها 5'));
+      expect(status, contains('فاضي منها 5'));
       expect(find.text('من الميزانية'), findsOneWidget);
       expect(find.text('برا الميزانية'), findsNothing);
       // Changed on purpose (Rashad 2026-11-17): the recorded-cost card that

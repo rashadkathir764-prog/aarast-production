@@ -312,7 +312,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
             ),
             if (task.isPrivate)
               const JourneyTag(
-                label: 'خاصة بك',
+                label: 'ما يشوفها غيرك',
                 color: AarastV3Color.textMuted,
                 soft: AarastV3Color.line,
               ),

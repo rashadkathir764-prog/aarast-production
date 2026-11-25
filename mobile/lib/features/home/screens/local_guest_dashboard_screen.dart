@@ -302,8 +302,10 @@ class _LocalGuestDashboardScreenState extends State<LocalGuestDashboardScreen> {
     }
     return AuthActionGuard.requireAccount(
       context,
-      reason:
-          'الحفظ والمشاركة يحتاجون حساب، عشان خطتك ما تضيع وتحدد مين يشوف ايش.',
+      reason: context.say(
+        'الحفظ والمشاركة يحتاجون حساب، عشان خطتك ما تضيع وتحدد مين يشوف ايش.',
+        'الحفظ والمشاركة يحتاجون حساب، عشان خطتك ما تضيع وتحددين مين يشوف ايش.',
+      ),
     );
   }
 

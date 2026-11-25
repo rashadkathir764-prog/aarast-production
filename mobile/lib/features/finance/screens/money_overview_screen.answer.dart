@@ -288,10 +288,12 @@ class _ShareHero extends StatelessWidget {
           JourneyHeroBar(value: agreed <= 0 ? 0 : paid / agreed),
           if (agreed > 0) ...[
             const SizedBox(height: AarastV3Space.x1),
+            // Read together, and with «الصورة كاملة» below that writes
+            // 4,250,000 whole: never «من 4.3 مليون» here.
             Text(
               hidden
                   ? 'دفعت ••••'
-                  : '${context.ownerDid('دفعت', 'دفعتِ', groom: 'دفع العريس', bride: 'دفعت العروسة')} ${_figure(context, paid, currency)} من ${_figure(context, agreed, currency)}',
+                  : '${context.ownerDid('دفعت', 'دفعتِ', groom: 'دفع العريس', bride: 'دفعت العروسة')} ${_exactFigure(context, paid, currency)} من ${_exactFigure(context, agreed, currency)}',
               key: const ValueKey('money-share-paid'),
               style: JourneyType.of(JourneyType.caption, color: soft),
             ),
@@ -735,6 +737,15 @@ class _NeedsAttentionState extends State<_NeedsAttention> {
                 title: item.title,
                 subtitleMaxLines: 2,
                 subtitle: item.sub,
+                // It opens where it is settled: the chevron every row that
+                // opens something carries («سجّل المهر» above).
+                trailing: item.onTap == null
+                    ? null
+                    : const Icon(
+                        LucideIcons.chevronLeft,
+                        size: AarastV3Icon.md,
+                        color: AarastV3Color.textMuted,
+                      ),
                 onTap: item.onTap,
               ),
           ],

@@ -81,10 +81,13 @@ class _StartStep extends StatelessWidget {
                       JourneyDoor(
                         key: const ValueKey('door-plan'),
                         icon: LucideIcons.checkSquare,
+                        // The doors are the reader's own words («أسوّي خطة
+                        // عرسي», «معي رابط دعوة», «أقدّم خدمة»): «افتحي
+                        // خطتي» spoke to her and for her at once.
                         title: phonePlanTitle != null
-                            ? context.say('افتح خطتي', 'افتحي خطتي')
+                            ? 'أفتح خطتي'
                             : resumeLine != null
-                            ? context.say('كمّل خطتي', 'كمّلي خطتي')
+                            ? 'أكمّل خطتي'
                             : 'أسوّي خطة عرسي',
                         subtitle: phonePlanTitle != null
                             ? '$phonePlanTitle، على هذا الجوال'

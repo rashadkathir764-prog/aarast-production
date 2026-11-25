@@ -229,7 +229,7 @@ class _InvitationDoors extends StatelessWidget {
             icon: LucideIcons.mail,
             title: 'بطاقة الدعوة',
             subtitle:
-                'شكل الدعوة وكلامها، ${context.say('وشوف', 'وشوفي')} وش يوصل ${GuestWords.of(context).profile.plan('الضيف', 'الضيفة')}',
+                'شكل الدعوة وكلامها، ${context.say('وشوف', 'وشوفي')} ايش يوصل ${GuestWords.of(context).profile.plan('الضيف', 'الضيفة')}',
             onTap: () => context.push(AppRouter.guestInvite(weddingPlanId)),
           ),
           _DoorRow(
@@ -329,7 +329,7 @@ Future<_AddChoice?> _showAddMenu(
   return showJourneySheet<_AddChoice>(
     context: context,
     builder: (sheetContext) => JourneySheetBody(
-      title: context.say('وش تضيف؟', 'وش تضيفين؟'),
+      title: context.say('ايش تضيف؟', 'ايش تضيفين؟'),
       children: [
         for (final (choice, icon, label) in [
           (_AddChoice.guest, LucideIcons.userPlus, words.newGuest),

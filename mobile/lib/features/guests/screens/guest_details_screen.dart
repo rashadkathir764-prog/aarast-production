@@ -247,7 +247,6 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
   }
 
   Widget _details(GuestsProvider provider, Guest guest) {
-    final (color, soft) = guestReplyColors(guest);
     final phone = guest.phone;
     final name = guest.name.trim();
     final status = guest.isConfirmed
@@ -290,15 +289,8 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
             color: AarastV3Color.textMuted,
           ),
         ),
-        const SizedBox(height: AarastV3Space.x2),
-        Center(
-          child: JourneyTag(
-            key: const ValueKey('guest-reply-tag'),
-            label: guestReplyLabel(guest, context.journeyProfile),
-            color: color,
-            soft: soft,
-          ),
-        ),
+        // The answer is said once, in «الرد» below, where it is also changed
+        // («ما ردّ» stood here and on the chip under it: UX critique).
         if (guest.hasPhone) ...[
           const SizedBox(height: AarastV3Space.x4),
           Row(
@@ -390,36 +382,47 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
           const JourneySectionTitle('الدعوة'),
           JourneyBox(
             padding: const EdgeInsets.all(AarastV3Space.x3),
-            child: Row(
+            // The send wraps under the line when both do not fit beside
+            // each other («أرسلها مرة ثانية» at 320 and a large text).
+            child: Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: AarastV3Space.x2,
+              runSpacing: AarastV3Space.x2,
               children: [
-                Icon(
-                  guest.everTold ? LucideIcons.mailCheck : LucideIcons.mail,
-                  color: context.accent.primary,
-                ),
-                const SizedBox(width: AarastV3Space.x2),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _invitationLine(context, guest),
-                        key: const ValueKey('guest-invitation-line'),
-                        style: JourneyType.of(
-                          JourneyType.body,
-                          weight: JourneyType.bold,
-                        ),
-                      ),
-                      if (guest.linkOpenedAt != null)
-                        Text(
-                          context.planWord('فتح رابطه', 'فتحت رابطها'),
-                          key: const ValueKey('guest-link-opened'),
-                          style: JourneyType.of(
-                            JourneyType.small,
-                            color: AarastV3Color.textMuted,
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      guest.everTold ? LucideIcons.mailCheck : LucideIcons.mail,
+                      color: context.accent.primary,
+                    ),
+                    const SizedBox(width: AarastV3Space.x2),
+                    Flexible(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _invitationLine(context, guest),
+                            key: const ValueKey('guest-invitation-line'),
+                            style: JourneyType.of(
+                              JourneyType.body,
+                              weight: JourneyType.bold,
+                            ),
                           ),
-                        ),
-                    ],
-                  ),
+                          if (guest.linkOpenedAt != null)
+                            Text(
+                              context.planWord('فتح رابطه', 'فتحت رابطها'),
+                              key: const ValueKey('guest-link-opened'),
+                              style: JourneyType.of(
+                                JourneyType.small,
+                                color: AarastV3Color.textMuted,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
                 // RA-MO-230: a guest added with no network has no invitation
                 // on the server yet; «أرسلها» answered «ما عاد موجود».
@@ -428,7 +431,10 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
                     !OfflineWrites.isLocalId(guest.id))
                   JourneyButton(
                     key: const ValueKey('guest-send-invitation'),
-                    label: context.say('أرسل', 'أرسلي'),
+                    // Once it reached the guest, the same tap sends it again.
+                    label: guest.everTold
+                        ? context.say('أرسلها مرة ثانية', 'أرسليها مرة ثانية')
+                        : context.say('أرسل', 'أرسلي'),
                     background: context.accent.primary,
                     onPressed: () => _sendInvitation(guest),
                   ),

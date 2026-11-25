@@ -414,10 +414,10 @@ class _PaymentAmountCard extends StatelessWidget {
                     ),
                   ),
                 ),
+                // The amount once: its words under its digits said it twice
+                // («1,000,000 ر.ي» over «مليون ر.ي», UX critique m16).
                 Text(
-                  hidden
-                      ? 'دُفعت'
-                      : '${amountInWords(value, currency: currencyLabelAr(currency))} · دُفعت',
+                  'دُفعت',
                   style: JourneyType.of(
                     JourneyType.small,
                     weight: JourneyType.bold,

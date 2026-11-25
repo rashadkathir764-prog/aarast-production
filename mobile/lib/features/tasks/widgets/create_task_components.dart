@@ -116,7 +116,8 @@ class CreateTaskResponsibleSection extends StatelessWidget {
             phoneController: otherPhoneController,
             nameController: otherNameController,
             label: context.say('رقمه (لو تشتي)', 'رقمه (لو تشتين)'),
-            hintText: '77xxxxxxx',
+            // The one hint every phone field shows (JourneyPhoneField).
+            hintText: '7XX XXX XXX',
             onDraftChanged: onDraftChanged,
           ),
           if (canInvite)

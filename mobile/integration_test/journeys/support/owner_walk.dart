@@ -577,7 +577,10 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
       // D116: the tab's «+» offers what it adds; a guest is the first.
       if (!await walk.tapKey('guests-add-guest', wait: 2)) return;
       await walk.enterField('الاسم', 'ضيف الغداء');
-      walk.expectSee('يحضر أيضًا', why: 'النموذج يعرض مناسبات الخطة (D83)');
+      walk.expectSee(
+        p.say('يحضر كمان', 'تحضر كمان'),
+        why: 'النموذج يعرض مناسبات الخطة (D83)',
+      );
       // The sheet is the last «الغداء» on screen; an earlier match (the
       // screen under it) takes the tap and selects nothing.
       await walk.tapText('الغداء', last: true, wait: 1.5);

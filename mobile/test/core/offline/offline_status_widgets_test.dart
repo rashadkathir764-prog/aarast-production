@@ -63,7 +63,11 @@ void main() {
 
       expect(find.byKey(const Key('sync-issues-sheet')), findsOneWidget);
       // w41: the refused change is named and says why in plain words.
-      expect(find.text('تغيير واحد ينتظر'), findsOneWidget);
+      // Changed on purpose (UX critique, home_sync_blocked): a refused change
+      // does not wait for the network, so the sheet does not say it does.
+      expect(find.text('تغيير واحد ما انقبل'), findsOneWidget);
+      expect(find.text('تغيير واحد ينتظر'), findsNothing);
+      expect(find.textContaining('أول ما يرجع النت'), findsNothing);
       expect(find.text('إضافة مهمة'), findsOneWidget);
       // Changed on purpose (Q-32): «ما انقبل», without «الخادم».
       expect(find.textContaining('ما انقبل، ويحتاج مراجعة'), findsOneWidget);
@@ -165,6 +169,67 @@ void main() {
     expect(find.textContaining('الضيف تغيّر من جهاز ثاني'), findsOneWidget);
     expect(find.byKey(ValueKey('sync-discard-${item.id}')), findsOneWidget);
     expect(find.byKey(const Key('sync-issues-retry')), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  // UX critique (home_sync_blocked): «احذفه» deleted the change at once,
+  // with no way back. It asks first, by the change's name; «رجوع» keeps it.
+  testWidgets('dropping a refused change asks first', (tester) async {
+    final preferences = await SharedPreferences.getInstance();
+    final database = JsonLocalDatabase(preferences);
+    await database.initialize();
+    final item = await database.enqueueSync(
+      entityType: 'task',
+      operation: 'create',
+      endpoint: '/api/v1/wedding-plans/plan-1/tasks',
+      method: 'POST',
+      payload: {'title': 'احجز القاعة'},
+      planId: 'plan-1',
+    );
+    await database.markSyncItemBlocked(item.id, 'ما انقبل، ويحتاج مراجعة');
+    final service = OfflineSyncService(
+      database: database,
+      apiClient: ApiClient(tokenProvider: () async => null),
+    );
+    await service.refreshStatus();
+    expect(service.blockedCount, 1);
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider<OfflineSyncService>.value(
+        value: service,
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: const Scaffold(body: OfflineSyncNowTile()),
+        ),
+      ),
+    );
+    await tester.tap(find.byType(ListTile));
+    await tester.pumpAndSettle();
+
+    // The reason is read whole, not cut at one line.
+    final reason = tester.widget<Text>(
+      find.textContaining('ما انقبل، ويحتاج مراجعة'),
+    );
+    expect(reason.maxLines, greaterThanOrEqualTo(2));
+
+    await tester.tap(find.byKey(ValueKey('sync-discard-${item.id}')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('sync-discard-confirm')), findsOneWidget);
+    expect(find.text('تمسح «مهمة: احجز القاعة» من جوالك؟'), findsOneWidget);
+    expect(find.text('ما يرجع بعدها.'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('sync-discard-no')));
+    await tester.pumpAndSettle();
+    await tester.runAsync(service.refreshStatus);
+    expect(service.blockedCount, 1);
+    expect(find.byKey(const Key('sync-issues-sheet')), findsOneWidget);
+
+    await tester.tap(find.byKey(ValueKey('sync-discard-${item.id}')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('sync-discard-yes')));
+    await tester.pumpAndSettle();
+    await tester.runAsync(service.refreshStatus);
+    expect(service.blockedCount, 0);
     expect(tester.takeException(), isNull);
   });
 }

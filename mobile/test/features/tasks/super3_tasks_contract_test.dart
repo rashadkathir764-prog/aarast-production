@@ -915,6 +915,11 @@ void main() {
     // Read, and empty: this is where the ready-made tasks belong.
     await pump(_FixedTaskProvider(harness.api, const []));
     expect(find.byKey(starter), findsOneWidget);
+    // UX critique (t01): one add. The header's «+» adds; the empty list has
+    // no «أضف مهمة» of its own doing the same.
+    expect(find.byKey(const Key('tasks-add')), findsOneWidget);
+    expect(find.text('ما فيه مهام بعد'), findsOneWidget);
+    expect(find.text('أضف مهمة'), findsNothing);
 
     // Still being read: the list is empty only because it has not arrived.
     await pump(_FixedTaskProvider(harness.api, const [], loading: true));

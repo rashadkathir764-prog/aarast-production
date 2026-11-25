@@ -445,8 +445,8 @@ class _OtpScreenState extends State<OtpScreen> {
                         key: const ValueKey('otp-go-to-register'),
                         label: _keptPlan != null && !_forProvider
                             ? context.say(
-                                'احفظ خطتي بهذا الرقم',
-                                'احفظي خطتي بهذا الرقم',
+                                'احفظ خطتك بهذا الرقم',
+                                'احفظي خطتك بهذا الرقم',
                               )
                             : context.say('ابدأ من هنا', 'ابدئي من هنا'),
                         expand: true,

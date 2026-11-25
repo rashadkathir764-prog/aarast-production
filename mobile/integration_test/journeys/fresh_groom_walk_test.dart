@@ -94,8 +94,9 @@ void main() {
       });
 
       await walk.step('a08_ready', 'خطتك جاهزة', () async {
-        walk.expectSee('احفظ خطتي برقم جوالي');
-        await walk.tapText('احفظ خطتي برقم جوالي', wait: 3);
+        // The button speaks to him, as the home's «احفظ خطتك…» does.
+        walk.expectSee('احفظ خطتك برقم جوالك');
+        await walk.tapText('احفظ خطتك برقم جوالك', wait: 3);
       });
 
       await walk.step('a08b_register', 'إنشاء الحساب', () async {

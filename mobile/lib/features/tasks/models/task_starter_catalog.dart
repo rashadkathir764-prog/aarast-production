@@ -88,7 +88,8 @@ List<TaskStarterGroup> taskStarterGroupsFor(
   if (items == null || items.isEmpty) {
     return [
       for (final group in _fallbackGroups)
-        if (_fallbackVisible(group.key, persona)) group,
+        if (_fallbackVisible(group.key, persona))
+          _fallbackTemplatesFor(group, persona),
     ];
   }
   items.sort((left, right) => left.sortOrder.compareTo(right.sortOrder));
@@ -226,6 +227,26 @@ List<TaskStarterGroup> taskStarterGroupsForPlan(
 String taskStarterTitleKey(String title) =>
     title.trim().replaceAll(RegExp(r'\s+'), ' ');
 
+/// Shared templates a bride's plan does not take: her own group holds the
+/// same task in her words («حجز المصورة النسائية» beside «حجز المصور»).
+const _sharedNotForBride = {'task-shared-photo'};
+
+TaskStarterGroup _fallbackTemplatesFor(
+  TaskStarterGroup group,
+  TaskStarterPersona persona,
+) {
+  if (persona != TaskStarterPersona.bride) return group;
+  return TaskStarterGroup(
+    key: group.key,
+    title: group.title,
+    subtitle: group.subtitle,
+    templates: [
+      for (final item in group.templates)
+        if (!_sharedNotForBride.contains(item.key)) item,
+    ],
+  );
+}
+
 bool _fallbackVisible(String groupKey, TaskStarterPersona persona) {
   return switch (persona) {
     TaskStarterPersona.groom => groupKey != 'bride-tasks',
@@ -239,7 +260,7 @@ const _fallbackGroups = [
   TaskStarterGroup(
     key: 'shared-tasks',
     title: 'مهام مشتركة',
-    subtitle: 'الأساسيات التي يتفق عليها الطرفان.',
+    subtitle: 'الأساسيات اللي يتفقون عليها.',
     templates: [
       TaskStarterTemplate(
         key: 'task-shared-date',

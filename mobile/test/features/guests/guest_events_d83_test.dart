@@ -105,7 +105,8 @@ void main() {
         onResult: (value) => result = value,
       );
 
-      expect(find.text('يحضر أيضًا'), findsOneWidget);
+      // Changed on purpose (UX critique): «كمان», not the written «أيضًا».
+      expect(find.text('يحضر كمان'), findsOneWidget);
       await tester.enterText(
         find.byKey(const ValueKey('guest-form-name')),
         'سالم',
@@ -124,7 +125,7 @@ void main() {
 
   testWidgets('a plan without events shows no event choice', (tester) async {
     await _openForm(tester, onResult: (_) {});
-    expect(find.text('يحضر أيضًا'), findsNothing);
+    expect(find.text('يحضر كمان'), findsNothing);
   });
 
   testWidgets('editing a guest starts from the events they already have', (

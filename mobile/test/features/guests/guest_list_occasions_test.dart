@@ -309,7 +309,8 @@ void main() {
 
     expect(find.text('العرس بس. أضيفي غداء أو حفلة'), findsOneWidget);
     expect(
-      find.text('شكل الدعوة وكلامها، وشوفي وش يوصل الضيفة'),
+      // Changed on purpose (UX critique): «ايش», the one dialect.
+      find.text('شكل الدعوة وكلامها، وشوفي ايش يوصل الضيفة'),
       findsOneWidget,
     );
     expect(find.textContaining('سمرة'), findsNothing);
@@ -346,13 +347,13 @@ void main() {
       location: '/wedding-plans/$_plan/guests?add=1',
       onRouter: (value) => router = value,
     );
-    expect(find.text('وش تضيف؟'), findsOneWidget);
+    expect(find.text('ايش تضيف؟'), findsOneWidget);
 
     await _tap(tester, 'guests-add-paste');
     expect(find.textContaining('import '), findsOneWidget);
     router.pop();
     await tester.pumpAndSettle();
-    expect(find.text('وش تضيف؟'), findsNothing);
+    expect(find.text('ايش تضيف؟'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -360,7 +361,7 @@ void main() {
     Future<void> openMenu(WidgetTester tester) async {
       await _pump(tester);
       await _tap(tester, 'guests-add');
-      expect(find.text('وش تضيف؟'), findsOneWidget);
+      expect(find.text('ايش تضيف؟'), findsOneWidget);
     }
 
     testWidgets('one guest opens the guest form', (tester) async {

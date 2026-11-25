@@ -48,16 +48,17 @@ class OfflineStatusBanner extends StatelessWidget {
     final failure = service.lastReachabilityFailure;
     final phoneOffline =
         failure == null || failure.cause == ReachabilityCause.noNetwork;
-    // D87: the provider's phone keeps his offers; the couple's keeps the
-    // money and the tasks.
+    // D87: the provider's phone keeps his offers. The couple's keeps every
+    // change to the plan (D85): «المال والمهام» left the guests out, which
+    // are kept too.
     final kept = audience == OfflineAudience.provider
-        ? 'عروضك'
-        : 'المال والمهام';
+        ? 'عروضك تنحفظ'
+        : ReaderVoice.say('اللي تسوّيه ينحفظ', 'اللي تسوّينه ينحفظ');
     final label = switch (state) {
       SyncState.offline =>
         phoneOffline
-            ? 'بدون نت. $kept تنحفظ في جوالك لين يرجع'
-            : 'ما نقدر نوصل الحين. $kept تنحفظ في جوالك',
+            ? 'بدون نت. $kept في جوالك لين يرجع النت'
+            : 'ما نقدر نوصل الحين. $kept في جوالك',
       SyncState.syncing => 'نرسل آخر تغييراتك',
       SyncState.syncError => 'ما قدرنا نرسل تغييراتك',
       _ => 'تغييراتك تنرسل لما يرجع النت',
@@ -340,9 +341,22 @@ class _PendingChangesSheet extends StatelessWidget {
         final changes = snapshot.data ?? const <PendingChangeSummary>[];
         final now = appNow();
         final canRetry = changes.any((change) => !change.changedElsewhere);
+        // A refused change does not wait for the network (D86): it waits for
+        // the person. The title said «ينتظر… تنرسل أول ما يرجع النت» of a
+        // change the server had already refused.
+        final refused = changes.where((change) => change.blocked).length;
+        final waiting = changes.length - refused;
         return JourneySheetBody(
           title: changes.isEmpty
               ? 'كل تغييراتك وصلت'
+              : refused > 0
+              ? arabicCount(
+                  refused,
+                  one: 'تغيير واحد ما انقبل',
+                  two: 'تغييرين ما انقبلوا',
+                  few: 'تغييرات ما انقبلت',
+                  many: 'تغيير ما انقبل',
+                )
               : arabicCount(
                   changes.length,
                   one: 'تغيير واحد ينتظر',
@@ -350,7 +364,11 @@ class _PendingChangesSheet extends StatelessWidget {
                   few: 'تغييرات تنتظر',
                   many: 'تغيير ينتظر',
                 ),
-          subtitle: 'محفوظة على جوالك، وتنرسل أول ما يرجع النت',
+          subtitle: refused == 0
+              ? 'محفوظة على جوالك، وتنرسل أول ما يرجع النت'
+              : waiting == 0
+              ? 'السبب تحت كل واحد'
+              : 'السبب تحت كل واحد. والباقي محفوظ على جوالك، وينرسل أول ما يرجع النت',
           // The list scrolls; the retry stays in reach under it.
           bottom: changes.isNotEmpty && !canRetry
               ? null
@@ -397,9 +415,15 @@ class _PendingChangesSheet extends StatelessWidget {
                       _PendingChangeRow(
                         change: change,
                         now: now,
-                        // D86: a refused change is the person's to drop.
+                        // D86: a refused change is the person's to drop,
+                        // and dropping it cannot be undone: asked first.
                         onDiscard: change.blocked
                             ? () async {
+                                final sure = await _confirmDiscard(
+                                  context,
+                                  change.title,
+                                );
+                                if (!sure) return;
                                 await service.discardBlockedChange(change.id);
                                 if (context.mounted) {
                                   Navigator.of(context).pop();
@@ -415,6 +439,40 @@ class _PendingChangesSheet extends StatelessWidget {
       },
     );
   }
+}
+
+/// Dropping a refused change deletes it from the phone for good: asked
+/// first, with its name.
+Future<bool> _confirmDiscard(BuildContext context, String title) async {
+  final sure = await showJourneySheet<bool>(
+    context: context,
+    builder: (sheetContext) => JourneySheetBody(
+      key: const Key('sync-discard-confirm'),
+      title: ReaderVoice.say(
+        'تمسح «$title» من جوالك؟',
+        'تمسحين «$title» من جوالك؟',
+      ),
+      subtitle: 'ما يرجع بعدها.',
+      children: [
+        JourneyButton(
+          key: const Key('sync-discard-yes'),
+          label: ReaderVoice.say('امسحه', 'امسحيه'),
+          background: AarastV3Color.danger,
+          expand: true,
+          large: true,
+          onPressed: () => Navigator.of(sheetContext).pop(true),
+        ),
+        const SizedBox(height: AarastV3Space.x2),
+        JourneyButton.quiet(
+          key: const Key('sync-discard-no'),
+          label: 'رجوع',
+          expand: true,
+          onPressed: () => Navigator.of(sheetContext).pop(false),
+        ),
+      ],
+    ),
+  );
+  return sure == true;
 }
 
 class _PendingChangeRow extends StatelessWidget {
@@ -452,12 +510,14 @@ class _PendingChangeRow extends StatelessWidget {
       soft: soft,
       title: change.title,
       subtitle: change.reason != null ? '${change.reason} · $when' : when,
+      // The reason is why it was refused: read whole, never cut at a line.
+      subtitleMaxLines: change.reason != null ? 3 : 1,
       trailing: change.blocked
           ? (onDiscard == null
                 ? null
                 : JourneyTextAction(
                     key: ValueKey('sync-discard-${change.id}'),
-                    label: 'احذفه',
+                    label: ReaderVoice.say('احذفه', 'احذفيه'),
                     color: AarastV3Color.danger,
                     onPressed: onDiscard,
                   ))

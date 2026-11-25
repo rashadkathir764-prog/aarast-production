@@ -384,7 +384,9 @@ void main() {
       expect(inCard('باقي عليك'), findsOneWidget);
       expect(inCard('1.5\u00a0مليون\u00a0ر.ي'), findsOneWidget);
       expect(inCard('الميزانية 7$_nbspمليون'), findsOneWidget);
-      expect(inCard('باقي منها 5$_nbspمليون'), findsOneWidget);
+      // Changed on purpose (UX critique): the budget's free part is «فاضي
+      // منها»; «باقي» is what is left to pay, the card's lead.
+      expect(inCard('فاضي منها 5$_nbspمليون'), findsOneWidget);
       expect(inCard('اتفقت على 2$_nbspمليون'), findsOneWidget);
       expect(inCard('منها المهر 2$_nbspمليون'), findsOneWidget);
       expect(inCard('دفعت 500$_nbspألف'), findsOneWidget);
@@ -396,7 +398,7 @@ void main() {
       expect(find.textContaining('برّا الميزانية'), findsNothing);
       final label = tester.getSemantics(card).label;
       expect(label, contains('الميزانية 7$_nbspمليون'));
-      expect(label, contains('باقي منها 5$_nbspمليون'));
+      expect(label, contains('فاضي منها 5$_nbspمليون'));
       expect(label, contains('منها المهر 2$_nbspمليون'));
       expect(tester.takeException(), isNull);
     });
@@ -409,7 +411,7 @@ void main() {
       expect(inCard('باقي عليك'), findsOneWidget);
       expect(inCard('1.5\u00a0مليون\u00a0ر.ي'), findsOneWidget);
       expect(inCard('الميزانية 7$_nbspمليون'), findsOneWidget);
-      expect(inCard('باقي منها 7$_nbspمليون'), findsOneWidget);
+      expect(inCard('فاضي منها 7$_nbspمليون'), findsOneWidget);
       expect(inCard('اتفقت على 2$_nbspمليون'), findsOneWidget);
       expect(inCard('دفعت 500$_nbspألف'), findsOneWidget);
       // Changed on purpose (walks 2026-11-18): the agreed figure holds the
@@ -464,7 +466,7 @@ void main() {
       );
 
       expect(inCard('فوق الميزانية بـ300$_nbspألف'), findsOneWidget);
-      expect(find.textContaining('باقي منها'), findsNothing);
+      expect(find.textContaining('فاضي منها'), findsNothing);
     });
 
     testWidgets('a bride\'s plan: her mahr comes in, no line for it', (
@@ -499,7 +501,7 @@ void main() {
       );
 
       expect(inCard('الميزانية ••••'), findsOneWidget);
-      expect(inCard('باقي منها ••••'), findsOneWidget);
+      expect(inCard('فاضي منها ••••'), findsOneWidget);
       expect(
         find.descendant(of: card, matching: find.textContaining('مليون')),
         findsNothing,

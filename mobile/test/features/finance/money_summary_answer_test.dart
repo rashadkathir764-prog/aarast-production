@@ -17,6 +17,7 @@ import 'package:aarast_mobile/features/finance/screens/money_overview_screen.dar
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../support/app_route_table.dart';
@@ -499,6 +500,44 @@ void main() {
       // The hall's 1,200,000 replaces its 1,300,000 estimate (WHOLE): not
       // over its 1,200,000.
       expect(find.textContaining('«القاعة» فوق'), findsNothing);
+    });
+
+    // UX critique (m01_overview): the line under the figure rounded («من
+    // 2.4 مليون») what «الصورة كاملة» writes whole on the same screen.
+    testWidgets('«دفعت X من Y» is written sum-safe, never rounded', (
+      tester,
+    ) async {
+      final apis = await tester.runAsync(twoDips);
+      await _open(tester, apis!);
+
+      // 1,200,000 + 350,000 + 800,000 agreed, 400,000 paid.
+      final line = tester
+          .widget<Text>(find.byKey(const ValueKey('money-share-paid')))
+          .data!;
+      expect(line, contains('400,000'));
+      expect(line, contains('2,350,000'));
+      expect(line, isNot(contains('2.4')));
+    });
+
+    // UX critique: the rows of «يحتاج انتباهك» open where each is settled,
+    // and carry the chevron every row that opens something carries.
+    testWidgets('a row that opens something shows it', (tester) async {
+      final apis = await tester.runAsync(twoDips);
+      await _open(tester, apis!);
+      final box = find.byKey(const ValueKey('money-needs-attention'));
+      await _scrollTo(tester, box);
+
+      final rows = find.descendant(
+        of: box,
+        matching: find.byType(JourneyListRow),
+      );
+      expect(rows, findsWidgets);
+      for (final row in tester.widgetList<JourneyListRow>(rows)) {
+        expect(row.onTap, isNotNull);
+        final end = row.trailing;
+        expect(end, isA<Icon>(), reason: row.title);
+        expect((end! as Icon).icon, LucideIcons.chevronLeft);
+      }
     });
 
     testWidgets('the whole picture: three figures, never added together', (

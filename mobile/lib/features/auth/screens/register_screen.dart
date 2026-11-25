@@ -90,13 +90,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
   String? get _nameError {
     if (!_submitAttempted || _nameFromPlan) return null;
     final name = _nameController.text.trim();
-    if (name.isEmpty) return 'الاسم مطلوب';
+    if (name.isEmpty) return context.say('اكتب اسمك', 'اكتبي اسمك');
     return null;
   }
 
   String? get _phoneError {
     if (!_submitAttempted) return null;
-    return yemeniPhoneInputError(_phoneController.text);
+    return yemeniPhoneInputError(
+      _phoneController.text,
+      empty: context.say('اكتب رقم جوالك', 'اكتبي رقم جوالك'),
+    );
   }
 
   void _edited() {
@@ -146,7 +149,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             // A number just proven by a sign-in code needs no code (D75).
             label: proven
                 ? (keptPlan != null
-                      ? context.say('احفظ خطتي', 'احفظي خطتي')
+                      ? context.say('احفظ خطتك', 'احفظي خطتك')
                       : 'إنشاء الحساب')
                 : offline
                 ? context.say('أرسل الرمز مرة ثانية', 'أرسلي الرمز مرة ثانية')

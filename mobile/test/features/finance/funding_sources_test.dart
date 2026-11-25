@@ -630,16 +630,84 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('loan-repayment-r1')));
     await tester.pump();
     expect(toggles, 0);
-    // A promised loan is not paid back, so nothing says how to.
-    expect(find.byKey(const ValueKey('loan-repayment-hint')), findsNothing);
 
     // Once it arrived the sheet is as before.
     await tester.pumpWidget(sheet(FundingStatus.received));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('loan-pay-next')), findsOneWidget);
-    // RA-MO-175: how a repayment is marked, and taken back.
-    expect(find.byKey(const ValueKey('loan-repayment-hint')), findsOneWidget);
     expect(find.byKey(const ValueKey('loan-not-arrived')), findsNothing);
+    // Changed on purpose (UX critique m23): a tap on the row marked it paid
+    // unseen, beside the button that does the same. The row is not a
+    // switch any more, and the hint that taught the gesture is gone.
+    await tester.tap(find.byKey(const ValueKey('loan-repayment-r1')));
+    await tester.pump();
+    expect(toggles, 0);
+    expect(find.byKey(const ValueKey('loan-repayment-hint')), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  // UX critique m23: a paid repayment is taken back by its own word.
+  testWidgets('a paid repayment is taken back by «تراجع»', (tester) async {
+    final calls = <(String, bool)>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Scaffold(
+            body: SingleChildScrollView(
+              child: LoanRepaymentsSheet(
+                loan: FundingSource(
+                  id: 'loan-1',
+                  weddingPlanId: 'plan-1',
+                  kind: FundingKind.loan,
+                  sourceName: 'خالي أحمد',
+                  amount: '600000',
+                  status: FundingStatus.received,
+                  repayments: const [
+                    LoanRepayment(
+                      id: 'r1',
+                      fundingSourceId: 'loan-1',
+                      amount: '300000',
+                      status: RepaymentStatus.paid,
+                    ),
+                    LoanRepayment(
+                      id: 'r2',
+                      fundingSourceId: 'loan-1',
+                      amount: '300000',
+                      status: RepaymentStatus.planned,
+                    ),
+                  ],
+                ),
+                currency: 'YER',
+                saving: false,
+                onAdd: (_, _) async => true,
+                onTogglePaid: (item, paid) => calls.add((item.id, paid)),
+                onDelete: (_) {},
+                onEdit: () {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final undo = find.descendant(
+      of: find.byKey(const ValueKey('loan-repayment-r1')),
+      matching: find.text('تراجع'),
+    );
+    expect(undo, findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('loan-repayment-r2')),
+        matching: find.text('تراجع'),
+      ),
+      findsNothing,
+    );
+    await tester.tap(undo);
+    await tester.pump();
+    expect(calls, [('r1', false)]);
     expect(tester.takeException(), isNull);
   });
 

@@ -132,7 +132,7 @@ class _LoanRepaymentsSheetState extends State<LoanRepaymentsSheet> {
 
     return JourneySheetBody(
       title: 'سلفة ${loan.sourceName}',
-      subtitle: context.say('خاصة بك', 'خاصة بكِ'),
+      subtitle: 'ما يشوفها غيرك',
       trailing: JourneyRoundButton(
         icon: LucideIcons.pencil,
         tooltip: 'تعديل السلفة',
@@ -223,12 +223,14 @@ class _LoanRepaymentsSheetState extends State<LoanRepaymentsSheet> {
                     amount: _plain(repayments[index].amount),
                     paid: repayments[index].isPaid,
                     current: index == nextIndex,
-                    onToggle: widget.saving || promised
+                    // A repayment is marked paid by «سجّل دفعة السداد»
+                    // only; a paid one is taken back by its own word. A
+                    // tap anywhere on the row did both, unseen (UX
+                    // critique m23).
+                    onUndo:
+                        widget.saving || promised || !repayments[index].isPaid
                         ? null
-                        : () => widget.onTogglePaid(
-                            repayments[index],
-                            !repayments[index].isPaid,
-                          ),
+                        : () => widget.onTogglePaid(repayments[index], false),
                     onDelete: widget.saving || repayments[index].isPaid
                         ? null
                         : () => widget.onDelete(repayments[index]),
@@ -236,22 +238,6 @@ class _LoanRepaymentsSheetState extends State<LoanRepaymentsSheet> {
               ],
             ),
           ),
-        // RA-MO-175: a tap marks a repayment paid, and a tap again takes it
-        // back; nothing said either.
-        if (repayments.isNotEmpty && !promised) ...[
-          const SizedBox(height: AarastV3Space.x1),
-          Text(
-            key: const ValueKey('loan-repayment-hint'),
-            context.say(
-              'اضغط الدفعة لما تسددها، واضغطها مرة ثانية لو غلطت.',
-              'اضغطي الدفعة لما تسدديها، واضغطيها مرة ثانية لو غلطتِ.',
-            ),
-            style: JourneyType.of(
-              JourneyType.small,
-              color: AarastV3Color.textMuted,
-            ),
-          ),
-        ],
         const SizedBox(height: AarastV3Space.x3),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -353,7 +339,7 @@ class _RepaymentRow extends StatelessWidget {
     required this.amount,
     required this.paid,
     required this.current,
-    required this.onToggle,
+    required this.onUndo,
     required this.onDelete,
     super.key,
   });
@@ -363,19 +349,16 @@ class _RepaymentRow extends StatelessWidget {
   final String amount;
   final bool paid;
   final bool current;
-  final VoidCallback? onToggle;
+
+  /// A paid repayment taken back, by its own word on the row.
+  final VoidCallback? onUndo;
   final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(
-      button: onToggle != null,
-      checked: paid,
-      label: '$line، $amount',
-      onTap: onToggle,
-      excludeSemantics: true,
-      child: AarastPressable(
-        onTap: onToggle ?? () {},
+    return MergeSemantics(
+      child: Semantics(
+        checked: paid,
         child: Padding(
           padding: const EdgeInsets.all(AarastV3Space.x2),
           child: Row(
@@ -432,7 +415,13 @@ class _RepaymentRow extends StatelessWidget {
                   color: paid ? AarastV3Color.textMuted : AarastV3Color.ink,
                 ),
               ),
-              if (onDelete != null)
+              if (onUndo case final undo?)
+                JourneyTextAction(
+                  label: context.say('تراجع', 'تراجعي'),
+                  color: AarastV3Color.textMuted,
+                  onPressed: undo,
+                )
+              else if (onDelete != null)
                 IconButton(
                   tooltip: context.say('شيل دفعة السداد', 'شيلي دفعة السداد'),
                   onPressed: onDelete,

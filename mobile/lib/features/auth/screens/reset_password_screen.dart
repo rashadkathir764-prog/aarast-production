@@ -151,7 +151,10 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         key: const ValueKey('reset-phone'),
         controller: _phoneController,
         errorText: _phoneAsked
-            ? yemeniPhoneInputError(_phoneController.text)
+            ? yemeniPhoneInputError(
+                _phoneController.text,
+                empty: context.say('اكتب رقم جوالك', 'اكتبي رقم جوالك'),
+              )
             : null,
         onChanged: (_) {
           if (_phoneAsked) setState(() {});

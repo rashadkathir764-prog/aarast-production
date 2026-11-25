@@ -190,7 +190,26 @@ void main() {
     );
 
     expect(find.byKey(const ValueKey('guests-send-remind')), findsOneWidget);
-    expect(find.text('ذكّري ضيفتين'), findsOneWidget);
+    // Changed on purpose (UX critique, guests_list): the button says who
+    // it cannot reach, so its count and the summary's agree.
+    expect(find.text('ذكّري ضيفتين · 1 بدون رقم'), findsOneWidget);
+  });
+
+  // UX critique (guests_list): «3 بلا دعوة» over «أرسل الدعوة لضيف واحد»
+  // left the other two unexplained.
+  testWidgets('the send says who it cannot reach', (tester) async {
+    await _pumpList(
+      tester,
+      JourneyProfile.bride,
+      guests: [
+        _guest('g1', 'هدى', 'INVITED', invitation: 'NOT_SENT'),
+        _guest('g2', 'أسماء', 'INVITED', invitation: 'NOT_SENT', phone: null),
+        _guest('g3', 'عبلة', 'INVITED', invitation: 'NOT_SENT', phone: null),
+      ],
+    );
+
+    expect(find.byKey(const ValueKey('guests-send-new')), findsOneWidget);
+    expect(find.text('أرسلي لـضيفة وحدة · 2 بدون رقم'), findsOneWidget);
   });
 
   testWidgets('e01: the reminder sits in the summary card, the bar is drawn', (

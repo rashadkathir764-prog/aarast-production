@@ -446,7 +446,10 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
                               ),
                               const SizedBox(width: AarastV3Space.x1),
                               Text(
-                                amountsHidden ? 'أظهر' : 'أخفِ',
+                                // As the money tab says it, to her too.
+                                amountsHidden
+                                    ? context.say('أظهر', 'أظهري')
+                                    : context.say('أخفِ', 'أخفي'),
                                 style: JourneyType.of(
                                   JourneyType.small,
                                   weight: JourneyType.bold,

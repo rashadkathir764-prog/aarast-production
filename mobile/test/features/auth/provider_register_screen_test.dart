@@ -62,8 +62,10 @@ void main() {
     await tester.tap(find.byKey(const Key('provider-register-submit')));
     await tester.pumpAndSettle();
 
-    expect(find.text('الاسم مطلوب'), findsOneWidget);
-    expect(find.text('رقم الجوال مطلوب'), findsOneWidget);
+    // Changed on purpose (UX critique): «مطلوب» was a form's word; the
+    // field says what to do.
+    expect(find.text('اكتب اسمك'), findsOneWidget);
+    expect(find.text('اكتب رقم جوالك'), findsOneWidget);
     expect(repository.starts, isEmpty);
 
     await tester.enterText(
@@ -71,8 +73,8 @@ void main() {
       'علي الشامي',
     );
     await tester.pumpAndSettle();
-    expect(find.text('الاسم مطلوب'), findsNothing);
-    expect(find.text('رقم الجوال مطلوب'), findsOneWidget);
+    expect(find.text('اكتب اسمك'), findsNothing);
+    expect(find.text('اكتب رقم جوالك'), findsOneWidget);
   });
 
   testWidgets('the account is started and the code screen leads to joining', (

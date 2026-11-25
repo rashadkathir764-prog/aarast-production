@@ -21,8 +21,14 @@ class _JourneyHomeTiles extends StatelessWidget {
     final s = summary;
     final tasksNote = s.overdueTasks > 0
         ? (
-            // b02 «1 متأخرة».
-            '${s.overdueTasks} متأخرة',
+            // Counted, not «1 متأخرة», in the tasks screen's own words.
+            arabicCount(
+              s.overdueTasks,
+              one: 'واحدة متأخرة',
+              two: 'ثنتين متأخرة',
+              few: 'متأخرة',
+              many: 'متأخرة',
+            ),
             AarastV3Color.danger,
           )
         : s.todayTasks > 0

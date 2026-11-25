@@ -212,6 +212,14 @@ void main() {
       expect(find.text('دفعة قاعة الحفل'), findsOneWidget);
       expect(find.text('الدفعة الأولى'), findsOneWidget);
       expect(find.byKey(const ValueKey('payment-amount-card')), findsOneWidget);
+      // UX critique m16: the amount once, not again in words under it.
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('payment-amount-card')),
+          matching: find.text('دُفعت'),
+        ),
+        findsOneWidget,
+      );
       expect(find.text('لمين'), findsOneWidget);
       expect(find.text('تحويل'), findsOneWidget);
 

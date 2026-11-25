@@ -249,7 +249,10 @@ void main() {
     );
 
     expect(find.text('ليلى سالم'), findsOneWidget);
-    expect(find.text('ما ردّ'), findsWidgets);
+    // Changed on purpose (UX critique): the answer is said once, on its
+    // chip in «الرد»; the tag over the page said it a second time.
+    expect(find.text('ما ردّ'), findsOneWidget);
+    expect(find.byKey(const ValueKey('guest-reply-tag')), findsNothing);
     expect(find.byKey(const ValueKey('guest-call')), findsOneWidget);
     expect(find.byKey(const ValueKey('guest-whatsapp')), findsOneWidget);
 
@@ -315,6 +318,14 @@ void main() {
     // Changed on purpose (D116): «انرسلت له الدعوة» / «رابط جديد» → the last send's day, the link opened, and a replacement link asked first.
     expect(find.text('وصلته الدعوة، آخرها 3 ديسمبر'), findsOneWidget);
     expect(find.byKey(const ValueKey('guest-link-opened')), findsOneWidget);
+    // UX critique: after it went out, «أرسل» read as if it never had.
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('guest-send-invitation')),
+        matching: find.text('أرسلها مرة ثانية'),
+      ),
+      findsOneWidget,
+    );
 
     await tester.tap(find.byKey(const ValueKey('guest-replace-link')));
     await tester.pumpAndSettle();

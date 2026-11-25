@@ -66,7 +66,9 @@ class _MahrStep extends StatelessWidget {
       question: 'اتفقتوا على المهر؟',
       // D114: where the groom's mahr counts is his answer below.
       help: bride
-          ? 'اللي بتستلمينه من العريس. نحسبه برّا الميزانية ونقول لك كم باقي.'
+          // Her mahr is money coming in (D114): «كم باقي» is what is still
+          // to reach her, not what is left of her budget.
+          ? 'اللي بتستلمينه من العريس. نحسبه لحاله برّا ميزانية عرسك، ونقول لك كم باقي يوصلك منه.'
           : 'اللي بتسلّمه لأهل العروسة. نتابع كم سلّمت وكم باقي.',
       primaryLabel: 'التالي',
       // J1-18, as the two steps before it: «التالي» waits, greyed, and a

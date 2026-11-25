@@ -148,8 +148,9 @@ void main() {
     await tester.ensureVisible(submit);
     await tester.tap(submit);
     await tester.pumpAndSettle();
-    expect(find.text('رقم الجوال مطلوب'), findsOneWidget);
-    expect(find.text('الاسم مطلوب'), findsOneWidget);
+    // Changed on purpose (UX critique): the field says what to do.
+    expect(find.text('اكتب رقم جوالك'), findsOneWidget);
+    expect(find.text('اكتب اسمك'), findsOneWidget);
 
     await tester.enterText(
       find.byKey(const ValueKey('journey-phone-input')),
@@ -157,8 +158,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('رقم الجوال مطلوب'), findsNothing);
-    expect(find.text('الاسم مطلوب'), findsOneWidget);
+    expect(find.text('اكتب رقم جوالك'), findsNothing);
+    expect(find.text('اكتب اسمك'), findsOneWidget);
   });
 
   // a08b: the plan kept on the phone is named, and its name is not asked

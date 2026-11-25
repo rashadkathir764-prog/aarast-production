@@ -316,7 +316,7 @@ class _ItemsBudgetBox extends StatelessWidget {
             if (over > 0)
               'فوق الميزانية بـ${money(over)}'
             else if (over < 0)
-              'باقي منها ${money(-over)}'
+              'فاضي منها ${money(-over)}'
             else
               'على قد الميزانية',
           ].join('، ')

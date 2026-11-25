@@ -173,8 +173,9 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
             section: JourneySection.tasks,
             emptyIcon: LucideIcons.listChecks,
             emptyTitle: 'ما فيه مهام بعد',
-            emptyAction: context.say('أضف مهمة', 'أضيفي مهمة'),
-            onEmptyAction: _add,
+            // No add button of its own: the header's «+» (or the shell's
+            // floating one) is the one add, and «ابدأ بمهام جاهزة» above is
+            // the other way in. Two buttons did the same (UX critique t01).
           ),
         ),
       ];

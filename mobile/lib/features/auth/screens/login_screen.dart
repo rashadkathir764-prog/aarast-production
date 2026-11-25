@@ -68,7 +68,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
   String? get _phoneError {
     if (!_submitAttempted) return null;
-    return yemeniPhoneInputError(_phoneController.text);
+    return yemeniPhoneInputError(
+      _phoneController.text,
+      empty: context.say('اكتب رقم جوالك', 'اكتبي رقم جوالك'),
+    );
   }
 
   String? get _passwordError {

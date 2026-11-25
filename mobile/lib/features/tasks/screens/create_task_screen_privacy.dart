@@ -13,8 +13,8 @@ extension _CreateTaskPrivacy on _CreateTaskScreenState {
           key: const ValueKey('task-private-banner'),
           // The partner is the plan's other side: the bride in the groom's.
           text: context.planWord(
-            'مهمة خاصة بك: ما تشوفها شريكتك ولا تدخل في أرقامها.',
-            'مهمة خاصة بك: ما يشوفها شريكك ولا تدخل في أرقامه.',
+            'ما يشوفها غيرك، حتى شريكتك، ولا تدخل في أرقامها.',
+            'ما يشوفها غيرك، حتى شريكك، ولا تدخل في أرقامه.',
           ),
           icon: LucideIcons.lock,
         ),

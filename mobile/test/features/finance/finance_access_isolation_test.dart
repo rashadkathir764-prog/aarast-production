@@ -341,6 +341,13 @@ void main() {
 
     expect(find.text('للقراءة بس'), findsOneWidget);
     expect(find.text('حفظ الاتفاق'), findsNothing);
+    // p16: not a dead end; it says who edits and leads back to the money.
+    expect(find.textContaining('والتعديل عند العريس'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('money-read-only-back')),
+      findsOneWidget,
+    );
+    expect(find.text('ارجع للمال'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

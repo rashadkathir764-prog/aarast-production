@@ -20,8 +20,11 @@ typedef MoneyBudgetCell = ({
 
 /// The budget and what is left of it (or how far over it the expected cost
 /// is), then what was agreed and what was paid, in the reader's words (D59).
-/// [mahrInside]: the groom's mahr when the budget holds it; [figure] writes
-/// the amounts inside a line under a figure.
+/// [mahrInside]: the groom's mahr inside what he agreed, said under it
+/// (D79); [mahrInBudget]: whether the budget holds it (D114). A mahr outside
+/// the budget is said so on its line, or «اتفقت على 2 مليون منها المهر 2
+/// مليون» over a budget still all free read as wrong arithmetic. [figure]
+/// writes the amounts inside a line under a figure.
 List<MoneyBudgetCell> moneyBudgetCells(
   BuildContext context, {
   required num budget,
@@ -33,7 +36,13 @@ List<MoneyBudgetCell> moneyBudgetCells(
   required num paidByOthers,
   required num? mahrInside,
   required String Function(num) figure,
+  bool mahrInBudget = true,
 }) {
+  final mahrNote = mahrInside == null
+      ? null
+      : budget > 0 && !mahrInBudget
+      ? 'منها المهر ${figure(mahrInside)}، برّا الميزانية'
+      : 'منها المهر ${figure(mahrInside)}';
   final paidFor = context.ownerDid('عنك', 'عنك', groom: 'عنه', bride: 'عنها');
   return [
     if (budget > 0) ...[
@@ -54,8 +63,10 @@ List<MoneyBudgetCell> moneyBudgetCells(
           joined: true,
         )
       else if (budgetLeft != null)
+        // What of the budget nothing is set against yet. «باقي» is what is
+        // left to pay on the same card: one word for one meaning.
         (
-          label: 'باقي منها',
+          label: 'فاضي منها',
           value: budgetLeft,
           note: null,
           danger: false,
@@ -70,7 +81,7 @@ List<MoneyBudgetCell> moneyBudgetCells(
         bride: 'اتفقت العروسة على',
       ),
       value: agreed,
-      note: mahrInside == null ? null : 'منها المهر ${figure(mahrInside)}',
+      note: mahrNote,
       danger: false,
       joined: false,
     ),

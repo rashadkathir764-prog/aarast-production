@@ -778,7 +778,9 @@ class _ReadyStep extends StatelessWidget {
                       ),
                 primary: signedIn
                     ? JourneyButton(
-                        label: context.say('افتح خطتي', 'افتحي خطتي'),
+                        // The app speaks to the reader, as every button
+                        // does: «خطتك», never «افتحي خطتي».
+                        label: context.say('افتح خطتك', 'افتحي خطتك'),
                         onPressed: saving ? null : onOpenPlan,
                         loading: saving,
                         expand: true,
@@ -786,9 +788,10 @@ class _ReadyStep extends StatelessWidget {
                       )
                     : JourneyButton(
                         key: const ValueKey('ready-save'),
+                        // As the home's own button says it.
                         label: context.say(
-                          'احفظ خطتي برقم جوالي',
-                          'احفظي خطتي برقم جوالي',
+                          'احفظ خطتك برقم جوالك',
+                          'احفظي خطتك برقم جوالك',
                         ),
                         icon: LucideIcons.smartphone,
                         onPressed: saving ? null : onSaveWithPhone,

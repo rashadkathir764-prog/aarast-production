@@ -135,10 +135,12 @@ class _PartySection extends StatelessWidget {
           spacing: 8,
           runSpacing: 8,
           children: [
+            // Each chip says who the agreement is with, under «مع مين؟»:
+            // «من اعّرست / برا اعّرست / بدون» named a place, not a party.
             for (final (value, label) in const [
-              (_PartyKind.provider, 'من اعّرست'),
-              (_PartyKind.external, 'برا اعّرست'),
-              (_PartyKind.none, 'بدون'),
+              (_PartyKind.provider, 'مزود من التطبيق'),
+              (_PartyKind.external, 'مزود من برّا'),
+              (_PartyKind.none, 'ما في مزود'),
             ])
               JourneyChip(
                 key: ValueKey('cost-party-${value.name}'),

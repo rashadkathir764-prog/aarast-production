@@ -321,7 +321,8 @@ void main() {
         );
     final storage = await _pump(tester, keptPlan: kept);
 
-    expect(find.text('افتح خطتي'), findsOneWidget);
+    // Changed on purpose (UX critique): a door is the reader's own words.
+    expect(find.text('أفتح خطتي'), findsOneWidget);
     expect(find.text('عرس أمل، على هذا الجوال'), findsOneWidget);
     await _tapKey(tester, 'door-replace-plan');
     expect(find.text('تبدأ خطة جديدة بدل عرس أمل؟'), findsOneWidget);
@@ -547,7 +548,7 @@ void main() {
       find.text('الميزانية 7 مليون · المهر 3 مليون، باقي مليون'),
       findsOneWidget,
     );
-    await _tap(tester, 'افتح خطتي');
+    await _tap(tester, 'افتح خطتك');
 
     expect(plans.request!.mahr, {'total': '3000000', 'settled': '2000000'});
   });
@@ -613,7 +614,7 @@ void main() {
         ),
         findsOneWidget,
       );
-      await _tap(tester, 'افتح خطتي');
+      await _tap(tester, 'افتح خطتك');
       expect(plans.request!.budgetIncludesMahr, isTrue);
     });
 
@@ -628,7 +629,7 @@ void main() {
         find.text('الميزانية 7 مليون · المهر مليونين، باقي 1.5 مليون'),
         findsOneWidget,
       );
-      await _tap(tester, 'افتح خطتي');
+      await _tap(tester, 'افتح خطتك');
       expect(plans.request!.budgetIncludesMahr, isNull);
     });
 
@@ -688,7 +689,7 @@ void main() {
       await tester.tap(find.widgetWithText(JourneyButton, 'التالي'));
       await tester.pumpAndSettle();
       expect(find.text('خطتك جاهزة يا محمد'), findsOneWidget);
-      await _tap(tester, 'افتح خطتي');
+      await _tap(tester, 'افتح خطتك');
       expect(plans.request!.budgetIncludesMahr, isNull);
     });
 
@@ -778,7 +779,9 @@ void main() {
 
     expect(
       find.text(
-        'اللي بتستلمينه من العريس. نحسبه برّا الميزانية ونقول لك كم باقي.',
+        // Changed on purpose (UX critique): her mahr comes in; «كم باقي»
+        // is what is still to reach her.
+        'اللي بتستلمينه من العريس. نحسبه لحاله برّا ميزانية عرسك، ونقول لك كم باقي يوصلك منه.',
       ),
       findsOneWidget,
     );
@@ -949,7 +952,9 @@ void main() {
     expect(find.text('مزودين صنعاء'), findsOneWidget);
     // Looking first says what it risks.
     expect(find.textContaining('خطتك الحين على هذا الجوال بس'), findsOneWidget);
-    expect(find.text('احفظ خطتي برقم جوالي'), findsOneWidget);
+    // Changed on purpose (UX critique): the app speaks to the reader, as
+    // the home's own «احفظ خطتك برقم جوالك» does.
+    expect(find.text('احفظ خطتك برقم جوالك'), findsOneWidget);
 
     await _tapKey(tester, 'ready-later');
     expect(find.text('opened:/home'), findsOneWidget);
@@ -1055,10 +1060,10 @@ void main() {
     final plans = _RecordingPlans(succeed: true);
     final storage = await _pump(tester, signedInPlans: plans);
     await _answerUpToReady(tester);
-    expect(find.text('احفظ خطتي برقم جوالي'), findsNothing);
+    expect(find.text('احفظ خطتك برقم جوالك'), findsNothing);
     expect(find.byKey(const ValueKey('ready-later')), findsNothing);
 
-    await _tap(tester, 'افتح خطتي');
+    await _tap(tester, 'افتح خطتك');
     expect(find.text('opened:/home'), findsOneWidget);
     final request = plans.request!;
     expect(request.title, 'عرس محمد');
@@ -1097,7 +1102,7 @@ void main() {
     await _answerUpToReady(tester);
     expect(push.hasPendingPermissionExplanation, isFalse);
 
-    await _tap(tester, 'افتح خطتي');
+    await _tap(tester, 'افتح خطتك');
     await tester.pump();
 
     expect(find.text('opened:/home'), findsOneWidget);
@@ -1115,7 +1120,7 @@ void main() {
     );
     await _answerUpToReady(tester);
 
-    await _tap(tester, 'افتح خطتي');
+    await _tap(tester, 'افتح خطتك');
     await tester.pump();
 
     expect(push.hasPendingPermissionExplanation, isFalse);
@@ -1143,7 +1148,7 @@ void main() {
     await tester.pumpAndSettle();
     await _tap(tester, 'التالي');
     await _tap(tester, 'ما اتفقنا بعد');
-    await _tap(tester, 'افتح خطتي');
+    await _tap(tester, 'افتح خطتك');
 
     final sent = plans.request!.weddingDate;
     expect(sent, planDayToJson(day));
@@ -1154,12 +1159,12 @@ void main() {
     final plans = _RecordingPlans(succeed: false);
     await _pump(tester, signedInPlans: plans);
     await _answerUpToReady(tester);
-    await _tap(tester, 'افتح خطتي');
+    await _tap(tester, 'افتح خطتك');
     expect(find.text('خطتك جاهزة يا محمد'), findsOneWidget);
     expect(find.text('تعذر إنشاء خطتك.'), findsOneWidget);
 
     // RA-BE-71: trying the same plan again is the same plan to the server.
-    await _tap(tester, 'افتح خطتي');
+    await _tap(tester, 'افتح خطتك');
     expect(plans.keys, hasLength(2));
     expect(plans.keys.toSet(), hasLength(1));
   });
@@ -1188,7 +1193,7 @@ void main() {
     await tester.pumpAndSettle();
     await _tap(tester, 'التالي');
     await _tap(tester, 'ما اتفقنا بعد');
-    await _tap(tester, 'افتح خطتي');
+    await _tap(tester, 'افتح خطتك');
 
     expect(find.text('opened:/home'), findsOneWidget);
     expect(plans.request!.title, 'عرس محمد');
@@ -1288,7 +1293,7 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
     await _pump(tester);
 
-    expect(find.text('كمّل خطتي'), findsOneWidget);
+    expect(find.text('أكمّل خطتي'), findsOneWidget);
     expect(find.text('عرس سلمى، من حيث وقفتي'), findsOneWidget);
     await _tapKey(tester, 'door-plan');
     expect(find.text('فين العرس، وكم ميزانيتك تقريبًا؟'), findsOneWidget);
@@ -1453,7 +1458,7 @@ void main() {
     );
     await _pump(tester);
 
-    expect(find.text('كمّل خطتي'), findsOneWidget);
+    expect(find.text('أكمّل خطتي'), findsOneWidget);
     await _tapKey(tester, 'door-plan');
 
     // Back at the name and the day, with the name kept and no day chosen.

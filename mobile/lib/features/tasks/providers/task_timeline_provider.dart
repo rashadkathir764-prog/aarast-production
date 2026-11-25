@@ -1,5 +1,8 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../core/experience_v3/aarast_journey_profile.dart'
+    show ReaderVoice;
+
 import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';
 import '../../../core/offline/cached_first_load.dart';
@@ -214,7 +217,10 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
         .where((item) => existing.add(taskStarterTitleKey(item.title)))
         .toList(growable: false);
     if (pending.isEmpty) {
-      _noticeMessage = 'كل المهام اللي اخترتها موجودة في الخطة من قبل.';
+      _noticeMessage = ReaderVoice.say(
+        'كل المهام اللي اخترتها موجودة في الخطة من قبل.',
+        'كل المهام اللي اخترتيها موجودة في الخطة من قبل.',
+      );
       notifyListeners();
       return 0;
     }

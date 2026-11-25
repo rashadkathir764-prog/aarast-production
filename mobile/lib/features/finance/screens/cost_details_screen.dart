@@ -112,7 +112,13 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
             ),
             child: JourneySubHeader(
               title: cost?.title ?? 'تفاصيل الاتفاق',
-              subtitle: cost?.partyLabel,
+              // The item it belongs to: the provider is the title more
+              // often than not, and has its own row under «التفاصيل»; it
+              // stood three times on one page (UX critique m12).
+              subtitle: cost == null
+                  ? null
+                  : provider.categoryById(cost.budgetCategoryId)?.name ??
+                        cost.categoryName,
               onBack: _goBack,
               // D86: a cancelled agreement is not edited, but it can be
               // dropped for good; before, it stayed in the list forever.
@@ -182,8 +188,13 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
         .where((payment) => !payment.isReversal && !payment.isReversed)
         .length;
     final next = pending.first;
+    // The date by the name its row in the list carries: a date named
+    // «الباقي قبل العرس» was paid by «سجّل الدفعة الثانية» (UX critique m13).
+    final name = (next.note ?? '').trim();
     return (
-      '${context.say('سجّل', 'سجّلي')} الدفعة ${arabicOrdinal(paidCount)}',
+      name.isNotEmpty
+          ? '${context.say('سجّل', 'سجّلي')} «$name»'
+          : '${context.say('سجّل', 'سجّلي')} الدفعة ${arabicOrdinal(paidCount)}',
       () => _paySchedule(cost, next),
     );
   }
@@ -283,7 +294,10 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
           const SizedBox(height: AarastV3Space.x3),
           JourneyNote(
             key: const ValueKey('cost-private-banner'),
-            text: 'اتفاق خاص بك: ما يشوفه شريكك ولا يدخل في أرقامه.',
+            text: context.planWord(
+              'ما يشوفه غيرك، حتى شريكتك، ولا يدخل في أرقامها.',
+              'ما يشوفه غيرك، حتى شريكك، ولا يدخل في أرقامه.',
+            ),
             icon: LucideIcons.lock,
           ),
           if (canManage)

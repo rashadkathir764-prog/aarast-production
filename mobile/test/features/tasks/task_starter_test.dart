@@ -118,6 +118,22 @@ void main() {
     expect(groom, isNot(contains('task-bride-kosha')));
   });
 
+  // UX critique: a bride's plan offered the shared «حجز المصور» beside her
+  // own «حجز المصورة النسائية», the same task twice.
+  test('a bride is not offered the shared photographer beside hers', () {
+    final bride = {
+      for (final group in taskStarterGroupsFor(null, TaskStarterPersona.bride))
+        for (final item in group.templates) item.key,
+    };
+    expect(bride, contains('task-bride-photographer'));
+    expect(bride, isNot(contains('task-shared-photo')));
+    final groom = {
+      for (final group in taskStarterGroupsFor(null, TaskStarterPersona.groom))
+        for (final item in group.templates) item.key,
+    };
+    expect(groom, contains('task-shared-photo'));
+  });
+
   // Field test Q06: "set the wedding date" was offered to a plan with a date.
   test('a plan with a wedding date is not offered to set it', () {
     final groups = taskStarterGroupsFor(null, TaskStarterPersona.groom);

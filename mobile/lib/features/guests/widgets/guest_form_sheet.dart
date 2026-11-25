@@ -347,6 +347,9 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
           nameController: _nameController,
           phoneController: _phoneController,
           label: 'رقم الجوال (اختياري)',
+          // The one hint every phone field shows (JourneyPhoneField): its
+          // X's never read as a number already typed.
+          hintText: '7XX XXX XXX',
           duplicateMessage: duplicate == null
               ? null
               : '${context.planWord('رقمه', 'رقمها')} عندك لـ${duplicate.name}',
@@ -443,7 +446,7 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
         // D116: the wedding is every guest's; the other occasions are
         // chosen here, and one not made yet is made from here.
         if (widget.events.isNotEmpty || widget.onAddEvent != null) ...[
-          _label(context.planWord('يحضر أيضًا', 'تحضر أيضًا')),
+          _label(context.planWord('يحضر كمان', 'تحضر كمان')),
           Wrap(
             spacing: 8,
             runSpacing: 8,

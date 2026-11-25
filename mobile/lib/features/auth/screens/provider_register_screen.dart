@@ -54,13 +54,16 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
   String? get _nameError {
     if (!_submitAttempted) return null;
     final name = _nameController.text.trim();
-    if (name.isEmpty) return 'الاسم مطلوب';
+    if (name.isEmpty) return context.say('اكتب اسمك', 'اكتبي اسمك');
     return null;
   }
 
   String? get _phoneError {
     if (!_submitAttempted) return null;
-    return yemeniPhoneInputError(_phoneController.text);
+    return yemeniPhoneInputError(
+      _phoneController.text,
+      empty: context.say('اكتب رقم جوالك', 'اكتبي رقم جوالك'),
+    );
   }
 
   /// The app's own colour and neutral words come from its route (D75).

@@ -34,6 +34,7 @@ import 'package:aarast_mobile/features/wedding_plans/providers/wedding_plans_pro
 import 'package:aarast_mobile/features/welcome_gateway/screens/smart_welcome_screen.dart';
 
 import '../../support/preview_fonts.dart';
+import '../../support/app_route_table.dart';
 
 // The start (D75, prototype a02 to a08): a door with one-tap ways in, one
 // question per screen, the plan kept on the phone, and the account asked
@@ -43,18 +44,18 @@ GoRouter _router({String initialLocation = '/welcome'}) => GoRouter(
   initialLocation: initialLocation,
   routes: [
     GoRoute(
-      path: '/welcome',
+      path: appRoute('/welcome'),
       builder: (context, state) => const SmartWelcomeScreen(),
     ),
     // RA-MO-337: the invite screen, opened by the invite's id.
     GoRoute(
-      path: '/invites/:token',
+      path: appRoute('/invites/:token'),
       builder: (context, state) =>
           Scaffold(body: Text('opened:${state.uri.path}')),
     ),
     // w11 «خطة جديدة».
     GoRoute(
-      path: '/wedding-plans/create',
+      path: appRoute('/wedding-plans/create'),
       builder: (context, state) => const SmartWelcomeScreen(newPlan: true),
     ),
     for (final route in [
@@ -355,17 +356,19 @@ void main() {
   // invites waiting for his number were asked only with a link's token. The
   // door asks for them once he is signed in, and opens the one waiting by
   // its id, on the invite screen (q01 to q03).
-  testWidgets('signed in, an invite waiting for his number is the invite door',
-      (tester) async {
-    final sharing = _MyInvites([_invite()]);
-    await _pump(tester, signedIn: true, sharing: sharing);
+  testWidgets(
+    'signed in, an invite waiting for his number is the invite door',
+    (tester) async {
+      final sharing = _MyInvites([_invite()]);
+      await _pump(tester, signedIn: true, sharing: sharing);
 
-    expect(sharing.asked, 1);
-    expect(find.text('عندك دعوة تنتظرك'), findsOneWidget);
-    expect(find.text('من محمد · عرس محمد'), findsOneWidget);
-    await _tapKey(tester, 'door-invite');
-    expect(find.text('opened:/invites/invite-1'), findsOneWidget);
-  });
+      expect(sharing.asked, 1);
+      expect(find.text('عندك دعوة تنتظرك'), findsOneWidget);
+      expect(find.text('من محمد · عرس محمد'), findsOneWidget);
+      await _tapKey(tester, 'door-invite');
+      expect(find.text('opened:/invites/invite-1'), findsOneWidget);
+    },
+  );
 
   testWidgets('an invite answered or ended is no waiting invite', (
     tester,

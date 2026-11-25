@@ -36,6 +36,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../support/preview_fonts.dart';
 import '../account_contexts/account_context_test_data.dart';
+import '../../support/app_route_table.dart';
 
 QuoteRequest _receivedQuote() => QuoteRequest(
   id: 'quote-1',
@@ -1021,32 +1022,32 @@ Future<GoRouter> _pump(
     initialLocation: '/providers',
     routes: [
       GoRoute(
-        path: '/providers',
+        path: appRoute('/providers'),
         builder: (context, state) => ProviderMarketplaceScreen(
           weddingPlanId: 'plan-1',
           initialQuoteId: initialQuoteId,
         ),
       ),
       GoRoute(
-        path: '/wedding-plans/:id/providers/requests',
+        path: appRoute('/wedding-plans/:id/providers/requests'),
         builder: (context, state) => Text('requests ${state.uri}'),
       ),
       GoRoute(
-        path: '/wedding-plans/:id/money/costs/create',
+        path: appRoute('/wedding-plans/:id/money/costs/create'),
         builder: (context, state) => Text(
           'cost outside ${(state.extra as CostDraftIntent?)?.outsideParty}',
         ),
       ),
       GoRoute(
-        path: '/wedding-plans/:id/providers/booked/:quoteId',
+        path: appRoute('/wedding-plans/:id/providers/booked/:quoteId'),
         builder: (context, state) => Text('moment ${state.uri}'),
       ),
       GoRoute(
-        path: '/wedding-plans/:id/providers/bookings',
+        path: appRoute('/wedding-plans/:id/providers/bookings'),
         builder: (context, state) => Text('bookings ${state.uri}'),
       ),
       GoRoute(
-        path: '/providers/favorites',
+        path: appRoute('/providers/favorites'),
         builder: (context, state) =>
             Text('compare ${state.uri.queryParameters['compare']}'),
       ),

@@ -18,6 +18,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../support/app_route_table.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -57,7 +58,7 @@ void main() {
           ),
           routes: [
             GoRoute(
-              path: '/wedding-plans/:id/guests',
+              path: appRoute('/wedding-plans/:id/guests'),
               builder: (context, state) =>
                   const Scaffold(body: Text('cold-guests-route')),
             ),
@@ -145,12 +146,12 @@ void main() {
           ),
           routes: [
             GoRoute(
-              path: '/wedding-plans/:id/guests',
+              path: appRoute('/wedding-plans/:id/guests'),
               builder: (context, state) =>
                   const Scaffold(body: Text('guests-tab')),
             ),
             GoRoute(
-              path: '/wedding-plans/:id/dashboard',
+              path: appRoute('/wedding-plans/:id/dashboard'),
               builder: (context, state) =>
                   const Scaffold(body: Text('second-home')),
             ),

@@ -11,6 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../support/app_route_table.dart';
 
 // D75: «ما عندك حساب؟ ابدأ من هنا» never loses what the person came for: a
 // provider page goes to the provider's own sign-up and back, and a plan on
@@ -48,15 +49,18 @@ Future<void> _pump(
   final router = GoRouter(
     initialLocation: location,
     routes: [
-      GoRoute(path: '/login', builder: (c, s) => const LoginScreen()),
+      GoRoute(path: appRoute('/login'), builder: (c, s) => const LoginScreen()),
       GoRoute(
-        path: '/register',
+        path: appRoute('/register'),
         builder: (c, s) => Text(
           'register:${s.uri.queryParameters['type']}:'
           '${s.uri.queryParameters['resume']}',
         ),
       ),
-      GoRoute(path: '/welcome', builder: (c, s) => const Text('welcome')),
+      GoRoute(
+        path: appRoute('/welcome'),
+        builder: (c, s) => const Text('welcome'),
+      ),
     ],
   );
   addTearDown(router.dispose);

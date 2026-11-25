@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import '../../support/app_route_table.dart';
 
 // Editing a participant uses g06's roles and levels.
 
@@ -22,7 +23,10 @@ void main() {
     expect(find.text('صالح'), findsOneWidget);
     // The role chip, and the line under the name: the role, then the phone.
     expect(find.text('أهل'), findsOneWidget);
-    expect(find.text('أهل · \u2066771\u00a0554\u00a0220\u2069'), findsOneWidget);
+    expect(
+      find.text('أهل · \u2066771\u00a0554\u00a0220\u2069'),
+      findsOneWidget,
+    );
     expect(find.byType(JourneyLevelSwitch), findsNWidgets(4));
     final family = tester.widget<JourneyChip>(
       find.byKey(const ValueKey('participant-preset-FAMILY')),
@@ -232,7 +236,7 @@ Future<void> _pump(
         ),
       ),
       GoRoute(
-        path: '/wedding-plans/:id/sharing',
+        path: appRoute('/wedding-plans/:id/sharing'),
         builder: (_, _) => const Text('participants-list'),
       ),
     ],

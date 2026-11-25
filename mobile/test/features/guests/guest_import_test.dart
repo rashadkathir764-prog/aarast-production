@@ -12,6 +12,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../support/app_route_table.dart';
 
 // e03 from the contacts and w28 a pasted list: many guests in one go,
 // whoever the plan already has marked and never added twice.
@@ -135,7 +136,7 @@ Future<_Api> _pump(
               ),
             ),
             GoRoute(
-              path: '/wedding-plans/:id/guests',
+              path: appRoute('/wedding-plans/:id/guests'),
               builder: (context, state) => const Text('قائمة الضيوف'),
             ),
           ],

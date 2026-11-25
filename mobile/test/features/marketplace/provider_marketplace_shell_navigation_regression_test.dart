@@ -35,6 +35,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../account_contexts/account_context_test_data.dart';
+import '../../support/app_route_table.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -239,7 +240,7 @@ GoRouter _navigationRouter() {
     routes: [
       GoRoute(path: AppRouter.home, builder: (_, _) => const MainShell()),
       GoRoute(
-        path: '/providers/:id',
+        path: appRoute('/providers/:id'),
         builder: (_, state) {
           final providerId = state.pathParameters['id'] ?? '';
           final weddingPlanId = state.uri.queryParameters['weddingPlanId'];
@@ -260,7 +261,7 @@ GoRouter _navigationRouter() {
         },
       ),
       GoRoute(
-        path: '/wedding-plans/:id/providers/requests',
+        path: appRoute('/wedding-plans/:id/providers/requests'),
         builder: (_, state) => ProviderRequestsScreen(
           weddingPlanId: state.pathParameters['id'] ?? '',
           itemKey: state.uri.queryParameters['item'],
@@ -268,7 +269,7 @@ GoRouter _navigationRouter() {
         ),
       ),
       GoRoute(
-        path: '/quotes/:id/conversation',
+        path: appRoute('/quotes/:id/conversation'),
         builder: (_, state) => ProviderAuthGate(
           resumeLocation: state.uri.toString(),
           child: QuoteConversationEntryScreen(

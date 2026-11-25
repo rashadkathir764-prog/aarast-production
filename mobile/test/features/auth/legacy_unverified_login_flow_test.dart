@@ -14,6 +14,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../support/app_route_table.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -154,12 +155,12 @@ GoRouter _router() {
     initialLocation: '/login?phone=%2B967777123456&resume=%2Finvite%2Fexample',
     routes: [
       GoRoute(
-        path: '/login',
+        path: appRoute('/login'),
         builder: (context, state) =>
             LoginScreen(initialPhone: state.uri.queryParameters['phone']),
       ),
       GoRoute(
-        path: '/otp',
+        path: appRoute('/otp'),
         builder: (context, state) {
           final args = state.extra! as OtpScreenArgs;
           return OtpScreen(
@@ -171,7 +172,7 @@ GoRouter _router() {
         },
       ),
       GoRoute(
-        path: '/home',
+        path: appRoute('/home'),
         builder: (context, state) => SizedBox(
           key: const ValueKey('legacy-login-success-destination'),
           child: Text(state.uri.queryParameters['resume'] ?? ''),

@@ -5,6 +5,7 @@ import 'package:aarast_mobile/core/routing/plan_shell_router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import '../../support/app_route_table.dart';
 
 // The owner's video: from a provider's page into the providers tab, a
 // service's requests above it, then «شوف البند في المال». The shell went on the
@@ -12,7 +13,7 @@ import 'package:go_router/go_router.dart';
 GoRouter _router({String initial = '/home'}) => PlanShellRouter(
   initialLocation: initial,
   routes: [
-    GoRoute(path: '/home', builder: (_, _) => const Text('home')),
+    GoRoute(path: appRoute('/home'), builder: (_, _) => const Text('home')),
     ShellRoute(
       builder: (context, state, child) => Scaffold(
         appBar: AppBar(title: const Text('shell')),

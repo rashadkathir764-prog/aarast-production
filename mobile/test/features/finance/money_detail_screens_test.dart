@@ -20,6 +20,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import '../../support/app_route_table.dart';
 
 void main() {
   group('money detail routes', () {
@@ -428,7 +429,7 @@ void main() {
             ),
           ),
           GoRoute(
-            path: '/providers/:id',
+            path: appRoute('/providers/:id'),
             builder: (_, state) => Scaffold(
               body: Text('provider-profile-${state.pathParameters['id']}'),
             ),
@@ -464,7 +465,7 @@ void main() {
             ),
           ),
           GoRoute(
-            path: '/wedding-plans/:id/providers/requests',
+            path: appRoute('/wedding-plans/:id/providers/requests'),
             builder: (_, _) => const Scaffold(body: Text('booking-page')),
           ),
         ],

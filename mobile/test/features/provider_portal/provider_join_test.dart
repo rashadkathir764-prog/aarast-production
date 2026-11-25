@@ -21,6 +21,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../account_contexts/account_context_test_data.dart';
+import '../../support/app_route_table.dart';
 
 // The joining after the account: p02 asks the review team for a listing
 // under this phone (B-12); otherwise p03 «نشاطك», p04 «وين تشتغل؟», p06
@@ -414,19 +415,19 @@ class _Harness {
       initialLocation: '/provider/apply',
       routes: [
         GoRoute(
-          path: '/provider/apply',
+          path: appRoute('/provider/apply'),
           builder: (_, _) => const ProviderApplyScreen(),
         ),
         GoRoute(
-          path: '/provider/dashboard',
+          path: appRoute('/provider/dashboard'),
           builder: (_, _) => const Scaffold(body: Text('بوابة المزود')),
         ),
         GoRoute(
-          path: '/support',
+          path: appRoute('/support'),
           builder: (_, _) => const Scaffold(body: Text('صفحة الدعم')),
         ),
         GoRoute(
-          path: '/home',
+          path: appRoute('/home'),
           builder: (_, _) => const Scaffold(body: Text('الرئيسية')),
         ),
       ],

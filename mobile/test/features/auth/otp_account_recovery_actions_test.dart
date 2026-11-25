@@ -17,6 +17,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../support/app_route_table.dart';
 
 void main() {
   _backButtonCases();
@@ -254,12 +255,12 @@ void main() {
           '/login?phone=%2B967777123456&resume=%2Finvite%2Fexample',
       routes: [
         GoRoute(
-          path: '/login',
+          path: appRoute('/login'),
           builder: (context, state) =>
               LoginScreen(initialPhone: state.uri.queryParameters['phone']),
         ),
         GoRoute(
-          path: '/reset-password',
+          path: appRoute('/reset-password'),
           builder: (context, state) => Text(
             'reset:${state.uri.queryParameters['phone']}:'
             '${state.uri.queryParameters['resume']}',
@@ -423,11 +424,11 @@ void _backButtonCases() {
       initialLocation: '/register',
       routes: [
         GoRoute(
-          path: '/register',
+          path: appRoute('/register'),
           builder: (context, state) => const Text('the number screen'),
         ),
         GoRoute(
-          path: '/otp',
+          path: appRoute('/otp'),
           builder: (context, state) => const OtpScreen(
             phone: '+967777123456',
             purpose: 'LOGIN',
@@ -500,7 +501,7 @@ GoRouter _router({
     initialLocation: '/otp',
     routes: [
       GoRoute(
-        path: '/otp',
+        path: appRoute('/otp'),
         builder: (context, state) => OtpScreen(
           phone: '+967777123456',
           purpose: registration == null ? 'LOGIN' : 'REGISTER',
@@ -509,37 +510,37 @@ GoRouter _router({
         ),
       ),
       GoRoute(
-        path: '/login',
+        path: appRoute('/login'),
         builder: (context, state) => Text(
           'login:${state.uri.queryParameters['phone']}:'
           '${state.uri.queryParameters['resume']}',
         ),
       ),
       GoRoute(
-        path: '/reset-password',
+        path: appRoute('/reset-password'),
         builder: (context, state) => Text(
           'reset:${state.uri.queryParameters['phone']}:'
           '${state.uri.queryParameters['resume']}',
         ),
       ),
       GoRoute(
-        path: '/register',
+        path: appRoute('/register'),
         builder: (context, state) => Text(
           'register:${state.uri.queryParameters['phone']}:'
           '${state.uri.queryParameters['resume']}',
         ),
       ),
       GoRoute(
-        path: '/welcome',
+        path: appRoute('/welcome'),
         builder: (context, state) => const Text('welcome'),
       ),
       GoRoute(
-        path: '/home',
+        path: appRoute('/home'),
         builder: (context, state) =>
             Text('home:${state.uri.queryParameters['resume']}'),
       ),
       GoRoute(
-        path: '/invites/:token',
+        path: appRoute('/invites/:token'),
         builder: (context, state) =>
             const SizedBox(key: ValueKey('private-invite-resume-destination')),
       ),

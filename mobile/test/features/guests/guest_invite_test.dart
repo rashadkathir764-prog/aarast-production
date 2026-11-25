@@ -24,6 +24,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../support/app_route_table.dart';
 
 // e04 «بطاقة الدعوة», D116: the invitation is prepared here and only here:
 // the card's picture (none, a photo inside the card, a ready card), the
@@ -226,18 +227,18 @@ Future<_Api> _pump(
     initialLocation: '/wedding-plans/plan-1/guests/invite',
     routes: [
       GoRoute(
-        path: '/wedding-plans/:id/guests/invite',
+        path: appRoute('/wedding-plans/:id/guests/invite'),
         builder: (_, state) => GuestInviteScreen(
           weddingPlanId: state.pathParameters['id']!,
           pickPhoto: pickPhoto,
         ),
       ),
       GoRoute(
-        path: '/wedding-plans/:id/guests/send',
+        path: appRoute('/wedding-plans/:id/guests/send'),
         builder: (_, state) => Text('send ${state.uri}'),
       ),
       GoRoute(
-        path: '/wedding-plans/:id/events',
+        path: appRoute('/wedding-plans/:id/events'),
         builder: (_, state) => const Text('occasions screen'),
       ),
     ],

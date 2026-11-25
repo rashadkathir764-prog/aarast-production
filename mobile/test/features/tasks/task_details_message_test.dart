@@ -13,6 +13,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../support/app_route_table.dart';
 
 // d04: the task's person is reached with the task already written, on
 // WhatsApp or as a text; with no number the page says so and leads to
@@ -155,7 +156,7 @@ Future<void> _pump(WidgetTester tester, WeddingTask task) async {
     initialLocation: '/wedding-plans/$_plan/tasks/${task.id}',
     routes: [
       GoRoute(
-        path: '/wedding-plans/:id/tasks',
+        path: appRoute('/wedding-plans/:id/tasks'),
         builder: (context, state) => const Scaffold(body: Text('tasks')),
         routes: [
           GoRoute(

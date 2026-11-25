@@ -14,6 +14,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../support/app_route_table.dart';
 
 class _FakeAuthRepository extends AuthRepository {
   _FakeAuthRepository(super.apiClient, super.authStorage);
@@ -444,13 +445,13 @@ void main() {
           '/reset-password?phone=%2B967777123456&resume=%2Finvite%2Fexample',
       routes: [
         GoRoute(
-          path: '/reset-password',
+          path: appRoute('/reset-password'),
           builder: (context, state) => ResetPasswordScreen(
             initialPhone: state.uri.queryParameters['phone'],
           ),
         ),
         GoRoute(
-          path: '/login',
+          path: appRoute('/login'),
           builder: (context, state) => Text(
             'login:${state.uri.queryParameters['phone']}:'
             '${state.uri.queryParameters['resume']}',
@@ -498,7 +499,7 @@ void main() {
             initialLocation: '/reset-password',
             routes: [
               GoRoute(
-                path: '/reset-password',
+                path: appRoute('/reset-password'),
                 builder: (context, state) => const ResetPasswordScreen(),
               ),
             ],

@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import '../../support/app_route_table.dart';
 
 // Opened by a link (nothing behind it), back still leaves: to «ملفي».
 
@@ -25,7 +26,7 @@ Future<void> _pump(
     routes: [
       GoRoute(path: '/add', builder: (_, _) => screen),
       GoRoute(
-        path: '/provider/dashboard',
+        path: appRoute('/provider/dashboard'),
         builder: (_, state) => Text('opened ${state.uri}'),
       ),
     ],

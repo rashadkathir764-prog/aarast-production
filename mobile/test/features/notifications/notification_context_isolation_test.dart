@@ -16,6 +16,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../account_contexts/account_context_test_data.dart';
+import '../../support/app_route_table.dart';
 
 void main() {
   testWidgets(
@@ -53,11 +54,11 @@ void main() {
         initialLocation: '/notifications',
         routes: [
           GoRoute(
-            path: '/notifications',
+            path: appRoute('/notifications'),
             builder: (_, _) => const NotificationsScreen(),
           ),
           GoRoute(
-            path: '/wedding-plans/:planId/tasks',
+            path: appRoute('/wedding-plans/:planId/tasks'),
             builder: (_, _) => const Scaffold(key: Key('opened-plan-route')),
           ),
         ],

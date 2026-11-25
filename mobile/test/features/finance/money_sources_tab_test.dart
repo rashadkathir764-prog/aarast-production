@@ -22,6 +22,7 @@ import '../../support/screen_reader.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../support/app_route_table.dart';
 
 // c05 «من وين» (D103, D104, D108) on a plan kept on the phone: what he holds
 // and how, against what is on him; what reached him, what is promised and
@@ -201,7 +202,7 @@ Future<void> _open(
     initialLocation: AppRouter.money(_planId),
     routes: [
       GoRoute(
-        path: '/wedding-plans/:id/money',
+        path: appRoute('/wedding-plans/:id/money'),
         builder: (_, _) => MoneyOverviewScreen(
           weddingPlanId: _planId,
           personaCode: personaCode,

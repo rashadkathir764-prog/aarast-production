@@ -21,6 +21,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'provider_requests_test.dart' show RequestsApi, offerJson, quoteJson;
+import '../../support/app_route_table.dart';
 
 // Provider slice 4 (D40): p33 his conversations and p34 one of them. The
 // name is the customer's (D35); the status word, the service and the day
@@ -233,21 +234,21 @@ Future<({ChatProvider chat, _ChatApi api, List<String> opened})> _pump(
     routes: [
       GoRoute(path: '/', builder: (_, _) => home()),
       GoRoute(
-        path: '/conversations/:id',
+        path: appRoute('/conversations/:id'),
         builder: (_, state) {
           opened.add(state.uri.toString());
           return Scaffold(body: Text('محادثة ${state.pathParameters['id']}'));
         },
       ),
       GoRoute(
-        path: '/provider/requests/:id',
+        path: appRoute('/provider/requests/:id'),
         builder: (_, state) {
           opened.add(state.uri.toString());
           return const Scaffold(body: Text('الطلب'));
         },
       ),
       GoRoute(
-        path: '/provider/requests/:id/offer',
+        path: appRoute('/provider/requests/:id/offer'),
         builder: (_, state) {
           opened.add(state.uri.toString());
           return const Scaffold(body: Text('العرض'));

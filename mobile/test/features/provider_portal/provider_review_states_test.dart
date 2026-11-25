@@ -24,6 +24,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../support/app_route_table.dart';
 
 // The review states the portal opens on: p08 while the team reviews, p10
 // once after an approval or a claim this phone waited for, and p12 while
@@ -647,11 +648,11 @@ Future<void> _pumpPortal(WidgetTester tester, _Api api, {String? seen}) async {
     routes: [
       GoRoute(path: '/portal', builder: (_, _) => const ProviderPortalScreen()),
       GoRoute(
-        path: '/support',
+        path: appRoute('/support'),
         builder: (_, _) => const Scaffold(body: Text('صفحة الدعم')),
       ),
       GoRoute(
-        path: '/more',
+        path: appRoute('/more'),
         builder: (_, _) =>
             Scaffold(appBar: AppBar(), body: const Text('حسابي')),
       ),
@@ -662,12 +663,12 @@ Future<void> _pumpPortal(WidgetTester tester, _Api api, {String? seen}) async {
             Scaffold(appBar: AppBar(), body: const Text('التنبيهات')),
       ),
       GoRoute(
-        path: '/provider/profile/edit',
+        path: appRoute('/provider/profile/edit'),
         builder: (_, _) =>
             Scaffold(appBar: AppBar(), body: const Text('تعديل الملف')),
       ),
       GoRoute(
-        path: '/provider/services/new',
+        path: appRoute('/provider/services/new'),
         builder: (_, _) =>
             Scaffold(appBar: AppBar(), body: const Text('خدمة جديدة')),
       ),

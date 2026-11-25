@@ -25,6 +25,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import '../../support/app_route_table.dart';
 
 const _planId = 'plan-money-product';
 
@@ -1173,36 +1174,36 @@ class _MoneyProductHarness {
       initialLocation: initialLocation,
       routes: [
         GoRoute(
-          path: '/wedding-plans/:id/providers/requests',
+          path: appRoute('/wedding-plans/:id/providers/requests'),
           builder: (context, state) => const Text('طلبات البند'),
         ),
         GoRoute(
-          path: '/wedding-plans/:id/money',
+          path: appRoute('/wedding-plans/:id/money'),
           builder: (context, state) => MoneyOverviewScreen(
             weddingPlanId: state.pathParameters['id']!,
             personaCode: personaCode,
           ),
         ),
         GoRoute(
-          path: '/wedding-plans/:id/money/budget',
+          path: appRoute('/wedding-plans/:id/money/budget'),
           builder: (context, state) =>
               MoneyBudgetScreen(weddingPlanId: state.pathParameters['id']!),
         ),
         GoRoute(
-          path: '/wedding-plans/:id/money/categories/create',
+          path: appRoute('/wedding-plans/:id/money/categories/create'),
           builder: (context, state) => BudgetCategoryFormScreen(
             weddingPlanId: state.pathParameters['id']!,
           ),
         ),
         GoRoute(
-          path: '/wedding-plans/:id/money/categories/:categoryId',
+          path: appRoute('/wedding-plans/:id/money/categories/:categoryId'),
           builder: (context, state) => BudgetCategoryDetailsScreen(
             weddingPlanId: state.pathParameters['id']!,
             categoryId: state.pathParameters['categoryId']!,
           ),
         ),
         GoRoute(
-          path: '/wedding-plans/:id/money/costs/create',
+          path: appRoute('/wedding-plans/:id/money/costs/create'),
           builder: (context, state) => CostFormScreen(
             weddingPlanId: state.pathParameters['id']!,
             intent: state.extra is CostDraftIntent
@@ -1212,7 +1213,7 @@ class _MoneyProductHarness {
           ),
         ),
         GoRoute(
-          path: '/wedding-plans/:id/money/costs/:costId',
+          path: appRoute('/wedding-plans/:id/money/costs/:costId'),
           builder: (context, state) => CostDetailsScreen(
             weddingPlanId: state.pathParameters['id']!,
             costId: state.pathParameters['costId']!,

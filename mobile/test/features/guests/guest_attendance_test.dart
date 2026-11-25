@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import '../../support/app_route_table.dart';
 
 /// w38 «كم بيحضر؟»: the real answers from the guests summary, no guess.
 void main() {
@@ -293,17 +294,17 @@ Future<void> _pump(
     initialLocation: location,
     routes: [
       GoRoute(
-        path: '/wedding-plans/:id/guests',
+        path: appRoute('/wedding-plans/:id/guests'),
         builder: (_, state) =>
             GuestListScreen(weddingPlanId: state.pathParameters['id']!),
       ),
       GoRoute(
-        path: '/wedding-plans/:id/guests/attendance',
+        path: appRoute('/wedding-plans/:id/guests/attendance'),
         builder: (_, state) =>
             GuestAttendanceScreen(weddingPlanId: state.pathParameters['id']!),
       ),
       GoRoute(
-        path: '/wedding-plans/:id/guests/send',
+        path: appRoute('/wedding-plans/:id/guests/send'),
         builder: (context, state) => TextButton(
           onPressed: () => context.pop(),
           child: Column(

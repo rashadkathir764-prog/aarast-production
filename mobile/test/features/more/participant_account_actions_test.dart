@@ -35,6 +35,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../account_contexts/account_context_test_data.dart';
+import '../../support/app_route_table.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -1016,7 +1017,7 @@ class _ContributorActionHarness {
           ),
         ),
         GoRoute(
-          path: '/shared/wedding-plans/:id',
+          path: appRoute('/shared/wedding-plans/:id'),
           builder: (_, state) => ParticipantPlanStateScreen(
             weddingPlanId: state.pathParameters['id'] ?? '',
           ),

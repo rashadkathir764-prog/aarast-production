@@ -15,6 +15,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../support/app_route_table.dart';
 
 void main() {
   const localPlanId = 'guest-plan-sharing';
@@ -68,7 +69,7 @@ void main() {
           ),
         ),
         GoRoute(
-          path: '/wedding-plans/:id/sharing',
+          path: appRoute('/wedding-plans/:id/sharing'),
           builder: (context, state) =>
               SharingScreen(weddingPlanId: state.pathParameters['id']!),
         ),

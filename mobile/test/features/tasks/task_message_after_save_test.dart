@@ -17,6 +17,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../support/app_route_table.dart';
 
 // A task given to someone with a number: right after it is saved, the phone
 // offers to send it to them (WhatsApp or a text), as the reader chose in
@@ -349,7 +350,7 @@ GoRouter _router(Widget start) => GoRouter(
   routes: [
     GoRoute(path: '/start', builder: (context, state) => start),
     GoRoute(
-      path: '/wedding-plans/:id/tasks',
+      path: appRoute('/wedding-plans/:id/tasks'),
       builder: (context, state) => const Scaffold(body: Text('tasks-target')),
     ),
   ],

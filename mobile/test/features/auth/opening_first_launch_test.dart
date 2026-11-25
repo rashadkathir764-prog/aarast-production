@@ -18,6 +18,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../support/app_route_table.dart';
 
 class _PendingServerRepository extends AuthRepository {
   _PendingServerRepository(super.apiClient, super.authStorage);
@@ -92,11 +93,11 @@ Future<Widget> _opening({
     routes: [
       GoRoute(path: '/', builder: (context, state) => const SplashScreen()),
       GoRoute(
-        path: '/welcome',
+        path: appRoute('/welcome'),
         builder: (context, state) => const Scaffold(body: Text('welcome')),
       ),
       GoRoute(
-        path: '/home',
+        path: appRoute('/home'),
         builder: (context, state) => const Scaffold(body: Text('home')),
       ),
       GoRoute(

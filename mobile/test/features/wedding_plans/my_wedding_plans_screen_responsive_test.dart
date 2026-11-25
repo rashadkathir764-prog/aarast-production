@@ -19,6 +19,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../account_contexts/account_context_test_data.dart';
+import '../../support/app_route_table.dart';
 
 void main() {
   testWidgets('MyWeddingPlansScreen is RTL and overflow-free at 320px', (
@@ -163,7 +164,7 @@ void main() {
       routes: [
         GoRoute(path: '/', builder: (_, _) => const MyWeddingPlansScreen()),
         GoRoute(
-          path: '/home',
+          path: appRoute('/home'),
           builder: (_, _) => const Scaffold(key: Key('memory-home')),
         ),
       ],
@@ -221,11 +222,11 @@ void main() {
       routes: [
         GoRoute(path: '/', builder: (_, _) => const MyWeddingPlansScreen()),
         GoRoute(
-          path: '/home',
+          path: appRoute('/home'),
           builder: (_, _) => const Scaffold(key: Key('participant-home')),
         ),
         GoRoute(
-          path: '/wedding-plans/:id/plan-center',
+          path: appRoute('/wedding-plans/:id/plan-center'),
           builder: (_, _) => const Scaffold(key: Key('plan-details')),
         ),
       ],

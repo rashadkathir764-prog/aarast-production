@@ -24,6 +24,7 @@ import '../../support/screen_reader.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../support/app_route_table.dart';
 
 // c03 «الدفعات» (D102, D106) on a plan kept on the phone: the dates as a plan
 // in time, whose they are, the loans apart, what was paid, and a date's own
@@ -279,7 +280,7 @@ Future<_App> _open(
     initialLocation: AppRouter.money(_planId),
     routes: [
       GoRoute(
-        path: '/wedding-plans/:id/money',
+        path: appRoute('/wedding-plans/:id/money'),
         builder: (_, _) => const MoneyOverviewScreen(
           weddingPlanId: _planId,
           personaCode: 'groom',

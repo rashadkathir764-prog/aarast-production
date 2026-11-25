@@ -14,6 +14,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../support/app_route_table.dart';
 
 // The provider's side of a conversation (provider/admin audit, D35): he reads
 // the customer's name, no line about himself, options about the customer,
@@ -174,7 +175,7 @@ void main() {
           },
         ),
         GoRoute(
-          path: '/wedding-plans/:id/providers',
+          path: appRoute('/wedding-plans/:id/providers'),
           builder: (_, _) => const Text('مزودي الخطة'),
         ),
         GoRoute(

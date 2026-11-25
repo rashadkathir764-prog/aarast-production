@@ -21,6 +21,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../support/app_route_table.dart';
 
 /// The sign-in and sign-up journey tells the truth (J1 audit): a used-up
 /// code, an old proof, a second tap, the way back after an expiry, a number
@@ -482,7 +483,7 @@ void main() {
           initialLocation: '/register',
           routes: [
             GoRoute(
-              path: '/register',
+              path: appRoute('/register'),
               builder: (context, state) =>
                   const RegisterScreen(initialPhone: '777123456'),
             ),
@@ -626,7 +627,7 @@ GoRouter _otpRouter({
     initialLocation: '/otp',
     routes: [
       GoRoute(
-        path: '/otp',
+        path: appRoute('/otp'),
         builder: (context, state) => OtpScreen(
           phone: '+967777123456',
           purpose: registration == null ? 'LOGIN' : 'REGISTER',
@@ -634,9 +635,12 @@ GoRouter _otpRouter({
           successLocation: successLocation,
         ),
       ),
-      GoRoute(path: '/home', builder: (context, state) => const Text('home')),
       GoRoute(
-        path: '/provider/apply',
+        path: appRoute('/home'),
+        builder: (context, state) => const Text('home'),
+      ),
+      GoRoute(
+        path: appRoute('/provider/apply'),
         builder: (context, state) => const Text('provider'),
       ),
     ],
@@ -648,10 +652,13 @@ GoRouter _pageRouter(String initial) {
     initialLocation: initial,
     routes: [
       GoRoute(
-        path: '/wedding-plans/:id/money',
+        path: appRoute('/wedding-plans/:id/money'),
         builder: (context, state) => const Text('page'),
       ),
-      GoRoute(path: '/login', builder: (context, state) => const Text('login')),
+      GoRoute(
+        path: appRoute('/login'),
+        builder: (context, state) => const Text('login'),
+      ),
     ],
   );
 }
@@ -660,12 +667,18 @@ GoRouter _doorRouter(String door) {
   return GoRouter(
     initialLocation: door,
     routes: [
-      GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
       GoRoute(
-        path: '/register',
+        path: appRoute('/login'),
+        builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: appRoute('/register'),
         builder: (context, state) => const RegisterScreen(),
       ),
-      GoRoute(path: '/home', builder: (context, state) => const Text('home')),
+      GoRoute(
+        path: appRoute('/home'),
+        builder: (context, state) => const Text('home'),
+      ),
     ],
   );
 }

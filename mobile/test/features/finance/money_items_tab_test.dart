@@ -20,6 +20,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../support/app_route_table.dart';
 
 // c02 «البنود» and c07 an item's page (D102, D105, D107, D109) on a plan kept
 // on the phone: every figure from the phone's copy of the money rules, every
@@ -200,7 +201,7 @@ Future<_App> _open(
     initialLocation: at ?? AppRouter.money(_planId),
     routes: [
       GoRoute(
-        path: '/wedding-plans/:id/money',
+        path: appRoute('/wedding-plans/:id/money'),
         builder: (_, _) => const MoneyOverviewScreen(
           weddingPlanId: _planId,
           personaCode: 'groom',

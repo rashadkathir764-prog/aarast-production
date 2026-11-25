@@ -26,6 +26,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../account_contexts/account_context_test_data.dart';
+import '../../support/app_route_table.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -393,7 +394,7 @@ void main() {
         initialLocation: AppRouter.weddingPlanDashboard('plan-7'),
         extraRootRoutes: [
           GoRoute(
-            path: '/wedding-plans/:id/plan-center',
+            path: appRoute('/wedding-plans/:id/plan-center'),
             builder: (context, state) {
               final id = state.pathParameters['id'] ?? '';
               return Scaffold(
@@ -507,45 +508,45 @@ GoRouter _buildPlanShellRouter({
         },
         routes: [
           GoRoute(
-            path: '/wedding-plans/:id/dashboard',
+            path: appRoute('/wedding-plans/:id/dashboard'),
             builder: (context, state) =>
                 const Scaffold(body: Text('dashboard')),
           ),
           GoRoute(
-            path: '/wedding-plans/:id/money',
+            path: appRoute('/wedding-plans/:id/money'),
             builder: (context, state) => const Scaffold(body: Text('money')),
           ),
           GoRoute(
-            path: '/wedding-plans/:id/money/budget',
+            path: appRoute('/wedding-plans/:id/money/budget'),
             builder: (context, state) => const Scaffold(body: Text('budget')),
           ),
           GoRoute(
-            path: '/wedding-plans/:id/money/costs/create',
+            path: appRoute('/wedding-plans/:id/money/costs/create'),
             builder: (context, state) =>
                 const Scaffold(body: Text('cost-create')),
           ),
           GoRoute(
-            path: '/wedding-plans/:id/tasks',
+            path: appRoute('/wedding-plans/:id/tasks'),
             builder: (context, state) => const Scaffold(body: Text('tasks')),
           ),
           GoRoute(
-            path: '/wedding-plans/:id/guests',
+            path: appRoute('/wedding-plans/:id/guests'),
             builder: (context, state) => const Scaffold(body: Text('guests')),
           ),
           GoRoute(
-            path: '/wedding-plans/:id/guests/add',
+            path: appRoute('/wedding-plans/:id/guests/add'),
             builder: (context, state) =>
                 const Scaffold(body: Text('guest-add')),
           ),
           GoRoute(
-            path: '/wedding-plans/:id/providers',
+            path: appRoute('/wedding-plans/:id/providers'),
             builder: (context, state) =>
                 const Scaffold(body: Text('providers')),
           ),
         ],
       ),
       GoRoute(
-        path: '/wedding-plans/:id/tasks/create',
+        path: appRoute('/wedding-plans/:id/tasks/create'),
         builder: (context, state) => const Scaffold(body: Text('task-create')),
       ),
       ...extraRootRoutes,

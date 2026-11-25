@@ -27,6 +27,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../support/app_route_table.dart';
 
 const _planId = 'guest-plan-primary-test';
 const _planTitle = 'خطة الزفاف الأساسية';
@@ -153,7 +154,7 @@ void main() {
           builder: (context, state) => const DashboardEntryScreen(),
         ),
         GoRoute(
-          path: '/onboarding',
+          path: appRoute('/onboarding'),
           builder: (context, state) => const AarastScreenFrame(
             child: Center(child: Text('onboarding-opened')),
           ),

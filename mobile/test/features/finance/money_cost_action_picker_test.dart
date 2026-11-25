@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import '../../support/app_route_table.dart';
 
 void main() {
   testWidgets('the picker shows only agreements that can take a payment', (
@@ -270,16 +271,19 @@ Future<Future<bool>> _run(
         ),
       ),
       GoRoute(
-        path: '/wedding-plans/:id/money/costs/create',
+        path: appRoute('/wedding-plans/:id/money/costs/create'),
         builder: (context, state) => stub(state),
       ),
       GoRoute(
-        path: '/wedding-plans/:id/money/costs/:costId/payments/create',
+        path: appRoute(
+          '/wedding-plans/:id/money/costs/:costId/payments/create',
+        ),
         builder: (context, state) => stub(state),
       ),
       GoRoute(
-        path:
-            '/wedding-plans/:id/money/costs/:costId/schedules/:scheduleId/pay',
+        path: appRoute(
+          '/wedding-plans/:id/money/costs/:costId/schedules/:scheduleId/pay',
+        ),
         builder: (context, state) => stub(state),
       ),
     ],

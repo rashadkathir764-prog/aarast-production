@@ -24,6 +24,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'provider_requests_test.dart' as requests;
+import '../../support/app_route_table.dart';
 
 // The provider portal's audit fixes (D35): the provider declines a request
 // and marks it seen, gives his offer an end date and renews an expired one,
@@ -553,17 +554,17 @@ Future<void> _pumpRequests(WidgetTester tester, _PortalApi api) async {
         ),
       ),
       GoRoute(
-        path: '/provider/requests/:id',
+        path: appRoute('/provider/requests/:id'),
         builder: (_, state) =>
             ProviderRequestScreen(quoteId: state.pathParameters['id']!),
       ),
       GoRoute(
-        path: '/provider/requests/:id/offer',
+        path: appRoute('/provider/requests/:id/offer'),
         builder: (_, state) =>
             ProviderOfferScreen(quoteId: state.pathParameters['id']!),
       ),
       GoRoute(
-        path: '/quotes/:id/conversation',
+        path: appRoute('/quotes/:id/conversation'),
         builder: (_, state) => Scaffold(
           appBar: AppBar(),
           body: Text('محادثة الطلب ${state.pathParameters['id']}'),
@@ -635,7 +636,7 @@ Future<void> _pumpPortal(
             ProviderPortalScreen(initialTab: state.uri.queryParameters['tab']),
       ),
       GoRoute(
-        path: '/support',
+        path: appRoute('/support'),
         builder: (_, _) => const Scaffold(body: Text('صفحة الدعم')),
       ),
     ],

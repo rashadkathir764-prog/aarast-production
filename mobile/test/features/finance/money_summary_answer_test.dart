@@ -19,6 +19,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../support/app_route_table.dart';
 
 // D102-D109 «الملخص» on a plan kept on the phone: every figure comes from the
 // phone's copy of the money rules (held to the server's by
@@ -196,7 +197,7 @@ Future<_Screen> _open(
     initialLocation: AppRouter.money(_planId),
     routes: [
       GoRoute(
-        path: '/wedding-plans/:id/money',
+        path: appRoute('/wedding-plans/:id/money'),
         builder: (_, _) => const MoneyOverviewScreen(
           weddingPlanId: _planId,
           personaCode: 'groom',

@@ -18,6 +18,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../support/app_route_table.dart';
 
 void main() {
   test('local dashboard source derives honest guest summary', () async {
@@ -374,7 +375,7 @@ void main() {
               LocalGuestDashboardScreen(summary: summary),
         ),
         GoRoute(
-          path: '/wedding-plans/:id/plan-center',
+          path: appRoute('/wedding-plans/:id/plan-center'),
           builder: (context, state) {
             final extra = state.extra;
             final localSummary = extra is Map
@@ -423,12 +424,12 @@ void main() {
               LocalGuestDashboardScreen(summary: summary),
         ),
         GoRoute(
-          path: '/wedding-plans/:id/money',
+          path: appRoute('/wedding-plans/:id/money'),
           builder: (context, state) =>
               const Scaffold(body: Text('money-opened')),
         ),
         GoRoute(
-          path: '/wedding-plans/:id/tasks',
+          path: appRoute('/wedding-plans/:id/tasks'),
           builder: (context, state) =>
               const Scaffold(body: Text('tasks-opened')),
         ),
@@ -487,7 +488,7 @@ void main() {
               LocalGuestDashboardScreen(summary: summary),
         ),
         GoRoute(
-          path: '/wedding-plans/:id/money',
+          path: appRoute('/wedding-plans/:id/money'),
           builder: (context, state) =>
               const Scaffold(body: Text('money-opened')),
         ),
@@ -536,12 +537,12 @@ void main() {
               LocalGuestDashboardScreen(summary: summary),
         ),
         GoRoute(
-          path: '/wedding-plans/:id/guests',
+          path: appRoute('/wedding-plans/:id/guests'),
           builder: (context, state) =>
               const Scaffold(body: Text('guests-opened')),
         ),
         GoRoute(
-          path: '/wedding-plans/:id/guests/add',
+          path: appRoute('/wedding-plans/:id/guests/add'),
           builder: (context, state) =>
               const Scaffold(body: Text('guests-opened')),
         ),
@@ -584,7 +585,7 @@ void main() {
               LocalGuestDashboardScreen(summary: summary),
         ),
         GoRoute(
-          path: '/wedding-plans/:id/guests/add',
+          path: appRoute('/wedding-plans/:id/guests/add'),
           builder: (context, state) =>
               const Scaffold(body: Text('guest-add-opened')),
         ),

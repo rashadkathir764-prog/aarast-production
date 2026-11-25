@@ -15,6 +15,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../support/app_route_table.dart';
 
 // p01 «حساب مزود»: the provider's own account. The business is asked after
 // the WhatsApp code, in the joining steps.
@@ -245,7 +246,7 @@ Future<GoRouter> _pump(
     initialLocation: '/register',
     routes: [
       GoRoute(
-        path: '/register',
+        path: appRoute('/register'),
         builder: (_, _) => ProviderRegisterScreen(resumeLocation: resume),
       ),
       GoRoute(

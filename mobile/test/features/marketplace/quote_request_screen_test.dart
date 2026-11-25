@@ -24,6 +24,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../account_contexts/account_context_test_data.dart';
+import '../../support/app_route_table.dart';
 
 // f07 «اطلب عرض سعر» on the prototype's own request: فرقة الأفراح, the
 // wedding of 21 January in صنعاء.
@@ -277,11 +278,11 @@ Future<void> _pump(
         builder: (_, _) => const QuoteRequestScreen(providerId: 'p-afrah'),
       ),
       GoRoute(
-        path: '/wedding-plans/:id/providers',
+        path: appRoute('/wedding-plans/:id/providers'),
         builder: (_, state) => Text('sent ${state.uri}'),
       ),
       GoRoute(
-        path: '/providers/:id',
+        path: appRoute('/providers/:id'),
         builder: (_, state) => Text('opened ${state.uri}'),
       ),
     ],

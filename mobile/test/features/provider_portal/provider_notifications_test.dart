@@ -12,6 +12,7 @@ import 'package:provider/provider.dart';
 
 import 'provider_requests_test.dart'
     show RequestsApi, bookingJson, offerJson, pumpHarness, quoteJson;
+import '../../support/app_route_table.dart';
 
 // Provider slice 3 (D39): p42, his notices, each opening its case. Lines
 // are written from the request the notice names; deposit, postpone and hold
@@ -134,22 +135,22 @@ Future<_NoticesApi> _pump(
             ProviderNotificationsScreen(openNotificationId: openId),
       ),
       GoRoute(
-        path: '/provider/requests/:id',
+        path: appRoute('/provider/requests/:id'),
         builder: (_, state) =>
             Scaffold(body: Text('طلب ${state.pathParameters['id']}')),
       ),
       GoRoute(
-        path: '/conversations/:id',
+        path: appRoute('/conversations/:id'),
         builder: (_, state) =>
             Scaffold(body: Text('محادثة ${state.pathParameters['id']}')),
       ),
       GoRoute(
-        path: '/provider/reviews/:id',
+        path: appRoute('/provider/reviews/:id'),
         builder: (_, state) =>
             Scaffold(body: Text('تقييم ${state.pathParameters['id']}')),
       ),
       GoRoute(
-        path: '/provider/dashboard',
+        path: appRoute('/provider/dashboard'),
         builder: (_, state) => Scaffold(
           body: Text('البوابة ${state.uri.queryParameters['tab'] ?? ''}'),
         ),

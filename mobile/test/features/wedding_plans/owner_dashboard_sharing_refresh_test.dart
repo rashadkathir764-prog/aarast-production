@@ -19,6 +19,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../account_contexts/account_context_test_data.dart';
+import '../../support/app_route_table.dart';
 
 void main() {
   testWidgets(
@@ -59,7 +60,7 @@ void main() {
                 const WeddingPlanDashboardScreen(weddingPlanId: _planId),
           ),
           GoRoute(
-            path: '/wedding-plans/:id/sharing',
+            path: appRoute('/wedding-plans/:id/sharing'),
             builder: (context, _) => Scaffold(
               body: Center(
                 child: FilledButton(
@@ -71,7 +72,7 @@ void main() {
             ),
           ),
           GoRoute(
-            path: '/wedding-plans/:id/notifications',
+            path: appRoute('/wedding-plans/:id/notifications'),
             builder: (context, _) => Scaffold(
               body: Center(
                 child: FilledButton(

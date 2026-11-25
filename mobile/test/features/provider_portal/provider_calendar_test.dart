@@ -10,6 +10,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'provider_requests_test.dart' show RequestsApi, bookingJson, quoteJson;
+import '../../support/app_route_table.dart';
 
 // Provider slice 3 (D39): p28 the month at day level and p29 one day. A day
 // is booked, waiting for his confirmation, closed or free; no «باقي N», no
@@ -95,7 +96,7 @@ Future<ProviderDashboardProvider> _pump(
         ),
       ),
       GoRoute(
-        path: '/provider/requests/:id',
+        path: appRoute('/provider/requests/:id'),
         builder: (_, state) =>
             Scaffold(body: Text('طلب ${state.pathParameters['id']}')),
       ),
@@ -266,7 +267,7 @@ void main() {
           builder: (_, _) => const Scaffold(body: ProviderProfileTab()),
         ),
         GoRoute(
-          path: '/provider/services',
+          path: appRoute('/provider/services'),
           builder: (_, _) => const Scaffold(body: Text('خدماتك')),
         ),
       ],

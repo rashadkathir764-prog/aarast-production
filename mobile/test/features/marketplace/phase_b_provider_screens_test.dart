@@ -25,6 +25,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../account_contexts/account_context_test_data.dart';
+import '../../support/app_route_table.dart';
 
 void main() {
   group('Phase B provider screens V3 contract', () {
@@ -302,7 +303,7 @@ void main() {
         initialLocation: '/providers/$_providerId',
         routes: [
           GoRoute(
-            path: '/providers/:id',
+            path: appRoute('/providers/:id'),
             builder: (_, _) => const ProviderDetailsScreen(
               providerId: _providerId,
               weddingPlanId: 'plan-1',
@@ -348,14 +349,14 @@ void main() {
         initialLocation: '/providers/$_providerId',
         routes: [
           GoRoute(
-            path: '/providers/:id',
+            path: appRoute('/providers/:id'),
             builder: (_, _) => const ProviderDetailsScreen(
               providerId: _providerId,
               weddingPlanId: 'plan-1',
             ),
           ),
           GoRoute(
-            path: '/quotes/:id/conversation',
+            path: appRoute('/quotes/:id/conversation'),
             builder: (_, state) => Scaffold(
               body: Text('quote-chat-${state.pathParameters['id']}'),
             ),
@@ -402,14 +403,14 @@ void main() {
           initialLocation: '/providers/$_providerId?weddingPlanId=plan-1',
           routes: [
             GoRoute(
-              path: '/providers/:id',
+              path: appRoute('/providers/:id'),
               builder: (_, state) => ProviderDetailsScreen(
                 providerId: _providerId,
                 weddingPlanId: state.uri.queryParameters['weddingPlanId'],
               ),
             ),
             GoRoute(
-              path: '/wedding-plans/:id/providers',
+              path: appRoute('/wedding-plans/:id/providers'),
               builder: (_, state) => Scaffold(
                 body: Text(
                   'offer-route:${state.pathParameters['id']}:'
@@ -459,14 +460,14 @@ void main() {
         initialLocation: '/providers/$_providerId?weddingPlanId=plan-1',
         routes: [
           GoRoute(
-            path: '/providers/:id',
+            path: appRoute('/providers/:id'),
             builder: (_, state) => ProviderDetailsScreen(
               providerId: _providerId,
               weddingPlanId: state.uri.queryParameters['weddingPlanId'],
             ),
           ),
           GoRoute(
-            path: '/wedding-plans/:id/providers',
+            path: appRoute('/wedding-plans/:id/providers'),
             builder: (_, state) => Scaffold(
               body: Text(
                 'offer-route:${state.pathParameters['id']}:'

@@ -20,6 +20,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../account_contexts/account_context_test_data.dart';
 import '../../../integration_test/journeys/support/journey_harness.dart';
+import '../../support/app_route_table.dart';
 
 // Offline, a notice cannot be marked read; it still opens what it points to.
 // An archive that fails says so.
@@ -273,18 +274,18 @@ Future<AccountContextController> _pump(
     initialLocation: '/notifications',
     routes: [
       GoRoute(
-        path: '/notifications',
+        path: appRoute('/notifications'),
         builder: (_, _) => NotificationsScreen(
           weddingPlanId: accountWide ? null : _planId,
           openNotificationId: openId,
         ),
       ),
       GoRoute(
-        path: '/wedding-plans/:id/tasks',
+        path: appRoute('/wedding-plans/:id/tasks'),
         builder: (_, _) => const Scaffold(body: Text('opened tasks')),
       ),
       GoRoute(
-        path: '/wedding-plans/:id/tasks/:taskId',
+        path: appRoute('/wedding-plans/:id/tasks/:taskId'),
         builder: (_, _) =>
             Scaffold(appBar: AppBar(), body: const Text('opened tasks')),
       ),

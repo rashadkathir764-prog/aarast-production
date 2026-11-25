@@ -14,6 +14,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../support/app_route_table.dart';
 
 void main() {
   testWidgets(
@@ -71,7 +72,7 @@ void main() {
           builder: (context, state) => const Scaffold(body: Text('login')),
         ),
         GoRoute(
-          path: '/providers/:id',
+          path: appRoute('/providers/:id'),
           builder: (context, state) =>
               const Scaffold(body: Text('provider-details-opened')),
         ),
@@ -103,7 +104,7 @@ void main() {
           builder: (context, state) => const Scaffold(body: Text('login')),
         ),
         GoRoute(
-          path: '/providers/:id/quote',
+          path: appRoute('/providers/:id/quote'),
           builder: (context, state) => ProviderAuthGate(
             resumeLocation: state.uri.toString(),
             child: const Text('quote-opened'),
@@ -158,7 +159,7 @@ void main() {
             builder: (context, state) => const Scaffold(body: Text('login')),
           ),
           GoRoute(
-            path: '/providers/:id/quote',
+            path: appRoute('/providers/:id/quote'),
             builder: (context, state) => ProviderAuthGate(
               resumeLocation: state.uri.toString(),
               child: const Text('quote-opened'),

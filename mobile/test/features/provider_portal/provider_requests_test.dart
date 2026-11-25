@@ -18,6 +18,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../support/app_route_table.dart';
 
 // Provider slice 2 (D37): the request from its arrival to the offer. p13
 // home, p15 lists, p16 new request, p17 offer, p18 apology, p19 answered,
@@ -762,7 +763,7 @@ Future<RecordingChatProvider> pumpHarness(
         ),
       ),
       GoRoute(
-        path: '/home',
+        path: appRoute('/home'),
         builder: (_, _) => Scaffold(
           body: Directionality(
             textDirection: TextDirection.rtl,
@@ -771,28 +772,28 @@ Future<RecordingChatProvider> pumpHarness(
         ),
       ),
       GoRoute(
-        path: '/provider/requests/:id',
+        path: appRoute('/provider/requests/:id'),
         builder: (_, state) =>
             ProviderRequestScreen(quoteId: state.pathParameters['id']!),
       ),
       GoRoute(
-        path: '/provider/requests/:id/offer',
+        path: appRoute('/provider/requests/:id/offer'),
         builder: (_, state) =>
             ProviderOfferScreen(quoteId: state.pathParameters['id']!),
       ),
       GoRoute(
-        path: '/quotes/:id/conversation',
+        path: appRoute('/quotes/:id/conversation'),
         builder: (_, state) => Scaffold(
           appBar: AppBar(),
           body: Text('محادثة الطلب ${state.pathParameters['id']}'),
         ),
       ),
       GoRoute(
-        path: '/notifications',
+        path: appRoute('/notifications'),
         builder: (_, _) => const Scaffold(body: Text('التنبيهات')),
       ),
       GoRoute(
-        path: '/provider/notifications',
+        path: appRoute('/provider/notifications'),
         builder: (_, _) => const Scaffold(body: Text('تنبيهات المزود')),
       ),
     ],

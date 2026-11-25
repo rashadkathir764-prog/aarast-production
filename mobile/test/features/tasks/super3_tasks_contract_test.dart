@@ -26,6 +26,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../support/app_route_table.dart';
 
 const _localPlanId = 'guest-plan-super3';
 
@@ -1129,7 +1130,7 @@ GoRouter _router({required Widget start}) {
     routes: [
       GoRoute(path: '/start', builder: (context, state) => start),
       GoRoute(
-        path: '/wedding-plans/:id/tasks',
+        path: appRoute('/wedding-plans/:id/tasks'),
         builder: (context, state) => const Scaffold(body: Text('tasks-target')),
       ),
     ],

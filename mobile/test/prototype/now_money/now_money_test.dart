@@ -39,6 +39,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../support/preview_fonts.dart';
+import '../../support/app_route_table.dart';
 
 const _plan = 'plan-mohammed-salma';
 
@@ -104,7 +105,7 @@ GoRouter _router(String initial, {bool offline = false}) {
     initialLocation: initial,
     routes: [
       GoRoute(
-        path: '/wedding-plans/:id/money',
+        path: appRoute('/wedding-plans/:id/money'),
         builder: (c, s) {
           final screen = MoneyOverviewScreen(
             weddingPlanId: id(s),
@@ -125,26 +126,26 @@ GoRouter _router(String initial, {bool offline = false}) {
         },
       ),
       GoRoute(
-        path: '/wedding-plans/:id/money/budget',
+        path: appRoute('/wedding-plans/:id/money/budget'),
         builder: (c, s) => MoneyBudgetScreen(weddingPlanId: id(s)),
       ),
       GoRoute(
-        path: '/wedding-plans/:id/money/funding',
+        path: appRoute('/wedding-plans/:id/money/funding'),
         builder: (c, s) => FundingSourcesScreen(weddingPlanId: id(s)),
       ),
       GoRoute(
-        path: '/wedding-plans/:id/money/categories/create',
+        path: appRoute('/wedding-plans/:id/money/categories/create'),
         builder: (c, s) => BudgetCategoryFormScreen(weddingPlanId: id(s)),
       ),
       GoRoute(
-        path: '/wedding-plans/:id/money/categories/:categoryId',
+        path: appRoute('/wedding-plans/:id/money/categories/:categoryId'),
         builder: (c, s) => BudgetCategoryDetailsScreen(
           weddingPlanId: id(s),
           categoryId: s.pathParameters['categoryId']!,
         ),
       ),
       GoRoute(
-        path: '/wedding-plans/:id/money/costs/create',
+        path: appRoute('/wedding-plans/:id/money/costs/create'),
         builder: (c, s) => CostFormScreen(
           weddingPlanId: id(s),
           intent: s.extra is CostDraftIntent
@@ -154,14 +155,16 @@ GoRouter _router(String initial, {bool offline = false}) {
         ),
       ),
       GoRoute(
-        path: '/wedding-plans/:id/money/costs/:costId/payments/create',
+        path: appRoute(
+          '/wedding-plans/:id/money/costs/:costId/payments/create',
+        ),
         builder: (c, s) => RecordCostPaymentScreen(
           weddingPlanId: id(s),
           costId: s.pathParameters['costId']!,
         ),
       ),
       GoRoute(
-        path: '/wedding-plans/:id/money/payments/:paymentId',
+        path: appRoute('/wedding-plans/:id/money/payments/:paymentId'),
         builder: (c, s) => CostPaymentDetailsScreen(
           weddingPlanId: id(s),
           costId: s.uri.queryParameters['costId'],
@@ -169,8 +172,9 @@ GoRouter _router(String initial, {bool offline = false}) {
         ),
       ),
       GoRoute(
-        path:
-            '/wedding-plans/:id/money/costs/:costId/schedules/:scheduleId/pay',
+        path: appRoute(
+          '/wedding-plans/:id/money/costs/:costId/schedules/:scheduleId/pay',
+        ),
         builder: (c, s) => PayPaymentScheduleScreen(
           weddingPlanId: id(s),
           costId: s.pathParameters['costId']!,
@@ -178,7 +182,7 @@ GoRouter _router(String initial, {bool offline = false}) {
         ),
       ),
       GoRoute(
-        path: '/wedding-plans/:id/money/costs/:costId',
+        path: appRoute('/wedding-plans/:id/money/costs/:costId'),
         builder: (c, s) => CostDetailsScreen(
           weddingPlanId: id(s),
           costId: s.pathParameters['costId']!,

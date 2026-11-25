@@ -13,6 +13,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'support/app_route_table.dart';
 
 void main() {
   testWidgets('first launch without token opens onboarding', (tester) async {
@@ -23,12 +24,12 @@ void main() {
       routes: [
         GoRoute(path: '/', builder: (context, state) => const SplashScreen()),
         GoRoute(
-          path: '/welcome',
+          path: appRoute('/welcome'),
           builder: (context, state) =>
               const Scaffold(body: Text('guest-onboarding-opened')),
         ),
         GoRoute(
-          path: '/home',
+          path: appRoute('/home'),
           builder: (context, state) =>
               const Scaffold(body: Text('dashboard-opened')),
         ),
@@ -122,12 +123,12 @@ void main() {
       routes: [
         GoRoute(path: '/', builder: (context, state) => const SplashScreen()),
         GoRoute(
-          path: '/onboarding',
+          path: appRoute('/onboarding'),
           builder: (context, state) =>
               const Scaffold(body: Text('guest-onboarding-opened')),
         ),
         GoRoute(
-          path: '/home',
+          path: appRoute('/home'),
           builder: (context, state) =>
               const Scaffold(body: Text('dashboard-opened')),
         ),

@@ -10,6 +10,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../support/app_route_table.dart';
 
 const _planId = 'guest-plan-add-route';
 
@@ -37,7 +38,7 @@ void main() {
       initialLocation: '/wedding-plans/$_planId/guests/add',
       routes: [
         GoRoute(
-          path: '/wedding-plans/:id/guests',
+          path: appRoute('/wedding-plans/:id/guests'),
           builder: (context, state) =>
               const GuestListScreen(weddingPlanId: _planId),
           routes: [

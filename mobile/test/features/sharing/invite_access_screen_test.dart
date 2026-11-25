@@ -27,6 +27,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../account_contexts/account_context_test_data.dart';
+import '../../support/app_route_table.dart';
 
 String _testInviteToken() => List.filled(43, 'a').join();
 
@@ -1102,25 +1103,25 @@ Future<GoRouter> _pumpLinkedInviteScreen(
     initialLocation: '/invites/$token',
     routes: [
       GoRoute(
-        path: '/invites/:token',
+        path: appRoute('/invites/:token'),
         builder: (context, state) =>
             InviteDecisionScreen(token: state.pathParameters['token'] ?? ''),
       ),
       GoRoute(
-        path: '/home',
+        path: appRoute('/home'),
         builder: (context, state) => const Scaffold(
           key: Key('participant-home'),
           body: Text('رئيسية المشارك'),
         ),
       ),
       GoRoute(
-        path: '/register',
+        path: appRoute('/register'),
         builder: (context, state) => const Scaffold(
           body: SizedBox(key: Key('invite-registration-route')),
         ),
       ),
       GoRoute(
-        path: '/login',
+        path: appRoute('/login'),
         builder: (context, state) => Scaffold(
           key: const Key('invite-login-route'),
           body: Text(state.uri.queryParameters['resume'] ?? ''),
@@ -1233,17 +1234,17 @@ class _BoundaryInviteRouterAppState extends State<_BoundaryInviteRouterApp> {
         ),
       ),
       GoRoute(
-        path: '/login',
+        path: appRoute('/login'),
         builder: (context, state) =>
             const Scaffold(body: SizedBox(key: Key('post-logout-login-route'))),
       ),
       GoRoute(
-        path: '/invites/:token',
+        path: appRoute('/invites/:token'),
         builder: (context, state) =>
             InviteDecisionScreen(token: state.pathParameters['token'] ?? ''),
       ),
       GoRoute(
-        path: '/home',
+        path: appRoute('/home'),
         builder: (context, state) => const Scaffold(
           key: Key('participant-home'),
           body: Text('رئيسية المشارك'),

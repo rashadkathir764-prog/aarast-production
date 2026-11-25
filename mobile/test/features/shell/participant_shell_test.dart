@@ -46,6 +46,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../account_contexts/account_context_test_data.dart';
+import '../../support/app_route_table.dart';
 
 const _planId = 'shared-plan';
 
@@ -1098,7 +1099,7 @@ class _Harness {
             routes: [
               GoRoute(path: '/', builder: (_, _) => const MainShell()),
               GoRoute(
-                path: '/wedding-plans/:id/moments/:moment',
+                path: appRoute('/wedding-plans/:id/moments/:moment'),
                 builder: (_, state) {
                   opened.add(state.uri.toString());
                   return const SizedBox.shrink();

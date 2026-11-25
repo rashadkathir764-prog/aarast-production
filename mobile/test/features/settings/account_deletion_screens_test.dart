@@ -20,6 +20,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../support/app_route_table.dart';
 
 // D63: w05 «حذف الحساب» and w40 «الخصوصية» against the server's answers.
 void main() {
@@ -445,10 +446,10 @@ class _World {
     final router = GoRouter(
       routes: [
         GoRoute(path: '/', builder: (_, _) => screen),
-        GoRoute(path: '/home', builder: (_, _) => const Text('HOME')),
-        GoRoute(path: '/more', builder: (_, _) => const Text('MORE')),
+        GoRoute(path: appRoute('/home'), builder: (_, _) => const Text('HOME')),
+        GoRoute(path: appRoute('/more'), builder: (_, _) => const Text('MORE')),
         GoRoute(
-          path: '/settings/delete-account',
+          path: appRoute('/settings/delete-account'),
           builder: (_, _) => const Text('DELETE'),
         ),
       ],

@@ -22,6 +22,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../support/app_route_table.dart';
 
 void main() {
   late AuthStorage storage;
@@ -482,7 +483,7 @@ void main() {
           builder: (_, _) => const ChatScreen(conversationId: 'conversation-1'),
         ),
         GoRoute(
-          path: '/wedding-plans/:id/providers',
+          path: appRoute('/wedding-plans/:id/providers'),
           builder: (_, state) => Text(
             'quote:${state.uri.queryParameters['quoteId']}',
             textDirection: TextDirection.rtl,
@@ -522,11 +523,11 @@ void main() {
       initialLocation: '/conversations',
       routes: [
         GoRoute(
-          path: '/conversations',
+          path: appRoute('/conversations'),
           builder: (_, _) => const ConversationListView(),
         ),
         GoRoute(
-          path: '/conversations/:id',
+          path: appRoute('/conversations/:id'),
           builder: (_, state) => Text(
             'chat:${state.pathParameters['id']}',
             textDirection: TextDirection.rtl,

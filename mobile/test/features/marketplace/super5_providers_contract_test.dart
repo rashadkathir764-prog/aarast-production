@@ -30,6 +30,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../support/preview_fonts.dart';
 import '../account_contexts/account_context_test_data.dart';
+import '../../support/app_route_table.dart';
 
 void main() {
   setUpAll(loadPreviewAppFonts);
@@ -1061,30 +1062,30 @@ Future<void> _pumpMarketplace(
                 ),
               ),
               GoRoute(
-                path: '/wedding-plans/:id/providers/requests',
+                path: appRoute('/wedding-plans/:id/providers/requests'),
                 builder: (context, state) =>
                     Scaffold(body: Text('requests-${state.uri.query}')),
               ),
               GoRoute(
-                path: '/conversations',
+                path: appRoute('/conversations'),
                 builder: (context, state) =>
                     const Scaffold(body: Text('conversations-opened')),
               ),
               GoRoute(
-                path: '/quotes/:id/conversation',
+                path: appRoute('/quotes/:id/conversation'),
                 builder: (context, state) => Scaffold(
                   body: Text('quote-chat-${state.pathParameters['id']}'),
                 ),
               ),
               GoRoute(
-                path: '/providers/:id/quote',
+                path: appRoute('/providers/:id/quote'),
                 builder: (context, routeState) => ProviderAuthGate(
                   resumeLocation: routeState.uri.toString(),
                   child: const Scaffold(body: Text('quote-opened')),
                 ),
               ),
               GoRoute(
-                path: '/providers/:id',
+                path: appRoute('/providers/:id'),
                 builder: (context, state) =>
                     const Scaffold(body: Text('details-opened')),
               ),

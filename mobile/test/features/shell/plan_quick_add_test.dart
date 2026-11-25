@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import '../../support/app_route_table.dart';
 
 List<String> _labels(List<PlanQuickAction> actions) => [
   for (final action in actions) action.kind.labelFor(JourneyProfile.groom),
@@ -370,15 +371,15 @@ void main() {
             },
           ),
           GoRoute(
-            path: '/wedding-plans/:id/money/costs/create',
+            path: appRoute('/wedding-plans/:id/money/costs/create'),
             builder: (context, state) => form(state),
           ),
           GoRoute(
-            path: '/wedding-plans/:id/money/categories/create',
+            path: appRoute('/wedding-plans/:id/money/categories/create'),
             builder: (context, state) => form(state),
           ),
           GoRoute(
-            path: '/wedding-plans/:id/tasks/create',
+            path: appRoute('/wedding-plans/:id/tasks/create'),
             builder: (context, state) => form(state),
           ),
         ],

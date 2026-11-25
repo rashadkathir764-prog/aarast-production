@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import '../../support/app_route_table.dart';
 
 void main() {
   testWidgets('system back restores locations replaced by go', (tester) async {
@@ -601,7 +602,7 @@ class _RouterHarness {
                builder: (context, state) => _Screen(tab),
              ),
            GoRoute(
-             path: '/wedding-plans/:id/money/costs/create',
+             path: appRoute('/wedding-plans/:id/money/costs/create'),
              builder: (context, state) => const _Screen('create cost'),
            ),
            for (final path in [

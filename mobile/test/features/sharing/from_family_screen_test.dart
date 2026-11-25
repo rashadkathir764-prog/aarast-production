@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import '../../support/app_route_table.dart';
 
 final _token = List.filled(43, 'b').join();
 
@@ -169,18 +170,18 @@ Future<void> _pump(WidgetTester tester, {double textScale = 1}) async {
     initialLocation: '/invites',
     routes: [
       GoRoute(
-        path: '/invites',
+        path: appRoute('/invites'),
         builder: (context, state) => const FromFamilyScreen(),
       ),
       GoRoute(
-        path: '/invites/:token',
+        path: appRoute('/invites/:token'),
         builder: (context, state) => Scaffold(
           key: const ValueKey('invite-route'),
           body: Text(state.pathParameters['token'] ?? ''),
         ),
       ),
       GoRoute(
-        path: '/welcome',
+        path: appRoute('/welcome'),
         builder: (context, state) =>
             const Scaffold(key: ValueKey('welcome-route')),
       ),

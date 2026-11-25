@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import '../../support/app_route_table.dart';
 
 // D116: the guests tab by occasion. With more than the wedding the reader
 // picks the occasion, and the figures, the one send it is due and the
@@ -165,7 +166,7 @@ Future<_Api> _pump(
     initialLocation: location ?? '/wedding-plans/$_plan/guests',
     routes: [
       GoRoute(
-        path: '/wedding-plans/:id/guests',
+        path: appRoute('/wedding-plans/:id/guests'),
         // As the plan shell builds the tab: `?add=` is its «+» (D116).
         builder: (_, state) => GuestListScreen(
           weddingPlanId: state.pathParameters['id']!,
@@ -186,7 +187,7 @@ Future<_Api> _pump(
         ],
       ),
       GoRoute(
-        path: '/wedding-plans/:id/events',
+        path: appRoute('/wedding-plans/:id/events'),
         builder: (_, state) => route(state, 'occasions'),
       ),
     ],

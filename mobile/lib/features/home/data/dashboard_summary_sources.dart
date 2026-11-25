@@ -1,3 +1,4 @@
+import '../../../core/experience_v3/aarast_v3.dart' show ReaderVoice;
 import '../../../core/offline/local_database.dart';
 import '../../../core/offline/offline_tables.dart';
 import '../../../core/utils/plan_day.dart';
@@ -302,10 +303,10 @@ class LocalGuestDashboardSummary {
       id: 'local-next-step',
       type: 'LOCAL_NEXT_STEP',
       title: title,
-      subtitle: 'خطة محلية',
+      subtitle: 'خطة على الجوال',
       icon: 'calendar',
       tone: 'info',
-      actionLabel: 'متابعة',
+      actionLabel: ReaderVoice.say('كمّل', 'كمّلي'),
       data: {
         'source': 'guest_local',
         'selectedCategories': seed.selectedCategories.join(','),
@@ -586,19 +587,25 @@ class LocalDashboardMetrics {
         : confirmedCostTotal - budgetValue;
     if (!hasLocation) {
       warnings.add(
-        const DashboardFinancialWarning(
+        DashboardFinancialWarning(
           type: 'MISSING_LOCATION',
           severity: 'WARNING',
-          message: 'أضف موقع الزفاف حتى تصبح الخطة أوضح للمشاركين.',
+          message: ReaderVoice.say(
+            'أضف مكان العرس عشان تكون الخطة أوضح للمشاركين.',
+            'أضيفي مكان العرس عشان تكون الخطة أوضح للمشاركين.',
+          ),
         ),
       );
     }
     if (budget == null || budgetValue == 0) {
       warnings.add(
-        const DashboardFinancialWarning(
+        DashboardFinancialWarning(
           type: 'MISSING_BUDGET',
           severity: 'WARNING',
-          message: 'أضف الميزانية المتوقعة حتى نعرض المتبقي بدقة.',
+          message: ReaderVoice.say(
+            'أضف الميزانية المتوقعة عشان نوريك الباقي صح.',
+            'أضيفي الميزانية المتوقعة عشان نوريك الباقي صح.',
+          ),
         ),
       );
     } else if (over > 0) {
@@ -606,7 +613,7 @@ class LocalDashboardMetrics {
         DashboardFinancialWarning(
           type: 'BUDGET_EXCEEDED',
           severity: 'DANGER',
-          message: 'التكاليف المؤكدة تجاوزت الميزانية العامة.',
+          message: 'الاتفاقات فاتت الميزانية.',
           amount: _amountString(over),
         ),
       );
@@ -616,7 +623,7 @@ class LocalDashboardMetrics {
         DashboardFinancialWarning(
           type: 'TASK_OVERDUE',
           severity: 'WARNING',
-          message: 'لديك مهام متأخرة تحتاج مراجعة.',
+          message: 'عندك مهام متأخرة تحتاج مراجعة.',
           count: overdueTaskCount,
         ),
       );
@@ -626,7 +633,7 @@ class LocalDashboardMetrics {
         DashboardFinancialWarning(
           type: 'PAYMENT_SCHEDULE_OVERDUE',
           severity: 'DANGER',
-          message: 'لديك مواعيد دفع متأخرة تحتاج متابعة.',
+          message: 'عندك مواعيد دفع متأخرة تحتاج متابعة.',
           count: overduePaymentSchedulesCount,
         ),
       );
@@ -636,7 +643,7 @@ class LocalDashboardMetrics {
         DashboardFinancialWarning(
           type: 'PAYMENT_SCHEDULE_DUE_SOON',
           severity: 'WARNING',
-          message: 'لديك مواعيد دفع خلال الأيام السبعة القادمة.',
+          message: 'عندك مواعيد دفع في الأسبوع الجاي.',
           count: dueSoonPaymentSchedulesCount,
         ),
       );
@@ -646,7 +653,7 @@ class LocalDashboardMetrics {
         DashboardFinancialWarning(
           type: 'INCOMPLETE_GUESTS',
           severity: 'WARNING',
-          message: 'بعض الضيوف ينقصهم رقم هاتف أو بيانات تواصل.',
+          message: 'فيه ضيوف ناقصهم رقم جوال أو طريقة تواصل.',
           count: incompleteGuestCount,
         ),
       );
@@ -682,7 +689,7 @@ List<DashboardImportantItem> _localPriorityItems({
         icon: 'calendar',
         tone: 'danger',
         priority: 'URGENT',
-        actionLabel: 'فتح المهام',
+        actionLabel: ReaderVoice.say('افتح المهام', 'افتحي المهام'),
         data: const {'source': 'guest_local'},
       ),
     );
@@ -698,11 +705,11 @@ List<DashboardImportantItem> _localPriorityItems({
         id: nextPaymentSchedule['id']?.toString() ?? 'local-payment-schedule',
         type: 'PAYMENT_SCHEDULE_DUE',
         title: overdue ? 'موعد دفع متأخر' : 'موعد دفع قريب',
-        subtitle: _textValue(cost?['title'], fallback: 'تكلفة ضمن الخطة'),
+        subtitle: _textValue(cost?['title'], fallback: 'اتفاق في الخطة'),
         icon: 'wallet',
         tone: overdue ? 'danger' : 'warning',
         priority: overdue ? 'URGENT' : 'HIGH',
-        actionLabel: 'عرض موعد الدفع',
+        actionLabel: ReaderVoice.say('شوف موعد الدفع', 'شوفي موعد الدفع'),
         dueDate: dueDate,
         amount: _amountString(_moneyValue(nextPaymentSchedule['amount'])),
         entityId: nextPaymentSchedule['id']?.toString(),
@@ -722,12 +729,12 @@ List<DashboardImportantItem> _localPriorityItems({
         id: incompleteGuest['id']?.toString() ?? 'local-incomplete-guest',
         type: 'GUEST_INCOMPLETE',
         title:
-            'ضيف يحتاج رقم هاتف: ${_textValue(incompleteGuest['name'], fallback: 'ضيف')}',
+            'ضيف ناقصه رقم جوال: ${_textValue(incompleteGuest['name'], fallback: 'ضيف')}',
         subtitle: 'بيانات ضيف ناقصة',
         icon: 'people',
         tone: 'info',
         priority: 'NORMAL',
-        actionLabel: 'عرض الضيوف',
+        actionLabel: ReaderVoice.say('شوف الضيوف', 'شوفي الضيوف'),
         data: const {'source': 'guest_local'},
       ),
     );
@@ -747,20 +754,20 @@ List<DashboardImportantItem> _localActivityItems({
         json: task,
         type: 'LOCAL_TASK',
         title: 'مهمة محفوظة: ${_textValue(task['title'], fallback: 'مهمة')}',
-        subtitle: 'نشاط محلي',
+        subtitle: 'انحفظت في الجوال',
         icon: 'task',
         tone: 'info',
-        actionLabel: 'عرض المهام',
+        actionLabel: ReaderVoice.say('شوف المهام', 'شوفي المهام'),
       ),
     for (final cost in costs)
       _LocalActivityRow(
         json: cost,
         type: 'LOCAL_MONEY_COST',
-        title: 'تكلفة محفوظة: ${_textValue(cost['title'], fallback: 'تكلفة')}',
-        subtitle: 'نشاط محلي',
+        title: 'اتفاق محفوظ: ${_textValue(cost['title'], fallback: 'اتفاق')}',
+        subtitle: 'انحفظ في الجوال',
         icon: 'wallet',
         tone: 'warning',
-        actionLabel: 'عرض التكلفة',
+        actionLabel: ReaderVoice.say('شوف الاتفاق', 'شوفي الاتفاق'),
         amount: _amountString(_moneyValue(cost['totalAmount'])),
       ),
     for (final guest in guests)
@@ -768,10 +775,10 @@ List<DashboardImportantItem> _localActivityItems({
         json: guest,
         type: 'LOCAL_GUEST',
         title: 'ضيف محفوظ: ${_textValue(guest['name'], fallback: 'ضيف')}',
-        subtitle: 'نشاط محلي',
+        subtitle: 'انحفظ في الجوال',
         icon: 'people',
         tone: 'success',
-        actionLabel: 'عرض الضيوف',
+        actionLabel: ReaderVoice.say('شوف الضيوف', 'شوفي الضيوف'),
       ),
   ]..sort((a, b) => b.timestamp.compareTo(a.timestamp));
 
@@ -843,7 +850,7 @@ DashboardNextPaymentSchedule _toNextPaymentSchedule(
   return DashboardNextPaymentSchedule(
     id: schedule['id']?.toString() ?? '',
     weddingCostId: schedule['costId']?.toString() ?? '',
-    title: _textValue(cost?['title'], fallback: 'تكلفة ضمن الخطة'),
+    title: _textValue(cost?['title'], fallback: 'اتفاق في الخطة'),
     amount: _amountString(_moneyValue(schedule['amount'])),
     dueDate: _dateTimeOrNull(schedule['dueDate'])!,
     status: 'PENDING',

@@ -1,3 +1,4 @@
+import '../../../core/experience_v3/aarast_v3.dart' show ReaderVoice;
 import '../../../core/utils/plan_day.dart';
 
 enum WeddingPlanStage {
@@ -35,19 +36,23 @@ class WeddingPlanStageState {
 ///
 /// The engine is deliberately deterministic and offline-safe. It does not
 /// invent readiness from task counts, providers, or an AI score; those remain
-/// separate real signals on each product surface.
+/// separate real signals on each product surface. Its words are Sana'ani, in
+/// the reader's form (`ReaderVoice`, Q-35 (أ)).
 WeddingPlanStageState resolveWeddingPlanStage(
   DateTime? weddingDate, {
   DateTime? now,
 }) {
   if (weddingDate == null) {
-    return const WeddingPlanStageState(
+    return WeddingPlanStageState(
       stage: WeddingPlanStage.foundation,
       daysUntilWedding: null,
-      label: 'بداية التخطيط',
+      label: 'بداية الترتيب',
       compactLabel: 'البداية',
-      headline: 'ثبّت أساس الخطة',
-      guidance: 'حدّد الموعد والميزانية، ثم ابدأ بالمهام والضيوف.',
+      headline: ReaderVoice.say('ثبّت أساس الخطة', 'ثبّتي أساس الخطة'),
+      guidance: ReaderVoice.say(
+        'حدّد الموعد والميزانية، وبعدها ابدأ بالمهام والضيوف.',
+        'حدّدي الموعد والميزانية، وبعدها ابدئي بالمهام والضيوف.',
+      ),
     );
   }
 
@@ -58,10 +63,13 @@ WeddingPlanStageState resolveWeddingPlanStage(
     return WeddingPlanStageState(
       stage: WeddingPlanStage.wrapUp,
       daysUntilWedding: days,
-      label: 'إغلاق الخطة',
+      label: 'قفلة الخطة',
       compactLabel: 'ما بعد العرس',
-      headline: 'أغلق ما تبقّى بهدوء',
-      guidance: 'راجع الالتزامات والمهام المفتوحة دون إنشاء حالة إنجاز وهمية.',
+      headline: ReaderVoice.say('اقفل اللي باقي على راحتك', 'اقفلي اللي باقي على راحتك'),
+      guidance: ReaderVoice.say(
+        'راجع اللي عليك والمهام المفتوحة، وما نحسبها خلصت وهي ما خلصت.',
+        'راجعي اللي عليك والمهام المفتوحة، وما نحسبها خلصت وهي ما خلصت.',
+      ),
     );
   }
   if (days == 0) {
@@ -70,8 +78,8 @@ WeddingPlanStageState resolveWeddingPlanStage(
       daysUntilWedding: 0,
       label: 'يوم العرس',
       compactLabel: 'اليوم الكبير',
-      headline: 'كل ما يهم اليوم أمامك',
-      guidance: 'الوقت والموقع والمهام الحرجة وجهات الاتصال في مكان واحد.',
+      headline: 'كل اللي يهمك اليوم قدامك',
+      guidance: 'الوقت والمكان والمهام الحرجة وأرقام التواصل في مكان واحد.',
     );
   }
   if (days <= weddingWeekDays) {
@@ -80,8 +88,11 @@ WeddingPlanStageState resolveWeddingPlanStage(
       daysUntilWedding: days,
       label: 'الأسبوع الأخير',
       compactLabel: 'الأسبوع الأخير',
-      headline: 'ركّز على التأكيدات النهائية',
-      guidance: 'تابع المهام الحرجة وردود الضيوف والمزوّدين فقط.',
+      headline: ReaderVoice.say('ركّز على التأكيدات الأخيرة', 'ركّزي على التأكيدات الأخيرة'),
+      guidance: ReaderVoice.say(
+        'تابع المهام الحرجة وردود الضيوف والمزودين بس.',
+        'تابعي المهام الحرجة وردود الضيوف والمزودين بس.',
+      ),
     );
   }
   if (days <= 30) {
@@ -90,26 +101,35 @@ WeddingPlanStageState resolveWeddingPlanStage(
       daysUntilWedding: days,
       label: 'الشهر الأخير',
       compactLabel: 'قبل العرس',
-      headline: 'ثبّت القرارات المفتوحة',
-      guidance: 'أغلق ردود الضيوف والمزوّدين وراجع الدفعات القادمة.',
+      headline: ReaderVoice.say('ثبّت القرارات المفتوحة', 'ثبّتي القرارات المفتوحة'),
+      guidance: ReaderVoice.say(
+        'كمّل ردود الضيوف والمزودين وراجع الدفعات الجاية.',
+        'كمّلي ردود الضيوف والمزودين وراجعي الدفعات الجاية.',
+      ),
     );
   }
   if (days <= 120) {
     return WeddingPlanStageState(
       stage: WeddingPlanStage.planning,
       daysUntilWedding: days,
-      label: 'مرحلة التخطيط',
+      label: 'مرحلة الترتيب',
       compactLabel: 'التخطيط',
-      headline: 'احسم القرارات الكبيرة',
-      guidance: 'رتّب الأولويات قبل أن تتحول القرارات إلى أمور عاجلة.',
+      headline: ReaderVoice.say('احسم القرارات الكبيرة', 'احسمي القرارات الكبيرة'),
+      guidance: ReaderVoice.say(
+        'رتّب الأولويات قبل لا تصير القرارات مستعجلة.',
+        'رتّبي الأولويات قبل لا تصير القرارات مستعجلة.',
+      ),
     );
   }
   return WeddingPlanStageState(
     stage: WeddingPlanStage.foundation,
     daysUntilWedding: days,
-    label: 'بداية التخطيط',
+    label: 'بداية الترتيب',
     compactLabel: 'البداية',
-    headline: 'ابنِ الخطة على مهل',
-    guidance: 'ثبّت الأساس، ثم وزّع المهام والضيوف والمزوّدين تدريجيًا.',
+    headline: ReaderVoice.say('ابنِ الخطة على مهل', 'ابني الخطة على مهل'),
+    guidance: ReaderVoice.say(
+      'ثبّت الأساس، وبعدها وزّع المهام والضيوف والمزودين شوية شوية.',
+      'ثبّتي الأساس، وبعدها وزّعي المهام والضيوف والمزودين شوية شوية.',
+    ),
   );
 }

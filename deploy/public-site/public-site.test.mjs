@@ -98,6 +98,12 @@ assert.match(inviteHtml, /الدعوة تنفتح في تطبيق اعّرست/)
 assert.match(inviteHtml, /الرابط ما يعرض اسم الخطة ولا بيانات المشاركين لأي أحد/);
 assert.doesNotMatch(inviteHtml, /افتح الدعوة في تطبيق|ثم تحقق من|حمّله ثم ارجع افتح|لا يعرض هذا الرابط|متوفر حاليًا/);
 assert.doesNotMatch(inviteJs, /اطلب من صاحب الخطة/);
+// Batch 5 (Q-35 (أ)): its title, its link previews and its error speak the
+// app's Sana'ani too, to no gender («عبر», «تحقق من رقم هاتفك», «للاطلاع»,
+// «غير صالح» were formal and «افتح … وتحقق» a masculine imperative).
+assert.doesNotMatch(inviteHtml, /عبر اعّرست|تحقق من رقم|رقم هاتفك|للاطلاع|افتح الدعوة|خطة زفاف/);
+assert.doesNotMatch(inviteJs, /غير صالح/);
+assert.match(inviteHtml, /<title>دعوة في اعّرست<\/title>/);
 assert.match(inviteHtml, /href="https:\/\/play\.google\.com\/store\/apps\/details\?id=com\.aarast\.aarast_mobile"/);
 // RA-OP-29: the RSVP preview's mark is a real, served file.
 assert.match(nginx, /location = \/rsvp-preview\.png[\s\S]*?max-age=86400/);

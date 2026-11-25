@@ -807,7 +807,8 @@ void main() {
 
     await _pumpTasksScreen(tester, harness);
 
-    expect(find.textContaining('أضف موقع الزفاف'), findsNothing);
+    // Batch 5: the home's warning is said «أضف مكان العرس» now.
+    expect(find.textContaining('أضف مكان العرس'), findsNothing);
     expect(find.textContaining('حدد الميزانية'), findsNothing);
     expect(find.textContaining('إنشاء مهمة متابعة'), findsNothing);
     expect(find.textContaining('طلب عرض سعر'), findsNothing);

@@ -82,8 +82,8 @@ const _protectedStates = {
 abstract final class AarastV3ScreenCatalog {
   static const startup = AarastV3ScreenContract(
     id: 'startup',
-    location: 'بدء اعّرست',
-    purpose: 'استعادة الجلسة والمسار بأمان',
+    location: 'فتح اعّرست',
+    purpose: 'نرجّع الدخول والمكان اللي كنت فيه بأمان',
     archetype: AarastV3ScreenArchetype.utility,
     states: _protectedStates,
     privacy: AarastV3PrivacyLevel.personal,
@@ -93,7 +93,7 @@ abstract final class AarastV3ScreenCatalog {
   static const welcome = AarastV3ScreenContract(
     id: 'welcome',
     location: 'البداية',
-    purpose: 'اختيار المسار وبدء خطة حقيقية',
+    purpose: 'من فين يبدأ، وفتح خطة حقيقية',
     archetype: AarastV3ScreenArchetype.root,
     states: _standardStates,
     supportsOffline: true,
@@ -102,7 +102,7 @@ abstract final class AarastV3ScreenCatalog {
   static const auth = AarastV3ScreenContract(
     id: 'auth',
     location: 'الحساب',
-    purpose: 'الدخول أو إنشاء الحساب بأقل بيانات لازمة',
+    purpose: 'الدخول أو فتح حساب بأقل بيانات',
     archetype: AarastV3ScreenArchetype.form,
     states: _protectedStates,
     privacy: AarastV3PrivacyLevel.sensitive,
@@ -110,8 +110,8 @@ abstract final class AarastV3ScreenCatalog {
 
   static const contextSelection = AarastV3ScreenContract(
     id: 'context-selection',
-    location: 'اختر المسار',
-    purpose: 'فتح مساحة المستخدم الصحيحة دون تخمين',
+    location: 'اختيار الحساب',
+    purpose: 'فتح المساحة الصح بلا تخمين',
     archetype: AarastV3ScreenArchetype.list,
     states: _protectedStates,
     privacy: AarastV3PrivacyLevel.personal,
@@ -120,7 +120,7 @@ abstract final class AarastV3ScreenCatalog {
   static const home = AarastV3ScreenContract(
     id: 'home',
     location: 'الرئيسية',
-    purpose: 'عرض أهم قرار حقيقي في الخطة الحين',
+    purpose: 'أهم قرار حقيقي في الخطة الحين',
     archetype: AarastV3ScreenArchetype.root,
     states: _protectedStates,
     privacy: AarastV3PrivacyLevel.personal,
@@ -130,7 +130,7 @@ abstract final class AarastV3ScreenCatalog {
   static const money = AarastV3ScreenContract(
     id: 'money',
     location: 'المال',
-    purpose: 'فهم الميزانية والالتزامات ثم تنفيذ القرار الأقرب',
+    purpose: 'الميزانية واللي عليك، وبعدها القرار الأقرب',
     archetype: AarastV3ScreenArchetype.root,
     states: _protectedStates,
     privacy: AarastV3PrivacyLevel.sensitive,
@@ -140,7 +140,7 @@ abstract final class AarastV3ScreenCatalog {
   static const moneyDetail = AarastV3ScreenContract(
     id: 'money-detail',
     location: 'تفاصيل مالية',
-    purpose: 'فهم المبلغ والحالة والإجراء المالي التالي',
+    purpose: 'المبلغ وحاله والخطوة الجاية فيه',
     archetype: AarastV3ScreenArchetype.detail,
     states: _protectedStates,
     privacy: AarastV3PrivacyLevel.sensitive,
@@ -150,7 +150,7 @@ abstract final class AarastV3ScreenCatalog {
   static const moneyForm = AarastV3ScreenContract(
     id: 'money-form',
     location: 'قرار مالي',
-    purpose: 'تسجيل قرار مالي ومراجعة أثره قبل الحفظ',
+    purpose: 'تسجيل قرار في المال وأثره قبل الحفظ',
     archetype: AarastV3ScreenArchetype.form,
     states: _protectedStates,
     privacy: AarastV3PrivacyLevel.sensitive,
@@ -160,7 +160,7 @@ abstract final class AarastV3ScreenCatalog {
   static const tasks = AarastV3ScreenContract(
     id: 'tasks',
     location: 'المهام',
-    purpose: 'تنفيذ الأقرب والأهم دون تشتيت',
+    purpose: 'الأقرب والأهم بلا تشتيت',
     archetype: AarastV3ScreenArchetype.list,
     states: _protectedStates,
     privacy: AarastV3PrivacyLevel.personal,
@@ -170,7 +170,7 @@ abstract final class AarastV3ScreenCatalog {
   static const taskForm = AarastV3ScreenContract(
     id: 'task-form',
     location: 'المهمة',
-    purpose: 'تحويل قرار واحد إلى مهمة قابلة للتنفيذ',
+    purpose: 'قرار واحد يصير مهمة تنعمل',
     archetype: AarastV3ScreenArchetype.form,
     states: _protectedStates,
     privacy: AarastV3PrivacyLevel.personal,
@@ -180,7 +180,7 @@ abstract final class AarastV3ScreenCatalog {
   static const guests = AarastV3ScreenContract(
     id: 'guests',
     location: 'الضيوف',
-    purpose: 'معرفة الحضور ومعالجة الرد أو البيانات الأهم',
+    purpose: 'مين جاي، والرد أو البيانات الأهم',
     archetype: AarastV3ScreenArchetype.list,
     states: _protectedStates,
     privacy: AarastV3PrivacyLevel.sensitive,
@@ -190,7 +190,7 @@ abstract final class AarastV3ScreenCatalog {
   static const guestForm = AarastV3ScreenContract(
     id: 'guest-form',
     location: 'إضافة ضيف',
-    purpose: 'حفظ أقل بيانات لازمة ثم استكمالها لاحقًا',
+    purpose: 'أقل بيانات تنحفظ الحين، والباقي بعدين',
     archetype: AarastV3ScreenArchetype.form,
     states: _protectedStates,
     privacy: AarastV3PrivacyLevel.sensitive,
@@ -199,8 +199,8 @@ abstract final class AarastV3ScreenCatalog {
 
   static const providers = AarastV3ScreenContract(
     id: 'providers',
-    location: 'المزوّدون',
-    purpose: 'اكتشاف ومقارنة مزوّد مناسب دون ادعاء حجز',
+    location: 'المزودين',
+    purpose: 'تلاقي مزود مناسب وتقارن، بلا حجز ما صار',
     archetype: AarastV3ScreenArchetype.root,
     states: _protectedStates,
     privacy: AarastV3PrivacyLevel.personal,
@@ -208,8 +208,8 @@ abstract final class AarastV3ScreenCatalog {
 
   static const providerDetail = AarastV3ScreenContract(
     id: 'provider-detail',
-    location: 'تفاصيل المزوّد',
-    purpose: 'فهم الخدمة والثقة والسعر ثم طلب عرض حقيقي',
+    location: 'تفاصيل المزود',
+    purpose: 'الخدمة والثقة والسعر، وبعدها طلب عرض حقيقي',
     archetype: AarastV3ScreenArchetype.detail,
     states: _protectedStates,
     privacy: AarastV3PrivacyLevel.personal,
@@ -217,8 +217,8 @@ abstract final class AarastV3ScreenCatalog {
 
   static const providerWorkspace = AarastV3ScreenContract(
     id: 'provider-workspace',
-    location: 'مساحة المزوّد',
-    purpose: 'إدارة الطلبات والخدمات والحالة المهنية',
+    location: 'مساحة المزود',
+    purpose: 'الطلبات والخدمات وحال الملف',
     archetype: AarastV3ScreenArchetype.root,
     states: _protectedStates,
     privacy: AarastV3PrivacyLevel.personal,
@@ -226,8 +226,8 @@ abstract final class AarastV3ScreenCatalog {
 
   static const providerForm = AarastV3ScreenContract(
     id: 'provider-form',
-    location: 'بيانات المزوّد',
-    purpose: 'حفظ خدمة أو ملف مهني بقرار واضح',
+    location: 'بيانات المزود',
+    purpose: 'حفظ خدمة أو ملف بقرار واضح',
     archetype: AarastV3ScreenArchetype.form,
     states: _protectedStates,
     privacy: AarastV3PrivacyLevel.personal,
@@ -236,7 +236,7 @@ abstract final class AarastV3ScreenCatalog {
   static const conversations = AarastV3ScreenContract(
     id: 'conversations',
     location: 'المحادثات',
-    purpose: 'متابعة المحادثات المرتبطة بطلبات عروض حقيقية',
+    purpose: 'المحادثات اللي على طلبات عروض حقيقية',
     archetype: AarastV3ScreenArchetype.list,
     states: _protectedStates,
     privacy: AarastV3PrivacyLevel.sensitive,
@@ -245,7 +245,7 @@ abstract final class AarastV3ScreenCatalog {
   static const conversation = AarastV3ScreenContract(
     id: 'conversation',
     location: 'المحادثة',
-    purpose: 'مراجعة الطلب والعرض والرسائل ضمن العلاقة الحالية',
+    purpose: 'الطلب والعرض والرسائل بين الطرفين',
     archetype: AarastV3ScreenArchetype.detail,
     states: _protectedStates,
     privacy: AarastV3PrivacyLevel.sensitive,
@@ -254,7 +254,7 @@ abstract final class AarastV3ScreenCatalog {
   static const notifications = AarastV3ScreenContract(
     id: 'notifications',
     location: 'التنبيهات',
-    purpose: 'عرض ما يحتاج الانتباه دون كشف تفاصيل حساسة',
+    purpose: 'اللي يحتاج انتباه، بلا تفاصيل حساسة',
     archetype: AarastV3ScreenArchetype.list,
     states: _protectedStates,
     privacy: AarastV3PrivacyLevel.personal,
@@ -263,7 +263,7 @@ abstract final class AarastV3ScreenCatalog {
   static const plans = AarastV3ScreenContract(
     id: 'plans',
     location: 'خططك',
-    purpose: 'اختيار الخطة أو إدارتها دون تكرار لوحة التحكم',
+    purpose: 'اختيار الخطة أو ترتيبها بلا تكرار الرئيسية',
     archetype: AarastV3ScreenArchetype.list,
     states: _protectedStates,
     privacy: AarastV3PrivacyLevel.personal,
@@ -273,7 +273,7 @@ abstract final class AarastV3ScreenCatalog {
   static const planDetail = AarastV3ScreenContract(
     id: 'plan-detail',
     location: 'إدارة الخطة',
-    purpose: 'إدارة هوية الخطة وبياناتها ومشاركتها',
+    purpose: 'اسم الخطة وبياناتها ومشاركتها',
     archetype: AarastV3ScreenArchetype.detail,
     states: _protectedStates,
     privacy: AarastV3PrivacyLevel.sensitive,
@@ -282,8 +282,8 @@ abstract final class AarastV3ScreenCatalog {
 
   static const planForm = AarastV3ScreenContract(
     id: 'plan-form',
-    location: 'إنشاء خطة',
-    purpose: 'إنشاء خطة بأقل تفاصيل لازمة وقابلة للتعديل',
+    location: 'خطة جديدة',
+    purpose: 'خطة جديدة بأقل تفاصيل، وتنعدل بعدين',
     archetype: AarastV3ScreenArchetype.form,
     states: _protectedStates,
     privacy: AarastV3PrivacyLevel.personal,
@@ -293,7 +293,7 @@ abstract final class AarastV3ScreenCatalog {
   static const sharing = AarastV3ScreenContract(
     id: 'sharing',
     location: 'المشاركة',
-    purpose: 'إدارة المشاركين والصلاحيات بوضوح وخصوصية',
+    purpose: 'المشاركين وصلاحياتهم بوضوح وخصوصية',
     archetype: AarastV3ScreenArchetype.list,
     states: _protectedStates,
     privacy: AarastV3PrivacyLevel.sensitive,
@@ -302,7 +302,7 @@ abstract final class AarastV3ScreenCatalog {
   static const sharingForm = AarastV3ScreenContract(
     id: 'sharing-form',
     location: 'صلاحيات المشاركة',
-    purpose: 'منح الصلاحيات المقصودة فقط قبل الإرسال',
+    purpose: 'الصلاحيات المقصودة بس قبل الإرسال',
     archetype: AarastV3ScreenArchetype.form,
     states: _protectedStates,
     privacy: AarastV3PrivacyLevel.sensitive,
@@ -311,7 +311,7 @@ abstract final class AarastV3ScreenCatalog {
   static const contributionHistory = AarastV3ScreenContract(
     id: 'contribution-history',
     location: 'سجل المساهمات',
-    purpose: 'عرض سجل ثابت دون فتح بيانات حية غير مصرح بها',
+    purpose: 'سجل ثابت، بلا فتح بيانات ما هي مسموحة',
     archetype: AarastV3ScreenArchetype.list,
     states: _protectedStates,
     privacy: AarastV3PrivacyLevel.sensitive,
@@ -333,7 +333,7 @@ abstract final class AarastV3ScreenCatalog {
   static const utility = AarastV3ScreenContract(
     id: 'utility',
     location: 'أدواتك',
-    purpose: 'الوصول إلى الحساب والإعدادات والمساندة',
+    purpose: 'الحساب والإعدادات والمساعدة',
     archetype: AarastV3ScreenArchetype.utility,
     states: _protectedStates,
     privacy: AarastV3PrivacyLevel.personal,
@@ -343,7 +343,7 @@ abstract final class AarastV3ScreenCatalog {
   static const unmapped = AarastV3ScreenContract(
     id: 'unmapped',
     location: 'اعّرست',
-    purpose: 'مسار غير مصنّف يحتاج مراجعة قبل الإطلاق',
+    purpose: 'مكان ما له تصنيف، يحتاج مراجعة قبل الإطلاق',
     archetype: AarastV3ScreenArchetype.utility,
     states: _protectedStates,
   );

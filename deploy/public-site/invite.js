@@ -12,7 +12,7 @@
   if (!isValidToken) {
     button.setAttribute("aria-disabled", "true");
     button.removeAttribute("href");
-    button.textContent = "رابط الدعوة غير صالح";
+    button.textContent = "رابط الدعوة هذا ما يشتغل";
     status.textContent = "صاحب الخطة يقدر يبعث لك رابط دعوة جديد.";
     return;
   }

@@ -16,8 +16,9 @@ void main() {
       );
 
       expect(seed.cityLabel, 'Aden');
-      expect(seed.estimatedBudgetLabel, 'لم تحدد الميزانية بعد');
-      expect(seed.nextBestAction, 'أضف ميزانية تقريبية');
+      expect(seed.estimatedBudgetLabel, 'الميزانية ما تحددت بعد');
+      // Batch 5: the bride is spoken to as herself (it said «أضف»).
+      expect(seed.nextBestAction, 'أضيفي ميزانية تقريبية');
     });
 
     test('asks for wedding date when date is unknown', () {
@@ -33,8 +34,8 @@ void main() {
         ),
       );
 
-      expect(seed.weddingDateLabel, 'التاريخ غير معروف الحين');
-      expect(seed.nextBestAction, 'حدد تاريخ العرس');
+      expect(seed.weddingDateLabel, 'الموعد ما ندريه الحين');
+      expect(seed.nextBestAction, 'حدد موعد العرس');
     });
 
     test('uses selected categories when core seeds are present', () {
@@ -51,10 +52,10 @@ void main() {
         ),
       );
 
-      expect(seed.title, 'خطة زفاف Ibb');
+      expect(seed.title, 'خطة عرس Ibb');
       expect(seed.selectedPriorities, ['tasks']);
       expect(seed.selectedCategories, ['hall', 'food']);
-      expect(seed.nextBestAction, 'راجع تصنيفات البداية');
+      expect(seed.nextBestAction, 'راجع بنود البداية');
     });
 
     test('uses plan name as dashboard title when provided', () {
@@ -68,7 +69,7 @@ void main() {
       );
 
       expect(seed.title, 'عرسنا');
-      expect(seed.shortLocationLabel, 'لم يحدد الموقع');
+      expect(seed.shortLocationLabel, 'المكان ما تحدد');
     });
 
     test('builds structured location labels from legacy guest fields', () {
@@ -84,7 +85,7 @@ void main() {
         ),
       );
 
-      expect(seed.title, 'خطة زفاف صنعاء - السبعين');
+      expect(seed.title, 'خطة عرس صنعاء - السبعين');
       expect(seed.cityLabel, 'صنعاء - السبعين - حدة');
       expect(seed.shortLocationLabel, 'صنعاء - السبعين');
       expect(seed.mediumLocationLabel, 'صنعاء - السبعين - حدة');

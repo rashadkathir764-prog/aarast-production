@@ -55,7 +55,7 @@ const auth = new AuthService(
   } as any,
   new PermissionService(prisma as any, ownerPorts.plans),
   // RA-BE-141: the old number's WhatsApp notice goes nowhere here.
-  { send: async () => undefined },
+  { send: async () => undefined } as any,
 );
 const inviteAccess = new InviteAccessService(
   prisma as any,

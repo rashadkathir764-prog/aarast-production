@@ -755,7 +755,8 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
     walk.expectSee('قفل التطبيق');
     await walk.scroll(pixels: 900);
     walk.expectSee('خططك');
-    walk.expectSee('الخروج');
+    // Says what it does, and is not mistaken for leaving a plan.
+    walk.expectSee(p.say('اطلع من حسابك', 'اطلعي من حسابك'));
     await walk.scroll(pixels: -900);
   });
 

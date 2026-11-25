@@ -46,7 +46,8 @@ const viewerFather = ParticipantPersona(
   journey: 'participant_father',
   phone: '777000104',
   name: 'الوالد',
-  roleLine: 'أنت تتابع بس',
+  // One name per role everywhere: the viewer is «يشوف بس».
+  roleLine: 'أنت تشوف بس',
   managesTasks: false,
   managesGuests: false,
   managesProviders: false,
@@ -117,7 +118,8 @@ Future<void> runParticipantWalk(
     walk.expectSee('عرس محمد');
     walk.expectSee(p.roleLine, why: 'وصف دوره بعربي صحيح');
     walk.expectSee('21 يناير');
-    walk.expectSee('المال مخفي عنك');
+    // Says whose the money is, not that it is hidden from him.
+    walk.expectSee('المال عند العريس');
     noPrivateMoney();
     if (p.managesTasks) {
       walk.expectSee('رتّب الغداء', why: 'مهمته المتأخرة');

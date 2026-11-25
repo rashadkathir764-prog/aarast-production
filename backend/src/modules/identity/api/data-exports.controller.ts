@@ -1,5 +1,6 @@
 import { Controller, Get, Header, Param, Res } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
+import { routeLimit } from "../../../platform/http/route-throttle";
 import type { Response } from "express";
 import { DataExportService } from "../internal/profile/data-export.service";
 import { DataExportTokenDto } from "./user-dto/data-export-token.dto";
@@ -14,7 +15,7 @@ export class DataExportsController {
   constructor(private readonly dataExports: DataExportService) {}
 
   @Get(":token")
-  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Throttle(routeLimit(10))
   @Header("Cache-Control", "private, no-store")
   @Header("Referrer-Policy", "no-referrer")
   async download(

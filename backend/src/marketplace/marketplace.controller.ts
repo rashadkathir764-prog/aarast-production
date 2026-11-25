@@ -11,6 +11,7 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
+import { routeLimit } from "../platform/http/route-throttle";
 import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
 import { CurrentUser } from "../modules/identity/public/current-user.decorator";
 import { JwtAuthGuard } from "../modules/identity/public/jwt-auth.guard";
@@ -137,7 +138,7 @@ export class ProvidersController {
   // page (not the provider's own preview). Throttled per client.
   @Post(":id/views")
   @HttpCode(200)
-  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @Throttle(routeLimit(30))
   recordProviderView(@Param("id") id: string) {
     return this.marketplaceService.recordProviderView(id);
   }

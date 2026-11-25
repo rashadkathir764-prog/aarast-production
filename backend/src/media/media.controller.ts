@@ -1,5 +1,6 @@
 import { Body, Controller, Header, Post, UseGuards } from "@nestjs/common";
 import { Throttle } from '@nestjs/throttler';
+import { routeLimit } from '../platform/http/route-throttle';
 import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
 import { CurrentUser } from "../modules/identity/public/current-user.decorator";
 import { JwtAuthGuard } from "../modules/identity/public/jwt-auth.guard";
@@ -14,7 +15,7 @@ export class MediaController {
 
   @Post("presign")
   @Header("Cache-Control", "private, no-store")
-  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  @Throttle(routeLimit(20))
   presign(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() dto: CreateMediaUploadDto,
@@ -24,7 +25,7 @@ export class MediaController {
 
   @Post("verify")
   @Header("Cache-Control", "private, no-store")
-  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @Throttle(routeLimit(30))
   verify(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() dto: VerifyMediaUploadDto,

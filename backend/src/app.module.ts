@@ -9,6 +9,7 @@ import { IdempotencyCleanupScheduler } from "./platform/idempotency/idempotency-
 import { AdminAuditInterceptor } from "./admin/admin-audit.interceptor";
 import { MetricsController } from "./platform/observability/metrics.controller";
 import { ResilientThrottlerStorage } from "./platform/redis/resilient-throttler-storage";
+import { deviceShareThrottler } from "./platform/http/route-throttle";
 import { HealthController } from "./platform/health/health.controller";
 import { READINESS_FETCH, ReadinessService } from "./platform/health/readiness.service";
 import { MEDIA_READINESS_PORT } from "./platform/health/media-readiness.port";
@@ -45,7 +46,7 @@ import { NotificationsModule } from "./modules/notifications/notifications.modul
         const redisUrl = process.env.REDIS_URL?.trim();
         // Tunable so load tests and unusual deployments can raise the
         // global ceiling without a rebuild. Per-route @Throttle limits
-        // on auth endpoints are unaffected.
+        // on auth endpoints are unaffected (routeLimit, RA-BE-144).
         const limit = Number(process.env.THROTTLE_LIMIT ?? 1_000);
         const ttl = Number(process.env.THROTTLE_TTL_MS ?? 60_000);
         return {
@@ -56,6 +57,8 @@ import { NotificationsModule } from "./modules/notifications/notifications.modul
             },
             // I-1: the address-wide ceiling of the public RSVP routes.
             rsvpAddressThrottler,
+            // RA-BE-144: a phone's share of each route's address limit.
+            deviceShareThrottler,
           ],
           ...(redisUrl
             ? {

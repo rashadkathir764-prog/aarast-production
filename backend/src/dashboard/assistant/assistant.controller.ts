@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Post, Put, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
+import { routeLimit } from '../../platform/http/route-throttle';
 import { CurrentUser } from '../../modules/identity/public/current-user.decorator';
 import type { AuthenticatedUser } from '../../modules/identity/public/identity-session.types';
 import { JwtAuthGuard } from '../../modules/identity/public/jwt-auth.guard';
@@ -27,7 +28,7 @@ export class WeddingPlanAssistantController {
   // replay of the phone's request id.
   @Post('questions')
   @HttpCode(200)
-  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @Throttle(routeLimit(30))
   @SkipIdempotencyStore()
   ask(
     @CurrentUser() currentUser: AuthenticatedUser,
@@ -43,7 +44,7 @@ export class WeddingPlanAssistantController {
   // RA-BE-161: the consent sheet's «شغّل المساعد» records the account's
   // consent with its date; w40 takes it back.
   @Put('consent')
-  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Throttle(routeLimit(10))
   recordConsent(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('weddingPlanId') weddingPlanId: string,
@@ -52,7 +53,7 @@ export class WeddingPlanAssistantController {
   }
 
   @Delete('consent')
-  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Throttle(routeLimit(10))
   withdrawConsent(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('weddingPlanId') weddingPlanId: string,
@@ -63,7 +64,7 @@ export class WeddingPlanAssistantController {
   // RA-ST-04 (D95): «بلّغ عن الإجابة». The account's open reports are
   // bounded in the service; this only stops floods.
   @Post('reports')
-  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Throttle(routeLimit(5))
   report(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('weddingPlanId') weddingPlanId: string,
@@ -94,7 +95,7 @@ export class AccountAssistantConsentController {
   }
 
   @Delete('consent')
-  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Throttle(routeLimit(10))
   withdrawConsent(@CurrentUser() currentUser: AuthenticatedUser) {
     return this.assistant.withdrawAccountConsent(currentUser);
   }

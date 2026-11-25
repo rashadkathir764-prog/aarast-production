@@ -101,6 +101,14 @@ own address; the ceiling keeps the WhatsApp sender safe. `retryAfterSeconds` run
 up («هذا الرقم طلب 5 رموز في ساعة. يتاح رمز جديد بعد 50 دقيقة.»). The refused
 request is not counted.
 
+RA-BE-144: each route's own per-minute limit (`@Throttle(routeLimit(n))`,
+`backend/src/platform/http/route-throttle.ts`) is counted per address as
+before, and is that address's ceiling; inside it, a phone that sends
+`X-Aarast-Device` has half of it (rounded up) to itself, so one phone behind
+a shared address cannot spend the minute for the others. A request without
+the header counts against the address alone. `GET /ready` is 10 a minute per
+address (RA-BE-149); the liveness routes are not limited.
+
 ### `POST /api/v1/auth/register`
 
 Registration is a two-call verified-phone flow. The first call sends a

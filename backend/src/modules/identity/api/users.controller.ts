@@ -9,6 +9,7 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
+import { routeLimit } from "../../../platform/http/route-throttle";
 import { AuthenticatedUser } from "../public/identity-session.types";
 import { CurrentUser } from "../public/current-user.decorator";
 import { AllowedWhileDeletionPending, JwtAuthGuard } from "../public/jwt-auth.guard";
@@ -40,7 +41,7 @@ export class UsersController {
   // and ask again, which started the 30 days over.
   @Post("me/exports")
   @HttpCode(HttpStatus.CREATED)
-  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Throttle(routeLimit(5))
   @AllowedWhileDeletionPending()
   createExport(@CurrentUser() currentUser: AuthenticatedUser) {
     return this.dataExports.create(currentUser);

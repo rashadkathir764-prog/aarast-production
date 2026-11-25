@@ -12,6 +12,7 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
+import { routeLimit } from "../../../platform/http/route-throttle";
 import type { Request, Response } from "express";
 import { isProductionEnvironment } from "../../../platform/config/runtime-environment";
 import { clientRateContext } from "../../../platform/http/client-device";
@@ -44,27 +45,27 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post("register")
-  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Throttle(routeLimit(10))
   register(@Body() dto: RegisterDto, @Req() request: Request) {
     return this.authService.startRegistration(dto, clientRateContext(request));
   }
 
   @Post("register/complete")
-  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  @Throttle(routeLimit(20))
   completeRegistration(@Body() dto: CompleteRegistrationDto) {
     return this.authService.completeRegistration(dto);
   }
 
   @Post("login")
   @HttpCode(HttpStatus.OK)
-  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  @Throttle(routeLimit(20))
   login(@Body() dto: LoginDto, @Req() request: Request) {
     return this.authService.login(dto, clientRateContext(request));
   }
 
   @Post("admin/login")
   @HttpCode(HttpStatus.OK)
-  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Throttle(routeLimit(10))
   async startAdminLogin(
     @Body() dto: LoginDto,
     @Req() request: Request,
@@ -93,7 +94,7 @@ export class AuthController {
 
   @Post("admin/login/complete")
   @HttpCode(HttpStatus.OK)
-  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Throttle(routeLimit(10))
   async completeAdminLogin(
     @Body() dto: CompleteAdminLoginDto,
     @Res({ passthrough: true }) response: Response,
@@ -126,7 +127,7 @@ export class AuthController {
 
   @Post("admin/password-reset/request")
   @HttpCode(HttpStatus.OK)
-  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Throttle(routeLimit(10))
   requestAdminPasswordReset(
     @Body() dto: AdminPasswordResetRequestDto,
     @Req() request: Request,
@@ -139,21 +140,21 @@ export class AuthController {
 
   @Post("admin/password-reset/verify")
   @HttpCode(HttpStatus.OK)
-  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Throttle(routeLimit(10))
   verifyAdminPasswordReset(@Body() dto: AdminPasswordResetVerifyDto) {
     return this.authService.verifyAdminPasswordReset(dto);
   }
 
   @Post("admin/password-reset/confirm")
   @HttpCode(HttpStatus.OK)
-  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Throttle(routeLimit(10))
   confirmAdminPasswordReset(@Body() dto: AdminPasswordResetConfirmDto) {
     return this.authService.confirmAdminPasswordReset(dto);
   }
 
   @Post("admin/refresh")
   @HttpCode(HttpStatus.OK)
-  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @Throttle(routeLimit(30))
   async refreshAdmin(
     @Headers("cookie") cookieHeader: string | undefined,
     @Res({ passthrough: true }) response: Response,
@@ -196,7 +197,7 @@ export class AuthController {
 
   @Post("refresh")
   @HttpCode(HttpStatus.OK)
-  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @Throttle(routeLimit(30))
   refresh(@Body() dto: RefreshDto) {
     return this.authService.refresh(dto);
   }
@@ -224,7 +225,7 @@ export class AuthController {
   @Post("current-phone-code")
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard)
-  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Throttle(routeLimit(5))
   requestCurrentPhoneCode(
     @CurrentUser() user: AuthenticatedUser,
     @Req() request: Request,
@@ -239,7 +240,7 @@ export class AuthController {
   @Post("password")
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard)
-  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Throttle(routeLimit(10))
   setPassword(
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: SetPasswordDto,
@@ -251,7 +252,7 @@ export class AuthController {
   @Post("phone-change/request")
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard)
-  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Throttle(routeLimit(5))
   requestPhoneChange(
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: RequestPhoneChangeDto,
@@ -267,7 +268,7 @@ export class AuthController {
   @Post("phone-change/confirm")
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard)
-  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Throttle(routeLimit(10))
   confirmPhoneChange(
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: ConfirmPhoneChangeDto,
@@ -284,21 +285,21 @@ export class AuthController {
 
   @Post("otp/request")
   @HttpCode(HttpStatus.OK)
-  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  @Throttle(routeLimit(20))
   requestOtp(@Body() dto: RequestOtpDto, @Req() request: Request) {
     return this.authService.requestOtp(dto, clientRateContext(request));
   }
 
   @Post("otp/verify")
   @HttpCode(HttpStatus.OK)
-  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @Throttle(routeLimit(30))
   verifyOtp(@Body() dto: VerifyOtpDto) {
     return this.authService.verifyOtp(dto);
   }
 
   @Post("password-reset/request")
   @HttpCode(HttpStatus.OK)
-  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Throttle(routeLimit(10))
   requestPasswordReset(
     @Body() dto: PasswordResetRequestDto,
     @Req() request: Request,
@@ -311,7 +312,7 @@ export class AuthController {
 
   @Post("password-reset/confirm")
   @HttpCode(HttpStatus.OK)
-  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Throttle(routeLimit(10))
   confirmPasswordReset(
     @Body() dto: PasswordResetConfirmDto,
     @Req() request: Request,

@@ -9,6 +9,7 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
+import { routeLimit } from "../../../platform/http/route-throttle";
 import { AuthenticatedUser } from "../public/identity-session.types";
 import { CurrentUser } from "../public/current-user.decorator";
 import { AllowedWhileDeletionPending, JwtAuthGuard } from "../public/jwt-auth.guard";
@@ -36,7 +37,7 @@ export class AccountDeletionStatusController {
   // sign-in's 10 a minute rather than tighter.
   @Post()
   @HttpCode(HttpStatus.OK)
-  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Throttle(routeLimit(10))
   requestDeletion(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() dto: RequestAccountDeletionDto,

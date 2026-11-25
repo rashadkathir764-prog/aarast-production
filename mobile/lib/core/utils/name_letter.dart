@@ -28,3 +28,12 @@ String nameLetter(String name, {String empty = '؟'}) {
   final word = _kin.contains(first) ? first.substring(2) : first;
   return word.characters.first;
 }
+
+/// The name a greeting says («أهلًا محمد»): the first word of [name], or
+/// nothing when that word names a role or kinship, not the person
+/// (RA-MO-335: «أهلًا العريس», from a start whose «ايش اسمك؟» was answered
+/// «العريس»). The greeting then says «أهلًا فيك», as with no name.
+String greetingName(String name) {
+  final first = name.trim().split(RegExp(r'\s+')).first;
+  return _kin.contains(first) ? '' : first;
+}

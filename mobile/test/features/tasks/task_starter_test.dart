@@ -95,6 +95,29 @@ void main() {
     expect(groom, isNot(contains('task-bride-gold')));
   });
 
+  // RA-MO-325: the bride's tasks had no women's photographer, no kosha and
+  // no hospitality, the three her money items hold (as the server seeds).
+  test('the bride is offered her photographer, her kosha and her hospitality', () {
+    final bride = {
+      for (final group in taskStarterGroupsFor(null, TaskStarterPersona.bride))
+        for (final item in group.templates) item.key: item,
+    };
+    expect(bride['task-bride-photographer']?.title, 'حجز المصورة النسائية');
+    expect(bride['task-bride-photographer']?.taskCategory, 'PHOTOGRAPHY');
+    expect(bride['task-bride-kosha']?.title, 'الاتفاق على الكوشة وديكور الصالة');
+    expect(bride['task-bride-kosha']?.taskCategory, 'PROVIDERS');
+    expect(bride['task-bride-hospitality']?.title, 'الاتفاق على الضيافة والحلويات');
+    expect(bride['task-bride-hospitality']?.taskCategory, 'CATERING');
+    for (final key in ['task-bride-photographer', 'task-bride-kosha', 'task-bride-hospitality']) {
+      expect(bride[key]?.recommended, isTrue, reason: key);
+    }
+    final groom = {
+      for (final group in taskStarterGroupsFor(null, TaskStarterPersona.groom))
+        for (final item in group.templates) item.key,
+    };
+    expect(groom, isNot(contains('task-bride-kosha')));
+  });
+
   // Field test Q06: "set the wedding date" was offered to a plan with a date.
   test('a plan with a wedding date is not offered to set it', () {
     final groups = taskStarterGroupsFor(null, TaskStarterPersona.groom);

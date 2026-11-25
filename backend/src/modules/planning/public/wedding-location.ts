@@ -251,11 +251,24 @@ function tolerantText(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
+/**
+ * RA-MO-335: «أمانة العاصمة» is the capital, Sana'a. With its city given as
+ * «صنعاء» the two are one place, said once («صنعاء»); the stored governorate
+ * stays as given. The phone's labels follow the same rule
+ * (`WeddingLocationDraft._join`).
+ */
+const CAPITAL = 'أمانة العاصمة';
+const CAPITAL_CITY = 'صنعاء';
+
 function joinUnique(values: (string | null | undefined)[]): string | null {
   const parts: string[] = [];
   for (const value of values) {
     const trimmed = value?.trim();
     if (!trimmed || parts.includes(trimmed)) continue;
+    if (trimmed === CAPITAL_CITY && parts[parts.length - 1] === CAPITAL) {
+      parts[parts.length - 1] = CAPITAL_CITY;
+      continue;
+    }
     parts.push(trimmed);
   }
   return parts.length > 0 ? parts.join(' - ') : null;

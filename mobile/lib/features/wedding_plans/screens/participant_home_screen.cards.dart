@@ -22,7 +22,7 @@ class _Greeting extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final first = name.trim().split(RegExp(r'\s+')).first;
+    final first = greetingName(name);
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AarastV3Space.x1,

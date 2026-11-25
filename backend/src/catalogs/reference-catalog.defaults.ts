@@ -314,6 +314,11 @@ const taskGroups: TaskGroupSeed[] = [
       // trousseau, as the groom has his gold and kiswa.
       ['task-bride-gold', 'شراء الذهب والإكسسوارات', 'gem', 150, true],
       ['task-bride-trousseau', 'تجهيز جهاز العروسة', 'package-open', 120, true],
+      // RA-MO-325 (appended, so the sort orders above stay): her women's
+      // photographer, her kosha and her hospitality, as her items hold them.
+      ['task-bride-photographer', 'حجز المصورة النسائية', 'camera', 120, true],
+      ['task-bride-kosha', 'الاتفاق على الكوشة وديكور الصالة', 'layout-grid', 90, true],
+      ['task-bride-hospitality', 'الاتفاق على الضيافة والحلويات', 'cake-slice', 60, true],
     ],
   },
   {

@@ -11,6 +11,7 @@ import '../../../../core/utils/compact_money_figure.dart';
 import '../../../../core/utils/currency_label.dart';
 import '../../../../core/utils/hijri_date.dart';
 import '../../../../core/utils/keep_currency_on_line.dart';
+import '../../../../core/utils/name_letter.dart';
 import '../../../../core/utils/plan_day.dart';
 import '../../../../core/utils/money_formatters.dart'
     show compactMoneyParts, sumSafeMoneyParts;

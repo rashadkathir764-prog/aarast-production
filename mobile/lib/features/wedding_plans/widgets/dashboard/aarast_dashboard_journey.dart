@@ -27,7 +27,7 @@ class _JourneyHomeHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final name = userName.trim().split(RegExp(r'\s+')).first;
+    final name = greetingName(userName);
     final greeting = this.greeting;
     final line = [
       summary.title.trim(),

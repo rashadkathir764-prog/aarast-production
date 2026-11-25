@@ -29,11 +29,13 @@ enum PlanEventType {
     return null;
   }
 
-  /// Its name in the plan's words: the bride's wedding is «الزفة».
+  /// Its name in the plan's words: the bride's wedding is «الزفة», and in
+  /// her plan the groom's night and afternoon (a plan whose side changed,
+  /// D55) are hers, «الحفلة» and «النسمة», as their icon and colour are.
   String label(JourneyProfile profile) => switch (this) {
     wedding => profile.plan('الزفاف', 'الزفة'),
-    samra => 'السمرة',
-    maqeel => 'المقيل',
+    samra => profile.plan('السمرة', 'الحفلة'),
+    maqeel => profile.plan('المقيل', 'النسمة'),
     hafla => 'الحفلة',
     nashma => 'النسمة',
     aqd => 'عقد القران',

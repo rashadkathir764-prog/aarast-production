@@ -146,12 +146,24 @@
     );
   }
 
+  /// RA-MO-335: «أمانة العاصمة» is the capital, Sana'a; with its city given
+  /// as «صنعاء» the two are one place, said once («صنعاء»), as the server
+  /// labels it (`wedding-location.ts`). The governorate stays as given.
+  static const _capital = 'أمانة العاصمة';
+  static const _capitalCity = 'صنعاء';
+
   static String? _join(List<String?> values) {
     final parts = <String>[];
     for (final value in values) {
       final cleanValue = _clean(value);
       if (cleanValue == null) continue;
       if (parts.any((part) => _sameText(part, cleanValue))) continue;
+      if (_sameText(cleanValue, _capitalCity) &&
+          parts.isNotEmpty &&
+          _sameText(parts.last, _capital)) {
+        parts.last = _capitalCity;
+        continue;
+      }
       parts.add(cleanValue);
     }
     if (parts.isEmpty) return null;

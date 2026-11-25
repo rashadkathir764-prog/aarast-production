@@ -87,6 +87,32 @@ test('task templates cover every role with a due offset before the wedding', () 
   }
 });
 
+// RA-MO-325: the bride's own tasks hold her women's photographer, her kosha
+// and her hospitality, appended so the sort orders before them stay.
+test("the bride's tasks hold her photographer, her kosha and her hospitality", () => {
+  const bride = taskStarterDefaults.filter((item) => item.groupKey === 'bride-tasks');
+  const byKey = new Map(bride.map((item) => [item.key, item]));
+  for (const [key, name, daysBefore] of [
+    ['task-bride-photographer', 'حجز المصورة النسائية', '120'],
+    ['task-bride-kosha', 'الاتفاق على الكوشة وديكور الصالة', '90'],
+    ['task-bride-hospitality', 'الاتفاق على الضيافة والحلويات', '60'],
+  ] as const) {
+    const item = byKey.get(key);
+    assert.equal(item?.nameAr, name, key);
+    assert.equal(item?.metadata?.daysBefore, daysBefore, key);
+    assert.equal(item?.isRecommended, true, key);
+    assert.equal(item?.showForGroom, false, key);
+  }
+  // Appended: the eight before keep their place.
+  assert.deepEqual(
+    bride.slice(0, 8).map((item) => item.key),
+    [
+      'task-bride-hall', 'task-bride-dress', 'task-bride-coiffeur', 'task-bride-singer',
+      'task-bride-naqsh', 'task-bride-subhia', 'task-bride-gold', 'task-bride-trousseau',
+    ],
+  );
+});
+
 test('catalog publication separates drafts from the public bootstrap', () => {
   const schema = readLivePrismaSchema();
   const service = read('src/catalogs/reference-catalog.service.ts');

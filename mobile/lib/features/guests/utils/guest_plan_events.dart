@@ -39,8 +39,15 @@ String guestEventLabel(PlanEvent event, JourneyProfile profile) {
 }
 
 /// Where the server's word for an event's kind differs from the app's own
-/// (the bride's «النسمة» is spelt alike on both since D116).
-const _serverEventWords = {PlanEventType.custom: 'مناسبة'};
+/// (the bride's «النسمة» is spelt alike on both since D116). The server
+/// names the groom's night and afternoon by their kind in any plan, so the
+/// preview of what a guest gets says what he gets (the app names them in
+/// the bride's words in her plan, D55).
+const _serverEventWords = {
+  PlanEventType.custom: 'مناسبة',
+  PlanEventType.samra: 'السمرة',
+  PlanEventType.maqeel: 'المقيل',
+};
 
 /// D116: the plan's occasions as the guests tab reads them: the wedding
 /// first, the others by day (an undated one last). A plan whose wedding row

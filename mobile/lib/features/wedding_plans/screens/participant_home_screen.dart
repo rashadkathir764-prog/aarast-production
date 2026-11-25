@@ -14,6 +14,7 @@ import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/hijri_date.dart';
+import '../../../core/utils/name_letter.dart';
 import '../../../core/utils/money_formatters.dart' show compactMoneyParts;
 import '../../../core/utils/plan_day.dart';
 import '../../../core/widgets/aarast_toast.dart';

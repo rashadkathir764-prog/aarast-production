@@ -65,7 +65,9 @@ Future<void> runStudioWalk(WidgetTester tester) async {
   await walk.step('p15_requests_new', 'الطلبات: جديد', () async {
     await walk.tab('الطلبات');
     walk.expectSee('ينتظرون ردك');
-    walk.expectSee('سلمى السقاف', why: 'طلب سلمى الجديد');
+    // RA-BE-168: a provider reads a customer as first name and family
+    // initial («سلمى س.»), never the whole surname.
+    walk.expectSee('سلمى س.', why: 'طلب سلمى الجديد');
   });
 
   Future<void> requestState(String id, String chip, String customer) async {
@@ -75,15 +77,15 @@ Future<void> runStudioWalk(WidgetTester tester) async {
     });
   }
 
-  await requestState('p19_requests_replied', 'ردّيت', 'محمد الحمدي');
-  await requestState('p22_requests_booked', 'محجوز', 'فهد العمري');
-  await requestState('p20_requests_ended', 'انتهى', 'عادل الريمي');
+  await requestState('p19_requests_replied', 'ردّيت', 'محمد ح.');
+  await requestState('p22_requests_booked', 'محجوز', 'فهد ع.');
+  await requestState('p20_requests_ended', 'انتهى', 'عادل ر.');
 
   await walk.step('p16_request', 'طلب سلمى', () async {
     await walk.tapText('جديد', wait: 2.5);
     // Her wedding-night request (the seed also holds a henna-night one).
     if (!await walk.tapText('الخميس 21 يناير', wait: 3.5)) return;
-    walk.expectSee('سلمى السقاف');
+    walk.expectSee('سلمى س.');
     walk.expectSee('صور وفيديو');
     walk.expectSee('21 يناير');
     walk.expectSee('إرسال عرض');
@@ -106,7 +108,7 @@ Future<void> runStudioWalk(WidgetTester tester) async {
   await walk.step('p22_booking', 'حجز فهد', () async {
     await walk.tab('الطلبات');
     await walk.tapText('محجوز', wait: 2.5);
-    if (!await walk.tapText('فهد العمري', wait: 3.5)) return;
+    if (!await walk.tapText('فهد ع.', wait: 3.5)) return;
     walk.expectSee('4 فبراير');
   });
   await walk.back();
@@ -119,9 +121,9 @@ Future<void> runStudioWalk(WidgetTester tester) async {
 
   await walk.step('p33_chats', 'الرسائل', () async {
     await walk.tab('الرسائل');
-    walk.expectSee('فهد العمري');
-    walk.expectSee('خالد القاضي');
-    walk.expectSee('سلمى السقاف');
+    walk.expectSee('فهد ع.');
+    walk.expectSee('خالد ق.');
+    walk.expectSee('سلمى س.');
   });
 
   await walk.step('p35_me', 'ملفي', () async {

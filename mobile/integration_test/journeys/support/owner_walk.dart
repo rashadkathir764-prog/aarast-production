@@ -230,8 +230,10 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
   await walk.step('a02b_whose', 'فين تدخل: خطتين', () async {
     // Signs in and stops on the chooser to judge it before picking.
     await walk.signInOnly(p.phone);
-    if (!await walk.waitFor(walk.text('فين تدخل؟'), seconds: 10)) {
-      walk.fail('ما ظهرت شاشة «فين تدخل؟» والحساب له خطتين');
+    // The chooser speaks to her as a woman (RA-MO-322..325).
+    final chooser = p.say('فين تدخل؟', 'فين تدخلين؟');
+    if (!await walk.waitFor(walk.text(chooser), seconds: 10)) {
+      walk.fail('ما ظهرت شاشة «$chooser» والحساب له خطتين');
       return;
     }
     walk.expectSee(p.planName);

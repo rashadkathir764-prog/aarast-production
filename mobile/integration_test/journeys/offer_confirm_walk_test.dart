@@ -39,7 +39,8 @@ void main() {
             })
             .evaluate()
             .isNotEmpty;
-        if (!sheetUp) await walk.tapText('محمد', wait: 3);
+        // RA-BE-168: the provider reads him as «محمد ح.».
+        if (!sheetUp) await walk.tapText('محمد ح.', wait: 3);
         walk.note(walk.visibleTexts().take(24).join(' · '));
       });
 

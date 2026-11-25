@@ -4,6 +4,7 @@
 // providers; no money), الوالد a VIEWER (no edit right). Reading is separate
 // from editing (D52): الوالد reads the plan's tasks, guests and bookings.
 // D80: صالح reads every guest and the numbers of only the ones he added.
+import 'package:aarast_mobile/core/utils/name_letter.dart' show greetingName;
 import 'package:flutter/widgets.dart' show ValueKey;
 import 'package:flutter_test/flutter_test.dart';
 
@@ -109,7 +110,10 @@ Future<void> runParticipantWalk(
     if (!await walk.waitFor(walk.text('يوم على العرس'), seconds: 12)) {
       walk.fail('ما ظهر عدّاد الأيام');
     }
-    walk.expectSee('أهلًا ${p.name}');
+    // A kin word is not a name (greetingName): «الوالد» is greeted
+    // «أهلًا فيك», not «أهلًا الوالد».
+    final first = greetingName(p.name);
+    walk.expectSee(first.isEmpty ? 'أهلًا فيك' : 'أهلًا $first');
     walk.expectSee('عرس محمد');
     walk.expectSee(p.roleLine, why: 'وصف دوره بعربي صحيح');
     walk.expectSee('21 يناير');

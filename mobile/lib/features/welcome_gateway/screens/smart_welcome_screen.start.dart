@@ -9,6 +9,7 @@ class _StartStep extends StatelessWidget {
     required this.resumeLine,
     required this.onPlan,
     required this.onReplacePlan,
+    required this.waitingInvite,
     required this.onInvite,
     required this.onProvider,
     required this.onLogin,
@@ -25,6 +26,10 @@ class _StartStep extends StatelessWidget {
   /// A finished plan on this phone that is not this person's (made on a
   /// shared phone): start a new one in its place, after a confirmation.
   final VoidCallback onReplacePlan;
+
+  /// RA-MO-337: who asks and for which wedding, when an invite waits for
+  /// the signed-in number; the door then opens it. Null otherwise.
+  final String? waitingInvite;
   final VoidCallback onInvite;
   final VoidCallback onProvider;
   final VoidCallback onLogin;
@@ -102,8 +107,13 @@ class _StartStep extends StatelessWidget {
                       JourneyDoor(
                         key: const ValueKey('door-invite'),
                         icon: LucideIcons.mail,
-                        title: 'معي رابط دعوة',
-                        subtitle: 'من صاحب خطة عرس',
+                        title: waitingInvite == null
+                            ? 'معي رابط دعوة'
+                            : 'عندك دعوة تنتظرك',
+                        subtitle: switch (waitingInvite) {
+                          final line? when line.isNotEmpty => line,
+                          _ => 'من صاحب خطة عرس',
+                        },
                         onTap: onInvite,
                       ),
                       const SizedBox(height: AarastV3Space.x3),

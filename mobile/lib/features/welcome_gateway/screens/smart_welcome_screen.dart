@@ -36,6 +36,7 @@ import '../../finance/finance_api.dart'
         moneyStarterPlanItemNames,
         pickMahrDueDate;
 import '../../marketplace/marketplace_api.dart' show MarketplaceApi;
+import '../../sharing/sharing_api.dart' show SharingProvider;
 import '../../onboarding/onboarding_api.dart'
     show
         DraftMahr,
@@ -119,7 +120,19 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     if (!widget.newPlan) _loadSavedDraft();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadCities());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadCities();
+      _askWaitingInvites();
+    });
+  }
+
+  /// RA-MO-337: who signed up or signed in after an invite was sent to his
+  /// number had no way to it but the link; the invites waiting for the
+  /// signed-in number are asked here (`GET /api/v1/invites/mine`), and the
+  /// invite door opens the one waiting.
+  void _askWaitingInvites() {
+    if (!mounted || widget.newPlan || !_isAuthenticated()) return;
+    _maybeRead<SharingProvider>()?.loadMyInvites();
   }
 
   /// RA-MO-114: what was typed inside a step was kept only as the step was
@@ -578,6 +591,27 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen>
     );
   }
 
+  /// RA-MO-337: the invite waiting for the signed-in number, if any: its id
+  /// and «من محمد · عرس محمد» (who asks, and for which wedding).
+  ({String id, String line})? _waitingInvite(BuildContext context) {
+    if (!_isAuthenticated()) return null;
+    final SharingProvider sharing;
+    try {
+      sharing = context.watch<SharingProvider>();
+    } on ProviderNotFoundException {
+      return null;
+    }
+    final invite = sharing.waitingInvite;
+    if (invite == null) return null;
+    final from = invite.inviterName?.trim() ?? '';
+    final plan = invite.weddingPlanTitle?.trim() ?? '';
+    return (
+      id: invite.id,
+      line: [if (from.isNotEmpty) 'من $from', if (plan.isNotEmpty) plan]
+          .join(' · '),
+    );
+  }
+
   bool _isAuthenticated() {
     final auth = _maybeRead<AuthController>();
     return auth?.status == AuthStatus.authenticated;
@@ -778,6 +812,9 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen>
   }
 
   Widget _page(BuildContext context) {
+    final waiting = _step == _WelcomeStep.start
+        ? _waitingInvite(context)
+        : null;
     return switch (_step) {
       _WelcomeStep.start => _StartStep(
         phonePlanTitle: _phonePlanTitle,
@@ -793,7 +830,12 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen>
             ? context.go(AppRouter.home)
             : _goTo(_resumeStep ?? _WelcomeStep.whose),
         onReplacePlan: _replacePhonePlan,
-        onInvite: () => context.go(AppRouter.inviteAccess),
+        waitingInvite: waiting?.line,
+        onInvite: () => context.go(
+          waiting == null
+              ? AppRouter.inviteAccess
+              : AppRouter.inviteDecision(waiting.id),
+        ),
         // A provider without an account goes straight to their own
         // sign-up, never to a wall written for couples (D75).
         onProvider: () => context.go(

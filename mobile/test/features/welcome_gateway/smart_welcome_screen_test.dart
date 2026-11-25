@@ -25,6 +25,9 @@ import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
 import 'package:aarast_mobile/features/onboarding/data/guest_onboarding_storage.dart';
 import 'package:aarast_mobile/features/onboarding/models/guest_onboarding_draft.dart';
 import 'package:aarast_mobile/features/onboarding/models/wedding_location_draft.dart';
+import 'package:aarast_mobile/features/sharing/data/sharing_api.dart';
+import 'package:aarast_mobile/features/sharing/models/shared_member.dart';
+import 'package:aarast_mobile/features/sharing/providers/sharing_provider.dart';
 import 'package:aarast_mobile/features/wedding_plans/data/wedding_plans_api.dart';
 import 'package:aarast_mobile/features/wedding_plans/models/onboarding_complete.dart';
 import 'package:aarast_mobile/features/wedding_plans/providers/wedding_plans_provider.dart';
@@ -42,6 +45,12 @@ GoRouter _router({String initialLocation = '/welcome'}) => GoRouter(
     GoRoute(
       path: '/welcome',
       builder: (context, state) => const SmartWelcomeScreen(),
+    ),
+    // RA-MO-337: the invite screen, opened by the invite's id.
+    GoRoute(
+      path: '/invites/:token',
+      builder: (context, state) =>
+          Scaffold(body: Text('opened:${state.uri.path}')),
     ),
     // w11 «خطة جديدة».
     GoRoute(
@@ -73,6 +82,38 @@ class _SignedIn extends AuthController {
   @override
   AuthStatus get status => AuthStatus.authenticated;
 }
+
+/// RA-MO-337: the invites the server holds for the signed-in number.
+class _MyInvites extends SharingProvider {
+  _MyInvites(this.waiting)
+    : super(SharingApi(ApiClient(tokenProvider: () async => null)));
+
+  final List<PlanInvite> waiting;
+  int asked = 0;
+  List<PlanInvite> _read = const [];
+
+  @override
+  List<PlanInvite> get myInvites => _read;
+
+  @override
+  Future<void> loadMyInvites({String? token}) async {
+    asked += 1;
+    _read = waiting;
+    notifyListeners();
+  }
+}
+
+PlanInvite _invite({String status = 'PENDING', DateTime? expiresAt}) =>
+    PlanInvite.fromJson({
+      'id': 'invite-1',
+      'weddingPlanId': 'plan-9',
+      'status': status,
+      'role': 'HELPER',
+      'expiresAt': (expiresAt ?? DateTime.now().add(const Duration(days: 3)))
+          .toIso8601String(),
+      'weddingPlan': {'title': 'عرس محمد'},
+      'inviter': {'name': 'محمد'},
+    });
 
 /// Records the plan the screen asks for; answers like the server would.
 class _RecordingPlans extends WeddingPlansProvider {
@@ -111,6 +152,7 @@ Future<GuestOnboardingStorage> _pump(
   String initialLocation = '/welcome',
   GuestOnboardingDraft? keptPlan,
   PushNotificationsController? push,
+  SharingProvider? sharing,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = size;
@@ -132,6 +174,8 @@ Future<GuestOnboardingStorage> _pump(
         if (finance != null) Provider<FinanceApi>.value(value: finance),
         if (marketplace != null)
           Provider<MarketplaceApi>.value(value: marketplace),
+        if (sharing != null)
+          ChangeNotifierProvider<SharingProvider>.value(value: sharing),
         if (signedInPlans == null && signedIn)
           ChangeNotifierProvider<AuthController>(
             create: (_) => _SignedIn(AuthRepository(apiClient, authStorage)),
@@ -305,6 +349,43 @@ void main() {
     await _pump(tester);
     await _tapKey(tester, 'door-invite');
     expect(find.text('opened:/invites'), findsOneWidget);
+  });
+
+  // RA-MO-337: who signed up after the invite was sent had no way to it: the
+  // invites waiting for his number were asked only with a link's token. The
+  // door asks for them once he is signed in, and opens the one waiting by
+  // its id, on the invite screen (q01 to q03).
+  testWidgets('signed in, an invite waiting for his number is the invite door',
+      (tester) async {
+    final sharing = _MyInvites([_invite()]);
+    await _pump(tester, signedIn: true, sharing: sharing);
+
+    expect(sharing.asked, 1);
+    expect(find.text('عندك دعوة تنتظرك'), findsOneWidget);
+    expect(find.text('من محمد · عرس محمد'), findsOneWidget);
+    await _tapKey(tester, 'door-invite');
+    expect(find.text('opened:/invites/invite-1'), findsOneWidget);
+  });
+
+  testWidgets('an invite answered or ended is no waiting invite', (
+    tester,
+  ) async {
+    final sharing = _MyInvites([
+      _invite(status: 'ACCEPTED'),
+      _invite(expiresAt: DateTime.now().subtract(const Duration(days: 1))),
+    ]);
+    await _pump(tester, signedIn: true, sharing: sharing);
+
+    expect(find.text('عندك دعوة تنتظرك'), findsNothing);
+    await _tapKey(tester, 'door-invite');
+    expect(find.text('opened:/invites'), findsOneWidget);
+  });
+
+  testWidgets('signed out, no invite is asked for', (tester) async {
+    final sharing = _MyInvites([_invite()]);
+    await _pump(tester, sharing: sharing);
+    expect(sharing.asked, 0);
+    expect(find.text('معي رابط دعوة'), findsOneWidget);
   });
 
   testWidgets('«تسجيل الدخول» opens sign in', (tester) async {

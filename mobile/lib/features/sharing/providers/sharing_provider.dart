@@ -57,6 +57,12 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
   List<SharedMember> get members => _members;
   List<PlanInvite> get invites => _invites;
   List<PlanInvite> get myInvites => _myInvites;
+
+  /// RA-MO-337: an invite waiting for this account's number, from
+  /// [loadMyInvites] (the server's newest first); null when none waits.
+  PlanInvite? get waitingInvite => myInvites
+      .where((invite) => invite.isPending && invite.expiresAt.isAfter(appNow()))
+      .firstOrNull;
   List<SharedWeddingPlan> get sharedPlans => _sharedPlans;
   PlanAccessPermissions get access => _access;
   SharedMember? get selectedMember => _selectedMember;

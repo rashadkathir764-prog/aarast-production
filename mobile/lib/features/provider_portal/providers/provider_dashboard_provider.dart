@@ -420,8 +420,9 @@ class ProviderDashboardProvider extends ChangeNotifier
   /// The bookings list could not be read, so its count is unknown.
   bool get bookingsLoadFailed => _bookingsLoadFailed;
 
-  /// The confirmed bookings still ahead, from the bookings list (p12).
-  int get upcomingConfirmedBookings {
+  /// The confirmed bookings still ahead, nearest first, from the bookings
+  /// list (p12).
+  List<MarketplaceBooking> get upcomingConfirmed {
     final now = appNow();
     final today = DateTime(now.year, now.month, now.day);
     return _bookings
@@ -430,8 +431,12 @@ class ProviderDashboardProvider extends ChangeNotifier
               booking.status.toUpperCase() == 'CONFIRMED' &&
               !booking.eventDate.isBefore(today),
         )
-        .length;
+        .toList()
+      ..sort((a, b) => a.eventDate.compareTo(b.eventDate));
   }
+
+  /// How many of [upcomingConfirmed] there are (p12).
+  int get upcomingConfirmedBookings => upcomingConfirmed.length;
 
   Future<void> _loadClosedBookings() async {
     try {

@@ -66,10 +66,15 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
       dashboard.profile?.status,
     );
 
-    return AarastPageScaffold(
+    // The other provider pages' frame: the canvas, the round back at the
+    // title's start, the page's own gutter.
+    final header = JourneySubHeader(
       title: 'إضافة باقة',
-      // RA-MO-303: one voice to the provider (it mixed «اجمعي» and «تريد»).
-      subtitle: 'اجمع أكثر شي يطلبه العملاء في باقة واضحة.',
+      // Opened by a link there is no page behind it: back to «ملفي».
+      onBack: () => context.popOrGo(AppRouter.providerProfileTab),
+    );
+    return AarastScreenFrame(
+      backgroundColor: AarastV3Color.canvas,
       resizeToAvoidBottomInset: true,
       bottomNavigationBar: canManageListing
           ? AarastV3FormActionBar(
@@ -79,29 +84,23 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
               onPressed: dashboard.isSubmitting ? null : _submit,
             )
           : null,
-      actions: [
-        IconButton(
-          tooltip: 'رجوع',
-          // Opened by a link there is no page behind it: back to «ملفي».
-          onPressed: () => context.popOrGo(AppRouter.providerProfileTab),
-          icon: const Icon(LucideIcons.chevronRight),
-        ),
-      ],
       child: !canManageListing
           ? ListView(
+              padding: AarastV3Density.pageInsets,
               children: [
+                header,
                 if (dashboard.isLoading && dashboard.profile == null)
                   AarastSkeleton.form(fields: 4, inline: true)
                 else
                   AarastEmptyState(
                     icon: LucideIcons.fileClock,
-                    title: 'إضافة الباقات بعد الاعتماد',
+                    title: 'الباقات تنضاف بعد الموافقة',
                     message:
-                        'الإدارة تراجع حساب المزود أولاً. يمكنك إضافة الباقات بعد أن تصبح الحالة نشطة.',
+                        'فريق اعّرست يراجع ملفك أول، وبعد ما نوافق تضيف باقاتك من هنا.',
                     action: FilledButton.icon(
                       onPressed: () => context.go(AppRouter.providerDashboard),
                       icon: const Icon(LucideIcons.layoutDashboard),
-                      label: const Text('فتح لوحة المزود'),
+                      label: const Text('ارجع للرئيسية'),
                     ),
                   ),
               ],
@@ -109,14 +108,19 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
           : Form(
               key: _formKey,
               child: ListView(
+                padding: AarastV3Density.pageInsets,
                 keyboardDismissBehavior:
                     ScrollViewKeyboardDismissBehavior.onDrag,
                 children: [
+                  header,
+                  // RA-MO-303: one voice to the provider (it mixed «اجمعي»
+                  // and «تريد»). What a package is, in one line: «الخدمات»
+                  // and «الباقات» read alike (finding 11).
                   const AarastV3FocusPrompt(
-                    // Critique ب3: said for a provider of any gender.
-                    question: 'وش تجمع هذي الباقة؟',
+                    eyebrow: 'الباقة',
+                    question: 'ايش تجمع هذي الباقة؟',
                     supportingText:
-                        'اسم واضح وسعر حقيقي أول، وبعدها المميزات والخدمة لو لزم.',
+                        'الباقة تجمع خدماتك بسعر واحد، وتطلع لك في العرض السريع.',
                     icon: LucideIcons.package,
                   ),
                   if (_draft != null) ...[
@@ -149,6 +153,8 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
                         textAlign: TextAlign.right,
                         label: 'السعر',
                         suffix: currencyLabelAr(defaultCurrencyCode),
+                        // Why the currency is fixed.
+                        helper: 'الأسعار بالريال اليمني',
                         icon: LucideIcons.wallet,
                       ),
                     ],
@@ -156,7 +162,7 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
                   const SizedBox(height: AarastV3Space.x2),
                   AarastDisclosureCard(
                     title: 'محتوى الباقة',
-                    subtitle: 'الخدمة المرتبطة والوصف والمميزات',
+                    subtitle: 'الخدمة اللي تتبعها، وايش يشمل',
                     icon: LucideIcons.listChecks,
                     initiallyExpanded:
                         _serviceId != null ||
@@ -262,8 +268,8 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
       final router = GoRouter.of(context);
       AarastFormSuccess.show(
         context,
-        message: 'تمت إضافة الباقة.',
-        nextLabel: 'إضافة أخرى',
+        message: 'انضافت الباقة.',
+        nextLabel: 'أضف باقة ثانية',
         onNext: () => router.push(AppRouter.providerPackageNew),
       );
       context.go(AppRouter.providerDashboard);

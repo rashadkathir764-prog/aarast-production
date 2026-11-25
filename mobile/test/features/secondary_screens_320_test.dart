@@ -159,9 +159,11 @@ void main() {
         );
         await tester.pumpAndSettle();
 
+        // RA-BE-152 (Q-39): before saving, which changes wait for review.
         expect(
           find.text(
-            'حالة الحساب: نشط. تعديل البيانات لا يعني اعتماد المزود تلقائياً.',
+            'الاسم والمدينة والشعار والغلاف تتغير للعرسان بعد موافقتنا. '
+            'النبذة والرقم والأسعار تتغير على طول.',
           ),
           findsOneWidget,
         );
@@ -176,6 +178,8 @@ void main() {
               .first,
         );
         expect(firstField.controller?.text, _providerProfile.businessName);
+        // The number reads grouped, as it does everywhere else.
+        expect(find.text('+967 777 000 111'), findsOneWidget);
         expect(tester.takeException(), isNull);
       },
     );

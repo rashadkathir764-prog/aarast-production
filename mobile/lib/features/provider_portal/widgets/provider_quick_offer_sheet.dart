@@ -75,14 +75,32 @@ class _ProviderQuickOfferSheetState extends State<_ProviderQuickOfferSheet> {
   @override
   Widget build(BuildContext context) {
     final quote = widget.quote;
+    // The request in sight before its price: who, the day, the city, the
+    // budget shared and the guests, then what the customer wrote.
     final subtitle = [
       providerCustomerName(quote),
-      if (providerRequestLine(quote) case final line when line.isNotEmpty) line,
+      if (providerRequestFactsLine(quote) case final line when line.isNotEmpty)
+        line,
     ].join(' · ');
+    final message = quote.message?.trim() ?? '';
     return JourneySheetBody(
       title: 'رد سريع',
       subtitle: subtitle,
       children: [
+        if (message.isNotEmpty) ...[
+          JourneyBox(
+            key: const Key('provider-quick-offer-request-message'),
+            padding: const EdgeInsets.all(AarastV3Space.x3),
+            child: Text(
+              '«$message»',
+              style: JourneyType.of(
+                JourneyType.body,
+                height: AarastV3Line.reading,
+              ),
+            ),
+          ),
+          const SizedBox(height: AarastV3Space.x3),
+        ],
         for (final package in widget.packages) ...[
           JourneyOption(
             key: Key('provider-quick-offer-package-${package.id}'),

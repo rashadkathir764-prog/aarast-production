@@ -8,8 +8,8 @@ import '../widgets/provider_join_parts.dart';
 
 /// p08 «طلبك قيد المراجعة»: what happens while the team reviews.
 ///
-/// Only in-app notices exist, so the line says «نبلغك هنا» (no WhatsApp and
-/// no review time the server does not keep). Photos need approval (F2), so
+/// The answer reaches his phone as a notice ([providerDecisionNoticeLine]);
+/// no WhatsApp and no review time the server does not keep. Photos need approval (F2), so
 /// the provider can edit his profile's details while he waits.
 class ProviderPendingScreen extends StatelessWidget {
   const ProviderPendingScreen({
@@ -53,8 +53,8 @@ class ProviderPendingScreen extends StatelessWidget {
                     soft: AarastV3Color.brandAccentSoft,
                     title: 'طلبك قيد المراجعة',
                     message: sentAt == null
-                        ? 'وصلنا طلبك. نبلغك هنا.'
-                        : 'أرسلته ${providerMomentLabel(sentAt)}. نبلغك هنا.',
+                        ? 'وصلنا طلبك. $providerDecisionNoticeLine'
+                        : 'أرسلته ${providerMomentLabel(sentAt)}. $providerDecisionNoticeLine',
                     trailing: ProviderAccountButton(onPressed: onAccount),
                   ),
                   const JourneyBox(

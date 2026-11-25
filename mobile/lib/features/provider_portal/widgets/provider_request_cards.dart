@@ -16,7 +16,6 @@ class ProviderRequestCard extends StatelessWidget {
   const ProviderRequestCard({
     required this.quote,
     required this.state,
-    required this.color,
     required this.onOpen,
     this.booking,
     this.onQuickOffer,
@@ -26,7 +25,6 @@ class ProviderRequestCard extends StatelessWidget {
   final QuoteRequest quote;
   final ProviderCaseState state;
   final MarketplaceBooking? booking;
-  final Color color;
   final VoidCallback onOpen;
 
   /// Set when a package can answer this request at once.
@@ -35,10 +33,12 @@ class ProviderRequestCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final name = providerCustomerName(quote);
-    final line = providerRequestLine(quote);
+    // The day, the city and the budget shared: what decides a reply.
+    final line = providerRequestCardLine(quote);
     final next = _nextStep();
+    // «وصل 20 أكتوبر»: when it arrived, not a date of the wedding.
     final time = state == ProviderCaseState.fresh && quote.createdAt != null
-        ? providerDayLabel(quote.createdAt!)
+        ? 'وصل ${providerDayLabel(quote.createdAt!)}'
         : null;
     final nextRow = Row(
       children: [
@@ -86,7 +86,7 @@ class ProviderRequestCard extends StatelessWidget {
               children: [
                 JourneyAvatar(
                   letter: name.characters.first,
-                  color: color,
+                  color: providerPersonColor(name),
                   size: AarastV3Size.mark,
                 ),
                 const SizedBox(width: AarastV3Space.x2),
@@ -149,7 +149,8 @@ class ProviderRequestCard extends StatelessWidget {
       final until? => 'عرضك صالح لين ${formatArabicDayMonth(until.toLocal())}',
       null => 'عرضك وصل',
     },
-    ProviderCaseState.waitingBooking => 'قبل عرضك، ينتظر يطلب الحجز',
+    // The customer may be the bride: «them».
+    ProviderCaseState.waitingBooking => 'قبلوا عرضك، وما طلبوا الحجز لسا',
     ProviderCaseState.booked => 'الحجز مؤكد',
     ProviderCaseState.done => 'تم',
     _ => state.tag.$1,
@@ -158,9 +159,9 @@ class ProviderRequestCard extends StatelessWidget {
 
 /// B-11: the customer's reason in the provider's words.
 String? _rejectReasonWords(String? reason) => switch (reason) {
-  'PRICE' => 'السبب: السعر فوق اللي حاسب له',
-  'CHOSE_OTHER' => 'السبب: اختار مزود ثاني',
-  'DATE' => 'السبب: الموعد ما يناسبه',
+  'PRICE' => 'السبب: السعر فوق اللي حاسبين له',
+  'CHOSE_OTHER' => 'السبب: اختاروا مزود ثاني',
+  'DATE' => 'السبب: الموعد ما يناسبهم',
   _ => null,
 };
 
@@ -213,7 +214,7 @@ class ProviderEndedCard extends StatelessWidget {
             ? '$name اختاروا غيرك'
             : '$name ما قبلوا عرضك',
         // B-11: his reason, when he gave one; never his budget.
-        '${[changed == null ? 'رفض عرضك' : 'رفض عرضك ${providerDayLabel(changed)}', ?_rejectReasonWords(quote.customerRejectReason)].join('. ')}.',
+        '${[changed == null ? 'رفضوا عرضك' : 'رفضوا عرضك ${providerDayLabel(changed)}', ?_rejectReasonWords(quote.customerRejectReason)].join('. ')}.',
       ),
       ProviderCaseState.declined => (
         LucideIcons.x,
@@ -221,7 +222,7 @@ class ProviderEndedCard extends StatelessWidget {
         AarastV3Color.line,
         'اعتذرت من $name',
         (quote.rejectedAt ?? changed) == null
-            ? 'ما أرسلت له عرض.'
+            ? 'ما أرسلت لهم عرض.'
             : 'اعتذرت ${providerDayLabel((quote.rejectedAt ?? changed)!)}.',
       ),
       ProviderCaseState.cancelled => (
@@ -252,7 +253,7 @@ class ProviderEndedCard extends StatelessWidget {
         AarastV3Color.line,
         booking?.cancelledBy == 'PROVIDER'
             ? 'لغيت حجز $name'
-            : '$name لغى الحجز',
+            : '$name لغوا الحجز',
         dayText,
       ),
     };

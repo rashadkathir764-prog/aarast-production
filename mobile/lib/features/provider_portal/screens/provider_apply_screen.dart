@@ -406,7 +406,7 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: AarastV3Space.half),
         child: Text(
-          'نراجع طلبك ونبلغك هنا.',
+          'نراجع طلبك، و$providerDecisionNoticeLine',
           style: JourneyType.of(
             JourneyType.small,
             color: AarastV3Color.textMuted,

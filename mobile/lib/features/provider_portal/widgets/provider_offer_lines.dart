@@ -20,7 +20,7 @@ class ProviderOfferLinesEditor extends StatefulWidget {
 
   @override
   State<ProviderOfferLinesEditor> createState() =>
-      _ProviderOfferLinesEditorState();
+      ProviderOfferLinesEditorState();
 }
 
 const _kindWords = {
@@ -29,7 +29,8 @@ const _kindWords = {
   'EXTRA': 'إضافة',
 };
 
-class _ProviderOfferLinesEditorState extends State<ProviderOfferLinesEditor> {
+/// The editor's state; the offer form calls [addTyped] before its preview.
+class ProviderOfferLinesEditorState extends State<ProviderOfferLinesEditor> {
   final _label = TextEditingController();
   final _amount = TextEditingController();
   String _kind = 'INCLUDED';
@@ -42,20 +43,30 @@ class _ProviderOfferLinesEditorState extends State<ProviderOfferLinesEditor> {
     super.dispose();
   }
 
-  void _add() {
+  /// Adds a line typed but not added with «إضافة السطر»: the send lost it.
+  /// False when the typed line is not valid (its error shows); true when
+  /// it was added or nothing was typed.
+  bool addTyped() {
+    if (_label.text.trim().isEmpty && typedAmount(_amount.text).isEmpty) {
+      return true;
+    }
+    return _add();
+  }
+
+  bool _add() {
     final label = _label.text.trim();
     // RA-MO-301: an extra's price typed on an Arabic keyboard was refused.
     final amount = typedAmount(_amount.text);
     if (label.isEmpty) {
       setState(() => _error = 'اكتب السطر.');
-      return;
+      return false;
     }
     // D112 (Q-25): whole riyals; the server refuses a fraction.
     if (_kind == 'EXTRA' &&
         amount.isNotEmpty &&
         (!RegExp(r'^\d{1,12}$').hasMatch(amount) || int.parse(amount) <= 0)) {
       setState(() => _error = 'سعر الإضافة رقم صحيح أكبر من صفر.');
-      return;
+      return false;
     }
     widget.onChanged([
       ...widget.lines,
@@ -68,6 +79,7 @@ class _ProviderOfferLinesEditorState extends State<ProviderOfferLinesEditor> {
     _label.clear();
     _amount.clear();
     setState(() => _error = null);
+    return true;
   }
 
   @override
@@ -163,7 +175,7 @@ class _ProviderOfferLinesEditorState extends State<ProviderOfferLinesEditor> {
             key: const Key('provider-offer-line-add'),
             label: 'إضافة السطر',
             icon: LucideIcons.plus,
-            onPressed: _add,
+            onPressed: () => _add(),
           ),
         ),
       ],

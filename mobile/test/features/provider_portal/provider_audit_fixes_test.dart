@@ -627,7 +627,7 @@ Future<void> _openRequest(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
-/// «شوف العرض قبل ما يوصله», then the send in its sheet.
+/// «شوف العرض قبل ما يوصلهم», then the send in its sheet.
 Future<void> _sendOffer(WidgetTester tester) async {
   await tester.tap(find.byKey(const Key('provider-offer-preview')));
   await tester.pumpAndSettle();

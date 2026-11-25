@@ -105,7 +105,9 @@ class _ProviderProfileTabState extends State<ProviderProfileTab> {
           color: AarastV3Color.mint,
           soft: AarastV3Color.mintSoft,
         ),
-      if (profile.ratingCount > 0)
+      // Said once: with his operations open, the «التقييمات» row below
+      // carries it and opens them; the tag is for a closed profile only.
+      if (profile.ratingCount > 0 && !operations)
         JourneyTag(
           key: const Key('provider-me-rating'),
           icon: LucideIcons.star,

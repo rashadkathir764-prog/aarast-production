@@ -18,7 +18,8 @@ import '../../marketplace/marketplace_api.dart'
     show ProviderMarketplaceProvider;
 import '../data/provider_approval_ledger.dart';
 import '../providers/provider_dashboard_provider.dart';
-import '../widgets/provider_join_parts.dart' show providerPickOption;
+import '../widgets/provider_join_parts.dart'
+    show providerDecisionNoticeLine, providerPickOption;
 import '../widgets/provider_joining_service_sheet.dart';
 import '../widgets/provider_portal_bottom_nav.dart';
 import 'provider_approved_screen.dart';
@@ -104,6 +105,8 @@ class _ProviderPortalScreenState extends State<ProviderPortalScreen> {
     await _welcomed(providerId);
     if (!mounted) return;
     switch (step) {
+      case ProviderFirstStep.photos:
+        unawaited(context.push(AppRouter.providerGallery));
       case ProviderFirstStep.calendar:
         _openTab(2);
       case ProviderFirstStep.services:
@@ -192,7 +195,7 @@ class _ProviderPortalScreenState extends State<ProviderPortalScreen> {
         case 'SUSPENDED':
           return ProviderSuspendedScreen(
             profile: profile,
-            upcomingBookings: dashboard.upcomingConfirmedBookings,
+            upcoming: dashboard.upcomingConfirmed,
             bookingsKnown: !dashboard.bookingsLoadFailed,
             onRefresh: dashboard.loadDashboard,
             onSupport: () => context.push(AppRouter.support),
@@ -268,7 +271,10 @@ class _ProviderPortalScreenState extends State<ProviderPortalScreen> {
       fallback: 'ما قدرنا نرسل التعديل. مرة ثانية غالبًا تمشي.',
     );
     if (!mounted || !sent) return;
-    AarastToast.showSuccess(context, 'وصلنا تعديلك. نراجعه ونبلغك هنا.');
+    AarastToast.showSuccess(
+      context,
+      'وصلنا تعديلك. $providerDecisionNoticeLine',
+    );
   }
 
   /// p11 «تعديل الملف وإعادة التقديم» (B-02).

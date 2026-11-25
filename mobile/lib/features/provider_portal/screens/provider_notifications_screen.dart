@@ -302,10 +302,11 @@ ProviderNoticeLook providerNoticeLook(
         icon: LucideIcons.calendarCheck,
         color: AarastV3Color.brandAccentStrong,
         soft: AarastV3Color.brandAccentSoft,
-        title: '$first قبل عرضك',
+        // Critique ب4: the customer may be the bride, «them».
+        title: '$first قبلوا عرضك',
         subtitle: switch (state) {
           ProviderCaseState.bookingAsked => 'أكّد الحجز',
-          ProviderCaseState.waitingBooking => 'ينتظر يطلب الحجز',
+          ProviderCaseState.waitingBooking => 'ما طلبوا الحجز لسا',
           ProviderCaseState.booked => 'الحجز مؤكد',
           _ => requestLine,
         },
@@ -315,7 +316,7 @@ ProviderNoticeLook providerNoticeLook(
         icon: LucideIcons.xCircle,
         color: AarastV3Color.textMuted,
         soft: AarastV3Color.line,
-        title: '$first ما اختار عرضك',
+        title: '$first ما اختاروا عرضك',
         subtitle: requestLine,
       );
     // B-19: a booking request is its own type.
@@ -351,7 +352,7 @@ ProviderNoticeLook providerNoticeLook(
           icon: LucideIcons.calendarX,
           color: AarastV3Color.cobalt,
           soft: AarastV3Color.cobaltSoft,
-          title: '$first لغى الحجز',
+          title: '$first لغوا الحجز',
           subtitle: dayLine.isEmpty ? 'الحجز انلغى' : '$dayLine · الحجز انلغى',
         );
       }

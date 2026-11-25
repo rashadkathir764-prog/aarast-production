@@ -15,6 +15,7 @@ import '../../marketplace/marketplace_api.dart'
 import '../data/provider_text_limits.dart';
 import '../providers/provider_dashboard_provider.dart';
 import '../widgets/provider_offer_lines.dart';
+import '../widgets/provider_quick_offer_sheet.dart' show providerPackageMessage;
 import '../widgets/provider_request_parts.dart';
 import '../../../core/forms/latin_digits_formatter.dart';
 
@@ -119,8 +120,23 @@ class _ProviderOfferScreenState extends State<ProviderOfferScreen> {
       _title = package.title.trim();
       _amount.text = providerGroupedAmount(package.price) ?? '';
       _amountError = null;
+      // What the package includes, as the quick offer fills it: the form
+      // was left with «ايش يشمل» empty and refused the send. His own words
+      // stay; only an empty line or another package's own is replaced.
+      final typed = _message.text.trim();
+      if (typed.isEmpty || typed == _packageMessage) {
+        _packageMessage = providerPackageMessage(package);
+        _message.text = _packageMessage!;
+        _messageError = null;
+      }
     });
   }
+
+  /// The line the last picked package wrote, so picking another replaces
+  /// it but never his own words.
+  String? _packageMessage;
+
+  final _linesKey = GlobalKey<ProviderOfferLinesEditorState>();
 
   @override
   Widget build(BuildContext context) {
@@ -147,7 +163,10 @@ class _ProviderOfferScreenState extends State<ProviderOfferScreen> {
     final first = providerFirstName(providerCustomerName(quote));
     final packages = providerOfferPackages(dashboard.packages, quote);
     final open = quote.pendingOffer;
-    final line = providerRequestLine(quote);
+    // The request's facts in one line, so the price is set with them in
+    // sight (they were on the request page only).
+    final line = providerRequestFactsLine(quote);
+    final currency = providerOfferCurrency(quote);
     return AarastScreenFrame(
       backgroundColor: AarastV3Color.canvas,
       child: Column(
@@ -207,11 +226,25 @@ class _ProviderOfferScreenState extends State<ProviderOfferScreen> {
                     const SizedBox(width: AarastV3Space.x2),
                     Expanded(
                       flex: 2,
-                      child: _CurrencyField(
-                        currency: providerOfferCurrency(quote),
-                      ),
+                      child: _CurrencyField(currency: currency),
                     ),
                   ],
+                ),
+                // Why the currency does not change: the plan's own.
+                Padding(
+                  padding: const EdgeInsets.only(
+                    top: AarastV3Space.x1,
+                    right: AarastV3Space.x1,
+                    left: AarastV3Space.x1,
+                  ),
+                  child: Text(
+                    'السعر بعملة خطة العرس: ${currencySpokenLabelAr(currency)}.',
+                    key: const Key('provider-offer-currency-why'),
+                    style: JourneyType.of(
+                      JourneyType.small,
+                      color: AarastV3Color.textMuted,
+                    ),
+                  ),
                 ),
                 const SizedBox(height: AarastV3Space.x3),
                 JourneyTextField(
@@ -230,6 +263,7 @@ class _ProviderOfferScreenState extends State<ProviderOfferScreen> {
                 ),
                 const SizedBox(height: AarastV3Space.x3),
                 ProviderOfferLinesEditor(
+                  key: _linesKey,
                   lines: _lines,
                   onChanged: (lines) => setState(() => _lines = lines),
                 ),
@@ -292,7 +326,7 @@ class _ProviderOfferScreenState extends State<ProviderOfferScreen> {
             padding: AarastV3Density.actionInsets,
             child: JourneyButton(
               key: const Key('provider-offer-preview'),
-              label: 'شوف العرض قبل ما يوصله',
+              label: 'شوف العرض قبل ما يوصلهم',
               icon: LucideIcons.eye,
               expand: true,
               large: true,
@@ -311,6 +345,9 @@ class _ProviderOfferScreenState extends State<ProviderOfferScreen> {
   }
 
   Future<void> _preview(QuoteRequest quote) async {
+    // A line typed under «تفاصيل العرض» without «إضافة السطر» was lost on
+    // the send; it is added now, or its error shows and nothing goes.
+    if (!(_linesKey.currentState?.addTyped() ?? true)) return;
     final amountError = validateProviderOfferAmount(_amount.text);
     final messageError = _message.text.trim().isEmpty
         ? 'اكتب ايش يشمل العرض.'

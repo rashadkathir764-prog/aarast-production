@@ -7,8 +7,10 @@ import '../widgets/provider_join_parts.dart';
 
 /// p02 «لقينا ملف بنفس رقمك»: the team listed this business under the
 /// account's phone (F4). «إيه، هذا ملفي» asks the review team for it
-/// (B-12, D41); it becomes this account's once they approve, so «بعد ما
-/// تستلمه تعدّل كل شيء فيه» is true.
+/// (B-12, D41); it becomes this account's once they approve. Then the bio,
+/// the number and the prices change at once, and the name, the city, the
+/// logo and the cover after the team's approval (RA-BE-152); «تعدّل كل شيء
+/// فيه» was untrue.
 ///
 /// The listing reads with its category and city («تصوير · صنعاء»); the
 /// waiting requests and the views the design draws are not shown (an
@@ -104,9 +106,19 @@ class ProviderClaimScreen extends StatelessWidget {
                     children: [
                       ProviderIdentityRow(name: businessName, kind: kind),
                       const SizedBox(height: AarastV3Space.x3),
+                      // What he can change once it is his (RA-BE-152): not
+                      // «كل شيء»; the name and its like wait for the team.
                       const ProviderFactRow(
+                        key: Key('provider-claim-edit-now'),
                         icon: LucideIcons.pencil,
-                        text: 'بعد ما تستلمه تعدّل كل شيء فيه',
+                        text:
+                            'بعد ما تستلمه: النبذة والرقم والأسعار تتغير على طول',
+                      ),
+                      const ProviderFactRow(
+                        key: Key('provider-claim-edit-reviewed'),
+                        icon: LucideIcons.hourglass,
+                        text:
+                            'والاسم والمدينة والشعار والغلاف تتغير للعرسان بعد موافقتنا',
                       ),
                     ],
                   ),
@@ -196,8 +208,8 @@ class ProviderClaimPendingScreen extends StatelessWidget {
                     soft: AarastV3Color.brandAccentSoft,
                     title: 'طلب الاستلام قيد المراجعة',
                     message: sentAt == null
-                        ? 'وصلنا طلبك. نبلغك هنا.'
-                        : 'أرسلته ${providerMomentLabel(sentAt)}. نبلغك هنا.',
+                        ? 'وصلنا طلبك. $providerDecisionNoticeLine'
+                        : 'أرسلته ${providerMomentLabel(sentAt)}. $providerDecisionNoticeLine',
                     trailing: JourneyRoundButton(
                       key: const Key('provider-claim-pending-back'),
                       icon: LucideIcons.arrowRight,

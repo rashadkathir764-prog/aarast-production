@@ -200,6 +200,23 @@ String providerCustomerName(QuoteRequest quote) {
   return 'العميل';
 }
 
+/// A customer's avatar colour, from the person, not the row: the same name
+/// keeps one colour in the requests, a request and the messages (it was
+/// purple in one list and pink in the other, by row).
+Color providerPersonColor(String name) {
+  const colours = [
+    AarastV3Color.brandAccentStrong,
+    AarastV3Color.primary,
+    AarastV3Color.lilac,
+    AarastV3Color.cobalt,
+  ];
+  var hash = 0;
+  for (final unit in name.trim().codeUnits) {
+    hash = (hash * 31 + unit) & 0x7fffffff;
+  }
+  return colours[hash % colours.length];
+}
+
 /// «محمد» from «محمد الحمدي».
 String providerFirstName(String name) =>
     name.trim().split(RegExp(r'\s+')).first;
@@ -305,6 +322,44 @@ String providerRequestLine(QuoteRequest quote) => [
   if (quote.eventDate case final day?) formatArabicWeekdayDayMonth(day),
   if (quote.service?.title.trim().isNotEmpty == true)
     quote.service!.title.trim(),
+].join(' · ');
+
+/// The request's city, as the customer gave it: the city, else the
+/// governorate.
+String? _requestCity(QuoteRequest quote) {
+  for (final part in [
+    quote.location?.cityOrDistrict,
+    quote.location?.governorate,
+  ]) {
+    final trimmed = part?.trim() ?? '';
+    if (trimmed.isNotEmpty) return trimmed;
+  }
+  return null;
+}
+
+/// p15's card line: «الخميس 21 يناير · صنعاء · 300,000 لين 600,000 ر.ي».
+/// The budget only when the customer shared it (B-08); an empty fact is
+/// left out. The occasion and the period have no field (the server holds
+/// none).
+String providerRequestCardLine(QuoteRequest quote) => [
+  if (quote.eventDate case final day?) formatArabicWeekdayDayMonth(day),
+  ?_requestCity(quote),
+  if (quote.shareBudget) ?providerBudgetLabel(quote),
+].join(' · ');
+
+/// The request in one line above an answer to it (the offer form p17 and
+/// the quick offer p45): the card's line and the guests, so the price is
+/// set with the request in sight.
+String providerRequestFactsLine(QuoteRequest quote) => [
+  if (providerRequestCardLine(quote) case final line when line.isNotEmpty) line,
+  if (quote.guestCount case final guests? when guests > 0)
+    arabicCount(
+      guests,
+      one: 'ضيف واحد',
+      two: 'ضيفين',
+      few: 'ضيوف',
+      many: 'ضيف',
+    ),
 ].join(' · ');
 
 /// p43's bar: no network, and what still works without it. Only a new
@@ -641,13 +696,15 @@ class ProviderRequestFacts extends StatelessWidget {
         ('اليوم', providerEventDayLabel(day, showHijri: showHijri)),
       if (place.isNotEmpty) ('المكان', place),
       if (guests != null && guests > 0) ('الضيوف', '$guests تقريبًا'),
-      if (wants.isNotEmpty) ('يشتي', wants),
+      // The customer may be a bride: the labels name no «him».
+      if (wants.isNotEmpty) ('يشتون', wants),
       // B-08: only what the customer chose to share reaches the provider.
       if (quote.shareBudget)
-        if (providerBudgetLabel(quote) case final budget?) ('ميزانيته', budget),
+        if (providerBudgetLabel(quote) case final budget?)
+          ('الميزانية', budget),
       if (quote.shareContact)
         if (quote.contactPhone?.trim() case final phone? when phone.isNotEmpty)
-          ('رقمه', phone),
+          ('الرقم', phone),
     ];
     if (facts.isEmpty) return const SizedBox.shrink();
     return JourneyBox(

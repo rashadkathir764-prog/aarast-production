@@ -11,6 +11,7 @@ import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/forms/aarast_form_draft_binding.dart';
 import '../../../core/forms/aarast_form_draft_store.dart';
 import '../../../core/forms/aarast_form_success.dart';
+import '../../../core/phone/phone_number_utils.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
@@ -74,10 +75,10 @@ class _EditProviderProfileScreenState extends State<EditProviderProfileScreen> {
       });
     }
 
-    return AarastPageScaffold(
-      title: 'تعديل ملف المزود',
-      // RA-MO-303: in the app's words, not formal.
-      subtitle: 'بيانات محلك اللي يشوفها العملاء في دليل المزودين.',
+    // The other provider pages' frame: the canvas, the round back at the
+    // title's start, the page's own gutter.
+    return AarastScreenFrame(
+      backgroundColor: AarastV3Color.canvas,
       resizeToAvoidBottomInset: true,
       bottomNavigationBar: profile == null
           ? null
@@ -87,25 +88,22 @@ class _EditProviderProfileScreenState extends State<EditProviderProfileScreen> {
               loading: dashboard.isSubmitting,
               onPressed: dashboard.isSubmitting ? null : _submit,
             ),
-      actions: [
-        IconButton(
-          tooltip: 'رجوع',
-          onPressed: () {
-            if (context.canPop()) {
-              context.pop();
-            } else {
-              context.go(AppRouter.providerDashboard);
-            }
-          },
-          icon: const Icon(LucideIcons.chevronRight),
-        ),
-      ],
       child: ListView(
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-        padding: EdgeInsets.only(
+        padding: AarastV3Density.pageInsets.copyWith(
           bottom: MediaQuery.viewInsetsOf(context).bottom + AarastV3Space.x8,
         ),
         children: [
+          JourneySubHeader(
+            title: 'تعديل ملفك',
+            onBack: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go(AppRouter.providerDashboard);
+              }
+            },
+          ),
           if (dashboard.isLoading && profile == null)
             AarastSkeleton.form(fields: 4, inline: true)
           else if (profile == null && dashboard.errorMessage != null)
@@ -126,12 +124,16 @@ class _EditProviderProfileScreenState extends State<EditProviderProfileScreen> {
               ),
             )
           else ...[
+            // RA-BE-152 (Q-39): which changes wait for the team, said before
+            // he saves, not after.
             _ProfileEditNotice(profile: profile),
             const SizedBox(height: AarastV3Space.x3),
+            // RA-MO-303: in the app's words, not formal.
             const AarastV3FocusPrompt(
-              question: 'ما البيانات التي يجب أن يراها العميل الحين؟',
+              eyebrow: 'ملفك',
+              question: 'ايش يشوف العرسان في ملفك؟',
               supportingText:
-                  'ثبّت اسم النشاط ورقم التواصل والمدينة؛ ويمكن إضافة النبذة لاحقًا.',
+                  'الاسم والرقم والمدينة أول، والنبذة تقدر تضيفها بعدين.',
               icon: LucideIcons.store,
             ),
             if (_draft != null) ...[
@@ -142,7 +144,7 @@ class _EditProviderProfileScreenState extends State<EditProviderProfileScreen> {
             Form(
               key: _formKey,
               child: AarastV3FormSurface(
-                title: 'بيانات الظهور للعملاء',
+                title: 'اللي يشوفه العرسان',
                 children: [
                   JourneyTextField(
                     controller: _businessNameController,
@@ -150,7 +152,7 @@ class _EditProviderProfileScreenState extends State<EditProviderProfileScreen> {
                     inputFormatters: [
                       LengthLimitingTextInputFormatter(providerTitleMax),
                     ],
-                    label: 'اسم النشاط / اسم المزود',
+                    label: 'اسم النشاط',
                     icon: LucideIcons.badge,
                     validator: (value) =>
                         value == null || value.trim().length < 2
@@ -187,15 +189,15 @@ class _EditProviderProfileScreenState extends State<EditProviderProfileScreen> {
                   AarastDisclosureCard(
                     title: 'نبذة النشاط',
                     subtitle: _descriptionController.text.trim().isEmpty
-                        ? 'يمكن إضافتها لاحقاً'
-                        : 'نبذة محفوظة — افتحها للتعديل',
+                        ? 'تقدر تضيفها بعدين'
+                        : 'افتحها وعدّلها',
                     icon: LucideIcons.fileText,
                     child: JourneyTextField(
                       controller: _descriptionController,
                       minLines: 2,
                       maxLines: 3,
                       maxLength: 280,
-                      label: 'ما الذي يميز خدمتك؟',
+                      label: 'ايش يميز شغلك؟',
                       icon: LucideIcons.fileText,
                     ),
                   ),
@@ -229,7 +231,12 @@ class _EditProviderProfileScreenState extends State<EditProviderProfileScreen> {
     final waiting = profile.pendingChange;
     _businessNameController.text =
         waiting?.businessName ?? profile.businessName;
-    _phoneController.text = profile.phone ?? '';
+    // Grouped as everywhere else («+967 773 210 455»); the save reads it
+    // back to the same number.
+    _phoneController.text =
+        PhoneNumberUtils.analyze(profile.phone).displayPhone ??
+        profile.phone ??
+        '';
     _descriptionController.text = profile.description ?? '';
     _cityId = waiting?.cityId ?? profile.cityId;
     _didPopulate = true;
@@ -291,7 +298,7 @@ class _EditProviderProfileScreenState extends State<EditProviderProfileScreen> {
         context,
         message: waits
             ? 'انحفظ ملفك. اللي قيد المراجعة يظهر للعرسان بعد ما نوافق عليه.'
-            : 'تم حفظ ملف المزود.',
+            : 'انحفظ ملفك.',
       );
       context.go(AppRouter.providerDashboard);
     }
@@ -303,28 +310,25 @@ class _ProfileEditNotice extends StatelessWidget {
 
   final ProviderDashboardProfile profile;
 
+  /// RA-BE-152 (Q-39): once approved, these wait for the team; the rest of
+  /// the profile changes at once.
+  static const reviewedLine =
+      'الاسم والمدينة والشعار والغلاف تتغير للعرسان بعد موافقتنا. '
+      'النبذة والرقم والأسعار تتغير على طول.';
+
   @override
   Widget build(BuildContext context) {
-    final statusLabel = _providerStatusLabel(profile.status);
-    return AarastCard(
-      color: AppTheme.canvas,
-      child: Row(
-        children: [
-          const Icon(LucideIcons.info, color: AppTheme.focus),
-          const SizedBox(width: AarastV3Space.x3),
-          Expanded(
-            child: Text(
-              'حالة الحساب: $statusLabel. تعديل البيانات لا يعني اعتماد المزود تلقائياً.',
-              textAlign: TextAlign.right,
-              style: const TextStyle(
-                color: AppTheme.textPrimary,
-                fontWeight: FontWeight.w800,
-                height: AarastV3Line.reading,
-              ),
-            ),
-          ),
-        ],
-      ),
+    final status = profile.status.toUpperCase();
+    return JourneyNote(
+      key: const Key('provider-profile-edit-notice'),
+      icon: LucideIcons.info,
+      tone: JourneyNoteTone.paper,
+      text: status == 'ACTIVE'
+          ? reviewedLine
+          // Before approval the whole profile is under review; editing it
+          // is not an approval.
+          : 'حالة ملفك: ${_providerStatusLabel(profile.status)}. '
+                'التعديل ما يعني إننا وافقنا.',
     );
   }
 }
@@ -375,25 +379,9 @@ class _LockedCategoryNote extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AarastCard(
-      color: AppTheme.brandMuted,
-      child: Row(
-        children: [
-          const Icon(LucideIcons.lock, color: AppTheme.brand),
-          const SizedBox(width: AarastV3Space.x2),
-          Expanded(
-            child: Text(
-              'فئة الخدمة الحالية: $categoryName. تغيير الفئة ما يصير من هنا، يصير عن طريق الدعم.',
-              textAlign: TextAlign.right,
-              style: const TextStyle(
-                color: AppTheme.textPrimary,
-                fontWeight: FontWeight.w800,
-                height: AarastV3Line.reading,
-              ),
-            ),
-          ),
-        ],
-      ),
+    return JourneyNote(
+      icon: LucideIcons.lock,
+      text: 'قسمك: $categoryName. تغيير القسم عن طريق الدعم، مش من هنا.',
     );
   }
 }

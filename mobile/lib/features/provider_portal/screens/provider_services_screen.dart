@@ -94,6 +94,11 @@ class _ProviderServicesScreenState extends State<ProviderServicesScreen> {
               action: 'إضافة خدمة',
               onAction: () => context.push(AppRouter.providerServiceNew),
             ),
+            // What each list is, in one line: the two read alike.
+            const _Meaning(
+              key: Key('provider-services-meaning'),
+              text: 'الخدمة شغلك وسعره من كم، وبها يظهر ملفك في الدليل.',
+            ),
             if (services.isEmpty && dashboard.isLoading)
               const JourneyListState(
                 phase: JourneyListPhase.loading,
@@ -126,10 +131,14 @@ class _ProviderServicesScreenState extends State<ProviderServicesScreen> {
               action: 'إضافة باقة',
               onAction: () => context.push(AppRouter.providerPackageNew),
             ),
+            const _Meaning(
+              key: Key('provider-packages-meaning'),
+              text: 'الباقة تجمع خدماتك بسعر واحد، وتطلع لك في العرض السريع.',
+            ),
             if (packages.isEmpty)
               const _Empty(
                 key: Key('provider-packages-empty'),
-                text: 'الباقة تجمع خدماتك بسعر واحد، وتطلع لك في العرض السريع.',
+                text: 'ما عندك باقة لسا.',
               )
             else
               for (final package in packages)
@@ -274,6 +283,31 @@ class _ListingCard extends StatelessWidget {
               ],
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// One muted line under a list's title saying what the list is.
+class _Meaning extends StatelessWidget {
+  const _Meaning({required this.text, super.key});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(
+        bottom: AarastV3Space.x2,
+        right: AarastV3Space.x1,
+        left: AarastV3Space.x1,
+      ),
+      child: Text(
+        text,
+        style: JourneyType.of(
+          JourneyType.small,
+          color: AarastV3Color.textMuted,
         ),
       ),
     );

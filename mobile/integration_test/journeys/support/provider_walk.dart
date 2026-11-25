@@ -207,7 +207,8 @@ Future<void> runReviewStatesWalk(WidgetTester tester) async {
     walk.expectSee('محلات الأناقة');
     walk.expectSee('باقي تعديل', why: 'ملاحظات المراجعة ظاهرة له');
     walk.expectSee('45,000', why: 'خدمة «ثوب أبيض» بسعرها');
-    walk.expectSee('أرسلت التعديل', why: 'زر إعادة الإرسال بصيغة المتكلم (B1)');
+    // Named for what it does, not a past act that has not happened.
+    walk.expectSee('أرسل للمراجعة', why: 'زر إعادة الإرسال');
   });
   await signOutFromReview('p09_logout');
 

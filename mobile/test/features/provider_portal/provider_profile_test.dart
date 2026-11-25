@@ -18,6 +18,8 @@ import 'package:aarast_mobile/features/provider_portal/screens/provider_portal_t
 import 'package:aarast_mobile/features/provider_portal/screens/provider_services_screen.dart';
 import 'package:aarast_mobile/features/provider_portal/screens/provider_settings_screen.dart';
 import 'package:aarast_mobile/features/provider_portal/screens/provider_share_screen.dart';
+import 'package:aarast_mobile/features/provider_portal/widgets/provider_first_steps.dart'
+    show providerPhotosStepLine;
 import 'package:aarast_mobile/features/provider_portal/widgets/provider_profile_parts.dart';
 import 'package:aarast_mobile/features/settings/data/settings_api.dart';
 import 'package:aarast_mobile/features/settings/models/user_settings.dart';
@@ -405,13 +407,17 @@ void main() {
       // RA-MO-331: a drawn star and the words; a ★ typed into the text is a
       // glyph the font lacks and drew an empty box.
       expect(find.textContaining('★'), findsNothing);
-      final rating = find.byKey(const Key('provider-me-rating'));
+      // The rating is said once, on the row that opens the reviews (it was
+      // a tag over the same words, v15).
+      expect(find.byKey(const Key('provider-me-rating')), findsNothing);
+      final reviews = find.byKey(const Key('provider-me-reviews'));
+      expect(find.text('4.7 · 38 تقييم'), findsOneWidget);
       expect(
-        find.descendant(of: rating, matching: find.text('4.7 · 38 تقييم')),
+        find.descendant(of: reviews, matching: find.text('4.7 · 38 تقييم')),
         findsOneWidget,
       );
       expect(
-        find.descendant(of: rating, matching: find.byIcon(LucideIcons.star)),
+        find.descendant(of: reviews, matching: find.byIcon(LucideIcons.star)),
         findsOneWidget,
       );
       expect(find.text('يرد عادة خلال 3 ساعات'), findsOneWidget);
@@ -951,6 +957,15 @@ void main() {
 
       expect(find.text('ما وصلك طلب لسا'), findsOneWidget);
       expect(find.text('هذا اللي يكمّل ملفك قدام العرسان:'), findsOneWidget);
+      // The photos show before any service exists, and first: a profile
+      // went live with none.
+      expect(find.text('صور من شغلك'), findsOneWidget);
+      expect(
+        tester.getTopLeft(find.byKey(const Key('provider-first-photos'))).dy,
+        lessThan(
+          tester.getTopLeft(find.byKey(const Key('provider-first-service'))).dy,
+        ),
+      );
       expect(find.text('خدمة بسعرها'), findsOneWidget);
       expect(find.text('شعارك'), findsOneWidget);
       // Changed on purpose (critique ب3): the steps named, said for any
@@ -964,6 +979,18 @@ void main() {
 
       await tester.tap(find.byKey(const Key('provider-first-logo')));
       expect(opened, [4]);
+    });
+
+    test('the photos step says why and how many until he has them', () {
+      expect(
+        providerPhotosStepLine(0),
+        'العرسان يختارون من صورك. حط 6 صور على الأقل.',
+      );
+      expect(
+        providerPhotosStepLine(2),
+        'عندك صورتين. العرسان يختارون من صورك، حط 6 على الأقل.',
+      );
+      expect(providerPhotosStepLine(8), 'عندك 8 صور في ملفك.');
     });
 
     testWidgets('the first request turns it back into p13', (tester) async {

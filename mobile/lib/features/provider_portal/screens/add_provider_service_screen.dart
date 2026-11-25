@@ -69,9 +69,15 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
       dashboard.profile?.status,
     );
 
-    return AarastPageScaffold(
+    // The other provider pages' frame: the canvas, the round back at the
+    // title's start, the page's own gutter.
+    final header = JourneySubHeader(
       title: 'إضافة خدمة',
-      subtitle: 'خدمة واضحة لتظهر ضمن ملف المزود بعد الاعتماد.',
+      // Opened by a link there is no page behind it: back to «ملفي».
+      onBack: () => context.popOrGo(AppRouter.providerProfileTab),
+    );
+    return AarastScreenFrame(
+      backgroundColor: AarastV3Color.canvas,
       resizeToAvoidBottomInset: true,
       bottomNavigationBar: canManageListing
           ? AarastV3FormActionBar(
@@ -81,29 +87,23 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
               onPressed: dashboard.isSubmitting ? null : _submit,
             )
           : null,
-      actions: [
-        IconButton(
-          tooltip: 'رجوع',
-          // Opened by a link there is no page behind it: back to «ملفي».
-          onPressed: () => context.popOrGo(AppRouter.providerProfileTab),
-          icon: const Icon(LucideIcons.chevronRight),
-        ),
-      ],
       child: !canManageListing
           ? ListView(
+              padding: AarastV3Density.pageInsets,
               children: [
+                header,
                 if (dashboard.isLoading && dashboard.profile == null)
                   AarastSkeleton.form(fields: 4, inline: true)
                 else
                   AarastEmptyState(
                     icon: LucideIcons.fileClock,
-                    title: 'إضافة الخدمات بعد الاعتماد',
+                    title: 'الخدمات تنضاف بعد الموافقة',
                     message:
-                        'الإدارة تراجع حساب المزود أولاً. يمكنك إضافة الخدمات بعد أن تصبح الحالة نشطة.',
+                        'فريق اعّرست يراجع ملفك أول، وبعد ما نوافق تضيف خدماتك من هنا.',
                     action: FilledButton.icon(
                       onPressed: () => context.go(AppRouter.providerDashboard),
                       icon: const Icon(LucideIcons.layoutDashboard),
-                      label: const Text('فتح لوحة المزود'),
+                      label: const Text('ارجع للرئيسية'),
                     ),
                   ),
               ],
@@ -111,13 +111,18 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
           : Form(
               key: _formKey,
               child: ListView(
+                padding: AarastV3Density.pageInsets,
                 keyboardDismissBehavior:
                     ScrollViewKeyboardDismissBehavior.onDrag,
                 children: [
+                  header,
+                  // In the portal's own voice and words («العرسان»,
+                  // «القسم»), and what a service is (finding 11).
                   const AarastV3FocusPrompt(
-                    question: 'ما الخدمة التي سيجدها العميل هنا؟',
+                    eyebrow: 'الخدمة',
+                    question: 'ايش الخدمة اللي يلقاها العرسان عندك؟',
                     supportingText:
-                        'اكتب اسمًا مفهومًا واختر الفئة؛ السعر والوصف يساعدان المقارنة دون وعود حجز.',
+                        'شغلك وسعره من كم، وبها يظهر ملفك في قسمه في الدليل.',
                     icon: LucideIcons.wand,
                   ),
                   if (_draft != null) ...[
@@ -143,7 +148,8 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
                       const SizedBox(height: AarastV3Field.gap),
                       JourneyChoiceField<String>(
                         value: _safeCategoryId(marketplace, dashboard),
-                        label: 'الفئة',
+                        // The portal's word for it everywhere («القسم»).
+                        label: 'القسم',
                         icon: LucideIcons.shapes,
                         choices: [
                           for (final category in _sections(
@@ -157,7 +163,7 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
                           _draft?.changed();
                         },
                         validator: (value) =>
-                            value == null ? 'اختر الفئة' : null,
+                            value == null ? 'اختر القسم' : null,
                       ),
                       const SizedBox(height: AarastV3Field.gap),
                       JourneyTextField(
@@ -171,14 +177,16 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
                         textAlign: TextAlign.right,
                         label: 'السعر من',
                         suffix: currencyLabelAr(defaultCurrencyCode),
+                        // Why the currency is fixed.
+                        helper: 'الأسعار بالريال اليمني',
                         icon: LucideIcons.wallet,
                       ),
                     ],
                   ),
                   const SizedBox(height: AarastV3Space.x2),
                   AarastDisclosureCard(
-                    title: 'تفاصيل تساعد العميل',
-                    subtitle: 'المدينة والوصف وملاحظة السعر',
+                    title: 'تفاصيل تساعد العرسان',
+                    subtitle: 'المدينة وايش يشمل وملاحظة السعر',
                     icon: LucideIcons.fileText,
                     initiallyExpanded:
                         _cityId != null ||
@@ -190,7 +198,7 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
                           label: 'مدينة الخدمة',
                           icon: LucideIcons.mapPin,
                           choices: [
-                            const JourneyChoice(null, 'نفس مدينة المزود'),
+                            const JourneyChoice(null, 'نفس مدينة ملفك'),
                             for (final city in marketplace.cities)
                               JourneyChoice(city.id, city.nameAr),
                           ],
@@ -205,7 +213,7 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
                           minLines: 2,
                           maxLines: 3,
                           maxLength: 280,
-                          label: 'ماذا تشمل الخدمة؟',
+                          label: 'ايش يشمل',
                           icon: LucideIcons.fileText,
                         ),
                         const SizedBox(height: AarastV3Field.gap),
@@ -317,8 +325,8 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
       final router = GoRouter.of(context);
       AarastFormSuccess.show(
         context,
-        message: 'تمت إضافة الخدمة.',
-        nextLabel: 'إضافة أخرى',
+        message: 'انضافت الخدمة.',
+        nextLabel: 'أضف خدمة ثانية',
         onNext: () => router.push(AppRouter.providerServiceNew),
       );
       context.go(AppRouter.providerDashboard);

@@ -72,7 +72,9 @@ class ProviderChatsTab extends StatelessWidget {
                     conversation: conversations[i],
                     quote: _quoteOf(dashboard, conversations[i]),
                     dashboard: dashboard,
-                    color: _avatarTurns[i % _avatarTurns.length],
+                    color: providerPersonColor(
+                      conversations[i].counterpartName,
+                    ),
                     when: providerChatWhen(
                       conversations[i].lastMessage?.createdAt ??
                           conversations[i].lastActivityAt,
@@ -109,13 +111,6 @@ class ProviderChatsTab extends StatelessWidget {
     return null;
   }
 }
-
-/// The avatars' colours in turn, as drawn (teal, rose, sky).
-const _avatarTurns = [
-  AarastV3Color.primary,
-  AarastV3Color.rose,
-  AarastV3Color.cobalt,
-];
 
 /// «9:40» today, «أمس», the weekday within a week, else «12 أكتوبر».
 String providerChatWhen(DateTime at, DateTime now) {

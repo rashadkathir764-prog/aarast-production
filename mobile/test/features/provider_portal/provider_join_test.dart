@@ -89,7 +89,10 @@ void main() {
       find.text('الصور والخدمات الثانية تضيفها بعد الموافقة'),
       findsOneWidget,
     );
-    expect(find.text('نراجع طلبك ونبلغك هنا.'), findsOneWidget);
+    expect(
+      find.text('نراجع طلبك، ويوصلك تنبيه على جوالك لما نقرر.'),
+      findsOneWidget,
+    );
     // No promise or figure the server does not keep.
     expect(find.textContaining('يومين'), findsNothing);
     expect(find.textContaining('6 صور'), findsNothing);
@@ -203,7 +206,16 @@ void main() {
     expect(find.text('الفنان علي'), findsOneWidget);
     // The kind line under the name, as p02 draws «تصوير · صنعاء» (finding 13).
     expect(find.text('زفة · صنعاء'), findsOneWidget);
-    expect(find.text('بعد ما تستلمه تعدّل كل شيء فيه'), findsOneWidget);
+    // What he can change once it is his, not «كل شيء» (RA-BE-152).
+    expect(find.textContaining('تعدّل كل شيء'), findsNothing);
+    expect(
+      find.text('بعد ما تستلمه: النبذة والرقم والأسعار تتغير على طول'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('والاسم والمدينة والشعار والغلاف تتغير للعرسان بعد موافقتنا'),
+      findsOneWidget,
+    );
     // The lookup gives the name only: no requests, views or new profile.
     expect(find.textContaining('طلبين'), findsNothing);
     expect(find.textContaining('شافوا ملفك'), findsNothing);

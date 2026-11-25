@@ -31,6 +31,17 @@ class ProviderFirstSteps extends StatelessWidget {
     final hasService = dashboard.services.any((service) => service.isActive);
     final photos = profile?.portfolioPhotos ?? 0;
     final steps = <Widget>[
+      // The photos come first and always show here: the couples choose
+      // from them, and a profile went live with none (the home hid the
+      // step until a service existed).
+      _Step(
+        key: const Key('provider-first-photos'),
+        icon: LucideIcons.image,
+        title: 'صور من شغلك',
+        subtitle: providerPhotosStepLine(photos),
+        action: 'إضافة',
+        onTap: () => context.push(AppRouter.providerGallery),
+      ),
       if (!hasService)
         _Step(
           key: const Key('provider-first-service'),
@@ -39,17 +50,6 @@ class ProviderFirstSteps extends StatelessWidget {
           subtitle: 'ملفك ما يظهر في الدليل قبل أول خدمة',
           action: 'إضافة',
           onTap: () => context.push(AppRouter.providerServiceNew),
-        ),
-      if (dashboard.services.isNotEmpty)
-        _Step(
-          key: const Key('provider-first-photos'),
-          icon: LucideIcons.image,
-          title: 'صور من شغلك',
-          subtitle: photos == 0
-              ? 'ملفك ما فيه صور لسا'
-              : 'عندك ${arabicCount(photos, one: 'صورة وحدة', two: 'صورتين', few: 'صور', many: 'صورة')} في ملفك',
-          action: 'إضافة',
-          onTap: () => context.push(AppRouter.providerGallery),
         ),
       if (profile?.logoUrl?.trim().isNotEmpty != true)
         _Step(
@@ -140,6 +140,27 @@ class ProviderFirstSteps extends StatelessWidget {
       ],
     );
   }
+}
+
+/// How many photos make a profile the couples can choose from.
+const providerPhotosWanted = 6;
+
+/// «صور من شغلك»'s line, on the welcome (p10) and the first home (p14):
+/// why the photos matter and how many, until he has that many.
+String providerPhotosStepLine(int photos) {
+  const why = 'العرسان يختارون من صورك';
+  if (photos <= 0) return '$why. حط $providerPhotosWanted صور على الأقل.';
+  final has = arabicCount(
+    photos,
+    one: 'صورة وحدة',
+    two: 'صورتين',
+    few: 'صور',
+    many: 'صورة',
+  );
+  if (photos < providerPhotosWanted) {
+    return 'عندك $has. $why، حط $providerPhotosWanted على الأقل.';
+  }
+  return 'عندك $has في ملفك.';
 }
 
 /// One step: its icon, what to do, why, and a soft button to its place.

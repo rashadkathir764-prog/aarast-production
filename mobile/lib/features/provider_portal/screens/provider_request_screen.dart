@@ -137,7 +137,7 @@ class _NewRequest extends StatelessWidget {
                   children: [
                     JourneyAvatar(
                       letter: name.characters.first,
-                      color: AarastV3Color.primary,
+                      color: providerPersonColor(name),
                       size: AarastV3Size.mark,
                     ),
                     const SizedBox(width: AarastV3Space.x3),
@@ -268,10 +268,11 @@ class _NewRequest extends StatelessWidget {
   /// The line under p16's facts, naming only what he does not have.
   static String? _privacyLine(QuoteRequest quote) {
     return switch ((quote.shareBudget, quote.shareContact)) {
+      // The customer may be a bride: «them», as the apology says.
       (false, false) =>
-        'ميزانيته ورقمه ما يوصلونك إلا إذا شاركهم. تكلّم معه من «اسأل».',
-      (true, false) => 'رقمه ما يوصلك إلا إذا شاركه. تكلّم معه من «اسأل».',
-      (false, true) => 'ميزانيته ما توصلك إلا إذا شاركها.',
+        'ميزانيتهم ورقمهم ما يوصلونك إلا إذا شاركوهم. الكلام معهم من «اسأل».',
+      (true, false) => 'رقمهم ما يوصلك إلا إذا شاركوه. الكلام معهم من «اسأل».',
+      (false, true) => 'ميزانيتهم ما توصلك إلا إذا شاركوها.',
       (true, true) => null,
     };
   }
@@ -427,8 +428,8 @@ class _Answered extends StatelessWidget {
             const SizedBox(height: AarastV3Space.x3),
             JourneyNote(
               text:
-                  'التعديل يوصله نسخة ${offer!.versionNo + 1} فيها «ايش تغيّر». '
-                  'والسحب يقفل العرض ويوصله سطر هادي.',
+                  'التعديل يوصلهم نسخة ${offer!.versionNo + 1} فيها «ايش تغيّر». '
+                  'والسحب يقفل العرض ويوصلهم سطر هادي.',
             ),
           ],
           if (booking != null && state == ProviderCaseState.bookingAsked) ...[

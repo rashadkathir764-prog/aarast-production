@@ -188,7 +188,7 @@ class _ListingSheetState extends State<_ListingSheet> {
           const SizedBox(height: AarastV3Space.x2),
           JourneyTextField(
             key: const Key('provider-listing-includes'),
-            label: 'وش تشمل',
+            label: 'ايش يشمل',
             controller: _includes,
             minLines: 2,
             maxLines: 4,

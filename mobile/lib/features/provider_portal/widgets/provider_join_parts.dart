@@ -320,6 +320,11 @@ class ProviderAccountButton extends StatelessWidget {
   }
 }
 
+/// How the review's answer reaches him: the server sends it to the phone as
+/// a push (`PROVIDER_APPROVED` and the other status notices), not only to
+/// the in-app list. No review time is promised: the server keeps none.
+const providerDecisionNoticeLine = 'يوصلك تنبيه على جوالك لما نقرر.';
+
 /// «أرسلته اليوم 10 الصبح»: a day, then the hour and its part of the day.
 String providerMomentLabel(DateTime at, {DateTime? now}) {
   final local = at.toLocal();

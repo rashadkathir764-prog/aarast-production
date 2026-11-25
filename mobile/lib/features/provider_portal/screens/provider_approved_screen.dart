@@ -4,10 +4,11 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../marketplace/marketplace_api.dart' show ProviderDashboardProfile;
+import '../widgets/provider_first_steps.dart' show providerPhotosStepLine;
 import '../widgets/provider_join_parts.dart';
 
 /// The first steps p10 offers, each opening its place.
-enum ProviderFirstStep { calendar, services, notifications }
+enum ProviderFirstStep { photos, calendar, services, notifications }
 
 /// p10 «مبروك، صرت في اعّرست»: shown once, when a profile this phone waited
 /// for is approved or a listing was claimed here.
@@ -52,9 +53,20 @@ class ProviderApprovedScreen extends StatelessWidget {
                       ? 'العرسان يشوفونك من الحين.'
                       : 'العرسان في $city يشوفونك من الحين.',
                 ),
-                const JourneySectionTitle('ثلاث خطوات أولى'),
+                const JourneySectionTitle('أربع خطوات أولى'),
                 JourneyList(
                   children: [
+                    // First: a profile went live with no photos, and the
+                    // couples choose from them.
+                    JourneyListRow(
+                      key: const Key('provider-first-step-photos'),
+                      icon: LucideIcons.image,
+                      color: AarastV3Color.primary,
+                      soft: AarastV3Color.primarySoft,
+                      title: 'صور من شغلك',
+                      subtitle: providerPhotosStepLine(profile.portfolioPhotos),
+                      onTap: () => onStep(ProviderFirstStep.photos),
+                    ),
                     JourneyListRow(
                       key: const Key('provider-first-step-calendar'),
                       icon: LucideIcons.calendarDays,
@@ -80,7 +92,7 @@ class ProviderApprovedScreen extends StatelessWidget {
                       color: AarastV3Color.primary,
                       soft: AarastV3Color.primarySoft,
                       title: 'شغّل التنبيهات',
-                      subtitle: 'تختار وش يوصلك من التنبيهات',
+                      subtitle: 'تختار ايش يوصلك من التنبيهات',
                       onTap: () => onStep(ProviderFirstStep.notifications),
                     ),
                   ],

@@ -3,8 +3,10 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/utils/arabic_count.dart';
+import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_ui.dart';
-import '../../marketplace/marketplace_api.dart' show ProviderDashboardProfile;
+import '../../marketplace/marketplace_api.dart'
+    show MarketplaceBooking, ProviderDashboardProfile;
 import '../widgets/provider_join_parts.dart';
 
 /// p12 «حسابك موقوف مؤقتًا»: since when, why, and the confirmed bookings
@@ -13,7 +15,7 @@ import '../widgets/provider_join_parts.dart';
 class ProviderSuspendedScreen extends StatelessWidget {
   const ProviderSuspendedScreen({
     required this.profile,
-    required this.upcomingBookings,
+    required this.upcoming,
     required this.bookingsKnown,
     required this.onRefresh,
     required this.onSupport,
@@ -23,9 +25,46 @@ class ProviderSuspendedScreen extends StatelessWidget {
 
   final ProviderDashboardProfile profile;
 
-  /// Upcoming confirmed bookings; read only when [bookingsKnown].
-  final int upcomingBookings;
+  /// Upcoming confirmed bookings, nearest first; read only when
+  /// [bookingsKnown].
+  final List<MarketplaceBooking> upcoming;
   final bool bookingsKnown;
+
+  int get upcomingBookings => upcoming.length;
+
+  /// «افتح حجوزاتك»: the weddings ahead, each with its day. A suspended
+  /// provider reads only his bookings (F10), not their requests, so the
+  /// list is the booking's own name, day and guests.
+  void _openBookings(BuildContext context) {
+    showJourneySheet<void>(
+      context: context,
+      builder: (_) => JourneySheetBody(
+        title: 'حجوزاتك الجاية',
+        children: [
+          JourneyList(
+            children: [
+              for (final booking in upcoming)
+                JourneyListRow(
+                  key: Key('provider-suspended-booking-${booking.id}'),
+                  icon: LucideIcons.calendarCheck,
+                  color: AarastV3Color.mint,
+                  soft: AarastV3Color.mintSoft,
+                  title: booking.customerName?.trim().isNotEmpty == true
+                      ? booking.customerName!.trim()
+                      : 'حجز مؤكد',
+                  subtitle: [
+                    formatArabicWeekdayDayMonth(booking.eventDate),
+                    if (booking.guestCount case final guests? when guests > 0)
+                      '${arabicCount(guests, one: 'ضيف واحد', two: 'ضيفين', few: 'ضيوف', many: 'ضيف')} تقريبًا',
+                  ].join(' · '),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   final Future<void> Function() onRefresh;
   final VoidCallback onSupport;
   final VoidCallback onAccount;
@@ -113,6 +152,22 @@ class ProviderSuspendedScreen extends StatelessWidget {
                               color: AarastV3Color.mint,
                             ),
                           ),
+                          // «كمّلها» needs a way to them: which weddings,
+                          // and on which day.
+                          if (bookingsKnown && upcoming.isNotEmpty) ...[
+                            const SizedBox(height: AarastV3Space.x3),
+                            JourneyButton(
+                              key: const Key(
+                                'provider-suspended-open-bookings',
+                              ),
+                              label: 'افتح حجوزاتك',
+                              icon: LucideIcons.calendarCheck,
+                              background: AarastV3Color.paper,
+                              foreground: AarastV3Color.mint,
+                              expand: true,
+                              onPressed: () => _openBookings(context),
+                            ),
+                          ],
                         ],
                       ),
                     ),

@@ -124,7 +124,7 @@ class _ConfirmSheetState extends State<_ConfirmSheet> {
             key: const Key('provider-booking-reason'),
             label: 'السبب (اختياري)',
             hint: 'مثلًا: عندنا ارتباط ذاك اليوم',
-            helper: 'يشوفه $first مع الاعتذار.',
+            helper: 'يوصل ل$first مع الاعتذار.',
             controller: _reason,
             maxLength: 500,
             minLines: 2,
@@ -158,10 +158,28 @@ class _ConfirmSheetState extends State<_ConfirmSheet> {
         ],
       );
     }
+    // What he is confirming: the offer they accepted, before he confirms.
+    final accepted = widget.quote?.acceptedOffer;
     return JourneySheetBody(
-      title: '$first قبل عرضك',
+      // Critique ب4: the customer may be the bride, «them».
+      title: '$first قبلوا عرضك',
       subtitle: asks,
       children: [
+        if (accepted != null) ...[
+          JourneyBox(
+            key: const Key('provider-booking-accepted-offer'),
+            padding: const EdgeInsets.all(AarastV3Space.x3),
+            child: Text(
+              [
+                'عرضك: ${providerMoneyLabel(accepted.amount, accepted.currency)}',
+                if (accepted.title?.trim().isNotEmpty == true)
+                  accepted.title!.trim(),
+              ].join(' · '),
+              style: JourneyType.of(JourneyType.body, weight: JourneyType.bold),
+            ),
+          ),
+          const SizedBox(height: AarastV3Space.x2),
+        ],
         const JourneyNote(
           icon: LucideIcons.shieldCheck,
           text:
@@ -235,7 +253,7 @@ class _ConfirmSheetState extends State<_ConfirmSheet> {
     }
     AarastToast.showSuccess(
       context,
-      action == 'confirm' ? 'تأكد الحجز، ووصله خبر.' : 'وصله اعتذارك.',
+      action == 'confirm' ? 'تأكد الحجز، ووصلهم خبر.' : 'وصلهم اعتذارك.',
     );
     Navigator.of(context).pop();
   }
@@ -267,15 +285,31 @@ class _CancelSheetState extends State<_CancelSheet> {
     final first = providerFirstName(_nameOf(widget.quote, widget.booking));
     final day = formatArabicWeekdayDayMonth(widget.booking.eventDate);
     final error = _error;
+    final service = widget.quote?.service?.title.trim() ?? '';
     return JourneySheetBody(
       title: 'تلغي حجز $first؟',
-      subtitle: 'يوصله إن حجز $day انلغى، ويرجع اليوم فاضي في تقويمك.',
+      subtitle: 'يوصلهم إن حجز $day انلغى، ويرجع اليوم فاضي في تقويمك.',
       children: [
+        // PROVIDER_JOURNEY §4 «يلغي بسبب مع تحذير»: a confirmed booking is
+        // a wedding day counting on him.
+        if (widget.booking.isConfirmed) ...[
+          JourneyNote(
+            key: const Key('provider-booking-cancel-warning'),
+            icon: LucideIcons.alertTriangle,
+            tone: JourneyNoteTone.warn,
+            color: AarastV3Color.danger,
+            soft: AarastV3Color.dangerSoft,
+            text: service.isEmpty
+                ? 'عرسهم يوم $day يبقى بدونك، وممكن ما يلقون غيرك في هذا الوقت.'
+                : 'عرسهم يوم $day يبقى بدون $service، وممكن ما يلقون غيرك في هذا الوقت.',
+          ),
+          const SizedBox(height: AarastV3Space.x3),
+        ],
         JourneyTextField(
           key: const Key('provider-booking-reason'),
           label: 'السبب (اختياري)',
           hint: 'مثلًا: صار عندنا ظرف',
-          helper: 'يشوفه $first مع الإلغاء.',
+          helper: 'يوصل ل$first مع الإلغاء.',
           controller: _reason,
           maxLength: 500,
           minLines: 2,

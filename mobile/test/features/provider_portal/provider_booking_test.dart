@@ -120,7 +120,16 @@ void main() {
     ) async {
       final api = _asked();
       await _open(tester, api);
-      expect(find.text('محمد قبل عرضك'), findsWidgets);
+      // Critique ب4: the customer may be the bride.
+      expect(find.text('محمد قبلوا عرضك'), findsWidgets);
+      // What he confirms: the offer they accepted, before he confirms.
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('provider-booking-accepted-offer')),
+          matching: find.text('عرضك: 550,000 ر.ي · صور وفيديو'),
+        ),
+        findsOne,
+      );
       // RA-MO-303 (2026-11-13): the customer may be a bride.
       expect(find.text('طلب حجز صور وفيديو · الخميس 21 يناير'), findsOne);
       expect(find.textContaining('نتأكد إن اليوم فاضي'), findsOne);
@@ -229,6 +238,15 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('تلغي حجز محمد؟'), findsOne);
+      // A confirmed booking: the wedding day loses its provider, said.
+      expect(
+        find.text(
+          'عرسهم يوم الخميس 21 يناير يبقى بدون صور وفيديو، وممكن ما يلقون غيرك في هذا الوقت.',
+        ),
+        findsOne,
+      );
+      // The reason stays optional.
+      expect(find.text('السبب (اختياري)'), findsOne);
       await tester.enterText(
         find.byKey(const Key('provider-booking-reason')),
         'تعطلت المعدات',
@@ -266,7 +284,7 @@ void main() {
       await _open(tester, _ended());
       expect(find.text('حجز محمد الحمدي'), findsOne);
       expect(find.text('ملغي'), findsOne);
-      expect(find.text('محمد لغى الحجز'), findsOne);
+      expect(find.text('محمد لغوا الحجز'), findsOne);
       expect(
         find.textContaining('صور وفيديو · الخميس 21 يناير · أمس'),
         findsOne,

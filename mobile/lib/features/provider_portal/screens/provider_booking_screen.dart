@@ -201,7 +201,7 @@ class ProviderBookingScreen extends StatelessWidget {
       booking: booking,
     );
     if (!cancelled || !context.mounted) return;
-    AarastToast.showSuccess(context, 'انلغى الحجز، ووصله خبر.');
+    AarastToast.showSuccess(context, 'انلغى الحجز، ووصلهم خبر.');
   }
 }
 
@@ -272,7 +272,7 @@ class ProviderBookingEndedScreen extends StatelessWidget {
         ? 'اعتذرت عن الحجز'
         : byHim
         ? 'لغيت الحجز'
-        : '$first لغى الحجز';
+        : '$first لغوا الحجز';
     final at = declined ? booking.declinedAt : booking.cancelledAt;
     final service = quote.service?.title.trim() ?? '';
     final line = [

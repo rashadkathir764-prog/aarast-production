@@ -189,10 +189,10 @@ class _ProviderRequestsTabState extends State<ProviderRequestsTab> {
                 JourneyChip(
                   key: Key('provider-requests-tab-${tab.name}'),
                   // The ended list carries no count, as drawn.
+                  // «جديد» carries no count: the hero right above says
+                  // how many wait (the same «2» was said three times).
                   label: switch (tab) {
-                    ProviderRequestTab.ended => tab.label,
-                    ProviderRequestTab.fresh when waiting > 0 =>
-                      '${tab.label} $waiting',
+                    ProviderRequestTab.ended ||
                     ProviderRequestTab.fresh => tab.label,
                     _ when count(tab) > 0 => '${tab.label} ${count(tab)}',
                     _ => tab.label,
@@ -232,7 +232,7 @@ class _ProviderRequestsTabState extends State<ProviderRequestsTab> {
                       ? AarastV3Space.x3
                       : AarastV3Space.x2,
                 ),
-              _card(context, dashboard, shown[index], index),
+              _card(context, dashboard, shown[index]),
             ],
         ],
       ),
@@ -243,7 +243,6 @@ class _ProviderRequestsTabState extends State<ProviderRequestsTab> {
     BuildContext context,
     ProviderDashboardProvider dashboard,
     ProviderCase item,
-    int index,
   ) {
     final quote = item.quote;
     void open() => context.push(AppRouter.providerRequest(quote.id));
@@ -270,7 +269,6 @@ class _ProviderRequestsTabState extends State<ProviderRequestsTab> {
       quote: quote,
       state: item.state,
       booking: item.booking,
-      color: JourneyAvatar.paletteAt(context, index + 1),
       onOpen: open,
       onQuickOffer: packages.isEmpty || dayTaken
           ? null

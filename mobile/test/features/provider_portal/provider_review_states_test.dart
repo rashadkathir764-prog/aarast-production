@@ -44,7 +44,10 @@ void main() {
 
       expect(find.byType(ProviderPendingScreen), findsOneWidget);
       expect(find.text('طلبك قيد المراجعة'), findsOneWidget);
-      expect(find.text('أرسلته اليوم 10 الصبح. نبلغك هنا.'), findsOneWidget);
+      expect(
+        find.text('أرسلته اليوم 10 الصبح. يوصلك تنبيه على جوالك لما نقرر.'),
+        findsOneWidget,
+      );
       expect(find.text('استوديو ضوء صنعاء'), findsOneWidget);
       expect(find.text('التصوير · صنعاء'), findsOneWidget);
       expect(find.text('ملفك مخفي عن العرسان لين نوافق'), findsOneWidget);
@@ -111,7 +114,10 @@ void main() {
         resubmittedAt: DateTime(now.year, now.month, now.day, 9),
       );
       await _pumpPortal(tester, api);
-      expect(find.text('أرسلته اليوم 9 الصبح. نبلغك هنا.'), findsOneWidget);
+      expect(
+        find.text('أرسلته اليوم 9 الصبح. يوصلك تنبيه على جوالك لما نقرر.'),
+        findsOneWidget,
+      );
     });
 
     testWidgets('waiting for review he fixes the service he joined with from '
@@ -157,6 +163,22 @@ void main() {
       expect(find.byType(ProviderApprovedScreen), findsOneWidget);
       expect(find.text('مبروك، صرت في اعّرست'), findsOneWidget);
       expect(find.text('العرسان في صنعاء يشوفونك من الحين.'), findsOneWidget);
+      // The photos are the first step: a profile went live with none.
+      expect(find.text('أربع خطوات أولى'), findsOneWidget);
+      expect(
+        tester
+            .getTopLeft(find.byKey(const Key('provider-first-step-photos')))
+            .dy,
+        lessThan(
+          tester
+              .getTopLeft(find.byKey(const Key('provider-first-step-calendar')))
+              .dy,
+        ),
+      );
+      expect(
+        find.text('العرسان يختارون من صورك. حط 6 صور على الأقل.'),
+        findsOneWidget,
+      );
       expect(find.text('تحديث تقويمك'), findsOneWidget);
       expect(find.text('خدماتك وأسعارك'), findsOneWidget);
       expect(find.text('شغّل التنبيهات'), findsOneWidget);
@@ -185,6 +207,7 @@ void main() {
     });
 
     for (final (step, location) in [
+      ('provider-first-step-photos', 'معرض الشغل'),
       ('provider-first-step-services', 'خدمة جديدة'),
       ('provider-first-step-notifications', 'التنبيهات'),
     ]) {
@@ -250,7 +273,9 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('الملاحظات من فريق المراجعة · أمس'), findsOneWidget);
-      expect(find.text('أرسلت التعديل'), findsOneWidget);
+      // Named for what it does, not as if it were done.
+      expect(find.text('أرسل للمراجعة'), findsOneWidget);
+      expect(find.text('أرسلت التعديل'), findsNothing);
       // No tabs while changes are asked.
       expect(find.text('الطلبات'), findsNothing);
 
@@ -260,12 +285,29 @@ void main() {
       await tester.pageBack();
       await tester.pumpAndSettle();
 
+      // Nothing noted was changed: it asks first, and can go back.
       await tester.tap(find.byKey(const Key('provider-changes-resubmit')));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('ما عدّلت اسم النشاط والخدمة. نرسل الملف كذا؟'),
+        findsOneWidget,
+      );
+      await tester.tap(find.byKey(const Key('provider-changes-keep-editing')));
+      await tester.pumpAndSettle();
+      expect(api.resubmits, 0);
+      expect(find.byType(ProviderChangesScreen), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('provider-changes-resubmit')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('provider-changes-send-anyway')));
       await tester.pumpAndSettle();
       expect(api.resubmits, 1);
       // Back to review: p08 shows, and the confirmation says so.
       expect(find.byType(ProviderPendingScreen), findsOneWidget);
-      expect(find.text('وصلنا تعديلك. نراجعه ونبلغك هنا.'), findsOneWidget);
+      expect(
+        find.text('وصلنا تعديلك. يوصلك تنبيه على جوالك لما نقرر.'),
+        findsOneWidget,
+      );
     });
 
     testWidgets(
@@ -290,8 +332,43 @@ void main() {
         await tester.pumpAndSettle();
         expect(api.serviceUpdates, [('صور وفيديو', '600000')]);
         expect(find.text('600,000\u00a0ر.ي'), findsOneWidget);
+        // The noted field changed: it says so, and the send asks nothing.
+        expect(
+          find.byKey(const Key('provider-changes-fixed-SERVICE')),
+          findsOneWidget,
+        );
+        expect(find.text('عدّلته'), findsOneWidget);
+        await tester.tap(find.byKey(const Key('provider-changes-resubmit')));
+        await tester.pumpAndSettle();
+        expect(find.textContaining('نرسل الملف كذا؟'), findsNothing);
+        expect(api.resubmits, 1);
       },
     );
+
+    testWidgets('«عدّلته» stays after the app opens again: what the notes '
+        'were written on is kept on the phone', (tester) async {
+      final api = _Api(
+        status: 'NEEDS_CHANGES',
+        fieldNotes: const {'SERVICE': 'حدد سعر الليلة.'},
+        latestDecisionId: 'decision-1',
+        service: _joiningService(),
+      );
+      // This phone first read the notes when the price was 400,000.
+      const start =
+          '{"decision":"decision-1","values":{"BUSINESS_NAME":'
+          '"استوديو ضوء صنعاء","CATEGORY":"cat-photo","CITY":"city-sanaa",'
+          '"DESCRIPTION":"","SERVICE":"service-1|صور وفيديو|400000|"}}';
+      await _pumpPortal(
+        tester,
+        api,
+        stored: const {'aarast_provider_changes_start:provider-1': start},
+      );
+      expect(
+        find.byKey(const Key('provider-changes-fixed-SERVICE')),
+        findsOneWidget,
+      );
+      expect(find.text('عدّلته'), findsOneWidget);
+    });
 
     testWidgets('a refusal reopened keeps its reason as the note (B-02)', (
       tester,
@@ -330,7 +407,7 @@ void main() {
       expect(api.categoryMoves, ['cat-mizmar']);
     });
 
-    testWidgets('«أرسلت التعديل» names the notes he read; notes rewritten '
+    testWidgets('«أرسل للمراجعة» names the notes he read; notes rewritten '
         'meanwhile show with the reason it did not go (finding 7)', (
       tester,
     ) async {
@@ -345,6 +422,8 @@ void main() {
 
       await tester.tap(find.byKey(const Key('provider-changes-resubmit')));
       await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('provider-changes-send-anyway')));
+      await tester.pumpAndSettle();
       expect(api.resubmittedWith, ['decision-read']);
       expect(api.resubmits, 0);
       // Still p09, with the team's new notes and why the send did not go.
@@ -358,7 +437,11 @@ void main() {
         findsOneWidget,
       );
 
+      // The new note is about a field not changed since: it asks first.
       await tester.tap(find.byKey(const Key('provider-changes-resubmit')));
+      await tester.pumpAndSettle();
+      expect(find.text('ما عدّلت اسم النشاط. نرسل الملف كذا؟'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('provider-changes-send-anyway')));
       await tester.pumpAndSettle();
       expect(api.resubmittedWith, ['decision-read', 'decision-rewritten']);
       expect(api.resubmits, 1);
@@ -553,6 +636,32 @@ void main() {
       );
       expect(api.bookingLoads, 1);
 
+      // «كمّلها» has a way to them: the confirmed weddings ahead, nearest
+      // first, never the one only asked for.
+      await tester.tap(
+        find.byKey(const Key('provider-suspended-open-bookings')),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('حجوزاتك الجاية'), findsOneWidget);
+      final first = find.byKey(
+        const Key('provider-suspended-booking-booking-1'),
+      );
+      final second = find.byKey(
+        const Key('provider-suspended-booking-booking-2'),
+      );
+      expect(first, findsOneWidget);
+      expect(second, findsOneWidget);
+      expect(
+        find.byKey(const Key('provider-suspended-booking-booking-3')),
+        findsNothing,
+      );
+      expect(
+        tester.getTopLeft(first).dy,
+        lessThan(tester.getTopLeft(second).dy),
+      );
+      await tester.tapAt(const Offset(20, 20));
+      await tester.pumpAndSettle();
+
       await tester.tap(find.byKey(const Key('provider-suspended-support')));
       await tester.pumpAndSettle();
       expect(find.text('صفحة الدعم'), findsOneWidget);
@@ -571,6 +680,11 @@ void main() {
       await _pumpPortal(tester, _Api(status: 'SUSPENDED', failBookings: true));
       expect(find.text('حجوزاتك المؤكدة مستمرة'), findsOneWidget);
       expect(find.text('العرسان معتمدين عليك، كمّلها.'), findsOneWidget);
+      // Nothing read, nothing to open.
+      expect(
+        find.byKey(const Key('provider-suspended-open-bookings')),
+        findsNothing,
+      );
     });
   });
 
@@ -633,12 +747,18 @@ MarketplaceBooking _booking(String id, String status, int daysAhead) {
   });
 }
 
-Future<void> _pumpPortal(WidgetTester tester, _Api api, {String? seen}) async {
+Future<void> _pumpPortal(
+  WidgetTester tester,
+  _Api api, {
+  String? seen,
+  Map<String, Object> stored = const {},
+}) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = const Size(390, 900);
   addTearDown(tester.view.reset);
   SharedPreferences.setMockInitialValues({
     'aarast_provider_review_status:provider-1': ?seen,
+    ...stored,
   });
   final storage = AuthStorage(await SharedPreferences.getInstance());
   final chat = _IdleChat(storage);
@@ -666,6 +786,12 @@ Future<void> _pumpPortal(WidgetTester tester, _Api api, {String? seen}) async {
         path: appRoute('/provider/profile/edit'),
         builder: (_, _) =>
             Scaffold(appBar: AppBar(), body: const Text('تعديل الملف')),
+      ),
+      GoRoute(
+        // p10's photos step opens the gallery.
+        path: '/provider/gallery',
+        builder: (_, _) =>
+            Scaffold(appBar: AppBar(), body: const Text('معرض الشغل')),
       ),
       GoRoute(
         path: appRoute('/provider/services/new'),

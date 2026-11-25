@@ -267,7 +267,8 @@ class _BookingAsked extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${providerFirstName(name)} قبل عرضك',
+                  // The customer may be the bride: «them» (critique ب4).
+                  '${providerFirstName(name)} قبلوا عرضك',
                   style: JourneyType.of(
                     JourneyType.body,
                     weight: JourneyType.bold,

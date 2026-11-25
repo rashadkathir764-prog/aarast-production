@@ -175,9 +175,10 @@ class ProviderBookingAftercare extends StatelessWidget {
         JourneyNote(
           key: const Key('provider-booking-delivered'),
           text: booking.deliveryConfirmedAt != null
-              ? '$customerFirstName أكّد إنه استلم.'
+              // The customer may be the bride: «them» (critique ب4).
+              ? '$customerFirstName أكّدوا إنهم استلموا.'
               : 'سلّمت ${formatArabicDayMonth(delivered.toLocal())}، '
-                    'وننتظر $customerFirstName يأكّد.',
+                    'وننتظر $customerFirstName يأكّدون.',
           icon: LucideIcons.packageCheck,
           color: AarastV3Color.mint,
           soft: AarastV3Color.mintSoft,
@@ -220,7 +221,7 @@ class ProviderBookingAftercare extends StatelessWidget {
     _finish(
       context,
       done,
-      accept ? 'ثبّتنا الموعد الجديد، ووصله خبر.' : 'وصله ردك، والحجز باقي.',
+      accept ? 'ثبّتنا الموعد الجديد، ووصلهم خبر.' : 'وصلهم ردك، والحجز باقي.',
       dashboard.errorMessage,
     );
   }
@@ -256,7 +257,7 @@ class ProviderBookingAftercare extends StatelessWidget {
     _finish(
       context,
       done,
-      happened ? 'ألف مبروك! انسجّل إن العرس تم.' : 'انسجّل، ووصله خبر.',
+      happened ? 'ألف مبروك! انسجّل إن العرس تم.' : 'انسجّل، ووصلهم خبر.',
       dashboard.errorMessage,
     );
   }

@@ -217,9 +217,10 @@ void main() {
     // RA-MO-303 (2026-11-13): the customer may be a bride.
     expect(find.text('طلب حجز من محمد'), findsOne);
     expect(find.text('أكّد الحجز'), findsWidgets);
-    expect(find.text('فهد لغى الحجز'), findsOne);
+    // Critique ب4: the customer may be the bride, «them».
+    expect(find.text('فهد لغوا الحجز'), findsOne);
     expect(find.text('4 فبراير · الحجز انلغى'), findsOne);
-    expect(find.text('محمد قبل عرضك'), findsOne);
+    expect(find.text('محمد قبلوا عرضك'), findsOne);
     expect(find.text('عرس محمد بكرة'), findsOne);
     // The customer's notice stays on his own list.
     expect(find.text('وصل عرض سعر'), findsNothing);

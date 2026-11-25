@@ -13,6 +13,11 @@ import 'package:aarast_mobile/features/provider_portal/providers/provider_dashbo
 import 'package:aarast_mobile/features/provider_portal/screens/provider_offer_screen.dart';
 import 'package:aarast_mobile/features/provider_portal/screens/provider_portal_tabs.dart';
 import 'package:aarast_mobile/features/provider_portal/screens/provider_request_screen.dart';
+import 'package:aarast_mobile/features/provider_portal/widgets/provider_request_cards.dart';
+import 'package:aarast_mobile/features/provider_portal/widgets/provider_request_parts.dart'
+    show providerPersonColor;
+import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart'
+    show JourneyAvatar;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -171,7 +176,8 @@ void main() {
       await pumpHarness(tester, api, home: (_) {});
 
       expect(find.byKey(const Key('provider-home-none-waiting')), findsOne);
-      expect(find.text('محمد قبل عرضك'), findsOneWidget);
+      // Critique ب4: the customer may be the bride.
+      expect(find.text('محمد قبلوا عرضك'), findsOneWidget);
       // RA-MO-303 (2026-11-13): the customer may be a bride.
       expect(find.text('طلب حجز الخميس 21 يناير'), findsOneWidget);
       expect(find.text('عرس عادل الريمي · صور وفيديو'), findsOneWidget);
@@ -253,18 +259,28 @@ void main() {
         find.byKey(const Key('provider-requests-hero-ends')),
         findsOneWidget,
       );
-      // The booking to confirm is listed without adding to the count.
-      expect(find.text('جديد 2'), findsOneWidget);
+      // The hero says how many wait; the «جديد» chip does not say it again
+      // (the same «2» was said three times, v10).
+      expect(find.text('جديد 2'), findsNothing);
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('provider-requests-tab-fresh')),
+          matching: find.text('جديد'),
+        ),
+        findsOneWidget,
+      );
       expect(find.text('ردّيت 1'), findsOneWidget);
       expect(find.text('محجوز 1'), findsOneWidget);
       expect(find.text('انتهى'), findsOneWidget);
       expect(find.text('محمد الحمدي'), findsOneWidget);
-      expect(find.text('الخميس 21 يناير · صور وفيديو'), findsWidgets);
+      // The card's line: the day, the city, and the budget when shared.
+      expect(find.text('الخميس 21 يناير · صنعاء'), findsWidgets);
       expect(find.text('أكّد الحجز: طلب حجز'), findsOneWidget);
       expect(find.text('قبلوا عرضك'), findsOneWidget);
       // B-04: each new request counts its seven days, as p15 draws it.
       expect(find.text('ردّ: باقي 6 أيام'), findsNWidgets(2));
-      expect(find.text('أمس'), findsWidgets);
+      // When it arrived, said as such: not a bare date beside the wedding's.
+      expect(find.text('وصل أمس'), findsWidgets);
 
       await tester.tap(find.byKey(const Key('provider-requests-tab-replied')));
       await tester.pumpAndSettle();
@@ -456,9 +472,21 @@ void main() {
       // A package in another currency cannot price this plan's offer.
       expect(find.text('باقة بالريال السعودي'), findsNothing);
 
+      // The request's facts in one line above the form.
+      expect(find.text('الخميس 21 يناير · صنعاء · 124 ضيف'), findsOneWidget);
+      // Why the currency does not change.
+      expect(find.text('السعر بعملة خطة العرس: ريال يمني.'), findsOneWidget);
+
       await tester.tap(find.byKey(const Key('provider-offer-package-pkg-2')));
       await tester.pumpAndSettle();
       expect(find.text('550,000'), findsOneWidget);
+      // The package fills what it includes too, as the quick offer does.
+      expect(find.text('تصوير ليلة كاملة بالفيديو'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('provider-offer-package-pkg-1')));
+      await tester.pumpAndSettle();
+      expect(find.text('تصوير الليلة'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('provider-offer-package-pkg-2')));
+      await tester.pumpAndSettle();
       await tester.enterText(
         find.byKey(const Key('provider-offer-message')),
         '300 صورة معدّلة وفيلم 10 دقايق. الدرون مش داخل.',
@@ -483,6 +511,43 @@ void main() {
         lessThan(2),
       );
       expect(find.byType(ProviderOfferScreen), findsNothing);
+      await tester.pump(const Duration(seconds: 5));
+    });
+
+    testWidgets('his own words stay when a package is picked, and a line '
+        'typed but not added goes with the offer', (tester) async {
+      final api = RequestsApi(quotes: [quoteJson()], packages: packages);
+      await pumpHarness(
+        tester,
+        api,
+        initial: '/provider/requests/quote-1/offer',
+      );
+      await tester.enterText(
+        find.byKey(const Key('provider-offer-message')),
+        'كلامي أنا',
+      );
+      await tester.tap(find.byKey(const Key('provider-offer-package-pkg-2')));
+      await tester.pumpAndSettle();
+      expect(find.text('كلامي أنا'), findsOneWidget);
+
+      await tester.enterText(
+        find.byKey(const Key('provider-offer-line-label')),
+        'ألبوم 40 صورة',
+      );
+      await tester.ensureVisible(
+        find.byKey(const Key('provider-offer-preview')),
+      );
+      await tester.tap(find.byKey(const Key('provider-offer-preview')));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('provider-offer-preview-line-ألبوم 40 صورة')),
+        findsOneWidget,
+      );
+      await tester.tap(find.byKey(const Key('provider-offer-submit')));
+      await tester.pumpAndSettle();
+      final lines = api.created.single.lines!;
+      expect(lines.single.label, 'ألبوم 40 صورة');
+      expect(lines.single.kind, 'INCLUDED');
       await tester.pump(const Duration(seconds: 5));
     });
 
@@ -525,7 +590,7 @@ void main() {
       expect(find.text('سحب العرض'), findsOneWidget);
       expect(
         find.text(
-          'التعديل يوصله نسخة 2 فيها «ايش تغيّر». والسحب يقفل العرض ويوصله سطر هادي.',
+          'التعديل يوصلهم نسخة 2 فيها «ايش تغيّر». والسحب يقفل العرض ويوصلهم سطر هادي.',
         ),
         findsOneWidget,
       );
@@ -606,12 +671,13 @@ void main() {
       );
       await pumpHarness(tester, api, initial: '/provider/requests/quote-1');
       expect(
+        // The customer may be the bride: «them», as the apology says.
         find.text(
-          'ميزانيته ورقمه ما يوصلونك إلا إذا شاركهم. تكلّم معه من «اسأل».',
+          'ميزانيتهم ورقمهم ما يوصلونك إلا إذا شاركوهم. الكلام معهم من «اسأل».',
         ),
         findsOneWidget,
       );
-      expect(find.text('ميزانيته'), findsNothing);
+      expect(find.text('الميزانية'), findsNothing);
 
       final shared = RequestsApi(
         quotes: [quoteJson(id: 'quote-2', name: 'عادل الريمي', share: true)],
@@ -622,6 +688,7 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('777123456'), findsOneWidget);
+      expect(find.text('الميزانية'), findsOneWidget);
       expect(find.byKey(const Key('provider-request-privacy')), findsNothing);
     });
   });
@@ -636,6 +703,18 @@ void main() {
       await tester.tap(find.byKey(const Key('provider-quick-offer-quote-1')));
       await tester.pumpAndSettle();
       expect(find.text('رد سريع'), findsOneWidget);
+      // The request in sight before its price: its facts and its words.
+      expect(
+        find.text('محمد الحمدي · الخميس 21 يناير · صنعاء · 124 ضيف'),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('provider-quick-offer-request-message')),
+          matching: find.text('«نشتي تصوير الزفة من دخول العريس»'),
+        ),
+        findsOneWidget,
+      );
       expect(find.text('صور فقط · 350,000'), findsOneWidget);
       expect(find.text('صور وفيديو · 550,000'), findsOneWidget);
       expect(find.textContaining('آخر 5'), findsNothing);
@@ -676,6 +755,44 @@ void main() {
         find.byKey(const Key('provider-quick-offer-quote-1')),
         findsNothing,
       );
+    });
+
+    testWidgets('a customer keeps one avatar colour whatever the row', (
+      tester,
+    ) async {
+      Color avatarOf(String name) => tester
+          .widget<JourneyAvatar>(
+            find.descendant(
+              of: find.ancestor(
+                of: find.text(name),
+                matching: find.byType(ProviderRequestCard),
+              ),
+              matching: find.byType(JourneyAvatar),
+            ),
+          )
+          .color;
+      await pumpHarness(
+        tester,
+        RequestsApi(
+          quotes: [
+            quoteJson(),
+            quoteJson(id: 'quote-2', name: 'سلمى السقاف'),
+          ],
+        ),
+      );
+      final first = avatarOf('محمد الحمدي');
+      await pumpHarness(
+        tester,
+        RequestsApi(
+          quotes: [
+            quoteJson(id: 'quote-2', name: 'سلمى السقاف'),
+            quoteJson(id: 'quote-3', name: 'عادل الريمي'),
+            quoteJson(createdAt: _now.subtract(const Duration(days: 2))),
+          ],
+        ),
+      );
+      expect(avatarOf('محمد الحمدي'), first);
+      expect(first, providerPersonColor('محمد الحمدي'));
     });
 
     testWidgets('without a package the card simply opens the request', (
@@ -726,6 +843,7 @@ typedef CreatedOffer = ({
   String amount,
   String currency,
   DateTime? validUntil,
+  List<QuoteOfferLine>? lines,
 });
 
 /// Pumps the provider's request screens behind a router: `/` holds the
@@ -981,6 +1099,7 @@ class RequestsApi extends ProviderDashboardApi {
       amount: amount,
       currency: currency,
       validUntil: validUntil,
+      lines: lines,
     ));
     final quote = _quotes.firstWhere((item) => item['id'] == quoteRequestId);
     quote['status'] = 'RESPONDED';

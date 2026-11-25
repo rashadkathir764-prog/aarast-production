@@ -58,6 +58,8 @@ void main() {
       tester,
     ) async {
       await _pump(tester, screen);
+      // The other provider pages' header: the round back at the title.
+      expect(find.byType(JourneySubHeader), findsOneWidget);
       await tester.tap(find.byTooltip('رجوع').first);
       await tester.pumpAndSettle();
       expect(
@@ -92,7 +94,7 @@ void main() {
     expect(find.text('ر.س'), findsNothing);
 
     await tester.enterText(find.byType(TextField).first, 'تصوير الزفة');
-    await tester.tap(find.text('الفئة'));
+    await tester.tap(find.text('القسم'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('تصوير').last);
     await tester.pumpAndSettle();
@@ -168,7 +170,8 @@ void main() {
     final field = tester.widget<JourneyChoiceField<String>>(
       find.byType(JourneyChoiceField<String>).first,
     );
-    expect(field.label, 'الفئة');
+    // The portal's one word for it.
+    expect(field.label, 'القسم');
     expect(
       [for (final choice in field.choices) choice.label],
       ['تصوير', 'فيديو'],

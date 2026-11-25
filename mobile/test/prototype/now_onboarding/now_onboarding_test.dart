@@ -225,6 +225,131 @@ void main() {
     );
   });
 
+  // RA-TS-19: the bride's way through the same steps in her words, and
+  // S6 «خطتك جاهزة» for both, which had no picture. The mahr step is
+  // shot for the bride too: she receives it, and is never asked about the
+  // budget (`mahr-budget-choice`).
+  Future<void> toBudgetAs(
+    WidgetTester tester, {
+    required String persona,
+    required String name,
+  }) async {
+    await tester.tap(find.byKey(const ValueKey('door-plan')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(ValueKey(persona)));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).first, name);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('ما حددنا الموعد بعد'));
+    await tester.pumpAndSettle();
+  }
+
+  Future<void> toMahrAs(
+    WidgetTester tester, {
+    required String persona,
+    required String name,
+  }) async {
+    await toBudgetAs(tester, persona: persona, name: name);
+    await tester.tap(find.text('صنعاء'));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.text(
+        persona == 'persona-bride' ? 'أكملي بدون ميزانية' : 'أكمل بدون ميزانية',
+      ),
+    );
+    await tester.pumpAndSettle();
+  }
+
+  Future<void> toReadyAs(
+    WidgetTester tester, {
+    required String persona,
+    required String name,
+  }) async {
+    await toMahrAs(tester, persona: persona, name: name);
+    await tester.tap(find.text('ما اتفقنا بعد'));
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('n04 setup bride', (tester) async {
+    await _shot(
+      tester,
+      'n04_setup_bride',
+      const SmartWelcomeScreen(),
+      h: 1000,
+      providers: await gateway(),
+      act: () async {
+        await tester.tap(find.byKey(const ValueKey('door-plan')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('persona-bride')));
+        await tester.pumpAndSettle();
+        expect(find.text('اكتبي اسمك واختاري الشهر'), findsOneWidget);
+      },
+    );
+  });
+
+  testWidgets('n04b budget bride', (tester) async {
+    await _shot(
+      tester,
+      'n04b_budget_bride',
+      const SmartWelcomeScreen(),
+      h: 1000,
+      providers: await gateway(),
+      act: () async {
+        await toBudgetAs(tester, persona: 'persona-bride', name: 'سلمى');
+        expect(find.text('ميزانية عرسك'), findsOneWidget);
+        expect(find.text('أكملي بدون ميزانية'), findsOneWidget);
+      },
+    );
+  });
+
+  testWidgets('n04c mahr bride', (tester) async {
+    await _shot(
+      tester,
+      'n04c_mahr_bride',
+      const SmartWelcomeScreen(),
+      h: 1000,
+      providers: await gateway(),
+      act: () async {
+        await toMahrAs(tester, persona: 'persona-bride', name: 'سلمى');
+        expect(find.text('اتفقتوا على المهر؟'), findsOneWidget);
+      },
+    );
+  });
+
+  // S6 «خطتك جاهزة يا X» (COUPLE_JOURNEY): the plan on the phone, its first
+  // items and tasks, and the two ways on.
+  testWidgets('n04d ready groom', (tester) async {
+    await _shot(
+      tester,
+      'n04d_ready_groom',
+      const SmartWelcomeScreen(),
+      h: 1000,
+      providers: await gateway(),
+      act: () async {
+        await toReadyAs(tester, persona: 'persona-groom', name: 'سامي');
+        expect(find.text('خطتك جاهزة يا سامي'), findsOneWidget);
+        expect(find.byKey(const ValueKey('ready-save')), findsOneWidget);
+        expect(find.byKey(const ValueKey('ready-later')), findsOneWidget);
+      },
+    );
+  });
+
+  testWidgets('n04d ready bride', (tester) async {
+    await _shot(
+      tester,
+      'n04d_ready_bride',
+      const SmartWelcomeScreen(),
+      h: 1000,
+      providers: await gateway(),
+      act: () async {
+        await toReadyAs(tester, persona: 'persona-bride', name: 'سلمى');
+        expect(find.text('خطتك جاهزة يا سلمى'), findsOneWidget);
+        expect(find.byKey(const ValueKey('ready-save')), findsOneWidget);
+        expect(find.byKey(const ValueKey('ready-later')), findsOneWidget);
+      },
+    );
+  });
+
   List<SingleChildWidget> authProviders(AuthController auth) => [
     ChangeNotifierProvider<AuthController>.value(value: auth),
     ChangeNotifierProvider<ProviderMarketplaceProvider>.value(value: _Market()),
@@ -370,10 +495,24 @@ void main() {
       LocalPlanMigrationScreen(
         snapshot: _snapshot,
         migrationService: _Migration(GuestOnboardingStorage(prefs)),
+        // RA-TS-19: the app always passes the plan's home on the phone
+        // (D77, `dashboard_entry_screen.dart`), and the third way out
+        // «افتح خطتك على الجوال الحين» comes with it. Without it this
+        // picture showed a failure the app never draws.
+        localPlan: (context, saveNow) =>
+            const Center(child: Text('خطتك على هذا الجوال')),
         onFinished: (_) {},
       ),
       h: 1000,
       providers: [Provider<AuthStorage>.value(value: AuthStorage(prefs))],
+      act: () async {
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(
+          find.byKey(const ValueKey('local-plan-open-on-phone')),
+          findsOneWidget,
+        );
+        expect(find.text('ما قدرنا نحفظها في حسابك'), findsOneWidget);
+      },
     );
   });
 

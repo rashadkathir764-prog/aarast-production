@@ -418,34 +418,6 @@ class _FakeSync extends OfflineSyncService {
   int get unsyncedCount => _pending + _blocked;
   @override
   DateTime? get lastSyncedAt => DateTime(2026, 10, 20, 9, 40);
-
-  /// w41: the sheet lists every change still on the phone, the refused one
-  /// with its reason, the rest waiting for the network.
-  @override
-  Future<List<PendingChangeSummary>> loadPendingChanges() async => [
-    PendingChangeSummary(
-      id: 'change-1',
-      entityType: 'guest',
-      title: 'ضيف: عبدالله الحمدي',
-      createdAt: appNow().subtract(const Duration(hours: 2, minutes: 1)),
-      blocked: true,
-      reason: 'رفض الخادم هذا التغيير',
-    ),
-    PendingChangeSummary(
-      id: 'change-2',
-      entityType: 'task',
-      title: 'مهمة: حجز المصور',
-      createdAt: appNow().subtract(const Duration(hours: 5, minutes: 1)),
-      blocked: false,
-    ),
-    PendingChangeSummary(
-      id: 'change-3',
-      entityType: 'cost',
-      title: 'دفعة: قاعة ليالي صنعاء',
-      createdAt: appNow().subtract(const Duration(days: 1, hours: 1)),
-      blocked: false,
-    ),
-  ];
 }
 
 void main() {
@@ -757,6 +729,12 @@ void main() {
     );
   });
 
+  // RA-TS-19: w41's sheet used to be handed three made-up rows, one of them
+  // a guest (a label the queue never writes: «التغيير المحلي») and a payment
+  // titled «دفعة:» (the queue's word is «الدفعة»). The rows now come out of
+  // the real queue through the real `loadPendingChanges`, so the picture
+  // shows only what a phone can hold: a task and a payment waiting for the
+  // network, and a task the server refused.
   Future<List<SingleChildWidget>> syncProviders(
     SyncState s,
     int pending,
@@ -764,7 +742,44 @@ void main() {
   ) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
-    final sync = _FakeSync(JsonLocalDatabase(prefs), s, pending, blocked);
+    final database = JsonLocalDatabase(prefs);
+    await database.initialize();
+    final hourAgo = appNow().subtract(const Duration(hours: 2, minutes: 1));
+    final queue = <(String, String, String, Map<String, dynamic>, bool)>[
+      ('task', 'tasks/task-1', 'task-1', {'title': 'حجز المصور'}, blocked > 0),
+      ('task', 'tasks/task-2', 'task-2', {'title': 'تجهيز الدعوات'}, false),
+      (
+        'cost_payment',
+        'costs/cost-1/payments',
+        'payment-1',
+        {'name': 'قاعة ليالي صنعاء'},
+        false,
+      ),
+    ];
+    for (final (type, endpoint, localId, payload, refused) in queue.take(
+      pending + blocked,
+    )) {
+      final item = await database.enqueueSync(
+        entityType: type,
+        operation: 'create',
+        endpoint: '/api/v1/$endpoint',
+        method: 'POST',
+        payload: payload,
+        planId: 'plan-1',
+        localEntityId: localId,
+        queueCreatedAt: hourAgo,
+      );
+      if (refused) {
+        await database.markSyncItemBlocked(
+          item.id,
+          'validation failed',
+          code: 'VALIDATION',
+        );
+      }
+    }
+    expect(await database.blockedSyncItems(), hasLength(blocked));
+    expect(await database.pendingSyncItems(), hasLength(pending));
+    final sync = _FakeSync(database, s, pending, blocked);
     return [ChangeNotifierProvider<OfflineSyncService>.value(value: sync)];
   }
 
@@ -788,6 +803,11 @@ void main() {
         await tester.tap(find.byTooltip('شوف التغييرات اللي تنتظر'));
         await tester.pump(const Duration(milliseconds: 500));
         await tester.pump(const Duration(milliseconds: 500));
+        // The rows are the queue's own words (RA-TS-19): money and tasks.
+        expect(find.textContaining('مهمة: حجز المصور'), findsOneWidget);
+        expect(find.textContaining('مهمة: تجهيز الدعوات'), findsOneWidget);
+        expect(find.textContaining('الدفعة: قاعة ليالي صنعاء'), findsOneWidget);
+        expect(find.textContaining('ضيف'), findsNothing);
       },
     );
   });

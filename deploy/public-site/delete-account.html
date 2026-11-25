@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="طلب حذف حساب اعّرست بدون التطبيق، برمز على واتساب الرقم المسجّل.">
+    <title>حذف الحساب — اعّرست</title>
+    <link rel="canonical" href="https://aarast.shadowgardn.com/delete-account">
+    <link rel="stylesheet" href="/public.css">
+    <script src="/delete-account.js" defer></script>
+  </head>
+  <body>
+    <main class="page-shell">
+      <header class="page-header">
+        <p class="brand">اعّرست</p>
+        <h1>حذف الحساب بدون التطبيق</h1>
+        <p class="updated">برمز يوصل على واتساب الرقم المسجّل بالحساب</p>
+      </header>
+
+      <article class="content-card">
+        <p>
+          من هنا يُطلب حذف حساب اعّرست لمن ما يقدر يدخل التطبيق أو ما عاد عنده.
+          نرسل رمزًا على واتساب الرقم المسجّل بالحساب، وبعد الرمز يتوقف الحساب
+          30 يومًا، ثم تُحذف بياناته نهائيًا كما في <a href="/privacy">سياسة الخصوصية</a>.
+          خلال الـ30 يومًا يرجع الحساب كما كان بالدخول إليه من التطبيق بنفس الرقم.
+        </p>
+
+        <section id="deletion-phone-step" class="deletion-step" aria-labelledby="deletion-phone-title">
+          <h2 id="deletion-phone-title">رقم الجوال المسجّل بالحساب</h2>
+          <label class="field-label" for="deletion-phone">رقم الجوال</label>
+          <input id="deletion-phone" class="field-input" type="tel" inputmode="tel" autocomplete="tel" dir="ltr" maxlength="20" placeholder="+967 7XX XXX XXX">
+          <button id="deletion-send" class="action-button" type="button">إرسال الرمز على واتساب</button>
+        </section>
+
+        <section id="deletion-code-step" class="deletion-step" aria-labelledby="deletion-code-title" hidden>
+          <h2 id="deletion-code-title">الرمز اللي وصل على واتساب</h2>
+          <p>إذا الرقم <bdi id="deletion-phone-echo" dir="ltr"></bdi> مسجّل في اعّرست، يوصله رمز من 6 أرقام خلال لحظات. الرمز لهذا الطلب فقط، ولا يُعطى لأحد.</p>
+          <label class="field-label" for="deletion-code">الرمز</label>
+          <input id="deletion-code" class="field-input" type="text" inputmode="numeric" autocomplete="one-time-code" dir="ltr" maxlength="6">
+          <button id="deletion-confirm" class="action-button" type="button">تأكيد طلب الحذف</button>
+          <button id="deletion-again" class="link-button" type="button">تغيير الرقم أو طلب رمز جديد</button>
+        </section>
+
+        <section id="deletion-done" class="deletion-step" aria-labelledby="deletion-done-title" hidden>
+          <h2 id="deletion-done-title">وصلنا طلب الحذف</h2>
+          <p>الحساب موقوف الآن، وتُحذف بياناته نهائيًا يوم <bdi id="deletion-day" dir="ltr"></bdi>.</p>
+          <p>قبل هذا اليوم يرجع الحساب كما كان بالدخول إليه من التطبيق بنفس الرقم، ومن الدخول يُلغى طلب الحذف.</p>
+        </section>
+
+        <p id="deletion-status" class="notice" role="status" aria-live="polite" hidden></p>
+
+        <p class="muted">
+          لا نطلب الرمز في اتصال ولا في رسالة؛ يُكتب هنا فقط. للمساعدة: <a href="/support">صفحة الدعم</a>.
+        </p>
+      </article>
+    </main>
+  </body>
+</html>

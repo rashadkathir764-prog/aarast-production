@@ -49,6 +49,10 @@ enum OtpPurpose {
   // password. Issued only to the signed-in account; neither public code
   // route takes it.
   CURRENT_PHONE_PROOF
+  // Q-52 (أ, D124): a code to the account's number from the public site's
+  // deletion page (`/api/v1/public/account-deletion`); it asks the account's
+  // deletion and nothing else.
+  ACCOUNT_DELETION_WEB
 }
 
 enum AuthSessionScope {

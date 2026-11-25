@@ -182,6 +182,7 @@ export function deleteApplicationOtpCodesByPhone(
           OtpPurpose.VERIFY_PHONE,
           OtpPurpose.RESET_PASSWORD,
           OtpPurpose.CURRENT_PHONE_PROOF,
+          OtpPurpose.ACCOUNT_DELETION_WEB,
         ],
       },
     },

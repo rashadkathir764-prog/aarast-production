@@ -226,7 +226,16 @@ export class AccountDeletionService implements AccountDeletionAdminPort {
         message: `Type «${ACCOUNT_DELETION_CONFIRM_WORD}» to confirm`,
       });
     }
-    const userId = currentUser.id;
+    return this.requestForAccount(currentUser.id);
+  }
+
+  /**
+   * The one scheduling of an account's deletion: by the app after its
+   * confirm word (w05), and by the public site's page after a WhatsApp code
+   * to the account's number (Q-52 (أ), D124). Asking again while it waits
+   * answers the same request.
+   */
+  async requestForAccount(userId: string): Promise<AccountDeletionState> {
     const state = await runRetryableTransaction(
       this.prisma,
       async (tx): Promise<AccountDeletionState> => {

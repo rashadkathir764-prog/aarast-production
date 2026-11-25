@@ -342,4 +342,45 @@ for (const forbidden of ["localStorage", "sessionStorage", "document.cookie", "c
   assert.doesNotMatch(downloadJs, new RegExp(forbidden.replace(/[.(]/g, "\\$&")));
 }
 
+// Q-52 (أ, D124), RA-OP-21: the account's deletion without the app, on the
+// site itself: the registered number gets a WhatsApp code, and the page sends
+// it with the number to the API on its own origin. No <form> (the CSP forbids
+// a form post), no inline script or style, and nothing kept on the device.
+const deleteHtml = read("delete-account.html");
+const deleteJs = read("delete-account.js");
+for (const asset of ["delete-account.html", "delete-account.js"]) {
+  const escaped = asset.replaceAll(".", "\\.");
+  assert.match(dockerfile, new RegExp(escaped), `${asset} must be copied explicitly.`);
+  assert.match(dockerignore, new RegExp(`^!${escaped}$`, "m"), `${asset} must be allowlisted.`);
+}
+assert.match(nginx, /location = \/delete-account \{[\s\S]*?try_files \/delete-account\.html =404;/);
+assert.match(nginx, /location = \/delete-account\/ \{[\s\S]*?try_files \/delete-account\.html =404;/);
+assert.match(nginx, /location = \/delete-account\.js/);
+// The page talks only to its own origin, the API's route on it.
+assert.match(nginx, /connect-src 'self';/);
+assert.match(deleteHtml, /<html lang="ar" dir="rtl">/);
+assert.match(deleteHtml, /<link rel="stylesheet" href="\/public\.css">/);
+assert.match(deleteHtml, /<script src="\/delete-account\.js" defer><\/script>/);
+assert.doesNotMatch(deleteHtml, /<form/i, "The page asks by fetch; CSP forbids form posts.");
+assert.doesNotMatch(deleteHtml, /<script(?![^>]*\bsrc=)[^>]*>[\s\S]*<\/script>/i, "Inline scripts are forbidden by CSP.");
+assert.doesNotMatch(deleteHtml, /style=/i, "CSP forbids inline styles.");
+assert.match(deleteHtml, /30 يومًا/);
+assert.match(deleteHtml, /بالدخول إليه من التطبيق بنفس الرقم/);
+assert.match(deleteHtml, /href="\/privacy"/);
+// The reader's gender is not known here: no masculine imperative.
+const masculineImperative = /(?:^|[\s«"'(>])(?:اكتب|أدخل|ادخل|اضغط|أرسل|حاول|تأكد|جرّب)(?=[\s.،؛»"')<]|$)/m;
+assert.match("ثم اكتب الرقم", masculineImperative, "the check sees an imperative");
+assert.doesNotMatch(deleteHtml + deleteJs, masculineImperative);
+assert.match(deleteJs, /"\/api\/v1\/public\/account-deletion\/code"/);
+assert.match(deleteJs, /"\/api\/v1\/public\/account-deletion\/confirm"/);
+assert.match(deleteJs, /credentials: "omit"/);
+assert.doesNotMatch(deleteJs, /https?:\/\//, "The deletion page calls only its own origin.");
+for (const forbidden of ["localStorage", "sessionStorage", "document.cookie", "console.", "innerHTML", "style="]) {
+  assert.doesNotMatch(deleteJs, new RegExp(forbidden.replace(/[.(]/g, "\\$&")));
+}
+// The support page sends whoever cannot use the app to it.
+assert.match(supportHtml, /href="\/delete-account"/);
+assert.match(privacyHtml, /href="\/delete-account"/);
+assert.doesNotMatch(supportHtml, /نراجع الطلب ونتأكد منه قبل التنفيذ/);
+
 process.stdout.write("public-site source checks: PASS\n");

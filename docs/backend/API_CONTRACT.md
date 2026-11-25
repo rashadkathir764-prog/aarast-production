@@ -390,6 +390,19 @@ Additional current auth/profile routes:
   - `GET /api/v1/users/me/deletion` → the same state, or `{ status: "NONE" }`;
     `DELETE /api/v1/users/me/deletion` takes it back (`409
     DELETION_NOT_PENDING` when nothing waits); members are told «رجعت».
+  - Q-52 (أ, D124), RA-OP-21: without the app, from the public site's page
+    `/delete-account`. `POST /api/v1/public/account-deletion/code { phone }`
+    issues an `ACCOUNT_DELETION_WEB` WhatsApp code for any well-formed number
+    (the same answer whatever it is; the code limits count it as every code:
+    number, phone, address, the app's day; 10 a minute per address, 5 per
+    phone). `POST /api/v1/public/account-deletion/confirm { phone, code }`
+    claims it and asks the deletion as the app does → `200 { status:
+    "PENDING", scheduledFor }` (asking again answers the same); `400
+    OTP_INVALID_OR_EXPIRED`; after the code is proven, `404
+    ACCOUNT_NOT_FOUND_AFTER_PHONE_PROOF` (no application account) or `403
+    ACCOUNT_DISABLED_AFTER_PHONE_PROOF`, and `409
+    PROVIDER_HAS_UPCOMING_BOOKINGS` with no booking ids. Signing in during
+    the 30 days takes it back (w06).
   - While pending, every other application route answers `403
     ACCOUNT_DELETION_PENDING { scheduledFor }`; only `GET /api/v1/me`,
     `GET /api/v1/auth/me`, the two routes above, `POST /api/v1/auth/logout`
@@ -4174,6 +4187,8 @@ configuration, and smoke checks.
 | POST | `/api/v1/providers/:id/reviews` | `marketplace.createReview` | 🔒 |
 | GET | `/api/v1/providers/:id/services` | `marketplace.findProviderServices` |  |
 | POST | `/api/v1/providers/:id/views` | `marketplace.recordProviderView` |  |
+| POST | `/api/v1/public/account-deletion/code` | `public-account-deletion.requestCode` |  |
+| POST | `/api/v1/public/account-deletion/confirm` | `public-account-deletion.confirm` |  |
 | GET | `/api/v1/public/rsvp/:token` | `guest-rsvp.getInvitation` |  |
 | POST | `/api/v1/public/rsvp/:token` | `guest-rsvp.respond` |  |
 | GET | `/api/v1/public/rsvp/:token/card-photo` | `guest-rsvp.cardPhoto` |  |

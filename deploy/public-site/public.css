@@ -161,6 +161,73 @@ ul {
   margin: 24px auto 0;
 }
 
+/* Account deletion without the app (Q-52, RA-OP-21). */
+.deletion-step {
+  margin: 20px 0;
+}
+
+.field-label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 700;
+}
+
+.field-input {
+  display: block;
+  width: 100%;
+  max-width: 320px;
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border: 1px solid #838e8b;
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+}
+
+.field-input:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.action-button {
+  display: inline-block;
+  min-height: 48px;
+  padding: 12px 28px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--brand);
+  color: #ffffff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.action-button:hover,
+.action-button:focus-visible {
+  background: var(--brand-dark);
+}
+
+.action-button:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.link-button {
+  display: block;
+  min-height: 48px;
+  margin-top: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--brand);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 @media print {
   html,
   body {

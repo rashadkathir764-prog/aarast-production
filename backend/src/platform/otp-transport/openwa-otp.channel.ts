@@ -21,6 +21,7 @@ const ACTION_BY_PURPOSE: Readonly<Record<string, string>> = {
   VERIFY_PHONE: 'لتوثيق رقمك',
   RESET_PASSWORD: 'لاستعادة كلمة المرور',
   CURRENT_PHONE_PROOF: 'لتأكيد رقمك الحالي',
+  ACCOUNT_DELETION_WEB: 'لطلب حذف حسابك',
   INVITE_ACCESS: 'لقبول الدعوة',
   ADMIN_LOGIN: 'لدخول الإدارة',
   ADMIN_RESET_PASSWORD: 'لاستعادة كلمة مرور الإدارة',

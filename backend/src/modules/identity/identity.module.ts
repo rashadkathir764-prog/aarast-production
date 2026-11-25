@@ -4,6 +4,7 @@ import { AuthController } from "./api/auth.controller";
 import { ContextsController } from "./api/contexts.controller";
 import { DataExportsController } from "./api/data-exports.controller";
 import { MeController } from "./api/me.controller";
+import { PublicAccountDeletionController } from "./api/public-account-deletion.controller";
 import { UsersController } from "./api/users.controller";
 import { IdentityAuthInternalModule } from "./internal/identity-auth.internal.module";
 import { IdentityProfileInternalModule } from "./internal/identity-profile.internal.module";
@@ -32,6 +33,8 @@ import { UserReadPublicModule } from "./public/user-read-public.module";
     DataExportsController,
     MeController,
     ContextsController,
+    // Q-52 (أ): the public site's deletion page.
+    PublicAccountDeletionController,
   ],
 })
 export class IdentityModule {}

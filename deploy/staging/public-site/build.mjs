@@ -31,11 +31,11 @@ export function buildStagingInvite({ source, out, origin, inviteHost, packageNam
   // line), so a guest's RSVP link, the terms and the download page open on QA.
   for (const name of [
     'invite.css', 'invite-preview.png', 'rsvp-preview.png', 'public.css',
-    'rsvp.js', 'rsvp.css', 'download.js', 'qrcode-generator.js',
+    'rsvp.js', 'rsvp.css', 'download.js', 'qrcode-generator.js', 'delete-account.js',
   ]) {
     copyFileSync(resolve(source, name), resolve(out, name));
   }
-  for (const name of ['invite.html', 'privacy.html', 'terms.html', 'support.html', 'rsvp.html', 'download.html']) {
+  for (const name of ['invite.html', 'privacy.html', 'terms.html', 'support.html', 'rsvp.html', 'download.html', 'delete-account.html']) {
     const original = readFileSync(resolve(source, name), 'utf8');
     const changed = original.replaceAll('https://aarast.shadowgardn.com', origin);
     if (!cutover && changed.includes('aarast.shadowgardn.com')) throw new Error(`${name} still points to Production`);

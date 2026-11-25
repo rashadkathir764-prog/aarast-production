@@ -20,7 +20,7 @@ https://{$AARAST_DIRECT_API_IP} {
 		}
 	}
 	encode gzip
-	@public_site path /rsvp/* /invites/* /.well-known/* /rsvp.js /rsvp.css /invite.js /invite.css /invite-preview.png /rsvp-preview.png /public.css /privacy /privacy/ /terms /terms/ /support /support/ /download /download/ /download.js /qrcode-generator.js
+	@public_site path /rsvp/* /invites/* /.well-known/* /rsvp.js /rsvp.css /invite.js /invite.css /invite-preview.png /rsvp-preview.png /public.css /privacy /privacy/ /terms /terms/ /support /support/ /download /download/ /download.js /qrcode-generator.js /delete-account /delete-account/ /delete-account.js
 	handle @public_site {
 		reverse_proxy public-site:80
 	}
@@ -42,9 +42,13 @@ https://{$AARAST_DIRECT_API_IP} {
 
 {$AARAST_SITE_HOST} {
 	encode gzip
-	# The guest RSVP page (/rsvp/<token>) calls only these public routes on
-	# its own origin; everything else on this host is the static site.
+	# The guest RSVP page (/rsvp/<token>) and the account deletion page
+	# (/delete-account, Q-52) call only these public routes on their own
+	# origin; everything else on this host is the static site.
 	handle /api/v1/public/rsvp/* {
+		reverse_proxy backend:3000
+	}
+	handle /api/v1/public/account-deletion/* {
 		reverse_proxy backend:3000
 	}
 	handle {

@@ -2143,6 +2143,104 @@ export class AuthService implements IdentityAuthPort, OnModuleDestroy {
   }
 
   /**
+   * Q-52 (أ, D124), RA-OP-21: the public site's deletion page asks a code for
+   * the registered number. As the password reset, it is issued for any
+   * well-formed number, so the answer says nothing of whether the number has
+   * an account; only the phone holding it can use the code. The number's,
+   * phone's, address's and app's code limits count it as every code.
+   */
+  async requestWebAccountDeletionCode(
+    phoneInput: string,
+    context: OtpDispatchContext = {},
+  ): Promise<OtpRequestResponse> {
+    const phone = PhoneNormalizer.normalizeRequired(phoneInput);
+    const { otpId: _otpId, ...response } = await this.issueOtp(
+      phone,
+      OtpPurpose.ACCOUNT_DELETION_WEB,
+      context,
+    );
+    return response;
+  }
+
+  /**
+   * Q-52 (أ): claims the deletion page's code and answers the application
+   * account the number belongs to, whose deletion the page then asks. Before
+   * the code is proven a number without an account reads as a wrong code;
+   * after it, its holder is told there is no account (or that it is
+   * disabled), as the password reset does.
+   */
+  async claimWebAccountDeletionCode(
+    phoneInput: string,
+    codeInput: string,
+  ): Promise<string> {
+    const phone = PhoneNormalizer.normalizeRequired(phoneInput);
+    const code = this.requiredText(codeInput, "code");
+    const now = new Date();
+    let result:
+      | { otpInvalid: true }
+      | { error: ReturnType<typeof authError> }
+      | { userId: string };
+    try {
+      result = await runSerializableTransaction(this.prisma, async (tx) => {
+        let user = await this.findUserByCanonicalPhone(
+          tx,
+          phone,
+          PhoneNormalizer.lookupVariants(phone),
+        );
+        if (user) {
+          await lockUserLifecycleRowsForUpdateInTransaction(tx, [user.id]);
+          user = await this.users.findById(tx, user.id);
+        }
+        const claim = await this.claimOtpCodeInTransaction(tx, {
+          phone,
+          purpose: OtpPurpose.ACCOUNT_DELETION_WEB,
+          code,
+          now,
+        });
+        if (claim.outcome === "invalid") return { otpInvalid: true as const };
+        if (!user || !user.appAccountActivatedAt) {
+          return {
+            error: authError(
+              HttpStatus.NOT_FOUND,
+              AuthErrorCode.ACCOUNT_NOT_FOUND_AFTER_PHONE_PROOF,
+              "No application account exists for this verified phone",
+            ),
+          };
+        }
+        if (user.status !== UserStatus.ACTIVE) {
+          return {
+            error: authError(
+              HttpStatus.FORBIDDEN,
+              AuthErrorCode.ACCOUNT_DISABLED_AFTER_PHONE_PROOF,
+              "This account is disabled",
+            ),
+          };
+        }
+        return { userId: user.id };
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2034"
+      ) {
+        otpVerificationsTotal.inc({ outcome: "failure" });
+        throw this.otpInvalid();
+      }
+      throw error;
+    }
+    if ("otpInvalid" in result) {
+      otpVerificationsTotal.inc({ outcome: "failure" });
+      throw this.otpInvalid();
+    }
+    if ("error" in result) {
+      otpVerificationsTotal.inc({ outcome: "verified_then_rejected" });
+      throw result.error;
+    }
+    otpVerificationsTotal.inc({ outcome: "success" });
+    return result.userId;
+  }
+
+  /**
    * Consumes a RESET_PASSWORD OTP, sets the new password, and revokes every
    * refresh token so stolen sessions die with the old password.
    */

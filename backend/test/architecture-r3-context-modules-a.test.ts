@@ -79,10 +79,11 @@ test('Task 6 full modules preserve the exact controller ownership', () => {
   const expected = new Map<string, string[]>([
     ['modules/identity/identity.module.ts#IdentityModule', [
       // D63: the deletion request and its status (no immediate erasure), and
-      // the one-time download of the account's data.
+      // the one-time download of the account's data. Q-52 (أ): the public
+      // site's deletion page.
       'AccountDeletionStatusController', 'AuthController', 'ContextsController',
       'DataExportsController',
-      'MeController', 'UsersController',
+      'MeController', 'PublicAccountDeletionController', 'UsersController',
     ]],
     ['modules/planning/planning.module.ts#PlanningModule', [
       // The wedding's events (D65) add WeddingPlanEventsController.

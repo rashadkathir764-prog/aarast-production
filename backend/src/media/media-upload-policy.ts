@@ -2,7 +2,11 @@ import {
   BadRequestException,
   ServiceUnavailableException,
 } from '@nestjs/common';
-import type { MediaPurpose } from '../modules/media/public/media-storage.port';
+import { randomUUID } from 'node:crypto';
+import {
+  isPrivateMediaPurpose,
+  type MediaPurpose,
+} from '../modules/media/public/media-storage.port';
 
 export const mediaPurposes = [
   'user-avatar',
@@ -126,9 +130,31 @@ function mediaKeyUnderPrefix(
   return actual.pathname.slice(basePath.length + 1);
 }
 
+const UUID_PATTERN =
+  '[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}';
+
 /**
- * Chat attachments are private objects. The client may submit only the opaque
- * key returned by the signed-upload endpoint, never a public or external URL.
+ * The storage key a new upload is given. RA-BE-178: a private object (a
+ * receipt, a chat attachment) outlives its uploader (D112), so its path holds
+ * an opaque segment, not his id; who owns it is its upload ticket's
+ * (`MediaUploadTicket.userId`), checked on every verify and consume. A public
+ * image is checked by its address alone (`ownedMediaKeyFromUrl`), so it keeps
+ * its uploader's id; it is his and leaves with the account. Objects stored
+ * before 2026-11-25 keep the `<purpose>/<userId>/` path they were given.
+ */
+export function newMediaKey(
+  purpose: MediaPurpose,
+  userId: string,
+  extension: string,
+): string {
+  const owner = isPrivateMediaPurpose(purpose) ? randomUUID() : userId;
+  return `${purpose}/${owner}/${randomUUID()}.${extension}`;
+}
+
+/**
+ * A key submitted back for verification or consumption: exactly the shape
+ * [newMediaKey] hands out for `purpose`, never a public or external URL. For a
+ * private purpose the shape proves nothing of its owner; the ticket does.
  */
 export function assertOwnedMediaKey(
   value: string,
@@ -136,9 +162,11 @@ export function assertOwnedMediaKey(
   userId: string,
 ): void {
   const normalized = value.trim();
-  const escapedUserId = userId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const owner = isPrivateMediaPurpose(purpose)
+    ? UUID_PATTERN
+    : userId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const expected = new RegExp(
-    `^${purpose}/${escapedUserId}/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\\.(?:jpg|png|webp)$`,
+    `^${purpose}/${owner}/${UUID_PATTERN}\\.(?:jpg|png|webp)$`,
     'i',
   );
   if (

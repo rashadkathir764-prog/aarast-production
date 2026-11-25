@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import {
   BadRequestException,
   ConflictException,
@@ -24,6 +23,7 @@ import {
 } from './media-image-sanitizer';
 import {
   assertOwnedMediaKey,
+  newMediaKey,
   normalizeMediaUpload,
   ownedMediaKeyFromUrl,
   storedMediaKeyFromUrl,
@@ -58,7 +58,7 @@ export class MediaStorageService implements MediaStoragePort {
   ) {
     const input = normalizeMediaUpload(dto);
     const config = this.config(!isPrivateMediaPurpose(input.purpose), true);
-    const key = `${input.purpose}/${currentUser.id}/${randomUUID()}.${input.extension}`;
+    const key = newMediaKey(input.purpose, currentUser.id, input.extension);
     const command = new PutObjectCommand({
       Bucket: config.bucket,
       Key: key,

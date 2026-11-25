@@ -140,9 +140,11 @@ test("uploaded image dimensions are bounded before persistence", async () => {
 });
 
 test("chat attachments accept only an opaque sender-owned storage key", () => {
+  // RA-BE-178: a private key holds an opaque segment, not the sender's id;
+  // the upload ticket proves whose it is (private-media-opaque-key.test.ts).
   assert.doesNotThrow(() =>
     assertOwnedMediaKey(
-      "chat-image/user-1/550e8400-e29b-41d4-a716-446655440000.webp",
+      "chat-image/0b1c2d3e-4f50-4a61-8b72-938495a6b7c8/550e8400-e29b-41d4-a716-446655440000.webp",
       "chat-image",
       "user-1",
     ),
@@ -204,7 +206,8 @@ test("private chat uploads never return a public URL and GET links expire quickl
     assert.equal(ticket.publicUrl, null);
     assert.equal(ticket.attachmentRef, null);
     assert.equal(ticket.publicUrl, null);
-    assert.match(ticket.key, /^chat-image\/user-1\/.+\.webp$/);
+    assert.match(ticket.key, /^chat-image\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.webp$/);
+    assert.doesNotMatch(ticket.key, /user-1/);
 
     const access = await storage.createDownloadUrl(ticket.key);
     const signedUrl = new URL(access.downloadUrl);

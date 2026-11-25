@@ -3697,6 +3697,13 @@ an unverified object by skipping the client verification call. Public
 avatar/provider purposes return the canonical verified `publicUrl`. A verified
 `chat-image` instead returns an opaque `attachmentRef` and `publicUrl: null`;
 the database stores only that private object key.
+RA-BE-178: a private object (`chat-image`, `cost-receipt`) is keyed
+`<purpose>/<random UUID>/<random UUID>.<ext>`, with no uploader id in its path,
+because it outlives its uploader (D112); whose it is lives in its upload ticket,
+checked on every verify and consume. Public images keep
+`<purpose>/<userId>/<UUID>.<ext>`, checked by address. Private objects stored
+before 2026-11-25 keep the `<purpose>/<userId>/` path they were given; they are
+not moved.
 Conversation/message responses replace it with a signed GET URL that expires
 after 120 seconds and include `expiresAt`; they never expose the storage key.
 All responses carrying these links use `Cache-Control: private, no-store`.

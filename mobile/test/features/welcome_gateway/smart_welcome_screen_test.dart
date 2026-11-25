@@ -35,6 +35,7 @@ import 'package:aarast_mobile/features/welcome_gateway/screens/smart_welcome_scr
 
 import '../../support/preview_fonts.dart';
 import '../../support/app_route_table.dart';
+import '../../support/app_text_scale.dart';
 
 // The start (D75, prototype a02 to a08): a door with one-tap ways in, one
 // question per screen, the plan kept on the phone, and the account asked
@@ -195,7 +196,7 @@ Future<GuestOnboardingStorage> _pump(
         builder: (context, child) => MediaQuery(
           data: MediaQuery.of(
             context,
-          ).copyWith(textScaler: TextScaler.linear(textScale)),
+          ).copyWith(textScaler: appTextScaler(textScale)),
           child: Directionality(
             textDirection: TextDirection.rtl,
             child: child!,

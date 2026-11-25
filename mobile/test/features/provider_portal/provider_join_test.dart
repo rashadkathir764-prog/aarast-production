@@ -22,6 +22,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../account_contexts/account_context_test_data.dart';
 import '../../support/app_route_table.dart';
+import '../../support/app_text_scale.dart';
 
 // The joining after the account: p02 asks the review team for a listing
 // under this phone (B-12); otherwise p03 «نشاطك», p04 «وين تشتغل؟», p06
@@ -454,7 +455,7 @@ class _Harness {
           builder: (context, child) => MediaQuery(
             data: MediaQuery.of(
               context,
-            ).copyWith(textScaler: TextScaler.linear(textScale)),
+            ).copyWith(textScaler: appTextScaler(textScale)),
             child: child!,
           ),
         ),

@@ -25,6 +25,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../support/app_route_table.dart';
+import '../../support/app_text_scale.dart';
 
 // c03 «الدفعات» (D102, D106) on a plan kept on the phone: the dates as a plan
 // in time, whose they are, the loans apart, what was paid, and a date's own
@@ -326,9 +327,7 @@ Future<_App> _open(
         theme: AppTheme.light(),
         routerConfig: router,
         builder: (context, child) => MediaQuery(
-          data: MediaQuery.of(
-            context,
-          ).copyWith(textScaler: const TextScaler.linear(1.3)),
+          data: MediaQuery.of(context).copyWith(textScaler: appTextScaler(1.3)),
           child: Directionality(
             textDirection: TextDirection.rtl,
             child: child!,

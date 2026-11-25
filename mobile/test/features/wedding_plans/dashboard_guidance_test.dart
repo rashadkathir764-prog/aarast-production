@@ -4,6 +4,7 @@ import 'package:aarast_mobile/features/wedding_plans/models/dashboard_summary.da
 import 'package:aarast_mobile/features/wedding_plans/widgets/dashboard/aarast_dashboard_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../../support/app_text_scale.dart';
 
 // D72 (replaces b01's fixed steps): no steps hold the home. «خطوتك الجاية»
 // names one missing basic at a time, each only while missing; the venue and
@@ -106,9 +107,7 @@ Future<void> _pump(
     MaterialApp(
       theme: AppTheme.light(),
       builder: (context, child) => MediaQuery(
-        data: MediaQuery.of(
-          context,
-        ).copyWith(textScaler: const TextScaler.linear(1.3)),
+        data: MediaQuery.of(context).copyWith(textScaler: appTextScaler(1.3)),
         child: child!,
       ),
       home: Directionality(

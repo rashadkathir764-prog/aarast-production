@@ -21,6 +21,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../support/app_route_table.dart';
+import '../../support/app_text_scale.dart';
 
 // c02 «البنود» and c07 an item's page (D102, D105, D107, D109) on a plan kept
 // on the phone: every figure from the phone's copy of the money rules, every
@@ -251,7 +252,7 @@ Future<_App> _open(
         builder: (context, child) => MediaQuery(
           data: MediaQuery.of(
             context,
-          ).copyWith(textScaler: TextScaler.linear(textScale)),
+          ).copyWith(textScaler: appTextScaler(textScale)),
           child: JourneyProfileScope(
             profile: profile,
             child: Directionality(

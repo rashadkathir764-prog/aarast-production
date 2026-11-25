@@ -15,6 +15,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../support/app_route_table.dart';
+import '../../support/app_text_scale.dart';
 
 void main() {
   testWidgets('the picker shows only agreements that can take a payment', (
@@ -99,7 +100,7 @@ void main() {
           builder: (context, child) => MediaQuery(
             data: MediaQuery.of(
               context,
-            ).copyWith(textScaler: const TextScaler.linear(1.3)),
+            ).copyWith(textScaler: appTextScaler(1.3)),
             child: child!,
           ),
           home: Builder(

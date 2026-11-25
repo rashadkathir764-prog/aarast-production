@@ -6,6 +6,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/preview_fonts.dart';
+import '../../support/app_text_scale.dart';
 
 // RA-MO-328: on a 320 phone at text scale 1.3 the next step's line was cut
 // after two lines («…»), so its reason never read whole. It wraps now; the
@@ -62,9 +63,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         builder: (context, child) => MediaQuery(
-          data: MediaQuery.of(
-            context,
-          ).copyWith(textScaler: const TextScaler.linear(1.3)),
+          data: MediaQuery.of(context).copyWith(textScaler: appTextScaler(1.3)),
           child: child!,
         ),
         home: JourneyProfileScope(
@@ -100,9 +99,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final step = find.byKey(
-      const ValueKey('aarast-dashboard-next-step-item'),
-    );
+    final step = find.byKey(const ValueKey('aarast-dashboard-next-step-item'));
     expect(step, findsOneWidget);
     final reason = find.descendant(
       of: step,

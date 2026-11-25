@@ -2,13 +2,14 @@ import 'package:aarast_mobile/core/widgets/aarast_otp_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../../support/app_text_scale.dart';
 
 Widget _wrap(Widget child, {double textScale = 1}) {
   return MaterialApp(
     builder: (context, materialChild) => MediaQuery(
       data: MediaQuery.of(
         context,
-      ).copyWith(textScaler: TextScaler.linear(textScale)),
+      ).copyWith(textScaler: appTextScaler(textScale)),
       child: materialChild!,
     ),
     home: Scaffold(

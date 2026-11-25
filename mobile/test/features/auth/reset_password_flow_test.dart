@@ -15,6 +15,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../support/app_route_table.dart';
+import '../../support/app_text_scale.dart';
 
 class _FakeAuthRepository extends AuthRepository {
   _FakeAuthRepository(super.apiClient, super.authStorage);
@@ -109,7 +110,7 @@ Future<void> _pumpResetScreen(
         builder: (context, materialChild) => MediaQuery(
           data: MediaQuery.of(
             context,
-          ).copyWith(textScaler: TextScaler.linear(textScale)),
+          ).copyWith(textScaler: appTextScaler(textScale)),
           child: materialChild!,
         ),
         home: const ResetPasswordScreen(),

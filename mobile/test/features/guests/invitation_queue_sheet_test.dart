@@ -10,6 +10,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/preview_fonts.dart';
+import '../../support/app_text_scale.dart';
 
 // D116: a round of sends from the person's own WhatsApp. Each guest's turn
 // opens the server's text in the guest's chat; only the person says it was
@@ -85,9 +86,7 @@ Future<({_Api api, List<int?> results})> _pump(
     MaterialApp(
       // The phone's own fonts at 140% text, as walks are judged.
       builder: (context, child) => MediaQuery(
-        data: MediaQuery.of(
-          context,
-        ).copyWith(textScaler: const TextScaler.linear(1.3)),
+        data: MediaQuery.of(context).copyWith(textScaler: appTextScaler(1.3)),
         child: Directionality(textDirection: TextDirection.rtl, child: child!),
       ),
       home: Scaffold(

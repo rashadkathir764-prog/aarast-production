@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../support/app_text_scale.dart';
 
 void main() {
   // The provider's account is its own screen now (p01,
@@ -247,7 +248,7 @@ Future<void> _pumpRegister(
         builder: (context, child) => MediaQuery(
           data: MediaQuery.of(
             context,
-          ).copyWith(textScaler: TextScaler.linear(textScale)),
+          ).copyWith(textScaler: appTextScaler(textScale)),
           child: child!,
         ),
         home: const Directionality(

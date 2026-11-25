@@ -1,6 +1,7 @@
 @Tags(['golden'])
 library;
 
+import 'support/app_text_scale.dart';
 import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
@@ -47,7 +48,7 @@ void main() {
             builder: (context, child) => MediaQuery(
               data: MediaQuery.of(
                 context,
-              ).copyWith(textScaler: TextScaler.linear(view.scale)),
+              ).copyWith(textScaler: appTextScaler(view.scale)),
               child: child!,
             ),
             home: const SplashScreen(),

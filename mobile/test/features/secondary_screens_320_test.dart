@@ -33,6 +33,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../support/app_text_scale.dart';
 
 void main() {
   group('QuoteConversationEntryScreen at 320px RTL', () {
@@ -426,9 +427,7 @@ Future<void> _pump320(
   final app = MaterialApp(
     theme: AppTheme.light(),
     builder: (context, appChild) => MediaQuery(
-      data: MediaQuery.of(
-        context,
-      ).copyWith(textScaler: const TextScaler.linear(1.3)),
+      data: MediaQuery.of(context).copyWith(textScaler: appTextScaler(1.3)),
       child: Directionality(textDirection: TextDirection.rtl, child: appChild!),
     ),
     home: child,

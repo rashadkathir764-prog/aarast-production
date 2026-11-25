@@ -14,6 +14,7 @@ import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/features/marketplace/widgets/provider_result_card.dart';
 
 import 'support/preview_fonts.dart';
+import 'support/app_text_scale.dart';
 
 Future<void> _pump(
   WidgetTester tester,
@@ -31,7 +32,7 @@ Future<void> _pump(
       builder: (context, child) => MediaQuery(
         data: MediaQuery.of(
           context,
-        ).copyWith(textScaler: TextScaler.linear(textScale)),
+        ).copyWith(textScaler: appTextScaler(textScale)),
         child: child!,
       ),
       home: Directionality(

@@ -24,6 +24,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
 import '../../support/preview_fonts.dart';
+import '../../support/app_text_scale.dart';
 
 // e04 / e08 as the owner sees them, with a real-sized Yemeni plan: long
 // names, a long venue, three occasions, one guest without a number. Each
@@ -249,7 +250,7 @@ Future<void> _pump(
         builder: (context, child) => MediaQuery(
           data: MediaQuery.of(
             context,
-          ).copyWith(textScaler: TextScaler.linear(textScale)),
+          ).copyWith(textScaler: appTextScaler(textScale)),
           child: Directionality(
             textDirection: TextDirection.rtl,
             child: JourneyProfileScope(

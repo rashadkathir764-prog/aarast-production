@@ -6,6 +6,7 @@ import 'package:aarast_mobile/core/widgets/aarast_pressable.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../../support/app_text_scale.dart';
 
 void main() {
   Widget harness(Widget child, {double textScale = 1}) {
@@ -14,7 +15,7 @@ void main() {
       builder: (context, appChild) => MediaQuery(
         data: MediaQuery.of(
           context,
-        ).copyWith(textScaler: TextScaler.linear(textScale)),
+        ).copyWith(textScaler: appTextScaler(textScale)),
         child: appChild!,
       ),
       home: Directionality(

@@ -19,6 +19,7 @@ import 'package:flutter_test/flutter_test.dart';
 import '../../support/screen_reader.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../support/app_text_scale.dart';
 
 void main() {
   group('Phase C sharing screens V3 contract', () {
@@ -281,8 +282,8 @@ void main() {
         await _pumpWithAuth(
           tester,
           provider: SharingProvider(api),
-          child: const MediaQuery(
-            data: MediaQueryData(textScaler: TextScaler.linear(1.3)),
+          child: MediaQuery(
+            data: MediaQueryData(textScaler: appTextScaler(1.3)),
             child: SharingScreen(weddingPlanId: _planId),
           ),
         );

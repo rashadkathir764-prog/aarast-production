@@ -1,6 +1,7 @@
 import 'package:aarast_mobile/features/tasks/widgets/create_task_components.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../../support/app_text_scale.dart';
 
 void main() {
   testWidgets(
@@ -20,7 +21,7 @@ void main() {
           home: Directionality(
             textDirection: TextDirection.rtl,
             child: MediaQuery(
-              data: const MediaQueryData(textScaler: TextScaler.linear(1.3)),
+              data: MediaQueryData(textScaler: appTextScaler(1.3)),
               child: Scaffold(
                 body: SingleChildScrollView(
                   child: CreateTaskResponsibleSection(

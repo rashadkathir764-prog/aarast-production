@@ -3,6 +3,7 @@ import 'package:aarast_mobile/features/wedding_plans/models/dashboard_summary.da
 import 'package:aarast_mobile/features/wedding_plans/widgets/dashboard/aarast_dashboard_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../../support/app_text_scale.dart';
 
 // b02's far column on the home money card.
 // V-01: one convention for every line: the short figure with its unit
@@ -510,7 +511,9 @@ void main() {
     });
 
     testWidgets('320 wide at text scale 1.3, both modes', (tester) async {
-      tester.platformDispatcher.textScaleFactorTestValue = 1.3;
+      tester.platformDispatcher.textScaleFactorTestValue = appTextScaler(
+        1.3,
+      ).scale(1);
       addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
       for (final inside in [true, false]) {
         await _pump(
@@ -588,7 +591,9 @@ void main() {
     testWidgets('where it fits it stays one line', (tester) async {
       // The test font draws every letter a full square wide, so the room a
       // real phone has is given here by a smaller text scale.
-      tester.platformDispatcher.textScaleFactorTestValue = 0.6;
+      tester.platformDispatcher.textScaleFactorTestValue = appTextScaler(
+        0.6,
+      ).scale(1);
       addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
       await _pump(
         tester,

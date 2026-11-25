@@ -4,6 +4,7 @@ import 'package:aarast_mobile/features/marketplace/models/provider_portfolio.dar
 import 'package:aarast_mobile/features/marketplace/widgets/provider_details_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../../support/app_text_scale.dart';
 
 // f03 «صفحة المزود», on the prototype's own provider (استوديو ضوء صنعاء).
 
@@ -399,7 +400,7 @@ Future<void> _pumpView(
       builder: (context, child) => MediaQuery(
         data: MediaQuery.of(
           context,
-        ).copyWith(textScaler: TextScaler.linear(textScale)),
+        ).copyWith(textScaler: appTextScaler(textScale)),
         child: child!,
       ),
       home: Directionality(

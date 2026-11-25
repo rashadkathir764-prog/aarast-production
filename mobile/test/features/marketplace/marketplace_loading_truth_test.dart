@@ -9,6 +9,7 @@ import 'package:aarast_mobile/features/marketplace/screens/provider_details_scre
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
+import '../../support/app_text_scale.dart';
 
 void main() {
   test(
@@ -127,7 +128,9 @@ void main() {
     (tester) async {
       tester.view.devicePixelRatio = 1;
       tester.view.physicalSize = const Size(320, 900);
-      tester.platformDispatcher.textScaleFactorTestValue = 1.3;
+      tester.platformDispatcher.textScaleFactorTestValue = appTextScaler(
+        1.3,
+      ).scale(1);
       addTearDown(tester.view.reset);
       addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
 

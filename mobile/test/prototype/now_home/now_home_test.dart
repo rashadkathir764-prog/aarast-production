@@ -43,6 +43,7 @@ import 'package:provider/single_child_widget.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../support/preview_fonts.dart';
+import '../../support/app_text_scale.dart';
 
 const _planId = 'plan-mohammed-salma';
 final _wedding = DateTime(2027, 1, 21, 16);
@@ -61,7 +62,9 @@ Future<void> _shot(
   tester.view.devicePixelRatio = 2;
   addTearDown(tester.view.reset);
   if (textScale != 1) {
-    tester.platformDispatcher.textScaleFactorTestValue = textScale;
+    tester.platformDispatcher.textScaleFactorTestValue = appTextScaler(
+      textScale,
+    ).scale(1);
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
   }
   final app = MaterialApp(

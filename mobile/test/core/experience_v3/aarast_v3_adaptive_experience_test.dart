@@ -2,6 +2,7 @@ import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import '../../support/app_text_scale.dart';
 
 void main() {
   group('Aarast adaptive route contracts', () {
@@ -88,9 +89,9 @@ void main() {
       MaterialApp(
         theme: ThemeData(fontFamily: 'Tajawal'),
         home: MediaQuery(
-          data: const MediaQueryData(
+          data: MediaQueryData(
             size: Size(320, 700),
-            textScaler: TextScaler.linear(1.3),
+            textScaler: appTextScaler(1.3),
           ),
           child: Directionality(
             textDirection: TextDirection.rtl,
@@ -130,9 +131,9 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: MediaQuery(
-          data: const MediaQueryData(
+          data: MediaQueryData(
             size: Size(384, 780),
-            textScaler: TextScaler.linear(1.15),
+            textScaler: appTextScaler(1.15),
           ),
           child: Directionality(
             textDirection: TextDirection.rtl,

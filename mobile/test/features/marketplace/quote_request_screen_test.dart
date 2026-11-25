@@ -25,6 +25,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../account_contexts/account_context_test_data.dart';
 import '../../support/app_route_table.dart';
+import '../../support/app_text_scale.dart';
 
 // f07 «اطلب عرض سعر» on the prototype's own request: فرقة الأفراح, the
 // wedding of 21 January in صنعاء.
@@ -239,7 +240,9 @@ Future<void> _pump(
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = Size(width, 1200);
-  tester.platformDispatcher.textScaleFactorTestValue = textScale;
+  tester.platformDispatcher.textScaleFactorTestValue = appTextScaler(
+    textScale,
+  ).scale(1);
   addTearDown(() {
     tester.view.reset();
     tester.platformDispatcher.clearTextScaleFactorTestValue();

@@ -1,6 +1,7 @@
 import 'package:aarast_mobile/core/widgets/aarast_phone_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../../support/app_text_scale.dart';
 
 void main() {
   testWidgets('formats and keeps the phone LTR inside a narrow RTL surface', (
@@ -12,11 +13,11 @@ void main() {
     addTearDown(tester.view.reset);
 
     await tester.pumpWidget(
-      const MaterialApp(
+      MaterialApp(
         home: Directionality(
           textDirection: TextDirection.rtl,
           child: MediaQuery(
-            data: MediaQueryData(textScaler: TextScaler.linear(1.3)),
+            data: MediaQueryData(textScaler: appTextScaler(1.3)),
             child: Scaffold(
               body: Align(
                 alignment: AlignmentDirectional.topStart,

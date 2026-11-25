@@ -47,6 +47,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../account_contexts/account_context_test_data.dart';
 import '../../support/app_route_table.dart';
+import '../../support/app_text_scale.dart';
 
 const _planId = 'shared-plan';
 
@@ -1092,7 +1093,7 @@ class _Harness {
     Widget scaled(BuildContext context, Widget? child) => MediaQuery(
       data: MediaQuery.of(
         context,
-      ).copyWith(textScaler: TextScaler.linear(textScale)),
+      ).copyWith(textScaler: appTextScaler(textScale)),
       child: child!,
     );
     // [routed]: the shell under a router, so a page it pushes (y06, y07)

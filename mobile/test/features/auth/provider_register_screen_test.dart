@@ -16,6 +16,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../support/app_route_table.dart';
+import '../../support/app_text_scale.dart';
 
 // p01 «حساب مزود»: the provider's own account. The business is asked after
 // the WhatsApp code, in the joining steps.
@@ -269,7 +270,7 @@ Future<GoRouter> _pump(
         builder: (context, child) => MediaQuery(
           data: MediaQuery.of(
             context,
-          ).copyWith(textScaler: TextScaler.linear(textScale)),
+          ).copyWith(textScaler: appTextScaler(textScale)),
           child: child!,
         ),
       ),

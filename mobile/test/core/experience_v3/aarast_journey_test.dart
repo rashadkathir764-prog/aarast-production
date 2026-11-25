@@ -4,6 +4,7 @@ import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import '../../support/app_text_scale.dart';
 
 Widget _host(Widget child, {double width = 320, double textScale = 1}) {
   return MaterialApp(
@@ -12,7 +13,7 @@ Widget _host(Widget child, {double width = 320, double textScale = 1}) {
       child: MediaQuery(
         data: MediaQueryData(
           size: Size(width, 900),
-          textScaler: TextScaler.linear(textScale),
+          textScaler: appTextScaler(textScale),
         ),
         child: Material(
           child: Center(

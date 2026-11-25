@@ -26,6 +26,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../support/app_route_table.dart';
+import '../../support/app_text_scale.dart';
 
 const _planId = 'plan-money-product';
 
@@ -1237,9 +1238,7 @@ class _MoneyProductHarness {
       theme: AppTheme.light(),
       routerConfig: router,
       builder: (context, child) => MediaQuery(
-        data: MediaQuery.of(
-          context,
-        ).copyWith(textScaler: const TextScaler.linear(1.3)),
+        data: MediaQuery.of(context).copyWith(textScaler: appTextScaler(1.3)),
         child: Directionality(
           textDirection: TextDirection.rtl,
           child: child ?? const SizedBox.shrink(),

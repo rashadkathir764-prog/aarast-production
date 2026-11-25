@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import '../../support/app_route_table.dart';
+import '../../support/app_text_scale.dart';
 
 final _token = List.filled(43, 'b').join();
 
@@ -195,7 +196,7 @@ Future<void> _pump(WidgetTester tester, {double textScale = 1}) async {
       builder: (context, child) => MediaQuery(
         data: MediaQuery.of(
           context,
-        ).copyWith(textScaler: TextScaler.linear(textScale)),
+        ).copyWith(textScaler: appTextScaler(textScale)),
         child: child!,
       ),
     ),

@@ -9,6 +9,7 @@ import 'package:aarast_mobile/features/sharing/screens/edit_shared_member_screen
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
+import '../../support/app_text_scale.dart';
 
 void main() {
   test('a Yemeni mobile reads «777 123 456»; others stay as shown', () {
@@ -29,9 +30,9 @@ void main() {
     await tester.pumpWidget(
       ChangeNotifierProvider<SharingProvider>.value(
         value: provider,
-        child: const MaterialApp(
+        child: MaterialApp(
           home: MediaQuery(
-            data: MediaQueryData(textScaler: TextScaler.linear(1.3)),
+            data: MediaQueryData(textScaler: appTextScaler(1.3)),
             child: EditSharedMemberScreen(sharedMemberId: 'member-phone'),
           ),
         ),

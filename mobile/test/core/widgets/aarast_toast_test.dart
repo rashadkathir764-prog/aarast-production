@@ -2,6 +2,7 @@ import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/core/widgets/aarast_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../../support/app_text_scale.dart';
 
 void main() {
   Iterable<String?> semanticLabels(WidgetTester tester) => tester
@@ -67,9 +68,7 @@ void main() {
       MaterialApp(
         theme: AppTheme.light(),
         builder: (context, child) => MediaQuery(
-          data: MediaQuery.of(
-            context,
-          ).copyWith(textScaler: const TextScaler.linear(1.3)),
+          data: MediaQuery.of(context).copyWith(textScaler: appTextScaler(1.3)),
           child: child!,
         ),
         home: Scaffold(

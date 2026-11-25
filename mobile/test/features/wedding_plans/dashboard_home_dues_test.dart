@@ -4,6 +4,7 @@ import 'package:aarast_mobile/features/wedding_plans/widgets/dashboard/aarast_da
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../../support/app_text_scale.dart';
 
 // The home's money card after the approved layout (2026-11-11): the dues
 // strip says what the money tab's «الدفعات» says, never cuts a figure, and
@@ -159,7 +160,9 @@ void main() {
       'with enlarged text', (tester) async {
     tester.view.physicalSize = const Size(320, 900);
     tester.view.devicePixelRatio = 1;
-    tester.platformDispatcher.textScaleFactorTestValue = 1.3;
+    tester.platformDispatcher.textScaleFactorTestValue = appTextScaler(
+      1.3,
+    ).scale(1);
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);

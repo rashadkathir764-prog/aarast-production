@@ -20,6 +20,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../support/app_route_table.dart';
+import '../../support/app_text_scale.dart';
 
 // D102-D109 «الملخص» on a plan kept on the phone: every figure comes from the
 // phone's copy of the money rules (held to the server's by
@@ -228,7 +229,7 @@ Future<_Screen> _open(
         builder: (context, child) => MediaQuery(
           data: MediaQuery.of(
             context,
-          ).copyWith(textScaler: TextScaler.linear(textScale)),
+          ).copyWith(textScaler: appTextScaler(textScale)),
           child: Directionality(
             textDirection: TextDirection.rtl,
             child: profile == null

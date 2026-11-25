@@ -2,6 +2,7 @@ import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/core/widgets/aarast_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../../support/app_text_scale.dart';
 
 void main() {
   testWidgets('AarastPageScaffold renders semantic shell at small width', (
@@ -104,9 +105,7 @@ void main() {
       MaterialApp(
         theme: AppTheme.light(),
         builder: (context, child) => MediaQuery(
-          data: MediaQuery.of(
-            context,
-          ).copyWith(textScaler: const TextScaler.linear(2)),
+          data: MediaQuery.of(context).copyWith(textScaler: appTextScaler(2)),
           child: child!,
         ),
         home: Scaffold(

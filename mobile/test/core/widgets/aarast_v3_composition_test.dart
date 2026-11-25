@@ -2,11 +2,12 @@ import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import '../../support/app_text_scale.dart';
 
 Widget _host(Widget child, {double width = 320, double textScale = 1}) {
   return MaterialApp(
     home: MediaQuery(
-      data: MediaQueryData(textScaler: TextScaler.linear(textScale)),
+      data: MediaQueryData(textScaler: appTextScaler(textScale)),
       child: Directionality(
         textDirection: TextDirection.rtl,
         child: Scaffold(
@@ -120,9 +121,9 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: MediaQuery(
-          data: const MediaQueryData(
+          data: MediaQueryData(
             size: Size(320, 640),
-            textScaler: TextScaler.linear(2),
+            textScaler: appTextScaler(2),
           ),
           child: Directionality(
             textDirection: TextDirection.rtl,

@@ -1,6 +1,7 @@
 import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../../support/app_text_scale.dart';
 
 Future<void> _pump(WidgetTester tester, Widget child) async {
   tester.view.devicePixelRatio = 1;
@@ -9,9 +10,7 @@ Future<void> _pump(WidgetTester tester, Widget child) async {
   await tester.pumpWidget(
     MaterialApp(
       builder: (context, app) => MediaQuery(
-        data: MediaQuery.of(
-          context,
-        ).copyWith(textScaler: const TextScaler.linear(2)),
+        data: MediaQuery.of(context).copyWith(textScaler: appTextScaler(2)),
         child: app!,
       ),
       home: Directionality(

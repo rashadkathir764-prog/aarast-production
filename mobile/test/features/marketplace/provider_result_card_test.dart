@@ -3,6 +3,7 @@ import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/features/marketplace/widgets/provider_result_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../../support/app_text_scale.dart';
 
 void main() {
   group('w33 how old a published price is', () {
@@ -43,7 +44,9 @@ void main() {
   }) async {
     tester.view.physicalSize = const Size(320, 640);
     tester.view.devicePixelRatio = 1;
-    tester.platformDispatcher.textScaleFactorTestValue = 1.3;
+    tester.platformDispatcher.textScaleFactorTestValue = appTextScaler(
+      1.3,
+    ).scale(1);
     addTearDown(() {
       tester.view.reset();
       tester.platformDispatcher.clearTextScaleFactorTestValue();
@@ -196,7 +199,9 @@ void main() {
     }) async {
       tester.view.physicalSize = Size(width, 800);
       tester.view.devicePixelRatio = 1;
-      tester.platformDispatcher.textScaleFactorTestValue = textScale;
+      tester.platformDispatcher.textScaleFactorTestValue = appTextScaler(
+        textScale,
+      ).scale(1);
       addTearDown(() {
         tester.view.reset();
         tester.platformDispatcher.clearTextScaleFactorTestValue();

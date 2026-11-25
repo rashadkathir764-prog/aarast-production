@@ -22,6 +22,7 @@ import 'package:aarast_mobile/core/utils/keep_currency_on_line.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
+import '../../support/app_text_scale.dart';
 
 void main() {
   group('one money system cleanup', () {
@@ -745,7 +746,7 @@ Widget _wrap(
       builder: (context, child) => MediaQuery(
         data: MediaQuery.of(
           context,
-        ).copyWith(textScaler: TextScaler.linear(textScale)),
+        ).copyWith(textScaler: appTextScaler(textScale)),
         child: child!,
       ),
       home: Directionality(

@@ -28,6 +28,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../account_contexts/account_context_test_data.dart';
 import '../../support/app_route_table.dart';
+import '../../support/app_text_scale.dart';
 
 String _testInviteToken() => List.filled(43, 'a').join();
 
@@ -1269,7 +1270,7 @@ class _BoundaryInviteRouterAppState extends State<_BoundaryInviteRouterApp> {
         builder: (context, child) => MediaQuery(
           data: MediaQuery.of(
             context,
-          ).copyWith(textScaler: TextScaler.linear(_harnessTextScale)),
+          ).copyWith(textScaler: appTextScaler(_harnessTextScale)),
           child: AarastAuthFlowRedirector(
             router: _router,
             child: child ?? const SizedBox.shrink(),

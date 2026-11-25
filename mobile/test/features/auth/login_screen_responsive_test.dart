@@ -12,6 +12,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../support/preview_fonts.dart';
+import '../../support/app_text_scale.dart';
 
 void main() {
   // Measured with the app's own fonts: the test font draws every Arabic
@@ -190,7 +191,7 @@ Future<void> _pumpLogin(
           child: MediaQuery(
             data: MediaQuery.of(
               context,
-            ).copyWith(textScaler: TextScaler.linear(textScale)),
+            ).copyWith(textScaler: appTextScaler(textScale)),
             child: child!,
           ),
         ),

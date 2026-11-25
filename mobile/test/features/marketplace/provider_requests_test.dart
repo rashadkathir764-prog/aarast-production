@@ -19,6 +19,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import '../../support/app_text_scale.dart';
 
 // f01 the board, f04 offers side by side, f05 asking for the booking, x10
 // declining politely, w31 an expired offer, x11 cancelling, and the review
@@ -777,7 +778,9 @@ void main() {
   });
 
   testWidgets('offers stay readable at 320px and 1.3 text', (tester) async {
-    tester.platformDispatcher.textScaleFactorTestValue = 1.3;
+    tester.platformDispatcher.textScaleFactorTestValue = appTextScaler(
+      1.3,
+    ).scale(1);
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
     await _pump(tester, [
       _offer('q1', 'ضوء صنعاء', '550000'),

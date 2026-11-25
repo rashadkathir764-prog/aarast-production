@@ -9,6 +9,7 @@ import 'package:aarast_mobile/features/wedding_day/providers/plan_events_provide
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
+import '../../support/app_text_scale.dart';
 
 // e07: a guest's page, with the reply set by hand and the invitation sent
 // over WhatsApp with a personal RSVP link (V1 checklist 4.7).
@@ -193,9 +194,7 @@ Future<_FakeGuestsApi> _pump(
       ],
       child: MaterialApp(
         builder: (context, child) => MediaQuery(
-          data: MediaQuery.of(
-            context,
-          ).copyWith(textScaler: const TextScaler.linear(1.3)),
+          data: MediaQuery.of(context).copyWith(textScaler: appTextScaler(1.3)),
           child: Directionality(
             textDirection: TextDirection.rtl,
             child: child!,

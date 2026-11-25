@@ -18,6 +18,7 @@ import 'package:aarast_mobile/features/finance/screens/money_overview_screen.dar
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
+import '../../support/app_text_scale.dart';
 
 // D114 on the money tab, with the owner's own plan (2026-11-14): budget 7
 // million, mahr 2 million of which 500 thousand handed over, nothing else
@@ -311,7 +312,9 @@ void main() {
     });
 
     testWidgets('320 wide at text scale 1.3, both modes', (tester) async {
-      tester.platformDispatcher.textScaleFactorTestValue = 1.3;
+      tester.platformDispatcher.textScaleFactorTestValue = appTextScaler(
+        1.3,
+      ).scale(1);
       addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
       for (final inside in [true, false]) {
         await _pump(tester, inside: inside, width: 320);

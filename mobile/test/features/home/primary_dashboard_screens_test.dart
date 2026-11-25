@@ -28,6 +28,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../support/app_route_table.dart';
+import '../../support/app_text_scale.dart';
 
 const _planId = 'guest-plan-primary-test';
 const _planTitle = 'خطة الزفاف الأساسية';
@@ -484,10 +485,9 @@ Widget _routerApp(GoRouter router) {
 
 Widget _phoneBuilder(BuildContext context, Widget? child) {
   return MediaQuery(
-    data: MediaQuery.of(context).copyWith(
-      disableAnimations: true,
-      textScaler: const TextScaler.linear(1.3),
-    ),
+    data: MediaQuery.of(
+      context,
+    ).copyWith(disableAnimations: true, textScaler: appTextScaler(1.3)),
     child: Directionality(
       textDirection: TextDirection.rtl,
       child: child ?? const SizedBox.shrink(),

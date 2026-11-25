@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/preview_fonts.dart';
+import '../../support/app_text_scale.dart';
 
 // RA-MO-328: on a 320 phone at text scale 1.3 the money card's figures took
 // four lines («اتفقت على» apart from its figure, «منها المهر» apart from
@@ -59,9 +60,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         builder: (context, child) => MediaQuery(
-          data: MediaQuery.of(
-            context,
-          ).copyWith(textScaler: const TextScaler.linear(1.3)),
+          data: MediaQuery.of(context).copyWith(textScaler: appTextScaler(1.3)),
           child: child!,
         ),
         home: JourneyProfileScope(

@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../support/app_text_scale.dart';
 
 void main() {
   testWidgets('mobile displays dev OTP helper only for local dev responses', (
@@ -141,7 +142,7 @@ void main() {
           builder: (context, child) => MediaQuery(
             data: MediaQuery.of(
               context,
-            ).copyWith(textScaler: const TextScaler.linear(1.3)),
+            ).copyWith(textScaler: appTextScaler(1.3)),
             child: child!,
           ),
           home: const OtpScreen(

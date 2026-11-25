@@ -21,6 +21,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../support/app_route_table.dart';
+import '../../support/app_text_scale.dart';
 
 void main() {
   group('money detail routes', () {
@@ -1053,9 +1054,7 @@ Future<void> _pumpMoneyScreen(
       create: (_) => provider ?? FinanceProvider(api ?? _MoneyDetailsApi()),
       child: MaterialApp(
         builder: (context, child) => MediaQuery(
-          data: MediaQuery.of(
-            context,
-          ).copyWith(textScaler: const TextScaler.linear(1.3)),
+          data: MediaQuery.of(context).copyWith(textScaler: appTextScaler(1.3)),
           child: child!,
         ),
         home: profile == null
@@ -1192,9 +1191,7 @@ Future<void> _pumpMoneyRouter(
       child: MaterialApp.router(
         routerConfig: router,
         builder: (context, child) => MediaQuery(
-          data: MediaQuery.of(
-            context,
-          ).copyWith(textScaler: const TextScaler.linear(1.3)),
+          data: MediaQuery.of(context).copyWith(textScaler: appTextScaler(1.3)),
           child: child!,
         ),
       ),

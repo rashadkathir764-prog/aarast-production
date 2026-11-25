@@ -20,6 +20,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../account_contexts/account_context_test_data.dart';
 import '../../support/app_route_table.dart';
+import '../../support/app_text_scale.dart';
 
 void main() {
   testWidgets('MyWeddingPlansScreen is RTL and overflow-free at 320px', (
@@ -49,7 +50,7 @@ void main() {
           builder: (context, child) => MediaQuery(
             data: MediaQuery.of(
               context,
-            ).copyWith(textScaler: const TextScaler.linear(1.3)),
+            ).copyWith(textScaler: appTextScaler(1.3)),
             child: child!,
           ),
           home: const Directionality(

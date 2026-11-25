@@ -8,6 +8,7 @@ import 'package:aarast_mobile/features/shell/screens/wedding_plan_shell.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import '../../support/app_text_scale.dart';
 
 void main() {
   test('nested money routes own the full viewport', () {
@@ -68,7 +69,7 @@ void main() {
           builder: (context, child) => MediaQuery(
             data: MediaQuery.of(
               context,
-            ).copyWith(textScaler: const TextScaler.linear(1.8)),
+            ).copyWith(textScaler: appTextScaler(1.8)),
             child: child!,
           ),
           home: PlanShellChrome(
@@ -317,7 +318,7 @@ void main() {
           builder: (context, child) => MediaQuery(
             data: MediaQuery.of(
               context,
-            ).copyWith(textScaler: const TextScaler.linear(1.8)),
+            ).copyWith(textScaler: appTextScaler(1.8)),
             child: child!,
           ),
           home: Builder(

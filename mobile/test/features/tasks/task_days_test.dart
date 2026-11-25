@@ -65,4 +65,30 @@ void main() {
       TaskGroup.overdue,
     );
   });
+
+  // «اللي خلصت» reads the latest first: a task the booking just closed sat
+  // under weeks-old ones ordered by their due day, out of sight.
+  test('finished tasks are listed latest finished first', () {
+    WeddingTask done(String id, DateTime due, DateTime finished, {bool auto = false}) =>
+        WeddingTask(
+          id: id,
+          weddingPlanId: 'plan-1',
+          title: id,
+          status: 'DONE',
+          priority: 'MEDIUM',
+          dueDate: DateTime.utc(due.year, due.month, due.day),
+          createdAt: DateTime(2026, 10, 1),
+          updatedAt: auto ? DateTime(2026, 11, 2) : finished,
+          autoClosedAt: auto ? finished : null,
+        );
+    final groups = groupTasks([
+      done('early', DateTime(2026, 11, 1), DateTime(2026, 11, 2)),
+      done('photographer', DateTime(2026, 11, 20), DateTime(2026, 11, 6), auto: true),
+      done('budget', DateTime(2026, 10, 20), DateTime(2026, 11, 4)),
+    ], lateNight);
+    expect(
+      groups[TaskGroup.done]!.map((task) => task.id),
+      ['photographer', 'budget', 'early'],
+    );
+  });
 }

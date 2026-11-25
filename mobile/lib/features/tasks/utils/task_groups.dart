@@ -43,7 +43,9 @@ TaskGroup taskGroupOf(WeddingTask task, DateTime today) {
   return TaskGroup.later;
 }
 
-/// Each section's tasks, soonest first; empty sections are left out.
+/// Each section's tasks, soonest first; empty sections are left out. The
+/// finished read the latest finished first: a task a booking just closed is
+/// news, and sorting it by its due day put it under weeks-old ones.
 Map<TaskGroup, List<WeddingTask>> groupTasks(
   List<WeddingTask> tasks,
   DateTime today,
@@ -52,7 +54,13 @@ Map<TaskGroup, List<WeddingTask>> groupTasks(
   for (final task in tasks) {
     groups.putIfAbsent(taskGroupOf(task, today), () => []).add(task);
   }
-  for (final list in groups.values) {
+  DateTime finishedAt(WeddingTask task) => task.autoClosedAt ?? task.updatedAt;
+  for (final entry in groups.entries) {
+    final list = entry.value;
+    if (entry.key == TaskGroup.done) {
+      list.sort((a, b) => finishedAt(b).compareTo(finishedAt(a)));
+      continue;
+    }
     list.sort((a, b) {
       final first = a.dueDate;
       final second = b.dueDate;

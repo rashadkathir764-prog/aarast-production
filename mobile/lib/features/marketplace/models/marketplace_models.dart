@@ -76,6 +76,26 @@ class ProviderCategory {
   }
 }
 
+/// D131: why a provider takes nothing on the asked day; the only day
+/// states the directory may say (never «free»).
+enum ProviderDayStatus {
+  /// He closed the day in his calendar.
+  closed,
+
+  /// Aarast's confirmed bookings filled his daily number.
+  full,
+}
+
+/// The directory's `dayStatus`; a server before D131 sends only
+/// `availableOnEventDate`, whose `false` is a full day and whose `true` was
+/// no proof of anything.
+ProviderDayStatus? providerDayStatusFromJson(Map<String, dynamic> json) =>
+    switch (json['dayStatus']?.toString()) {
+      'CLOSED' => ProviderDayStatus.closed,
+      'FULL' => ProviderDayStatus.full,
+      _ => json['availableOnEventDate'] == false ? ProviderDayStatus.full : null,
+    };
+
 class MarketplaceProvider {
   const MarketplaceProvider({
     required this.id,
@@ -103,7 +123,7 @@ class MarketplaceProvider {
     this.longitude,
     this.verifiedAt,
     this.isClaimed = true,
-    this.availableOnEventDate,
+    this.dayStatus,
     this.responsiveness,
     this.services = const [],
     this.serviceSummary,
@@ -136,7 +156,7 @@ class MarketplaceProvider {
       longitude: _doubleOrNull(json['longitude']),
       verifiedAt: _dateOrNull(json['verifiedAt']),
       isClaimed: json['isClaimed'] != false,
-      availableOnEventDate: json['availableOnEventDate'] as bool?,
+      dayStatus: providerDayStatusFromJson(json),
       responsiveness: _mapOrNull(
         json['responsiveness'],
         ProviderResponsiveness.fromJson,
@@ -196,9 +216,11 @@ class MarketplaceProvider {
   /// (V1 checklist 4.18): it takes no quote requests, only calls and WhatsApp.
   final bool isClaimed;
 
-  /// RA-BE-150 (Q-36): whether he takes the day the list was asked about
-  /// (the plan's wedding day); null when no day was asked.
-  final bool? availableOnEventDate;
+  /// D131 (docs/project/PROVIDER_RANKING.md): what is known of the day the
+  /// list was asked about (the plan's wedding day): he closed it, or
+  /// Aarast's bookings filled it. Null when no day was asked or nothing is
+  /// known, which is never «free»: his bookings outside Aarast are unknown.
+  final ProviderDayStatus? dayStatus;
 
   /// Only on the provider details response, and null with too little history.
   final ProviderResponsiveness? responsiveness;

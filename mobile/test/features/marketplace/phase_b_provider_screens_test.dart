@@ -105,11 +105,10 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    // UX critique: «فاضي يوم 21» was on the list's card only; the page she
-    // opens from it says it too, from the same answer.
-    testWidgets('provider details say whether her wedding day is free', (
-      tester,
-    ) async {
+    // UX critique: the day was on the list's card only; the page she opens
+    // from it says it too, from the same answer. D131: only with proof.
+    testWidgets('provider details say her wedding day is taken, from the '
+        "card's answer", (tester) async {
       _setTallView(tester);
       await tester.pumpWidget(
         ChangeNotifierProvider<ProviderMarketplaceProvider>.value(
@@ -125,7 +124,7 @@ void main() {
         find.byKey(const ValueKey('provider-details-day')),
         findsOneWidget,
       );
-      expect(find.text('فاضي يوم 21'), findsOneWidget);
+      expect(find.text('محجوز يوم 21'), findsOneWidget);
     });
 
     testWidgets('provider details stay safe at 320px RTL and 1.3 scale', (
@@ -771,7 +770,7 @@ class _DayAnswered extends _FakeMarketplaceProvider {
       ownerName: 'مالك القاعة',
       ratingAverage: 4.7,
       ratingCount: 12,
-      availableOnEventDate: true,
+      dayStatus: ProviderDayStatus.full,
     ),
   ];
 }

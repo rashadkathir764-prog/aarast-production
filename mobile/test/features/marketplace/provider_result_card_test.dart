@@ -1,5 +1,7 @@
 import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
+import 'package:aarast_mobile/features/marketplace/models/marketplace_models.dart'
+    show ProviderDayStatus;
 import 'package:aarast_mobile/features/marketplace/widgets/provider_result_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -40,7 +42,6 @@ void main() {
     String? priceLabel,
     String? priceAgeLabel,
     String? dayLabel,
-    bool? dayFree,
   }) async {
     tester.view.physicalSize = const Size(320, 640);
     tester.view.devicePixelRatio = 1;
@@ -73,7 +74,6 @@ void main() {
                 priceLabel: priceLabel,
                 priceAgeLabel: priceAgeLabel,
                 dayLabel: dayLabel,
-                dayFree: dayFree,
               ),
             ),
           ),
@@ -119,29 +119,34 @@ void main() {
     },
   );
 
-  // RA-BE-150 (Q-36): the plan's wedding day, said on the row.
-  testWidgets('a row says whether the provider takes the wedding day', (
-    tester,
-  ) async {
+  // D131: the plan's wedding day, said on the row only with proof.
+  testWidgets('a row says the wedding day only when he is known not to take '
+      'it, never that he is free', (tester) async {
+    final day = DateTime(2027, 1, 21);
+    expect(providerDayLabel(day, ProviderDayStatus.full), 'محجوز يوم 21');
+    expect(
+      providerDayLabel(day, ProviderDayStatus.closed),
+      'لا يستقبل حجوزات يوم 21',
+    );
+    expect(providerDayLabel(day, null), isNull, reason: 'nothing known');
+    expect(providerDayLabel(null, ProviderDayStatus.full), isNull);
+
     await pumpCard(
       tester,
       isClaimed: true,
-      dayLabel: 'فاضي يوم 21',
-      dayFree: true,
+      dayLabel: providerDayLabel(day, ProviderDayStatus.full),
     );
-    expect(find.text('فاضي يوم 21'), findsOneWidget);
+    expect(find.text('محجوز يوم 21'), findsOneWidget);
     expect(find.byKey(const Key('provider-card-day')), findsOneWidget);
     expect(tester.takeException(), isNull);
 
     await pumpCard(
       tester,
       isClaimed: true,
-      dayLabel: 'مشغول يوم 21',
-      dayFree: false,
+      dayLabel: providerDayLabel(day, null),
     );
     await tester.pump();
-    expect(find.text('مشغول يوم 21'), findsOneWidget);
-    expect(find.text('فاضي يوم 21'), findsNothing);
+    expect(find.byKey(const Key('provider-card-day')), findsNothing);
   });
 
   testWidgets('with no day asked the row says nothing about days', (

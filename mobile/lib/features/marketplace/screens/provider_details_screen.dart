@@ -157,7 +157,7 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
 
           return ProviderDetailsView(
             eventDate: state.eventDate,
-            dayFree: _dayFree(state, provider),
+            dayStatus: _dayStatus(state, provider),
             provider: provider,
             services: services,
             packages: state.packagesFor(widget.providerId),

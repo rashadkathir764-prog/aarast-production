@@ -39,15 +39,16 @@ class ProviderDetailsView extends StatelessWidget {
     this.onReportReview,
     this.readerUserId,
     this.eventDate,
-    this.dayFree,
+    this.dayStatus,
     super.key,
   });
 
-  /// The plan's wedding day and whether he is free on it: said «فاضي يوم 21»
-  /// or «مشغول يوم 21» as the list's card says it ([providerDayLabel]).
+  /// The plan's wedding day and what is known of it in his calendar, said
+  /// as the list's card says it ([providerDayLabel]); nothing when nothing
+  /// is known (D131: never «free»).
   final DateTime? eventDate;
-  final bool? dayFree;
-  String? get dayLabel => providerDayLabel(eventDate, dayFree);
+  final ProviderDayStatus? dayStatus;
+  String? get dayLabel => providerDayLabel(eventDate, dayStatus);
 
   /// RA-ST-05 (D94): «بلّغ عن التقييم» on a review; null where it cannot be
   /// sent. Never offered on the reader's own review ([readerUserId]).
@@ -165,8 +166,7 @@ class ProviderDetailsView extends StatelessWidget {
                   place: place,
                 ),
               ],
-              if (responds != null ||
-                  (dayLabel != null && dayFree != null)) ...[
+              if (responds != null || dayLabel != null) ...[
                 const SizedBox(height: AarastV3Space.x2),
                 Wrap(
                   spacing: 6,
@@ -174,16 +174,12 @@ class ProviderDetailsView extends StatelessWidget {
                   children: [
                     // Her wedding day against his calendar, as on the card
                     // she came from.
-                    if (dayLabel case final day? when dayFree != null)
+                    if (dayLabel case final day?)
                       JourneyTag(
                         key: const ValueKey('provider-details-day'),
                         label: day,
-                        color: dayFree!
-                            ? AarastV3Color.mint
-                            : AarastV3Color.textMuted,
-                        soft: dayFree!
-                            ? AarastV3Color.mintSoft
-                            : AarastV3Color.line,
+                        color: AarastV3Color.textMuted,
+                        soft: AarastV3Color.line,
                       ),
                     if (responds != null)
                       JourneyTag(

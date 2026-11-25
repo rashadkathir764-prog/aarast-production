@@ -94,19 +94,21 @@ void main() {
     expect(api.askedDays, [DateTime(2027, 2, 18), DateTime(2027, 2, 18)]);
     expect(directory.setEventDate(null), isTrue);
 
-    expect(
-      MarketplaceProvider.fromJson({
-        'id': 'p',
-        'businessName': 'قاعة',
-        'availableOnEventDate': false,
-      }).availableOnEventDate,
-      isFalse,
-    );
-    expect(
-      MarketplaceProvider.fromJson({'id': 'p', 'businessName': 'قاعة'})
-          .availableOnEventDate,
-      isNull,
-    );
+    // D131: only what is proven is read; «free» is never a state.
+    ProviderDayStatus? status(Map<String, dynamic> json) =>
+        MarketplaceProvider.fromJson({
+          'id': 'p',
+          'businessName': 'قاعة',
+          ...json,
+        }).dayStatus;
+    expect(status({'dayStatus': 'FULL'}), ProviderDayStatus.full);
+    expect(status({'dayStatus': 'CLOSED'}), ProviderDayStatus.closed);
+    expect(status({'dayStatus': null}), isNull);
+    expect(status({}), isNull);
+    // A server before D131: its «false» is a full day; its «true» proved
+    // nothing, so it says nothing.
+    expect(status({'availableOnEventDate': false}), ProviderDayStatus.full);
+    expect(status({'availableOnEventDate': true}), isNull);
   });
 
   test(

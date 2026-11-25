@@ -207,7 +207,10 @@ class MarketplaceApi {
       final items = _itemsFromPagedJson(json);
       // A day's answer belongs to that day: the phone's copy keeps none.
       final cacheable = [
-        for (final item in items) {...item}..remove('availableOnEventDate'),
+        for (final item in items)
+          {...item}
+            ..remove('availableOnEventDate')
+            ..remove('dayStatus'),
       ];
       if (_isUnfiltered(search, cityId, categories, featured)) {
         await _offline?.database.replaceCachedList(

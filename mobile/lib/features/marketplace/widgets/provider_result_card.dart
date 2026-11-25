@@ -9,6 +9,7 @@ import '../../../core/preferences/device_preferences.dart';
 import '../../../core/theme/aarast_motion.dart';
 import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_count.dart';
+import '../models/marketplace_models.dart' show ProviderDayStatus;
 import 'provider_board_view.dart' show providerServiceIcon;
 
 /// The picture at a row's start (Rashad 2026-11-19, «شكل الكروت سيء»): a
@@ -20,14 +21,18 @@ const _thumbSide = AarastV3Size.markHero;
 const _shelfLogoSide = AarastV3Media.logoLarge;
 const _shelfLogoRing = 3.0;
 
-/// RA-BE-150 (Q-36): «فاضي يوم 21» or «مشغول يوم 21», the plan's wedding
-/// day [askedDay] against his calendar ([free], as the directory answered
-/// for that day); null when no day was asked or no answer came. The list's
-/// card and the provider's page read it alike.
-String? providerDayLabel(DateTime? askedDay, bool? free) =>
-    askedDay == null || free == null
+/// D131 (docs/project/PROVIDER_RANKING.md): what is known of the plan's
+/// wedding day [askedDay] in his calendar: «محجوز يوم 21» or «لا يستقبل
+/// حجوزات يوم 21». Null when no day was asked or nothing is known: the app
+/// never says he is free, since his bookings outside Aarast are unknown.
+/// The list's card and the provider's page read it alike.
+String? providerDayLabel(DateTime? askedDay, ProviderDayStatus? status) =>
+    askedDay == null || status == null
     ? null
-    : '${free ? 'فاضي' : 'مشغول'} يوم ${askedDay.day}';
+    : switch (status) {
+        ProviderDayStatus.full => 'محجوز يوم ${askedDay.day}',
+        ProviderDayStatus.closed => 'لا يستقبل حجوزات يوم ${askedDay.day}',
+      };
 
 /// Where a row stands in its group: the group is one paper surface with a
 /// hair between rows (Rashad 2026-11-19), so only its outer corners round.
@@ -94,7 +99,6 @@ class ProviderResultCard extends StatelessWidget {
     this.isVerified = false,
     this.isClaimed = true,
     this.dayLabel,
-    this.dayFree,
     this.categoryLabel,
     this.locationLabel,
     this.priceLabel,
@@ -127,10 +131,9 @@ class ProviderResultCard extends StatelessWidget {
   /// not taken over yet: it does not take requests.
   final bool isClaimed;
 
-  /// RA-BE-150 (Q-36): «فاضي يوم 21» or «مشغول يوم 21», the plan's wedding
-  /// day against his calendar; null when the list was asked about no day.
+  /// D131: «محجوز يوم 21» or «لا يستقبل حجوزات يوم 21» ([providerDayLabel]);
+  /// null when no day was asked or nothing is known of it.
   final String? dayLabel;
-  final bool? dayFree;
 
   /// The kind; left out under a kind's own title, where it would repeat it.
   final String? categoryLabel;
@@ -165,12 +168,12 @@ class ProviderResultCard extends StatelessWidget {
             alpha: 0.12,
           ),
         ),
-      if (_clean(dayLabel) case final day? when dayFree != null)
+      if (_clean(dayLabel) case final day?)
         JourneyTag(
           key: const Key('provider-card-day'),
           label: day,
-          color: dayFree! ? AarastV3Color.mint : AarastV3Color.textMuted,
-          soft: dayFree! ? AarastV3Color.mintSoft : AarastV3Color.line,
+          color: AarastV3Color.textMuted,
+          soft: AarastV3Color.line,
         ),
       if (!isClaimed)
         const JourneyTag(

@@ -592,6 +592,117 @@ async function run() {
   // conversations of his own requests; the owner asked here, so it is closed.
   const helperTimeline = await request('GET', `/api/v1/conversations/${planConversationId}/timeline?limit=50`, null, member.token);
   await expectStatus('A helper does not read the owner\'s provider conversation', helperTimeline, 404);
+
+  // RA-BE-139 (Q-33 (أ)): when the helper asks the same provider, his request
+  // opens his own thread; the owner's thread and its two requests stay apart.
+  const helperQuote = await request('POST', `/api/v1/wedding-plans/${planOneId}/quote-requests`, {
+    providerId,
+    serviceId: fixture.serviceIds[0],
+    cityId: city.id,
+    guestCount: 90,
+    message: `Helper request ${marker}`,
+  }, member.token);
+  const helperQuoteBody = await expectStatus('The helper asks the same provider', helperQuote, 201);
+  check('Helper quote id exists', typeof helperQuoteBody?.id === 'string');
+  fixture.quoteIds.push(helperQuoteBody.id);
+  const helperConversationBody = await expectStatus(
+    'The helper reads his request\'s conversation',
+    await request('GET', `/api/v1/quote-requests/${helperQuoteBody.id}/conversation`, null, member.token),
+    200,
+  );
+  const helperConversationId = helperConversationBody?.id;
+  check(
+    'The helper\'s request opens a PLAN thread of its own',
+    typeof helperConversationId === 'string'
+      && helperConversationId !== planConversationId
+      && helperConversationBody.scope === 'PLAN',
+  );
+  fixture.conversationIds.push(helperConversationId);
+  check('The helper\'s thread holds his request only', helperConversationBody.quoteRequestCount === 1);
+  const helperThreadRow = await prisma.conversation.findUnique({
+    where: { id: helperConversationId },
+    select: { helperThread: true, helperUserId: true },
+  });
+  check(
+    'The thread is keyed to the helper',
+    helperThreadRow?.helperThread === true && helperThreadRow?.helperUserId === member.user.id,
+  );
+  check(
+    'The owner\'s thread keeps its two requests',
+    (await prisma.quoteRequest.count({ where: { conversationId: planConversationId } })) === 2,
+  );
+  check(
+    'The plan has one shared thread and one helper thread with the provider',
+    (await prisma.conversation.count({ where: { weddingPlanId: planOneId, providerId, helperThread: false } })) === 1
+      && (await prisma.conversation.count({ where: { weddingPlanId: planOneId, providerId, helperThread: true } })) === 1,
+  );
+  await expectStatus(
+    'Having asked, the helper still does not read the owner\'s thread',
+    await request('GET', `/api/v1/conversations/${planConversationId}`, null, member.token),
+    404,
+  );
+  const helperInbox = await expectStatus(
+    'The helper lists his conversations',
+    await request('GET', '/api/v1/conversations?limit=50', null, member.token),
+    200,
+  );
+  check(
+    'The helper\'s inbox lists his thread and not the owner\'s',
+    helperInbox.items.some((item) => item.id === helperConversationId)
+      && !helperInbox.items.some((item) => item.id === planConversationId),
+  );
+  const ownerInboxBoth = await expectStatus(
+    'The owner lists the plan\'s conversations',
+    await request('GET', '/api/v1/conversations?limit=50', null, owner.token),
+    200,
+  );
+  check(
+    'The owner\'s inbox lists both threads with the provider',
+    ownerInboxBoth.items.some((item) => item.id === planConversationId)
+      && ownerInboxBoth.items.some((item) => item.id === helperConversationId),
+  );
+  const providerHelperThread = await expectStatus(
+    'The provider reads the helper\'s thread',
+    await request('GET', `/api/v1/conversations/${helperConversationId}`, null, providerUser.token),
+    200,
+  );
+  check(
+    'The provider reads the helper as that thread\'s requester',
+    providerHelperThread?.latestQuoteRequest?.id === helperQuoteBody.id
+      && providerHelperThread?.providerJoined === true,
+  );
+  const helperProbe = new SocketIoProbe(member.token);
+  await helperProbe.connect();
+  const helperJoinAck = await helperProbe.emitWithAck('conversation:join', { conversationId: helperConversationId });
+  check('The helper joins his own thread\'s Socket.IO room', helperJoinAck?.joined === true);
+  helperProbe.close();
+  // The provider's message in the helper's thread is told to the helper;
+  // the one in the owner's thread is not.
+  const toHelper = await expectStatus('The provider writes in the helper\'s thread', await request(
+    'POST', `/api/v1/conversations/${helperConversationId}/messages`, { body: `To helper ${marker}` }, providerUser.token,
+  ), 201);
+  const toOwner = await expectStatus('The provider writes in the owner\'s thread', await request(
+    'POST', `/api/v1/conversations/${planConversationId}/messages`, { body: `To owner ${marker}` }, providerUser.token,
+  ), 201);
+  const helperNotices = await prisma.notification.findMany({
+    where: { userId: member.user.id, type: 'CHAT_MESSAGE_RECEIVED', entityType: 'conversation' },
+    select: { entityId: true, data: true },
+  });
+  check(
+    'The helper is told of the provider\'s message in his thread',
+    helperNotices.some((notice) => notice.entityId === helperConversationId && notice.data?.messageId === toHelper.id),
+  );
+  check(
+    'The helper is not told of the provider\'s message in the owner\'s thread',
+    !helperNotices.some((notice) => notice.entityId === planConversationId || notice.data?.messageId === toOwner.id),
+  );
+  check(
+    'The owner is told of the provider\'s message in the helper\'s thread',
+    (await prisma.notification.count({
+      where: { userId: owner.user.id, type: 'CHAT_MESSAGE_RECEIVED', entityId: helperConversationId },
+    })) === 1,
+  );
+
   // A partner (the bride) reads every conversation of the plan.
   const toPartner = await request('PATCH', `/api/v1/wedding-plans/${planOneId}/members/${memberBody.id}`, {
     role: 'BRIDE',
@@ -904,7 +1015,8 @@ async function run() {
       where: { weddingPlanId_providerId: { weddingPlanId: planOneId, providerId } },
     });
     const costs = await tx.weddingCost.findMany({ where: { quoteOfferId: offerBody.id } });
-    const conversations = await tx.conversation.findMany({ where: { weddingPlanId: planOneId, providerId } });
+    // RA-BE-139: the owner's side's one thread; the helper's is his own.
+    const conversations = await tx.conversation.findMany({ where: { weddingPlanId: planOneId, providerId, helperThread: false } });
     return { quote, acceptedOffer, link, costs, conversations };
   });
   check('Accepted QuoteRequest is persisted', evidence.quote?.status === 'ACCEPTED');
@@ -976,6 +1088,7 @@ async function run() {
     primaryPlanId: planOneId,
     primaryProviderId: providerId,
     primaryConversationId: planConversationId,
+    helperConversationId,
     primaryQuoteIds: fixture.quoteIds.slice(0, 2),
     acceptedOfferId: offerBody.id,
     weddingCostId: acceptBody.weddingCost.id,

@@ -304,10 +304,10 @@ test('writes an atomic fingerprint only under the real OS temp directory and acc
   assert.equal(saved.modelCount, 77);
   // B5: + BudgetCategoryKind (the groom's mahr item, C1). D72: + BudgetItemSuggestion.
   // D105: + EstimateCover. D107: + CostEntryKind. D116: + the card's photo
-  // kind, and the send's kind, status and channel.
-  assert.equal(saved.enumCount, 63);
+  // kind, and the send's kind, status and channel. Q-67 (D127): + ParticipantGender.
+  assert.equal(saved.enumCount, 64);
   assert.equal(saved.dmmf.models.length, 77);
-  assert.equal(saved.dmmf.enums.length, 63);
+  assert.equal(saved.dmmf.enums.length, 64);
 });
 
 test('rejects a non-temp output and a junction escape without writing outside temp', () => {

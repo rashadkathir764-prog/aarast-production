@@ -3,13 +3,18 @@ import "reflect-metadata";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { HttpException } from "@nestjs/common";
+import { plainToInstance } from "class-transformer";
+import { validate } from "class-validator";
 import {
   NotificationType,
+  ParticipantGender,
   SharedMemberRole,
   UserRole,
   WeddingPersona,
   WeddingTaskStatus,
 } from "@prisma/client";
+import { CreatePlanInviteDto } from "../src/modules/collaboration/api/dto/create-plan-invite.dto";
+import { UpdateSharedMemberDto } from "../src/modules/collaboration/api/dto/update-shared-member.dto";
 import { PermissionService } from "../src/modules/collaboration/internal/permission.service";
 import { rolePermissionDefaults } from "../src/modules/collaboration/internal/plan-permissions";
 import { PlanReadService } from "../src/modules/planning/infrastructure/plan-read.service";
@@ -319,6 +324,39 @@ test("J2-07: an update that changes no right tells no one", async () => {
   });
 
   assert.equal(notices.length, 0);
+});
+
+// Q-67 (أ, D127): a participant added before the owner was asked has no
+// gender; the owner may say it later. It is how the history speaks of them,
+// not a right: it tells no one and moves no authority.
+test("Q-67: the owner gives a member their gender without touching a right", async () => {
+  const { service, owner, members, notices } = journey();
+  assert.equal(members.get("member-1")!.gender ?? null, null);
+
+  const updated = await service.updateMemberForPlan(owner, plan.id, "member-1", {
+    gender: ParticipantGender.FEMALE,
+  });
+
+  assert.equal(updated.gender, ParticipantGender.FEMALE);
+  assert.equal(members.get("member-1")!.gender, ParticipantGender.FEMALE);
+  assert.equal(members.get("member-1")!.authorityVersion, 1);
+  assert.equal(notices.length, 0);
+
+  // A later rights change that says nothing of it keeps it.
+  await service.updateMemberForPlan(owner, plan.id, "member-1", {
+    receiveNotifications: false,
+  });
+  assert.equal(members.get("member-1")!.gender, ParticipantGender.FEMALE);
+});
+
+test("Q-67: the gender is optional on every write, and only male or female", async () => {
+  for (const Dto of [CreatePlanInviteDto, UpdateSharedMemberDto]) {
+    for (const body of [{}, { gender: "MALE" }, { gender: "FEMALE" }]) {
+      assert.deepEqual(await validate(plainToInstance(Dto, body)), [], `${Dto.name} ${JSON.stringify(body)}`);
+    }
+    const refused = await validate(plainToInstance(Dto, { gender: "OTHER" }));
+    assert.deepEqual(refused.map((error) => error.property), ["gender"], Dto.name);
+  }
 });
 
 test("J2-07 + J2-08: removal releases the member's open tasks in that plan and tells them once", async () => {

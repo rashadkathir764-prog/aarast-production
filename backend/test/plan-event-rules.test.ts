@@ -40,11 +40,22 @@ test('suggestions follow the plan party and skip what the plan has', () => {
     'AQD', 'LUNCH', 'DINNER', 'CUSTOM',
   ]);
   assert.deepEqual(suggestedEventTypes('BRIDE', ['HAFLA']), [
-    'NASHMA', 'AQD', 'LUNCH', 'DINNER', 'CUSTOM',
+    'HENNA', 'NASHMA', 'AQD', 'LUNCH', 'DINNER', 'SUBHIYA', 'CUSTOM',
   ]);
-  assert.deepEqual(suggestedEventTypes(null, []).slice(0, 4), [
-    'SAMRA', 'MAQEEL', 'HAFLA', 'NASHMA',
+  assert.deepEqual(suggestedEventTypes(null, []).slice(0, 5), [
+    'SAMRA', 'MAQEEL', 'HENNA', 'HAFLA', 'NASHMA',
   ]);
+  // Q-58 (D127): a bride's plan is offered her henna night before her
+  // party, and «الصبحية» after the wedding; a groom's plan is offered neither.
+  assert.deepEqual(suggestedEventTypes('BRIDE', ['WEDDING']), [
+    'HENNA', 'HAFLA', 'NASHMA', 'AQD', 'LUNCH', 'DINNER', 'SUBHIYA', 'CUSTOM',
+  ]);
+  assert.deepEqual(suggestedEventTypes('BRIDE', ['HENNA', 'SUBHIYA']), [
+    'HAFLA', 'NASHMA', 'AQD', 'LUNCH', 'DINNER', 'CUSTOM',
+  ]);
+  assert.ok(!suggestedEventTypes('GROOM', []).includes('HENNA'));
+  assert.ok(!suggestedEventTypes('GROOM', []).includes('SUBHIYA'));
+  assert.deepEqual(suggestedEventTypes('HELPER', []).slice(-2), ['SUBHIYA', 'CUSTOM']);
   // A custom event never removes «مناسبة ثانية».
   const withCustom = suggestedEventTypes('GROOM', ['CUSTOM']);
   assert.equal(withCustom[withCustom.length - 1], 'CUSTOM');

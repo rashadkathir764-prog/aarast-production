@@ -116,8 +116,9 @@ test('the base file contains only generator and datasource while owner declarati
   // B5: + BudgetCategoryKind (the groom's mahr item, C1).
   // Home guidance: + BudgetItemSuggestion («ما أحتاجها» / «بعدين»).
   // D105: + EstimateCover. D107: + CostEntryKind.
-  assert.equal(actualEnums.length, 63);
-  assert.equal(new Set(actualEnums).size, 63);
+  // Q-67 (D127): + ParticipantGender (how the plan speaks of a participant).
+  assert.equal(actualEnums.length, 64);
+  assert.equal(new Set(actualEnums).size, 64);
   assert.equal(manifest.modelOrder.length, 77);
   assert.deepEqual([...manifest.modelOrder].sort(), [...actualModels].sort());
   assert.deepEqual(
@@ -157,7 +158,7 @@ test('the canonical loader agrees with the exact manifest and combined current s
   assert.deepEqual(loaded.files.map((entry) => entry.file), [manifest.baseFile, ...manifest.owners.map((entry) => entry.file)]);
   assert.deepEqual(loaded.modelOrder, manifest.modelOrder);
   assert.equal(declarations(loaded.combinedText, 'model').length, 77);
-  assert.equal(declarations(loaded.combinedText, 'enum').length, 63);
+  assert.equal(declarations(loaded.combinedText, 'enum').length, 64);
 });
 
 test('the contributor migration rehearsal keeps migrations discoverable under the passed schema directory', () => {

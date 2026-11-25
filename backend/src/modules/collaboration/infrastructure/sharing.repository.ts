@@ -5,6 +5,7 @@ import {
   PlanInviteDeliveryStatus,
   Prisma,
   SharedMemberRole,
+  type ParticipantGender,
   type PlanInvite,
 } from '@prisma/client';
 import type { PrismaService } from '../../../platform/database/prisma.service';
@@ -81,6 +82,7 @@ export class SharingRepository {
       weddingPlanId: string; inviterUserId: string; inviteeUserId: string | null;
       name: string | null; phone: string | null; normalizedPhone: string | null;
       email: string | null; role: SharedMemberRole; permissions: PlanPermissionFlags;
+      gender: ParticipantGender | null;
       expiresAt: Date; tokenHash: string; attemptedAt: Date;
     },
   ) {
@@ -94,6 +96,7 @@ export class SharingRepository {
         normalizedPhone: fields.normalizedPhone,
         email: fields.email,
         role: fields.role,
+        gender: fields.gender,
         ...fields.permissions,
         expiresAt: fields.expiresAt,
         tokenHash: fields.tokenHash,
@@ -166,6 +169,7 @@ export class SharingRepository {
     tx: Prisma.TransactionClient, invite: PlanInvite, weddingPlanId: string,
     now: Date, tokenHash: string, role: SharedMemberRole | undefined,
     permissions: PlanPermissionFlags, expiresAt: Date,
+    gender?: ParticipantGender,
   ) {
     return tx.planInvite.updateMany({
       where: {
@@ -178,6 +182,7 @@ export class SharingRepository {
         deliveryAttemptedAt: now,
         expiresAt,
         ...(role !== undefined ? { role } : {}),
+        ...(gender !== undefined ? { gender } : {}),
         ...permissions,
       },
     });
@@ -220,6 +225,7 @@ export class SharingRepository {
         canInviteMembers: invite.canInviteMembers,
         canManageMoney: invite.canManageMoney,
         receiveNotifications: invite.receiveNotifications,
+        gender: invite.gender,
       },
     });
   }
@@ -256,11 +262,13 @@ export class SharingRepository {
     tx: Prisma.TransactionClient, memberId: string,
     role: SharedMemberRole | undefined, permissions: PlanPermissionFlags,
     authorityVersion: number | undefined,
+    gender?: ParticipantGender,
   ) {
     return tx.sharedMember.update({
       where: { id: memberId },
       data: {
         ...(role !== undefined ? { role } : {}),
+        ...(gender !== undefined ? { gender } : {}),
         ...permissions,
         ...(authorityVersion !== undefined ? { authorityVersion } : {}),
       },

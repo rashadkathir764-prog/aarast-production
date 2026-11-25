@@ -47,6 +47,9 @@ export const PLAN_EVENT_LABELS: Record<PlanEventType, string> = {
   AQD: 'عقد القران',
   LUNCH: 'الغداء',
   DINNER: 'العشاء',
+  // Q-58 (D127): the bride's henna night and the morning after her wedding.
+  HENNA: 'الحناء',
+  SUBHIYA: 'الصبحية',
   CUSTOM: 'مناسبة',
 };
 

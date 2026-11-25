@@ -4,6 +4,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../models/participant_access.dart';
 import '../models/plan_role_permissions.dart';
+import '../models/shared_member.dart' show ParticipantGender;
 
 /// D80, said to the plan's owner: what every participant reads, where they
 /// edit, and what stays the owner's.
@@ -166,6 +167,51 @@ class _LevelRow extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Q-67 (D127): «ذكر ولا أنثى؟», asked when adding a participant and on
+/// their page, so the plan speaks of a mother or a sister in the feminine
+/// («سجّلت»). The roles do not say it: «أهل» is a father or a mother.
+class ParticipantGenderChoice extends StatelessWidget {
+  const ParticipantGenderChoice({
+    required this.selected,
+    required this.onChanged,
+    this.enabled = true,
+    this.errorText,
+    super.key,
+  });
+
+  final ParticipantGender? selected;
+  final ValueChanged<ParticipantGender> onChanged;
+  final bool enabled;
+  final String? errorText;
+
+  @override
+  Widget build(BuildContext context) {
+    final error = errorText;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const JourneyFieldLabel('ذكر ولا أنثى؟'),
+        const SizedBox(height: AarastV3Space.x1),
+        Wrap(
+          spacing: AarastV3Space.x2,
+          runSpacing: AarastV3Space.x2,
+          children: [
+            for (final gender in ParticipantGender.values)
+              JourneyChip(
+                key: ValueKey('participant-gender-${gender.wire}'),
+                label: gender.label,
+                selected: selected == gender,
+                fontSize: JourneyType.small,
+                onTap: enabled ? () => onChanged(gender) : null,
+              ),
+          ],
+        ),
+        if (error != null) JourneyFieldError(error),
+      ],
     );
   }
 }

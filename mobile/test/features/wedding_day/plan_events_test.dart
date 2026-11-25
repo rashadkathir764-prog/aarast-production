@@ -324,6 +324,41 @@ void main() {
     expect(find.byTooltip('تعديل السمرة'), findsOneWidget);
   });
 
+  testWidgets('Q-58: a bride is offered her henna night and «الصبحية»', (
+    tester,
+  ) async {
+    final view = PlanEventsView.fromJson({
+      'weddingPlanId': 'plan-1',
+      'canEdit': true,
+      'party': 'BRIDE',
+      'items': const [],
+      'suggestions': [
+        'HENNA',
+        'HAFLA',
+        'NASHMA',
+        'AQD',
+        'LUNCH',
+        'DINNER',
+        'SUBHIYA',
+        'CUSTOM',
+      ],
+    });
+    expect(view.suggestions.take(1), [PlanEventType.henna]);
+    expect(view.suggestions, contains(PlanEventType.subhiya));
+    await _pump(tester, PlanEventsProvider(api: _Api(view)));
+
+    expect(
+      find.byKey(const ValueKey('plan-event-suggest-HENNA')),
+      findsOneWidget,
+    );
+    expect(find.text('الحناء'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('plan-event-suggest-SUBHIYA')),
+      findsOneWidget,
+    );
+    expect(find.text('الصبحية'), findsOneWidget);
+  });
+
   testWidgets('D91: an old copy of the events says so', (tester) async {
     final api = _Api(_view())..serveCopy = true;
     final provider = PlanEventsProvider(api: api);

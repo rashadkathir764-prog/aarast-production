@@ -68,6 +68,7 @@ model WeddingPlan {
 // is the plan's wedding date, so it stores no date of its own, and a plan
 // has at most one of it. Every other kind but CUSTOM is also once per plan
 // (partial unique index in the migration). The labels are the phone's.
+// HENNA («الحناء») and SUBHIYA («الصبحية») are the bride's (Q-58, D127).
 enum PlanEventType {
   WEDDING
   SAMRA
@@ -77,6 +78,8 @@ enum PlanEventType {
   AQD
   LUNCH
   DINNER
+  HENNA
+  SUBHIYA
   CUSTOM
 }
 

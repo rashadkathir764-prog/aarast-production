@@ -19,7 +19,7 @@
       "owner": "collaboration",
       "file": "collaboration.prisma",
       "models": ["SharedMember", "ContributorHistoryScope", "ContributorTenure", "ContributionEvent", "PlanInvite"],
-      "enums": ["SharedMemberRole", "ContributionScopeStatus", "ContributorTenureEndReason", "ContributionSection", "ContributionEntityType", "ContributionAction", "ContributionProvenance", "ContributionPermission", "PlanInviteDeliveryStatus"]
+      "enums": ["SharedMemberRole", "ContributionScopeStatus", "ContributorTenureEndReason", "ContributionSection", "ContributionEntityType", "ContributionAction", "ContributionProvenance", "ContributionPermission", "PlanInviteDeliveryStatus", "ParticipantGender"]
     },
     {
       "owner": "finance",

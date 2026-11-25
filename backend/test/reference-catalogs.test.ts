@@ -125,6 +125,41 @@ test("a bride's plan is not offered the shared photographer beside her own", () 
   assert.equal(shared?.groupSubtitleAr, 'الأساسيات اللي يتفقون عليها.');
 });
 
+// A live database keeps the catalog rows it was seeded with (the seed's
+// upsert updates nothing), so the default above reached new databases only.
+// The data migration publishes the same change there, as an admin would: a
+// new revision of every shared task still on the system's first revision,
+// published, and the catalog's version raised so phones read it again. An
+// item an admin edited (a revision past the first, or a draft) is left; a
+// fresh database has no rows, and it does nothing.
+test('the shared tasks change reaches a live catalog through a published revision', () => {
+  const sql = read(
+    'prisma/migrations/20261126120200_task_starter_shared_group_bride/migration.sql',
+  ).replace(/\r\n/g, '\n');
+  const shared = taskStarterDefaults.filter((item) => item.groupKey === 'shared-tasks');
+  assert.ok(shared.length > 0);
+  assert.match(sql, new RegExp(`"catalog"\\."key" = '${TASK_STARTER_CATALOG_KEY.replace('.', '\\.')}'`));
+  for (const item of shared) assert.ok(sql.includes(`'${item.key}'`), item.key);
+  // Untouched by an admin: on the first revision, published, with the old words.
+  assert.match(sql, /"item"\."currentRevision" = 1/);
+  assert.match(sql, /"item"\."publishedRevision" = 1/);
+  assert.ok(sql.includes("'الأساسيات التي يتفق عليها الطرفان.'"));
+  // The new revision says what the defaults say.
+  assert.ok(sql.includes(`'${shared[0].groupSubtitleAr}'`));
+  const notForBride = shared.filter((item) => !item.showForBride).map((item) => item.key);
+  assert.deepEqual(notForBride, ['task-shared-photo']);
+  assert.match(
+    sql,
+    /CASE WHEN "item"\."key" = 'task-shared-photo' THEN false ELSE "revision"\."showForBride" END/,
+  );
+  assert.match(sql, /"revision"\."revision" = 1/);
+  assert.match(sql, /2, /);
+  assert.match(sql, /SET "currentRevision" = 2, "publishedRevision" = 2/);
+  assert.match(sql, /SET "version" = "version" \+ 1/);
+  // Raised only when something was published (a fresh database: nothing).
+  assert.match(sql, /AND EXISTS \(SELECT 1 FROM "published"\)/);
+});
+
 test('catalog publication separates drafts from the public bootstrap', () => {
   const schema = readLivePrismaSchema();
   const service = read('src/catalogs/reference-catalog.service.ts');

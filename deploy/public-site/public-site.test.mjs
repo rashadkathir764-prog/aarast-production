@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import vm from "node:vm";
 
 const root = dirname(fileURLToPath(import.meta.url));
 const read = (name) => readFileSync(join(root, name), "utf8");
@@ -120,6 +121,82 @@ assert.doesNotMatch(inviteVisibleText, /[A-Za-z]/);
 assert.match(inviteHtml, /تنزيل اعّرست من متجر جوجل/);
 assert.match(inviteHtml, /الرابط نفسه في واتساب يفتح الدعوة/);
 assert.doesNotMatch(inviteHtml, /class="ring|♥/);
+// Q-69 (D127): an iPhone visitor reached «لأجهزة أندرويد فقط» and a store
+// button that does nothing on his phone. The page tells him plainly, in its
+// voice of no gender (RA-OP-31), that the app is on Android now and the
+// iPhone's is coming: no waiting list, no date. invite.js run against the
+// page's ids, as a browser would.
+{
+  const ids = [...inviteHtml.matchAll(/\sid="([^"]+)"/g)].map((match) => match[1]);
+  for (const id of ["open-invite", "invite-status", "get-app", "after-download", "iphone-note"]) {
+    assert.ok(ids.includes(id), `invite.html has #${id}`);
+  }
+  const iphoneNote = /<p[^>]*id="iphone-note"[^>]*>([\s\S]*?)<\/p>/.exec(inviteHtml);
+  assert.ok(iphoneNote, "the iPhone note is in the page");
+  assert.match(iphoneNote[0], /\shidden[\s>]/, "the iPhone note starts hidden");
+  const noteText = iphoneNote[1].replace(/\s+/g, " ").trim();
+  assert.match(noteText, /أندرويد/);
+  assert.match(noteText, /الآيفون/);
+  assert.match(noteText, /جاية/);
+  // No promise of a date, no list to join, no masculine imperative.
+  assert.doesNotMatch(noteText, /قريبًا جدًا|خلال|شهر|اكتب رقمك|سجّل|نرسل لك|انتظر|تقدر|حمّل/);
+
+  const runInvite = (userAgent, platform = "iPhone", maxTouchPoints = 5) => {
+    const elements = Object.fromEntries(
+      ids.map((id) => [
+        id,
+        {
+          id,
+          hidden: id === "iphone-note",
+          textContent: "",
+          href: "#",
+          attributes: {},
+          setAttribute(name, value) { this.attributes[name] = String(value); },
+          removeAttribute(name) { delete this.attributes[name]; },
+        },
+      ]),
+    );
+    const context = {
+      document: { getElementById: (id) => elements[id] ?? null },
+      navigator: { userAgent, platform, maxTouchPoints },
+      window: { location: { pathname: `/invites/${"A".repeat(43)}` } },
+      encodeURIComponent,
+    };
+    context.window.navigator = context.navigator;
+    vm.runInNewContext(inviteJs, context);
+    return elements;
+  };
+
+  const iphone = runInvite(
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1",
+  );
+  assert.equal(iphone["iphone-note"].hidden, false, "an iPhone is told");
+  assert.equal(iphone["get-app"].hidden, true, "no Google store button on an iPhone");
+  assert.equal(iphone["open-invite"].hidden, true, "no app to open on an iPhone");
+  assert.equal(iphone["after-download"].hidden, true);
+  assert.equal(iphone["invite-status"].hidden, true);
+  // iPadOS asks as a Mac with a touch screen.
+  const ipad = runInvite(
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15",
+    "MacIntel",
+    5,
+  );
+  assert.equal(ipad["iphone-note"].hidden, false, "an iPad is told too");
+
+  const android = runInvite(
+    "Mozilla/5.0 (Linux; Android 14; SM-A546E) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Mobile Safari/537.36",
+    "Linux armv8l",
+  );
+  assert.equal(android["iphone-note"].hidden, true, "an Android phone is not");
+  assert.notEqual(android["get-app"].hidden, true);
+  assert.match(android["open-invite"].href, /^aarast:\/\/open\/invites\//);
+  const mac = runInvite(
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15",
+    "MacIntel",
+    0,
+  );
+  assert.equal(mac["iphone-note"].hidden, true, "a Mac computer is not an iPhone");
+}
 // RA-OP-29: the RSVP preview's mark is a real, served file.
 assert.match(nginx, /location = \/rsvp-preview\.png[\s\S]*?max-age=86400/);
 assert.match(nginx, /invite-preview\.png[\s\S]*?max-age=86400/);

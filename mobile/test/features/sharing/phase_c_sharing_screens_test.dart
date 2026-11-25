@@ -892,6 +892,7 @@ class _FakeSharingApi extends SharingApi {
     bool? canInviteMembers,
     bool? canManageMoney,
     bool? receiveNotifications,
+    ParticipantGender? gender,
   }) async {
     reissueCalls += 1;
     final invite = invites.firstWhere((item) => item.id == inviteId);

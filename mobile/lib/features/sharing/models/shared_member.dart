@@ -3,6 +3,25 @@ import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/plan_day.dart';
 import 'plan_role_permissions.dart';
 
+/// Q-67 (D127): how the plan speaks of a participant («سجّلت» of a mother),
+/// as the owner said when adding them. A participant never said has none.
+enum ParticipantGender {
+  male('MALE', 'ذكر'),
+  female('FEMALE', 'أنثى');
+
+  const ParticipantGender(this.wire, this.label);
+
+  final String wire;
+  final String label;
+
+  static ParticipantGender? fromWire(Object? value) {
+    for (final gender in values) {
+      if (gender.wire == value) return gender;
+    }
+    return null;
+  }
+}
+
 class SharedMember {
   const SharedMember({
     required this.id,
@@ -19,12 +38,14 @@ class SharedMember {
     required this.canManageMoney,
     this.receiveNotifications = true,
     this.isOwner = false,
+    this.gender,
     required this.createdAt,
     required this.updatedAt,
   });
 
   factory SharedMember.fromJson(Map<String, dynamic> json) {
     return SharedMember(
+      gender: ParticipantGender.fromWire(json['gender']),
       id: json['id'].toString(),
       weddingPlanId: json['weddingPlanId'].toString(),
       userId: json['userId'].toString(),
@@ -59,10 +80,18 @@ class SharedMember {
   final bool canManageMoney;
   final bool receiveNotifications;
   final bool isOwner;
+
+  /// As the owner said (Q-67); null for a participant never said.
+  final ParticipantGender? gender;
   final DateTime createdAt;
   final DateTime updatedAt;
 
   bool get hasFinancialAccess => canViewMoney;
+
+  /// Whether the plan speaks of them in the feminine: as the owner said,
+  /// else a partner bride by her role; anyone else keeps the default form.
+  bool get speaksFeminine =>
+      gender == ParticipantGender.female || (gender == null && role == 'BRIDE');
 
   String? get displayNamePhone {
     final name = user?.name.trim();
@@ -179,6 +208,7 @@ class PlanInvite {
     this.inviterIsOwner,
     this.weddingDate,
     this.weddingCity,
+    this.gender,
   });
 
   factory PlanInvite.fromJson(Map<String, dynamic> json) {
@@ -220,6 +250,7 @@ class PlanInvite {
           : null,
       weddingDate: plan is Map ? planDayFromJson(plan['weddingDate']) : null,
       weddingCity: plan is Map ? plan['city']?.toString() : null,
+      gender: ParticipantGender.fromWire(json['gender']),
       deliveryStatus: delivery is Map
           ? delivery['status']?.toString() ?? 'UNKNOWN'
           : 'UNKNOWN',
@@ -267,6 +298,9 @@ class PlanInvite {
   /// proven (q03 «الخميس 21 يناير · صنعاء»).
   final DateTime? weddingDate;
   final String? weddingCity;
+
+  /// The one invited, as the inviter said (Q-67); null when never said.
+  final ParticipantGender? gender;
 
   bool get isPending => status == 'PENDING';
   bool get isAccepted => status == 'ACCEPTED';
@@ -331,6 +365,7 @@ class PlanInvite {
       inviterIsOwner: inviterIsOwner,
       weddingDate: weddingDate,
       weddingCity: weddingCity,
+      gender: gender,
     );
   }
 
@@ -366,6 +401,7 @@ class PlanInvite {
       inviterIsOwner: inviterIsOwner,
       weddingDate: weddingDate,
       weddingCity: weddingCity,
+      gender: gender,
     );
   }
 
@@ -397,6 +433,7 @@ class PlanInvite {
       inviterIsOwner: inviterIsOwner,
       weddingDate: weddingDate,
       weddingCity: weddingCity,
+      gender: gender,
     );
   }
 

@@ -41,6 +41,7 @@ class EditSharedMemberScreen extends StatefulWidget {
 class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
   String _role = 'VIEWER';
   PlanRolePermissions _permissions = PlanRolePermissions.forRole('VIEWER');
+  ParticipantGender? _gender;
   bool _initialized = false;
   bool _isCheckingAccess = true;
   bool _showPermissionGate = false;
@@ -59,6 +60,7 @@ class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
     final p = _permissions;
     return [
       _role,
+      _gender?.wire,
       p.canViewMoney,
       p.canManageMoney,
       p.canEditPlan,
@@ -223,6 +225,14 @@ class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
     }
 
     return [
+      // Q-67: a participant added before the owner was asked has none.
+      ParticipantGenderChoice(
+        key: const ValueKey('participant-gender'),
+        selected: _gender,
+        enabled: !provider.isSubmitting,
+        onChanged: (gender) => setState(() => _gender = gender),
+      ),
+      const SizedBox(height: AarastV3Space.x3),
       ParticipantAccessEditor(
         role: _role,
         permissions: _permissions,
@@ -365,6 +375,7 @@ class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
   void _syncFromMember(SharedMember member) {
     _role = member.role;
     _permissions = member.toPermissions();
+    _gender = member.gender;
     _initialized = true;
     _levelsAsOpened = _levelsSignature();
   }
@@ -377,6 +388,7 @@ class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
       role: _role,
       permissions: _permissions,
       from: member,
+      gender: _gender,
     );
     if (!mounted || !updated) return;
     AarastToast.showSuccess(context, 'حفظنا اللي يشوفه.');

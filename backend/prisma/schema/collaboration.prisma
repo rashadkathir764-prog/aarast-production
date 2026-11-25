@@ -94,6 +94,14 @@ enum PlanInviteDeliveryStatus {
   UNAVAILABLE
 }
 
+// Q-67 (D127): how the plan speaks of a participant («سجّلت» of a mother),
+// as the owner said when adding them. Null: not said (an older participant,
+// or an app from before), read in the default form.
+enum ParticipantGender {
+  MALE
+  FEMALE
+}
+
 model SharedMember {
   id                   String             @id @default(cuid())
   weddingPlanId        String
@@ -107,6 +115,7 @@ model SharedMember {
   canInviteMembers     Boolean            @default(false)
   canManageMoney       Boolean            @default(false)
   receiveNotifications Boolean            @default(true)
+  gender               ParticipantGender?
   authorityVersion     Int                @default(1)
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
@@ -211,6 +220,7 @@ model PlanInvite {
   canInviteMembers     Boolean                  @default(false)
   canManageMoney       Boolean                  @default(false)
   receiveNotifications Boolean                  @default(true)
+  gender               ParticipantGender?
   expiresAt            DateTime
   acceptedAt           DateTime?
   declinedAt           DateTime?

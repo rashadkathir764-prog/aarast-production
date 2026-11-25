@@ -369,6 +369,52 @@ void main() {
     expect(api.createCalls, 0);
     expect(api.reissueCalls, 1);
     expect(api.lastReissueInviteId, 'invite-new');
+    // Q-67: the new link carries what the owner just said of them.
+    expect(api.lastReissueGender, ParticipantGender.male);
+    await _settleToast(tester);
+  });
+
+  // Q-67 (أ, D127): the history spoke of a mother or a sister as «سجّل»,
+  // because only the partner role told a participant's gender. The sheet
+  // asks it, and the invite carries it to the server.
+  testWidgets('Q-67: the sheet asks «ذكر ولا أنثى؟» and sends the answer', (
+    tester,
+  ) async {
+    final api = _FakeSharingApi(createDeliveryStatus: 'DELIVERED');
+    await _pumpScreen(tester, provider: SharingProvider(api));
+
+    expect(find.text('ذكر ولا أنثى؟'), findsOneWidget);
+    await _fill(tester, name: 'أم سلمى', phone: '777123456', gender: 'FEMALE');
+    await tester.tap(find.byKey(const ValueKey('participant-send')));
+    await tester.pumpAndSettle();
+
+    expect(api.createCalls, 1);
+    expect(api.lastCreate!['gender'], 'FEMALE');
+    // The note after it is sent speaks of her.
+    expect(find.textContaining('وصلتها الدعوة على واتساب'), findsOneWidget);
+    await _settleToast(tester);
+  });
+
+  testWidgets('Q-67: nothing is sent before «ذكر» or «أنثى» is chosen', (
+    tester,
+  ) async {
+    final api = _FakeSharingApi(createDeliveryStatus: 'DELIVERED');
+    await _pumpScreen(tester, provider: SharingProvider(api));
+
+    await _fill(tester, name: 'صالح', phone: '777123456', gender: null);
+    await tester.tap(find.byKey(const ValueKey('participant-send')));
+    await tester.pumpAndSettle();
+
+    expect(api.createCalls, 0);
+    expect(find.text('اختر ذكر أو أنثى'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('participant-gender-MALE')));
+    await tester.pump();
+    expect(find.text('اختر ذكر أو أنثى'), findsNothing);
+    await tester.ensureVisible(find.byKey(const ValueKey('participant-send')));
+    await tester.tap(find.byKey(const ValueKey('participant-send')));
+    await tester.pumpAndSettle();
+    expect(api.lastCreate!['gender'], 'MALE');
     await _settleToast(tester);
   });
 
@@ -419,7 +465,15 @@ Future<void> _fill(
   WidgetTester tester, {
   required String name,
   required String phone,
+  // Q-67: the sheet asks «ذكر ولا أنثى؟» before it sends.
+  String? gender = 'MALE',
 }) async {
+  if (gender != null) {
+    final chip = find.byKey(ValueKey('participant-gender-$gender'));
+    await tester.ensureVisible(chip);
+    await tester.tap(chip);
+    await tester.pump();
+  }
   await tester.enterText(
     find.descendant(
       of: find.byKey(const ValueKey('participant-name')),
@@ -499,6 +553,7 @@ class _FakeSharingApi extends SharingApi {
   String? lastReissueInviteId;
   String? lastReissueRole;
   bool? lastReissueCanManageTasks;
+  ParticipantGender? lastReissueGender;
 
   @override
   Future<List<SharedMember>> getSharedMembers(String weddingPlanId) async {
@@ -534,12 +589,14 @@ class _FakeSharingApi extends SharingApi {
     required bool canInviteMembers,
     required bool canManageMoney,
     required bool receiveNotifications,
+    ParticipantGender? gender,
     int expiresInDays = 7,
   }) async {
     createCalls += 1;
     lastCreate = {
       'phone': phone,
       'name': name,
+      'gender': gender?.wire,
       'role': role,
       'canViewMoney': canViewMoney || canManageMoney,
       'canEditPlan': canEditPlan,
@@ -555,6 +612,7 @@ class _FakeSharingApi extends SharingApi {
       role: role,
       deliveryStatus: createDeliveryStatus,
       canManageTasks: canManageTasks,
+      gender: gender,
     );
     // The list is read again once the sheet closes (RA-MO-270), and a
     // server lists the invite it has just made: without its raw link,
@@ -578,17 +636,20 @@ class _FakeSharingApi extends SharingApi {
     bool? canInviteMembers,
     bool? canManageMoney,
     bool? receiveNotifications,
+    ParticipantGender? gender,
   }) async {
     reissueCalls += 1;
     lastReissueInviteId = inviteId;
     lastReissueRole = role;
     lastReissueCanManageTasks = canManageTasks;
+    lastReissueGender = gender;
     return _invite(
       id: inviteId,
       weddingPlanId: weddingPlanId,
       role: role ?? 'VIEWER',
       deliveryStatus: 'DELIVERED',
       canManageTasks: canManageTasks ?? false,
+      gender: gender,
     );
   }
 }
@@ -600,8 +661,10 @@ PlanInvite _invite({
   required String deliveryStatus,
   bool canManageTasks = false,
   DateTime? deliveryRetryAvailableAt,
+  ParticipantGender? gender,
 }) {
   return PlanInvite(
+    gender: gender,
     id: id,
     weddingPlanId: weddingPlanId,
     token: 'abcdefghijklmnopqrstuvwxyzABCDEFGH123456789',

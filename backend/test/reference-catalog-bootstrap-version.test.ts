@@ -7,7 +7,7 @@ import { ReferenceCatalogService } from "../src/catalogs/reference-catalog.servi
 // Items seeded after a device cached the catalog must change the bootstrap
 // version, or that device keeps answering "unchanged" and never sees them.
 
-function catalogRows(itemKeys: string[]) {
+function catalogRows(itemKeys: string[], publishedRevision = 1) {
   const updatedAt = new Date("2026-10-01T00:00:00.000Z");
   return [
     [
@@ -19,8 +19,8 @@ function catalogRows(itemKeys: string[]) {
         updatedAt,
         items: itemKeys.map((key) => ({
           key,
-          publishedRevision: 1,
-          revisions: [{ revision: 1, isActive: true, nameAr: key }],
+          publishedRevision,
+          revisions: [{ revision: publishedRevision, isActive: true, nameAr: key }],
         })),
       },
     ],
@@ -32,10 +32,12 @@ function catalogRows(itemKeys: string[]) {
   ];
 }
 
-function serviceReturning(itemKeys: string[]) {
+function serviceReturning(itemKeys: string[], publishedRevision = 1) {
   const service = new ReferenceCatalogService({} as any, {} as any) as any;
   service.seedPromise = Promise.resolve();
-  service.repository = { bootstrapRows: async () => catalogRows(itemKeys) };
+  service.repository = {
+    bootstrapRows: async () => catalogRows(itemKeys, publishedRevision),
+  };
   service.toPublishedItem = (key: string) => ({ key });
   return service as ReferenceCatalogService;
 }
@@ -53,4 +55,16 @@ test("a newly seeded catalog item changes the bootstrap version", async () => {
     await serviceReturning(["groom-mahr"]).getBootstrap(before.version),
     { version: before.version, unchanged: true },
   );
+});
+
+// A revision published by a data migration (the shared tasks of
+// 20261126120200) changes the version too, so a phone holding the old
+// catalog reads the bride's list without «حجز المصور».
+test("a republished catalog item changes the bootstrap version", async () => {
+  const before = await serviceReturning(["task-shared-photo"]).getBootstrap();
+  const after = await serviceReturning(["task-shared-photo"], 2).getBootstrap(
+    before.version,
+  );
+  assert.notEqual(after.version, before.version);
+  assert.equal(after.unchanged, false);
 });

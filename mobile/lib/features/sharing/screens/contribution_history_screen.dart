@@ -94,7 +94,7 @@ class _ContributionHistoryScreenState extends State<ContributionHistoryScreen> {
             ContributionActor(
               userId: member.userId,
               name: _memberName(member),
-              feminine: member.role == 'BRIDE',
+              feminine: member.speaksFeminine,
             ),
       ];
     }

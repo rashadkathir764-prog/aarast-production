@@ -27,7 +27,7 @@ const registryPath = path.join(backendRoot, 'architecture', 'ownership-registry.
 const expectedOwners: ManifestOwner[] = [
   { owner: 'backoffice', file: 'backoffice.prisma', models: ['AdminAuditLog'], enums: ['AdminRole', 'AdminAuditPhase'] },
   { owner: 'catalog', file: 'catalog.prisma', models: ['City', 'Governorate', 'District', 'AdministrativeLocality', 'ReferenceCatalog', 'ReferenceCatalogItem', 'ReferenceCatalogItemRevision', 'ProviderCategory'], enums: ['AdministrativeLocalityType'] },
-  { owner: 'collaboration', file: 'collaboration.prisma', models: ['SharedMember', 'ContributorHistoryScope', 'ContributorTenure', 'ContributionEvent', 'PlanInvite'], enums: ['SharedMemberRole', 'ContributionScopeStatus', 'ContributorTenureEndReason', 'ContributionSection', 'ContributionEntityType', 'ContributionAction', 'ContributionProvenance', 'ContributionPermission', 'PlanInviteDeliveryStatus'] },
+  { owner: 'collaboration', file: 'collaboration.prisma', models: ['SharedMember', 'ContributorHistoryScope', 'ContributorTenure', 'ContributionEvent', 'PlanInvite'], enums: ['SharedMemberRole', 'ContributionScopeStatus', 'ContributorTenureEndReason', 'ContributionSection', 'ContributionEntityType', 'ContributionAction', 'ContributionProvenance', 'ContributionPermission', 'PlanInviteDeliveryStatus', 'ParticipantGender'] },
   { owner: 'finance', file: 'finance.prisma', models: ['BudgetCategory', 'WeddingCost', 'CostPayment', 'CostReceipt', 'PaymentSchedule', 'FundingSource', 'LoanRepayment'], enums: ['WeddingCostStatus', 'CostPaymentType', 'PaymentScheduleStatus', 'FundingSourceKind', 'FundingSourceStatus', 'LoanRepaymentStatus', 'CostPayer', 'BudgetCategoryKind', 'BudgetItemSuggestion', 'CostEntryKind', 'EstimateCover'] },
   { owner: 'guests', file: 'guests.prisma', models: ['Guest', 'GuestGroup', 'GuestInvitationCard', 'GuestEventInvite', 'GuestInvitationSend'], enums: ['GuestSide', 'GuestStatus', 'GuestInvitationStatus', 'GuestAttendanceStatus', 'GuestInvitationCardPhotoKind', 'GuestInvitationSendKind', 'GuestInvitationSendStatus', 'GuestInvitationSendChannel'] },
   { owner: 'identity', file: 'identity.prisma', models: ['AccountDeletionReceipt', 'ErasedAccount', 'User', 'DataExport', 'AdminLoginChallenge', 'AdminTrustedDevice', 'AdminPasswordResetChallenge', 'RefreshToken', 'LoginThrottle', 'OtpDispatchQuota', 'AssistantUsageDay', 'AssistantAnswerReport', 'OtpCode'], enums: ['UserRole', 'AppRole', 'UserStatus', 'OtpPurpose', 'AuthSessionScope'] },
@@ -106,9 +106,10 @@ test('R2 Prisma manifest is exact plain data with immutable provenance and deter
   // B5: + BudgetCategoryKind (the groom's mahr item, C1).
   // Home guidance: + BudgetItemSuggestion («ما أحتاجها» / «بعدين»).
   // D105: + EstimateCover. D107: + CostEntryKind.
-  assert.equal(manifest.owners.flatMap((entry) => entry.enums).length, 63);
+  // Q-67 (D127): + ParticipantGender.
+  assert.equal(manifest.owners.flatMap((entry) => entry.enums).length, 64);
   assert.equal(new Set(manifest.owners.flatMap((entry) => entry.models)).size, 77);
-  assert.equal(new Set(manifest.owners.flatMap((entry) => entry.enums)).size, 63);
+  assert.equal(new Set(manifest.owners.flatMap((entry) => entry.enums)).size, 64);
 });
 
 test('R2 Prisma manifest equals the current registry and ordered live single-schema declarations', () => {
@@ -130,7 +131,7 @@ test('R2 Prisma manifest equals the current registry and ordered live single-sch
   assert.deepEqual(manifest.modelOrder, readLivePrismaModelOrder());
   assert.deepEqual(manifest.owners.flatMap((entry) => entry.enums).sort(), orderedDeclarations('enum').sort());
   assert.equal(manifest.modelOrder.length, 77);
-  assert.equal(orderedDeclarations('enum').length, 63);
+  assert.equal(orderedDeclarations('enum').length, 64);
 });
 
 test('manifest registry comparison rejects a User and IdempotencyKey owner swap', () => {

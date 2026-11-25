@@ -375,6 +375,7 @@ class _FakeSharingApi extends SharingApi {
     required bool canInviteMembers,
     required bool canManageMoney,
     required bool receiveNotifications,
+    ParticipantGender? gender,
     int expiresInDays = 7,
   }) async {
     createPlanInviteCalls += 1;

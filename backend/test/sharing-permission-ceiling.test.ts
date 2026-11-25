@@ -7,6 +7,7 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { HttpException } from "@nestjs/common";
 import {
+  ParticipantGender,
   PlanInviteDeliveryStatus,
   Prisma,
   SharedMemberRole,
@@ -981,6 +982,100 @@ test("RA-BE-41: the accept notice names the account as the app shows it, never a
   assert.ok(notice);
   assert.match(notice.body, /سالم/);
   assert.doesNotMatch(notice.body, /اسم الإدارة/);
+});
+
+// Q-67 (أ, D127): the owner's history said «سجّل» of a mother or a sister,
+// because a participant's gender was known only through the partner role.
+// The owner says it when adding them; the invite keeps it, the member it
+// becomes carries it, and both answers return it. An app from before sends
+// none, and the participant stays of no known gender (null).
+async function acceptWithMembership(
+  harness: ReturnType<typeof inviteHarness>,
+  inviteId: string,
+) {
+  let membership: Record<string, unknown> | null = null;
+  (harness.db as any).$transaction = async (
+    operation: (tx: Record<string, any>) => Promise<any>,
+  ) =>
+    operation({
+      __transaction: true,
+      $queryRaw: async (query: any) => {
+        const sql = Array.isArray(query?.strings)
+          ? query.strings.join(" ")
+          : String(query);
+        if (sql.includes('FROM "User"')) {
+          return [harness.owner, harness.target].map(({ id, status }) => ({
+            id,
+            status,
+            deletionPending: false,
+          }));
+        }
+        if (sql.includes('FROM "PlanInvite"')) {
+          return [{ id: harness.db.invites[0].id }];
+        }
+        return [{ id: "plan-1" }];
+      },
+      weddingPlan: { findUnique: async () => harness.db.plan },
+      planInvite: {
+        findFirst: harness.db.planInvite.findFirst,
+        findUnique: harness.db.planInvite.findUnique,
+        updateMany: async ({ where, data }: any) =>
+          harness.db.planInvite.updateMany({
+            where: { weddingPlanId: "plan-1", ...where },
+            data,
+          }),
+      },
+      sharedMember: {
+        findUnique: async () => membership,
+        upsert: async ({ create }: any) => {
+          membership = {
+            id: "member-1",
+            ...create,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            user: harness.target,
+          };
+          return membership;
+        },
+      },
+      conversation: { findMany: async () => [] },
+      conversationParticipant: {
+        updateMany: async () => ({ count: 0 }),
+        createMany: async () => ({ count: 0 }),
+      },
+    });
+  const accepted = await harness.service.acceptInvite(harness.target, inviteId);
+  return { accepted, membership: membership as Record<string, unknown> | null };
+}
+
+test("Q-67: the gender the owner gives a participant is kept on the invite and the member", async () => {
+  const harness = inviteHarness();
+  const created = await harness.service.createInvite(harness.owner, "plan-1", {
+    phone: harness.target.phone!,
+    name: "أم سلمى",
+    role: SharedMemberRole.FAMILY,
+    gender: ParticipantGender.FEMALE,
+  });
+  assert.equal(harness.db.invites[0].gender, ParticipantGender.FEMALE);
+  assert.equal(created.gender, ParticipantGender.FEMALE);
+
+  const { accepted, membership } = await acceptWithMembership(harness, created.id);
+  assert.equal(membership?.gender, ParticipantGender.FEMALE);
+  assert.equal(accepted.member.gender, ParticipantGender.FEMALE);
+});
+
+test("Q-67: an app from before sends no gender, and the participant has none", async () => {
+  const harness = inviteHarness();
+  const created = await harness.service.createInvite(harness.owner, "plan-1", {
+    phone: harness.target.phone!,
+    role: SharedMemberRole.VIEWER,
+  });
+  assert.equal(harness.db.invites[0].gender ?? null, null);
+  assert.equal(created.gender, null);
+
+  const { accepted, membership } = await acceptWithMembership(harness, created.id);
+  assert.equal(membership?.gender ?? null, null);
+  assert.equal(accepted.member.gender, null);
 });
 
 test("RA-BE-20: adding a participant by number says the same of every number and adds no one", async () => {

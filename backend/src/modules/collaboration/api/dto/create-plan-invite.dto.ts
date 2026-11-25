@@ -1,4 +1,4 @@
-import { SharedMemberRole } from "@prisma/client";
+import { ParticipantGender, SharedMemberRole } from "@prisma/client";
 import {
   IsBoolean,
   IsEmail,
@@ -37,6 +37,11 @@ export class CreatePlanInviteDto {
   @IsEnum(SharedMemberRole)
   @IsOptional()
   role?: SharedMemberRole;
+
+  /** Q-67: how the plan speaks of them; an app from before sends none. */
+  @IsEnum(ParticipantGender)
+  @IsOptional()
+  gender?: ParticipantGender;
 
   @IsBoolean()
   @IsOptional()

@@ -157,6 +157,30 @@ void main() {
     expect(find.textContaining('خلّصت «استلم البدلة»'), findsOneWidget);
   });
 
+  // Q-67 (أ, D127): only the partner bride was known to be a woman, so the
+  // history said «خلّص» of a mother or a sister. The member's own gender,
+  // as the owner said it, is how every participant is spoken of.
+  testWidgets('Q-67: any member the owner said is a woman reads in the '
+      'feminine', (tester) async {
+    final api = _Api(owner: true, salehGender: ParticipantGender.female);
+    await _pump(tester, api);
+
+    expect(find.textContaining('خلّصت «استلم البدلة»'), findsOneWidget);
+  });
+
+  testWidgets('Q-67: a man said so reads in the masculine, a partner too', (
+    tester,
+  ) async {
+    final api = _Api(
+      owner: true,
+      partnerBride: true,
+      salehGender: ParticipantGender.male,
+    );
+    await _pump(tester, api);
+
+    expect(find.textContaining('خلّص «استلم البدلة»'), findsOneWidget);
+  });
+
   testWidgets('the reader\'s own rows carry no repeated letter', (
     tester,
   ) async {
@@ -258,11 +282,12 @@ Future<void> _pump(WidgetTester tester, _Api api) async {
 typedef _Request = ({String? section, String? contributorUserId, int offset});
 
 class _Api extends SharingApi {
-  _Api({required this.owner, this.partnerBride = false})
+  _Api({required this.owner, this.partnerBride = false, this.salehGender})
     : super(ApiClient(tokenProvider: () async => null));
 
   final bool owner;
   final bool partnerBride;
+  final ParticipantGender? salehGender;
   final List<_Request> requests = [];
   int membersCalls = 0;
 
@@ -282,7 +307,12 @@ class _Api extends SharingApi {
   Future<List<SharedMember>> getSharedMembers(String weddingPlanId) async {
     membersCalls += 1;
     return [
-      _member('saleh', 'صالح', role: partnerBride ? 'BRIDE' : 'HELPER'),
+      _member(
+        'saleh',
+        'صالح',
+        role: partnerBride ? 'BRIDE' : 'HELPER',
+        gender: salehGender,
+      ),
       _member('father', 'الوالد'),
     ];
   }
@@ -366,23 +396,24 @@ class _PagingApi extends SharingApi {
   }
 }
 
-SharedMember _member(String id, String name, {String role = 'HELPER'}) =>
-    SharedMember(
-      id: 'member-$id',
-      weddingPlanId: 'plan-1',
-      userId: 'user-$id',
-      user: SharedMemberUser(
-        id: 'user-$id',
-        name: name,
-        phone: '+967771554220',
-      ),
-      role: role,
-      canViewMoney: false,
-      canManageTasks: true,
-      canManageMoney: false,
-      createdAt: DateTime(2026, 7, 16),
-      updatedAt: DateTime(2026, 7, 16),
-    );
+SharedMember _member(
+  String id,
+  String name, {
+  String role = 'HELPER',
+  ParticipantGender? gender,
+}) => SharedMember(
+  gender: gender,
+  id: 'member-$id',
+  weddingPlanId: 'plan-1',
+  userId: 'user-$id',
+  user: SharedMemberUser(id: 'user-$id', name: name, phone: '+967771554220'),
+  role: role,
+  canViewMoney: false,
+  canManageTasks: true,
+  canManageMoney: false,
+  createdAt: DateTime(2026, 7, 16),
+  updatedAt: DateTime(2026, 7, 16),
+);
 
 Map<String, dynamic> _json(
   String id, {

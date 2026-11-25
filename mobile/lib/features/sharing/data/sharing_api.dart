@@ -82,6 +82,7 @@ class SharingApi {
     required bool canInviteMembers,
     required bool canManageMoney,
     required bool receiveNotifications,
+    ParticipantGender? gender,
     int expiresInDays = 7,
   }) async {
     final normalizedPhone = _normalizePhone(phone);
@@ -92,6 +93,7 @@ class SharingApi {
       body: {
         'phone': normalizedPhone,
         if (name != null && name.trim().isNotEmpty) 'name': name.trim(),
+        'gender': ?gender?.wire,
         'role': role,
         'canViewMoney': canViewMoney || canManageMoney,
         'canEditPlan': canEditPlan,
@@ -130,6 +132,7 @@ class SharingApi {
     bool? canInviteMembers,
     bool? canManageMoney,
     bool? receiveNotifications,
+    ParticipantGender? gender,
   }) async {
     final json = await _writes.serverOnly(
       reason: 'التذكير يُرسل من رقم اعّرست، فيحتاج النت.',
@@ -137,6 +140,7 @@ class SharingApi {
       path: '/api/v1/wedding-plans/$weddingPlanId/invites/$inviteId/reissue',
       body: {
         'role': ?role,
+        'gender': ?gender?.wire,
         'canViewMoney': ?canViewMoney,
         'canEditPlan': ?canEditPlan,
         'canManageTasks': ?canManageTasks,

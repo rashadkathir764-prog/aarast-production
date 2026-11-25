@@ -60,6 +60,7 @@ class _DelayedReissueApi extends SharingApi {
     bool? canInviteMembers,
     bool? canManageMoney,
     bool? receiveNotifications,
+    ParticipantGender? gender,
   }) {
     calls += 1;
     return _completer.future;
@@ -96,6 +97,7 @@ class _CooldownReissueApi extends SharingApi {
     bool? canInviteMembers,
     bool? canManageMoney,
     bool? receiveNotifications,
+    ParticipantGender? gender,
   }) {
     throw const ApiException(
       'Invite delivery was attempted recently.',

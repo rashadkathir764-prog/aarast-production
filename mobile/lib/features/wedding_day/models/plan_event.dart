@@ -6,7 +6,8 @@ import '../../../core/utils/plan_day.dart';
 
 /// D65: the kinds of the wedding's events (b12). WEDDING is the wedding
 /// itself, on the plan's date. The groom's nights are السمرة and المقيل,
-/// the bride's الحفلة and النسمة (JOURNEY_PROFILE).
+/// the bride's الحفلة and النسمة (JOURNEY_PROFILE), with her henna night
+/// before them and «الصبحية» after the wedding (Q-58, D127).
 enum PlanEventType {
   wedding('WEDDING'),
   samra('SAMRA'),
@@ -16,6 +17,8 @@ enum PlanEventType {
   aqd('AQD'),
   lunch('LUNCH'),
   dinner('DINNER'),
+  henna('HENNA'),
+  subhiya('SUBHIYA'),
   custom('CUSTOM');
 
   const PlanEventType(this.wire);
@@ -41,6 +44,8 @@ enum PlanEventType {
     aqd => 'عقد القران',
     lunch => 'الغداء',
     dinner => 'العشاء',
+    henna => 'الحناء',
+    subhiya => 'الصبحية',
     custom => 'مناسبة ثانية',
   };
 
@@ -59,17 +64,22 @@ enum PlanEventType {
     nashma => LucideIcons.flame,
     aqd => LucideIcons.scrollText,
     lunch || dinner => LucideIcons.soup,
+    // The henna is drawn on the hands; «الصبحية» is the morning after.
+    henna => LucideIcons.hand,
+    subhiya => LucideIcons.sunrise,
     custom => LucideIcons.calendarHeart,
   };
 
-  /// b12's icon tile: the night lilac, the afternoon mint, the wedding the
-  /// plan's own colour.
+  /// b12's icon tile: the night lilac, the afternoon mint, the day's
+  /// meals and the morning amber, the wedding the plan's own colour.
   (Color, Color) colors(JourneyAccent accent) => switch (this) {
     wedding => (accent.primary, accent.primarySoft),
-    samra || hafla => (AarastV3Color.lilac, AarastV3Color.lilacSoft),
+    samra || hafla || henna => (AarastV3Color.lilac, AarastV3Color.lilacSoft),
     maqeel || nashma => (AarastV3Color.mint, AarastV3Color.mintSoft),
     aqd => (AarastV3Color.cobalt, AarastV3Color.cobaltSoft),
-    lunch || dinner => (AarastV3Color.amber, AarastV3Color.amberSoft),
+    lunch ||
+    dinner ||
+    subhiya => (AarastV3Color.amber, AarastV3Color.amberSoft),
     custom => (accent.primary, accent.primarySoft),
   };
 }

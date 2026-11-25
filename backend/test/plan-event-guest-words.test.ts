@@ -31,6 +31,18 @@ test("a bride's plan names the groom's night and afternoon in her words", () => 
   );
 });
 
+// Q-58 (D127): «الحناء» and «الصبحية» are kinds of their own, told to a
+// guest by their names in any plan (a bride wrote them by hand before).
+test("the henna night and «الصبحية» are named by their kind in any plan", () => {
+  for (const persona of ["BRIDE", "GROOM", "HELPER", null] as const) {
+    assert.deepEqual(labels(persona, [event("HENNA"), event("SUBHIYA")]), [
+      "الحناء",
+      "الصبحية",
+    ]);
+  }
+  assert.deepEqual(labels("BRIDE", [event("HENNA", " ليلة النقش ")]), ["ليلة النقش"]);
+});
+
 test("the groom's plan, and a plan of no side, keep his words", () => {
   for (const persona of ["GROOM", "HELPER", null] as const) {
     assert.deepEqual(labels(persona, [event("SAMRA"), event("MAQEEL"), event("HAFLA")]), [

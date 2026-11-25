@@ -17,12 +17,14 @@ import {
   ContributionSection,
   NotificationPriority,
   NotificationType,
+  ParticipantGender,
   PlanInvite,
   PlanInviteDeliveryStatus,
   Prisma,
   SharedMember,
   SharedMemberRole,
   UserStatus,
+  WeddingPersona,
   WeddingPlan,
 } from "@prisma/client";
 import { createHash, randomBytes } from "crypto";
@@ -116,6 +118,8 @@ export interface SharedMemberResponse {
   canInviteMembers: boolean;
   canManageMoney: boolean;
   receiveNotifications: boolean;
+  /** Q-67 (D127): as the owner said; null when never said. */
+  gender: ParticipantGender | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -165,6 +169,8 @@ export interface PlanInviteResponse {
   canInviteMembers: boolean;
   canManageMoney: boolean;
   receiveNotifications: boolean;
+  /** Q-67 (D127): as the inviter said; null when never said. */
+  gender: ParticipantGender | null;
   status: "PENDING" | "ACCEPTED" | "DECLINED" | "CANCELLED" | "EXPIRED";
   expiresAt: Date;
   acceptedAt: Date | null;
@@ -574,6 +580,8 @@ export class SharingService {
             email: target.email,
             role,
             permissions: permissionData,
+            // Q-67: as the inviter said; an app from before says nothing.
+            gender: dto.gender ?? null,
             expiresAt: this.expiresAt(dto.expiresInDays),
             tokenHash: this.hashInviteToken(token),
             attemptedAt: now,
@@ -862,6 +870,7 @@ export class SharingService {
           tx, invite, weddingPlanId, now, this.hashInviteToken(token),
           dto.role !== undefined ? role : undefined, permissionData,
           this.expiresAt(this.inviteLifetimeDays(invite)),
+          dto.gender,
         );
         if (updated.count !== 1) {
           throw new ConflictException("Invite is no longer pending");
@@ -1281,6 +1290,9 @@ export class SharingService {
         await this.repository.updateMember(
           tx, existing.id, dto.role !== undefined ? role : undefined,
           permissionData, authorityChanged ? authorityVersion + 1 : undefined,
+          // Q-67: how the plan speaks of them; not a right, so it moves no
+          // authority and tells no one.
+          dto.gender,
         ),
       );
       if (hadFinancialAccess && !keepsFinancialAccess) {
@@ -2622,6 +2634,7 @@ export class SharingService {
       canInviteMembers: member.canInviteMembers,
       canManageMoney: member.canManageMoney,
       receiveNotifications: member.receiveNotifications,
+      gender: member.gender ?? null,
       createdAt: member.createdAt,
       updatedAt: member.updatedAt,
     };
@@ -2653,6 +2666,13 @@ export class SharingService {
       canInviteMembers: true,
       canManageMoney: true,
       receiveNotifications: true,
+      // The owner's side is the plan's (D75): a bride's plan is hers.
+      gender:
+        plan.persona === WeddingPersona.BRIDE
+          ? ParticipantGender.FEMALE
+          : plan.persona === WeddingPersona.GROOM
+            ? ParticipantGender.MALE
+            : null,
       isOwner: true,
       createdAt: plan.createdAt,
       updatedAt: plan.updatedAt,
@@ -2704,6 +2724,7 @@ export class SharingService {
       canInviteMembers: invite.canInviteMembers,
       canManageMoney: invite.canManageMoney,
       receiveNotifications: invite.receiveNotifications,
+      gender: invite.gender ?? null,
       status,
       expiresAt: invite.expiresAt,
       acceptedAt: invite.acceptedAt,

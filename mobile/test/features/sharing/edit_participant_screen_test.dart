@@ -77,6 +77,58 @@ void main() {
     },
   );
 
+  // Q-67 (أ, D127): a participant added before the owner was asked has no
+  // gender, and the history spoke of a mother as «سجّل». The page asks it
+  // too, and a save sends it only when it changed.
+  testWidgets('Q-67: the owner says a participant\'s gender, sent alone', (
+    tester,
+  ) async {
+    final api = _Api(_member(role: 'FAMILY'));
+    await _pump(tester, api);
+
+    expect(find.text('ذكر ولا أنثى؟'), findsOneWidget);
+    final female = find.byKey(const ValueKey('participant-gender-FEMALE'));
+    expect(tester.widget<JourneyChip>(female).selected, isFalse);
+    await tester.ensureVisible(female);
+    await tester.tap(female);
+    await tester.pump();
+    await tester.ensureVisible(find.byKey(const ValueKey('member-save')));
+    await tester.tap(find.byKey(const ValueKey('member-save')));
+    await tester.pumpAndSettle();
+
+    expect(api.lastUpdate, {'gender': 'FEMALE'});
+    await tester.pump(const Duration(seconds: 6));
+  });
+
+  testWidgets('Q-67: a stored gender opens chosen, and is not sent again', (
+    tester,
+  ) async {
+    final api = _Api(_member(role: 'FAMILY', gender: ParticipantGender.female));
+    await _pump(tester, api);
+
+    expect(
+      tester
+          .widget<JourneyChip>(
+            find.byKey(const ValueKey('participant-gender-FEMALE')),
+          )
+          .selected,
+      isTrue,
+    );
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const ValueKey('participant-level-المال')),
+        matching: find.text('يشوف'),
+      ),
+    );
+    await tester.pump();
+    await tester.ensureVisible(find.byKey(const ValueKey('member-save')));
+    await tester.tap(find.byKey(const ValueKey('member-save')));
+    await tester.pumpAndSettle();
+
+    expect(api.lastUpdate, {'canViewMoney': true});
+    await tester.pump(const Duration(seconds: 6));
+  });
+
   testWidgets('choosing «يشوف بس» resets the levels to the viewer role', (
     tester,
   ) async {
@@ -303,8 +355,10 @@ SharedMember _member({
   bool canEditPlan = false,
   bool canInviteMembers = false,
   bool manages = true,
+  ParticipantGender? gender,
 }) {
   return SharedMember(
+    gender: gender,
     id: 'member-1',
     weddingPlanId: 'plan-1',
     userId: 'user-1',

@@ -62,6 +62,10 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
   final _phone = TextEditingController();
   late String _role = widget.preset.role;
   late PlanRolePermissions _permissions = widget.preset.permissions;
+
+  /// Q-67: asked before sending; the roles do not tell it.
+  ParticipantGender? _gender;
+  String? _genderError;
   bool _fromContact = false;
   bool _sending = false;
   String? _phoneError;
@@ -83,6 +87,7 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
         fields: {'name': _name, 'phone': _phone},
         readExtras: () => {
           'role': _role,
+          'gender': _gender?.wire,
           'canViewMoney': _permissions.canViewMoney,
           'canManageMoney': _permissions.canManageMoney,
           'canManageTasks': _permissions.canManageTasks,
@@ -92,7 +97,10 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
         // The levels come back only for the role that was tapped, so a
         // preset card always opens on what it says.
         restoreExtras: (data) {
-          if (!mounted || data['role'] != _role) return;
+          if (!mounted) return;
+          final gender = ParticipantGender.fromWire(data['gender']);
+          if (gender != null) setState(() => _gender = gender);
+          if (data['role'] != _role) return;
           setState(() {
             _permissions = _permissions.copyWith(
               canViewMoney: data['canViewMoney'] as bool?,
@@ -190,8 +198,22 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
                 onPressed: _sending ? null : _pickContact,
               ),
             ),
-          const SizedBox(height: AarastV3Space.x3),
+          const SizedBox(height: AarastV3Space.x2),
         ],
+        ParticipantGenderChoice(
+          key: const ValueKey('participant-gender'),
+          selected: _gender,
+          enabled: !_sending,
+          errorText: _genderError,
+          onChanged: (gender) {
+            setState(() {
+              _gender = gender;
+              _genderError = null;
+            });
+            _draft?.changed();
+          },
+        ),
+        const SizedBox(height: AarastV3Space.x3),
         ParticipantAccessEditor(
           role: _role,
           permissions: _permissions,
@@ -357,6 +379,15 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
       });
       return;
     }
+    final gender = _gender;
+    if (gender == null) {
+      setState(() {
+        _genderError = context.say('اختر ذكر أو أنثى', 'اختاري ذكر أو أنثى');
+        _error = null;
+      });
+      return;
+    }
+    final her = gender == ParticipantGender.female;
     setState(() {
       _sending = true;
       _error = null;
@@ -373,8 +404,9 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
       setState(() {
         _sending = false;
         _error =
-            'دعوته محفوظة وأرسلناها قبل شوي. '
-            '${context.say('تقدر ترسل', 'تقدرين ترسلين')} له رابط جديد بعد '
+            '${her ? 'دعوتها' : 'دعوته'} محفوظة وأرسلناها قبل شوي. '
+            '${context.say('تقدر ترسل', 'تقدرين ترسلين')} '
+            '${her ? 'لها' : 'له'} رابط جديد بعد '
             '${waiting.deliveryRetryRemainingSeconds} ثانية.';
       });
       return;
@@ -387,6 +419,7 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
         waiting,
         role: _role,
         permissions: _permissions,
+        gender: gender,
       );
     } else {
       final name = _name.text.trim();
@@ -394,6 +427,7 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
         weddingPlanId: widget.weddingPlanId,
         phone: _phone.text,
         name: name.isEmpty ? null : name,
+        gender: gender,
         role: _role,
         canViewMoney: _permissions.canViewMoney,
         canEditPlan: _permissions.canEditPlan,
@@ -424,6 +458,8 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
         context,
         waiting != null
             ? newLinkDeliveredMessage
+            : her
+            ? 'وصلتها الدعوة على واتساب. تدخل برقمها وتوافق.'
             : 'وصلته الدعوة على واتساب. يدخل برقمه ويوافق.',
       );
       Navigator.of(context).pop();

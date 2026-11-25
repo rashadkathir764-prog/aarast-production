@@ -13,6 +13,8 @@ export const PLAN_EVENT_TYPES = [
   'AQD',
   'LUNCH',
   'DINNER',
+  'HENNA',
+  'SUBHIYA',
   'CUSTOM',
 ] as const;
 export type PlanEventKind = (typeof PLAN_EVENT_TYPES)[number];
@@ -77,21 +79,27 @@ export type PlanEventParty = 'GROOM' | 'BRIDE' | 'HELPER' | null;
  * order they come in the week, then «مناسبة ثانية». The groom's nights are
  * السمرة and المقيل; the bride's الحفلة and النسمة (JOURNEY_PROFILE); a
  * helper's plan offers both sets. «العشاء» joins the drawn «عقد القران» and
- * «الغداء» because the day's programme ends with it (C8).
+ * «الغداء» because the day's programme ends with it (C8). Q-58 (D127): the
+ * bride's week opens with her henna night («الحناء», النقش, before الحفلة)
+ * and her wedding is followed by «الصبحية», so her plan (and a helper's)
+ * is offered both; a groom's plan is not.
  */
 export function suggestedEventTypes(
   party: PlanEventParty,
   existing: readonly PlanEventKind[],
 ): PlanEventKind[] {
-  const nights: PlanEventKind[] =
+  const groomNights: PlanEventKind[] = ['SAMRA', 'MAQEEL'];
+  const brideNights: PlanEventKind[] = ['HENNA', 'HAFLA', 'NASHMA'];
+  const nights =
     party === 'GROOM'
-      ? ['SAMRA', 'MAQEEL']
+      ? groomNights
       : party === 'BRIDE'
-        ? ['HAFLA', 'NASHMA']
-        : ['SAMRA', 'MAQEEL', 'HAFLA', 'NASHMA'];
+        ? brideNights
+        : [...groomNights, ...brideNights];
+  const after: PlanEventKind[] = party === 'GROOM' ? [] : ['SUBHIYA'];
   const taken = new Set(existing);
   return [
-    ...[...nights, 'AQD', 'LUNCH', 'DINNER'].filter(
+    ...[...nights, 'AQD', 'LUNCH', 'DINNER', ...after].filter(
       (type) => !taken.has(type as PlanEventKind),
     ),
     'CUSTOM',

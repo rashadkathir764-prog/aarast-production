@@ -29,6 +29,28 @@ void main() {
     expect(PlanEventType.hafla.label(helper), 'الحفلة');
   });
 
+  // Q-58 (D127): the bride's henna night and «الصبحية» were written by
+  // hand as «مناسبة ثانية»; they are kinds, named the same in any plan, as
+  // the server names them to a guest (`PLAN_EVENT_LABELS`).
+  test('«الحناء» and «الصبحية» are kinds of their own, in any plan', () {
+    final bride = JourneyProfile.of(planPersona: 'BRIDE', readerFeminine: true);
+    for (final profile in [
+      bride,
+      JourneyProfile.groom,
+      JourneyProfile.fromPersona('HELPER'),
+    ]) {
+      expect(PlanEventType.henna.label(profile), 'الحناء');
+      expect(PlanEventType.subhiya.label(profile), 'الصبحية');
+    }
+    expect(PlanEventType.fromWire('HENNA'), PlanEventType.henna);
+    expect(PlanEventType.fromWire('SUBHIYA'), PlanEventType.subhiya);
+    const henna = PlanEvent(id: 'h', type: PlanEventType.henna);
+    const samra = PlanEvent(id: 's', type: PlanEventType.samra);
+    // Her henna night takes nothing from the groom's night in her words.
+    expect(henna.nameIn(bride, const [henna, samra]), 'الحناء');
+    expect(samra.nameIn(bride, const [henna, samra]), 'الحفلة');
+  });
+
   test('a title the couple gave is kept, in any plan', () {
     const event = PlanEvent(
       id: 'e1',

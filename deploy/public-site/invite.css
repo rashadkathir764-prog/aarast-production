@@ -17,6 +17,12 @@
   box-sizing: border-box;
 }
 
+/* invite.js hides the buttons on an iPhone; a class's display must not
+   bring them back. */
+[hidden] {
+  display: none !important;
+}
+
 html,
 body {
   min-height: 100%;
@@ -88,6 +94,19 @@ h1 {
   background: var(--primary-soft);
   border-radius: 18px;
   line-height: 1.6;
+}
+
+/* Q-69: what an iPhone visitor reads in place of the buttons. */
+.iphone-note {
+  margin: 0;
+  padding: 16px;
+  text-align: right;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  font-size: 16px;
+  line-height: 1.7;
 }
 
 .privacy-note strong {

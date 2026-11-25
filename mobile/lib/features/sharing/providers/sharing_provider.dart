@@ -242,6 +242,7 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
     required bool canInviteMembers,
     required bool canManageMoney,
     required bool receiveNotifications,
+    ParticipantGender? gender,
   }) async {
     _isSubmitting = true;
     _errorMessage = null;
@@ -250,6 +251,7 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
     notifyListeners();
     try {
       final invite = await _api.createPlanInvite(
+        gender: gender,
         weddingPlanId: weddingPlanId,
         phone: phone,
         name: name,
@@ -332,6 +334,7 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
     PlanInvite invite, {
     String? role,
     PlanRolePermissions? permissions,
+    ParticipantGender? gender,
   }) async {
     final active = _reissueFlights[invite.id];
     if (active != null) return active;
@@ -339,6 +342,7 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
       invite,
       role: role,
       permissions: permissions,
+      gender: gender,
     );
     _reissueFlights[invite.id] = future;
     try {
@@ -354,6 +358,7 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
     PlanInvite invite, {
     String? role,
     PlanRolePermissions? permissions,
+    ParticipantGender? gender,
   }) async {
     _isSubmitting = true;
     _errorMessage = null;
@@ -373,6 +378,7 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
         canInviteMembers: permissions?.canInviteMembers,
         canManageMoney: permissions?.canManageMoney,
         receiveNotifications: permissions?.receiveNotifications,
+        gender: gender,
       );
       _invites = [
         for (final item in _invites)
@@ -618,6 +624,7 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
     required String role,
     required PlanRolePermissions permissions,
     required SharedMember from,
+    ParticipantGender? gender,
   }) async {
     // RA-MO-243: a save sends the rights the person changed, against the
     // participant as the page read them ([from]). Every right used to go
@@ -661,6 +668,8 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
         if (entry.value != held[entry.key] ||
             (roleChanged && shown.contains(entry.key)))
           entry.key: entry.value,
+      // Q-67: said once it changed; it is not a right.
+      if (gender != null && gender != from.gender) 'gender': gender.wire,
     };
     if (changes.isEmpty) return true;
 

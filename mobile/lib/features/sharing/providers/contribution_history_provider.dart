@@ -21,8 +21,8 @@ class ContributionActor {
   final String name;
 
   /// Whether the history speaks of this participant in the feminine
-  /// («العروسة سجّلت»). The server tells a member's gender only through the
-  /// partner role, so any other member keeps the default form.
+  /// («الوالدة سجّلت»): the member's gender as the owner said it (Q-67),
+  /// else a partner bride by her role (`SharedMember.speaksFeminine`).
   final bool feminine;
 }
 

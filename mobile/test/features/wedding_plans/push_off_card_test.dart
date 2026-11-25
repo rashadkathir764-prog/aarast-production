@@ -19,11 +19,12 @@ Future<(DevicePreferences, _Gateway)> _pump(
   WidgetTester tester, {
   PushAuthorizationStatus status = PushAuthorizationStatus.denied,
   PushAuthorizationStatus afterAsking = PushAuthorizationStatus.denied,
+  bool noGoogleServices = false,
 }) async {
   SharedPreferences.setMockInitialValues({});
   final stored = await SharedPreferences.getInstance();
   final preferences = DevicePreferences(stored);
-  final gateway = _Gateway(status, afterAsking);
+  final gateway = _Gateway(status, afterAsking, noGoogleServices);
   final push = PushNotificationsController(
     preferences: stored,
     gateway: gateway,
@@ -57,6 +58,31 @@ void main() {
     expect(find.text('التنبيهات مقفلة'), findsOneWidget);
     expect(find.text('افتح الإعدادات'), findsOneWidget);
     expect(find.textContaining('أقساط'), findsNothing);
+  });
+
+  // RA-MO-359: a phone with no Google services (Huawei) registers nothing,
+  // and the permission is no help: the card says it, and does not send the
+  // reader to settings that cannot fix it.
+  testWidgets('a phone with no Google services says alerts stay in the app', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      status: PushAuthorizationStatus.authorized,
+      noGoogleServices: true,
+    );
+
+    expect(find.byKey(const ValueKey('push-off-card')), findsOneWidget);
+    expect(find.text('تنبيهات الجوال ما تشتغل هنا'), findsOneWidget);
+    expect(
+      find.textContaining('جوالك ما يدعم تنبيهات الجوال'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('داخل اعّرست'), findsOneWidget);
+    expect(find.byKey(const ValueKey('push-off-open')), findsNothing);
+    expect(find.text('التنبيهات مقفلة'), findsNothing);
+    // «لاحقًا» puts it away like the other card.
+    expect(find.byKey(const ValueKey('push-off-later')), findsOneWidget);
   });
 
   testWidgets('allowed notifications show nothing', (tester) async {
@@ -93,10 +119,11 @@ void main() {
 }
 
 class _Gateway implements PushMessagingGateway {
-  _Gateway(this.status, this.afterAsking);
+  _Gateway(this.status, this.afterAsking, [this.noGoogleServices = false]);
 
   final PushAuthorizationStatus status;
   final PushAuthorizationStatus afterAsking;
+  final bool noGoogleServices;
   int asked = 0;
 
   @override
@@ -114,7 +141,9 @@ class _Gateway implements PushMessagingGateway {
       const Stream.empty();
 
   @override
-  Future<void> initialize() async {}
+  Future<void> initialize() async {
+    if (noGoogleServices) throw const PushUnavailableOnThisPhone();
+  }
 
   @override
   Future<PushAuthorizationStatus> authorizationStatus() async => status;

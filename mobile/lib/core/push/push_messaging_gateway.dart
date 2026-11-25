@@ -4,6 +4,7 @@ import 'package:firebase_app_installations/firebase_app_installations.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 
 import 'firebase_push_config.dart';
 
@@ -27,6 +28,27 @@ class PushNotificationTap {
   const PushNotificationTap({this.notificationId});
 
   final String? notificationId;
+}
+
+/// RA-MO-359: this phone cannot receive push: it has no Google services (a
+/// Huawei phone), so no registration can be made. The gateway's
+/// [PushMessagingGateway.initialize] throws it; the controller keeps it as
+/// «push does not work here» for the home's card.
+class PushUnavailableOnThisPhone implements Exception {
+  const PushUnavailableOnThisPhone();
+
+  @override
+  String toString() => 'PushUnavailableOnThisPhone';
+}
+
+/// Whether the phone has Google services, asked of the Android side
+/// (`MainActivity.kt`): Firebase starts on any phone, but registering for
+/// push needs them.
+abstract final class PlayServicesCheck {
+  static const _channel = MethodChannel('aarast/push_support');
+
+  static Future<bool> available() async =>
+      await _channel.invokeMethod<bool>('googleServicesAvailable') ?? false;
 }
 
 abstract interface class PushMessagingGateway {
@@ -108,6 +130,9 @@ class FirebasePushMessagingGateway implements PushMessagingGateway {
   @override
   Future<void> initialize() async {
     if (_initialized || !isAvailable) return;
+    if (!await PlayServicesCheck.available()) {
+      throw const PushUnavailableOnThisPhone();
+    }
     prepare();
     await _firebase;
     FirebaseMessaging.onBackgroundMessage(

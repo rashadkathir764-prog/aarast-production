@@ -99,5 +99,7 @@
         <!-- D116: whether WhatsApp is there to take the invitation card. -->
         <package android:name="com.whatsapp" />
         <package android:name="com.whatsapp.w4b" />
+        <!-- RA-MO-359: whether the phone has Google services, for push. -->
+        <package android:name="com.google.android.gms" />
     </queries>
 </manifest>

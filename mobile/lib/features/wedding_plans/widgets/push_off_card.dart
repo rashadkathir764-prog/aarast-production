@@ -11,6 +11,10 @@ import '../../../core/widgets/aarast_toast.dart';
 /// w39 «التنبيهات مقفلة»: the phone has this app's notifications off, so
 /// payment reminders and providers' answers would never arrive. Shown on
 /// the home until they are on again or «لاحقًا» puts it away for a week.
+///
+/// RA-MO-359: a phone with no Google services cannot get phone alerts at
+/// all, whatever the settings say; the card says so and that the alerts
+/// stay in the app, with no settings to open.
 class PushOffCard extends StatefulWidget {
   const PushOffCard({this.now, super.key});
 
@@ -63,7 +67,12 @@ class _PushOffCardState extends State<PushOffCard> {
     final preferences = context.watch<DevicePreferences?>();
     final now = widget.now ?? appNow();
     final hiddenUntil = preferences?.pushCardHiddenUntil;
-    if (!_off || (hiddenUntil != null && now.isBefore(hiddenUntil))) {
+    final unavailable = context
+        .select<PushNotificationsController?, bool>(
+          (push) => push?.unavailableOnThisPhone ?? false,
+        );
+    if (!(_off || unavailable) ||
+        (hiddenUntil != null && now.isBefore(hiddenUntil))) {
       return const SizedBox.shrink();
     }
     return JourneyBox(
@@ -85,7 +94,7 @@ class _PushOffCardState extends State<PushOffCard> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'التنبيهات مقفلة',
+                  unavailable ? 'تنبيهات الجوال ما تشتغل هنا' : 'التنبيهات مقفلة',
                   style: JourneyType.of(
                     JourneyType.lead,
                     weight: JourneyType.bold,
@@ -93,8 +102,11 @@ class _PushOffCardState extends State<PushOffCard> {
                 ),
                 const SizedBox(height: AarastV3Space.half),
                 Text(
-                  'ما راح يوصلك موعد دفعة ولا رد مزود. '
-                  '${context.say('افتحها', 'افتحيها')} من إعدادات الجوال.',
+                  unavailable
+                      ? 'جوالك ما يدعم تنبيهات الجوال (خدمات جوجل)، '
+                            'فتنبيهاتك تظهر داخل اعّرست.'
+                      : 'ما راح يوصلك موعد دفعة ولا رد مزود. '
+                            '${context.say('افتحها', 'افتحيها')} من إعدادات الجوال.',
                   style: JourneyType.of(
                     JourneyType.body,
                     color: AarastV3Color.textMuted,
@@ -105,12 +117,16 @@ class _PushOffCardState extends State<PushOffCard> {
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    JourneyButton(
-                      key: const ValueKey('push-off-open'),
-                      label: context.say('افتح الإعدادات', 'افتحي الإعدادات'),
-                      background: AarastV3Color.brandAccentStrong,
-                      onPressed: _open,
-                    ),
+                    if (!unavailable)
+                      JourneyButton(
+                        key: const ValueKey('push-off-open'),
+                        label: context.say(
+                          'افتح الإعدادات',
+                          'افتحي الإعدادات',
+                        ),
+                        background: AarastV3Color.brandAccentStrong,
+                        onPressed: _open,
+                      ),
                     JourneyButton.quiet(
                       key: const ValueKey('push-off-later'),
                       label: 'لاحقًا',

@@ -41,6 +41,14 @@ class PushNotificationsController extends ChangeNotifier
   String? get registeredFid => _registeredFid;
 
   bool get isAvailable => _initialized && _gateway.isAvailable;
+
+  /// RA-MO-359: push cannot work on this phone: it has no Google services
+  /// (a Huawei phone), or the registration with them failed. Said by the
+  /// home's card, so the reader knows alerts stay in the app; a later
+  /// registration that succeeds takes it back.
+  bool get unavailableOnThisPhone => _noGoogleServices || _registrationFailed;
+  bool _noGoogleServices = false;
+  bool _registrationFailed = false;
   bool get hasPendingNotificationsOpen => _pendingNotificationsOpen;
 
   /// The gateway's foreground pushes once set up. The app's root listens
@@ -109,6 +117,18 @@ class PushNotificationsController extends ChangeNotifier
         ..add(_gateway.foregroundNotifications.listen(_foreground.add));
       final initialTap = await _gateway.consumeInitialNotificationTap();
       if (initialTap != null) _markNotificationsOpenPending(initialTap);
+    } on PushUnavailableOnThisPhone {
+      _initialized = false;
+      _noGoogleServices = true;
+      appLogEvent(
+        'PUSH_INITIALIZATION_SKIPPED',
+        category: AppLogCategory.push,
+        level: AppLogLevel.warning,
+        reason: 'no_google_services',
+        source: 'PushNotificationsController.initialize',
+      );
+      notifyListeners();
+      return;
     } on Object {
       _initialized = false;
       appLogEvent(
@@ -340,7 +360,16 @@ class PushNotificationsController extends ChangeNotifier
           !_isCurrentBinding(operation, userId, cancelToken)) {
         return;
       }
-      final fid = await _gateway.ensureRegistrationAndGetInstallationId();
+      final String fid;
+      try {
+        fid = await _gateway.ensureRegistrationAndGetInstallationId();
+      } on Object {
+        // The phone's own registration with Google failed: no server call
+        // can fix it, so the card says push does not work here.
+        _setRegistrationFailed(true);
+        rethrow;
+      }
+      _setRegistrationFailed(false);
       if (!_isCurrentBinding(operation, userId, cancelToken)) return;
       await _registrationApi.registerAndroid(fid, cancelToken: cancelToken);
       if (!_isCurrentBinding(operation, userId, cancelToken)) return;
@@ -363,6 +392,12 @@ class PushNotificationsController extends ChangeNotifier
         source: 'PushNotificationsController',
       );
     }
+  }
+
+  void _setRegistrationFailed(bool failed) {
+    if (_registrationFailed == failed) return;
+    _registrationFailed = failed;
+    notifyListeners();
   }
 
   Future<void> _enqueueDeviceOperation(Future<void> Function() operation) {

@@ -44,6 +44,19 @@ class MainActivity : FlutterActivity() {
             }
             result.success(null)
         }
+        // RA-MO-359: whether the phone has Google services, without which no
+        // push registration can be made (a Huawei phone has none). Asked
+        // from `lib/core/push/push_messaging_gateway.dart`.
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            "aarast/push_support",
+        ).setMethodCallHandler { call, result ->
+            if (call.method == "googleServicesAvailable") {
+                result.success(googleServicesAvailable())
+            } else {
+                result.notImplemented()
+            }
+        }
         // D116: the invitation card goes to WhatsApp as a picture, by the
         // standard share to the WhatsApp app; WhatsApp then asks for the
         // chat (the guest's, just opened with the text, is first). Nothing
@@ -63,6 +76,15 @@ class MainActivity : FlutterActivity() {
             }
         }
     }
+
+    /** Google Play services, installed and on. */
+    private fun googleServicesAvailable(): Boolean =
+        try {
+            @Suppress("DEPRECATION")
+            packageManager.getApplicationInfo("com.google.android.gms", 0).enabled
+        } catch (_: PackageManager.NameNotFoundException) {
+            false
+        }
 
     /** WhatsApp, else WhatsApp Business; null when neither is installed. */
     private fun whatsAppPackage(): String? =

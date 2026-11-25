@@ -289,12 +289,17 @@ class _NextTaskCard extends StatelessWidget {
   const _NextTaskCard({
     required this.task,
     required this.who,
+    this.heading,
     this.busy = false,
     this.onDone,
     this.onOpen,
   });
 
   final WeddingTask task;
+
+  /// «الخطوة الجاية عند العريس» on a task the reader only follows; null
+  /// says «الخطوة الجاية».
+  final String? heading;
 
   /// «هذي المهمة عليك», «على صالح», or null.
   final String? who;
@@ -337,7 +342,7 @@ class _NextTaskCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'الخطوة الجاية · ${taskWhenLabel(task)}',
+                        '${heading ?? 'الخطوة الجاية'} · ${taskWhenLabel(task)}',
                         style: JourneyType.of(
                           JourneyType.small,
                           weight: JourneyType.bold,

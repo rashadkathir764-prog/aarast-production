@@ -76,7 +76,7 @@ void main() {
       expect(find.text('ينتظرون'), findsOneWidget);
       expect(find.text('خالد'), findsOneWidget);
       expect(
-        find.text('الدعوة محفوظة · أرسل له الرابط بأي طريقة'),
+        find.text('الدعوة محفوظة · أرسل الرابط بأي طريقة'),
         findsOneWidget,
       );
       expect(find.text('انسخ الرابط'), findsOneWidget);
@@ -451,7 +451,7 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(
-          find.text('ما وصلته على واتساب · أرسل له الرابط بأي طريقة'),
+          find.text('ما وصلت على واتساب · أرسل الرابط بأي طريقة'),
           findsOneWidget,
         );
         await tester.tap(find.text('انسخ الرابط'));
@@ -464,7 +464,9 @@ void main() {
       },
     );
 
-    testWidgets('a delivered invite offers «ذكّره» with when it arrived', (
+    // «ذكّره» made every invitee a man; the reminder is named for what it
+    // does.
+    testWidgets('a delivered invite offers «أرسل تذكير» with when it arrived', (
       tester,
     ) async {
       _setTallView(tester);
@@ -482,7 +484,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('الدعوة وصلت اليوم'), findsOneWidget);
-      expect(find.text('ذكّره'), findsOneWidget);
+      expect(find.text('أرسل تذكير'), findsOneWidget);
+      expect(find.text('ذكّره'), findsNothing);
     });
 
     testWidgets('cancelling a waiting invite asks first, then deletes it', (
@@ -714,7 +717,7 @@ void main() {
     });
   });
 
-  // RA-MO-361: «ذكّره» on a pending invite was hidden in the row's one
+  // RA-MO-361: the reminder on a pending invite was hidden in the row's one
   // label; a screen reader's double tap opened the cancel sheet instead.
   testWidgets('a screen reader reissues a pending invite', (tester) async {
     final semantics = tester.ensureSemantics();

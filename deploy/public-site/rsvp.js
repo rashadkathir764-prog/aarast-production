@@ -31,6 +31,8 @@
   const no = $("rsvp-no");
   const eventsSection = $("rsvp-events");
   const eventsList = $("rsvp-events-list");
+  const eventsBefore = $("rsvp-events-before");
+  const eventsBeforeList = $("rsvp-events-before-list");
   const notice = $("rsvp-notice");
 
   // RA-BE-74: the hosts took an event out of this invitation after the page
@@ -92,6 +94,7 @@
     details.hidden = true;
     answer.hidden = true;
     eventsSection.hidden = true;
+    eventsBefore.hidden = true;
   }
 
   function showInvalid() {
@@ -125,6 +128,8 @@
       "تأكدي من النت وحاولي مرة ثانية.",
       "يمكن النت ضعيف أو مقطوع.",
     );
+    // «إعادة المحاولة» was the form's word, not the guest's.
+    retry.textContent = say("جرّب مرة ثانية", "جرّبي مرة ثانية", "نحاول مرة ثانية");
     retry.hidden = false;
   }
 
@@ -133,14 +138,18 @@
     return new Date(Date.UTC(year, month - 1, day));
   }
 
+  // The app's own words and digits for a day (formatArabicDate): one way on
+  // the card and on every occasion. The browser's «ar» wrote its own digits
+  // and order, beside a Hijri line in Latin digits.
+  const WEEKDAYS = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+  const MONTHS = [
+    "يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو",
+    "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر",
+  ];
+
+  /** «الخميس، 21 يناير 2026». */
   function formatDay(date) {
-    return new Intl.DateTimeFormat("ar", {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-      timeZone: "UTC",
-    }).format(date);
+    return `${WEEKDAYS[date.getUTCDay()]}، ${date.getUTCDate()} ${MONTHS[date.getUTCMonth()]} ${date.getUTCFullYear()}`;
   }
 
   function formatHijri(date) {
@@ -239,7 +248,8 @@
   function statusText(attendanceStatus, picked, what) {
     const change = say("تقدر تغيّر ردك متى ما تشتي.", "تقدرين تغيّرين ردك متى ما تشتين.");
     if (attendanceStatus === "CONFIRMED") {
-      const withWhom = picked > 0 ? ` مع ${picked}` : "";
+      // «حضورك مع 2» left out who the two come with.
+      const withWhom = picked > 0 ? ` ${say("أنت", "أنتِ")} و${picked} معك` : "";
       return `سجّلنا حضورك${what}${withWhom}. ${change}`;
     }
     if (attendanceStatus === "DECLINED") {
@@ -342,81 +352,107 @@
     return nodes;
   }
 
+  /**
+   * The events in the order of their days: those before the wedding's day
+   * above its reply, the others under it («الزفاف» came first whatever its
+   * day, and a lunch the day before read as an afterthought). Same day keeps
+   * the server's order. An event with no day goes last.
+   */
+  function orderedEvents(invitation) {
+    const events = Array.isArray(invitation.events) ? invitation.events : [];
+    const dayOf = (event) => (typeof event.date === "string" ? event.date : "9999-12-31");
+    const sorted = events
+      .map((event, position) => ({ event, position }))
+      .sort((a, b) => dayOf(a.event).localeCompare(dayOf(b.event)) || a.position - b.position)
+      .map(({ event }) => event);
+    const weddingDay = typeof invitation.weddingDate === "string" ? invitation.weddingDate : "";
+    const before = weddingDay
+      ? sorted.filter((event) => typeof event.date === "string" && event.date < weddingDay)
+      : [];
+    return { before, after: sorted.filter((event) => !before.includes(event)) };
+  }
+
   /** Draws the events; returns the block of each, by id. */
   function renderEvents(invitation) {
-    const events = Array.isArray(invitation.events) ? invitation.events : [];
+    const { before, after } = orderedEvents(invitation);
     const blocks = new Map();
-    eventsSection.hidden = events.length === 0;
-    eventsList.replaceChildren(
-      ...events.map((event, index) => {
-        const again = Boolean(event.needsReconfirm);
-        const block = document.createElement("article");
-        block.className = event.id === focusId ? "rsvp-event rsvp-focus" : "rsvp-event";
-        blocks.set(event.id, block);
-
-        // RA-OP-31: each occasion is a named region, its chips a named group.
-        const heading = document.createElement("h3");
-        heading.id = `rsvp-event-${index}-title`;
-        heading.textContent = event.label;
-        block.setAttribute("aria-labelledby", heading.id);
-        block.append(heading);
-
-        const whenParts = [];
-        if (event.date) whenParts.push(formatDay(calendarDay(event.date)));
-        if (event.timeLabel) whenParts.push(event.timeLabel);
-        if (whenParts.length) block.append(paragraph("rsvp-event-when", whenParts.join(" · ")));
-        block.append(...placeNodes(event));
-
-        if (again) block.append(paragraph("rsvp-reconfirm", reconfirmText("هذي المناسبة")));
-
-        let picked = Math.min(event.companionsCount || 0, maxCompanions);
-        if (maxCompanions > 0) {
-          const question = paragraph("rsvp-question", "كم معك؟");
-          question.id = `rsvp-event-${index}-companions`;
-          block.append(question);
-          const eventChips = document.createElement("div");
-          eventChips.className = "rsvp-chips";
-          eventChips.setAttribute("role", "group");
-          eventChips.setAttribute("aria-labelledby", question.id);
-          renderChips(eventChips, maxCompanions, picked, (count) => {
-            picked = count;
-          });
-          block.append(eventChips);
-        }
-
-        const actions = document.createElement("div");
-        actions.className = "rsvp-event-actions";
-        const eventYes = document.createElement("button");
-        eventYes.type = "button";
-        eventYes.className = "rsvp-yes";
-        eventYes.textContent = say("حاضر", "حاضرة");
-        const eventNo = document.createElement("button");
-        eventNo.type = "button";
-        eventNo.className = "rsvp-no";
-        eventNo.textContent = "أعتذر";
-        actions.append(eventYes, eventNo);
-        block.append(actions);
-
-        const eventStatus = paragraph(
-          statusClass(event.attendanceStatus, again),
-          statusText(event.attendanceStatus, picked, ` في ${event.label}`),
-        );
-        eventStatus.setAttribute("role", "status");
-        block.append(eventStatus);
-
-        const sendEvent = (attendance) =>
-          send(attendance, {
-            planEventId: event.id,
-            companions: picked,
-            buttons: [eventYes, eventNo],
-            statusLine: eventStatus,
-          });
-        eventYes.addEventListener("click", () => sendEvent("CONFIRMED"));
-        eventNo.addEventListener("click", () => sendEvent("DECLINED"));
-        return block;
-      }),
+    eventsBefore.hidden = before.length === 0;
+    eventsSection.hidden = after.length === 0;
+    let index = 0;
+    eventsBeforeList.replaceChildren(
+      ...before.map((event) => eventBlock(event, index++, blocks)),
     );
+    eventsList.replaceChildren(...after.map((event) => eventBlock(event, index++, blocks)));
     return blocks;
+  }
+
+  /** One occasion's block, its reply and its status line. */
+  function eventBlock(event, index, blocks) {
+    const again = Boolean(event.needsReconfirm);
+    const block = document.createElement("article");
+    block.className = event.id === focusId ? "rsvp-event rsvp-focus" : "rsvp-event";
+    blocks.set(event.id, block);
+
+    // RA-OP-31: each occasion is a named region, its chips a named group.
+    const heading = document.createElement("h3");
+    heading.id = `rsvp-event-${index}-title`;
+    heading.textContent = event.label;
+    block.setAttribute("aria-labelledby", heading.id);
+    block.append(heading);
+
+    const whenParts = [];
+    if (event.date) whenParts.push(formatDay(calendarDay(event.date)));
+    if (event.timeLabel) whenParts.push(event.timeLabel);
+    if (whenParts.length) block.append(paragraph("rsvp-event-when", whenParts.join(" · ")));
+    block.append(...placeNodes(event));
+
+    if (again) block.append(paragraph("rsvp-reconfirm", reconfirmText("هذي المناسبة")));
+
+    let picked = Math.min(event.companionsCount || 0, maxCompanions);
+    if (maxCompanions > 0) {
+      const question = paragraph("rsvp-question", "كم معك؟");
+      question.id = `rsvp-event-${index}-companions`;
+      block.append(question);
+      const eventChips = document.createElement("div");
+      eventChips.className = "rsvp-chips";
+      eventChips.setAttribute("role", "group");
+      eventChips.setAttribute("aria-labelledby", question.id);
+      renderChips(eventChips, maxCompanions, picked, (count) => {
+        picked = count;
+      });
+      block.append(eventChips);
+    }
+
+    const actions = document.createElement("div");
+    actions.className = "rsvp-event-actions";
+    const eventYes = document.createElement("button");
+    eventYes.type = "button";
+    eventYes.className = "rsvp-yes";
+    eventYes.textContent = say("حاضر", "حاضرة");
+    const eventNo = document.createElement("button");
+    eventNo.type = "button";
+    eventNo.className = "rsvp-no";
+    eventNo.textContent = "أعتذر";
+    actions.append(eventYes, eventNo);
+    block.append(actions);
+
+    const eventStatus = paragraph(
+      statusClass(event.attendanceStatus, again),
+      statusText(event.attendanceStatus, picked, ` في ${event.label}`),
+    );
+    eventStatus.setAttribute("role", "status");
+    block.append(eventStatus);
+
+    const sendEvent = (attendance) =>
+      send(attendance, {
+        planEventId: event.id,
+        companions: picked,
+        buttons: [eventYes, eventNo],
+        statusLine: eventStatus,
+      });
+    eventYes.addEventListener("click", () => sendEvent("CONFIRMED"));
+    eventNo.addEventListener("click", () => sendEvent("DECLINED"));
+    return block;
   }
 
   /**

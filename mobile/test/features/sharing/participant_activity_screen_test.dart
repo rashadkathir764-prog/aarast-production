@@ -1,3 +1,5 @@
+import 'package:aarast_mobile/core/experience_v3/aarast_journey.dart'
+    show JourneyAvatar;
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/features/sharing/data/sharing_api.dart';
 import 'package:aarast_mobile/features/sharing/models/contribution_history.dart';
@@ -19,14 +21,14 @@ void main() {
       final api = _Api(owner: true);
       await _pump(tester, api);
 
-      expect(find.text('وش سوّى المشاركين'), findsOneWidget);
+      expect(find.text('ايش سوّى المشاركين'), findsOneWidget);
       expect(find.text('كل اللي سوّاه المشاركين في خطتك'), findsOneWidget);
       // One request per participant, asked by id.
       expect(api.requests.map((r) => r.contributorUserId).toSet(), {
         'user-saleh',
         'user-father',
       });
-      expect(find.textContaining('خلّص "استلم البدلة"'), findsOneWidget);
+      expect(find.textContaining('خلّص «استلم البدلة»'), findsOneWidget);
       expect(find.textContaining('أضاف الضيف آل السقاف'), findsOneWidget);
       // The owner's actions are not recorded, so no «أنت» row.
       expect(find.textContaining('أنت'), findsNothing);
@@ -97,6 +99,71 @@ void main() {
     );
     expect(activityLine(schedule, self: false), isNot(contains('أقساط')));
     expect(activityLine(schedule, self: true), startsWith('أضفت'));
+  });
+
+  // UX critique: «العروسة سجّل دفعة دفعة التصوير».
+  test('a woman\'s row speaks of her, and a titled payment is said once', () {
+    final payment = _event(
+      'p2',
+      section: 'MONEY',
+      entityType: 'COST_PAYMENT',
+      action: 'PAYMENT_RECORDED',
+      snapshot: {'title': 'دفعة التصوير', 'amount': 50000, 'currency': 'YER'},
+    );
+    final hers = activityLine(payment, self: false, feminine: true);
+    expect(hers, startsWith('سجّلت دفعة التصوير'));
+    expect(hers, isNot(contains('دفعة دفعة')));
+    final his = activityLine(payment, self: false);
+    expect(his, startsWith('سجّل دفعة التصوير'));
+    final added = _event(
+      't2',
+      section: 'TASKS',
+      entityType: 'TASK',
+      action: 'CREATED',
+      snapshot: {'title': 'احجز القاعة'},
+    );
+    expect(
+      activityLine(added, self: false, feminine: true),
+      'أضافت مهمة «احجز القاعة»',
+    );
+  });
+
+  test('a task taken on is «صار عليه», in the doer\'s form', () {
+    final assigned = _event(
+      'a1',
+      section: 'TASKS',
+      entityType: 'TASK',
+      action: 'ASSIGNED',
+      snapshot: {'title': 'استلم البدلة'},
+    );
+    expect(activityLine(assigned, self: false), 'صار عليه «استلم البدلة»');
+    expect(
+      activityLine(assigned, self: false, feminine: true),
+      'صار عليها «استلم البدلة»',
+    );
+    expect(activityLine(assigned, self: true), 'صار عليك «استلم البدلة»');
+  });
+
+  test('the hour is said in one set of spoken words', () {
+    expect(historyClock(DateTime(2026, 8, 2, 10, 20)), '10:20 الصبح');
+    expect(historyClock(DateTime(2026, 8, 2, 16)), '4:00 العصر');
+    expect(historyClock(DateTime(2026, 8, 2, 19, 45)), '7:45 المسا');
+  });
+
+  testWidgets('a partner bride\'s rows read in the feminine', (tester) async {
+    final api = _Api(owner: true, partnerBride: true);
+    await _pump(tester, api);
+
+    expect(find.textContaining('خلّصت «استلم البدلة»'), findsOneWidget);
+  });
+
+  testWidgets('the reader\'s own rows carry no repeated letter', (
+    tester,
+  ) async {
+    final api = _Api(owner: false);
+    await _pump(tester, api);
+
+    expect(find.byType(JourneyAvatar), findsNothing);
   });
 
   // RA-BE-176 (D124): the history keeps no guest's or member's name; the
@@ -191,10 +258,11 @@ Future<void> _pump(WidgetTester tester, _Api api) async {
 typedef _Request = ({String? section, String? contributorUserId, int offset});
 
 class _Api extends SharingApi {
-  _Api({required this.owner})
+  _Api({required this.owner, this.partnerBride = false})
     : super(ApiClient(tokenProvider: () async => null));
 
   final bool owner;
+  final bool partnerBride;
   final List<_Request> requests = [];
   int membersCalls = 0;
 
@@ -213,7 +281,10 @@ class _Api extends SharingApi {
   @override
   Future<List<SharedMember>> getSharedMembers(String weddingPlanId) async {
     membersCalls += 1;
-    return [_member('saleh', 'صالح'), _member('father', 'الوالد')];
+    return [
+      _member('saleh', 'صالح', role: partnerBride ? 'BRIDE' : 'HELPER'),
+      _member('father', 'الوالد'),
+    ];
   }
 
   @override
@@ -295,18 +366,23 @@ class _PagingApi extends SharingApi {
   }
 }
 
-SharedMember _member(String id, String name) => SharedMember(
-  id: 'member-$id',
-  weddingPlanId: 'plan-1',
-  userId: 'user-$id',
-  user: SharedMemberUser(id: 'user-$id', name: name, phone: '+967771554220'),
-  role: 'HELPER',
-  canViewMoney: false,
-  canManageTasks: true,
-  canManageMoney: false,
-  createdAt: DateTime(2026, 7, 16),
-  updatedAt: DateTime(2026, 7, 16),
-);
+SharedMember _member(String id, String name, {String role = 'HELPER'}) =>
+    SharedMember(
+      id: 'member-$id',
+      weddingPlanId: 'plan-1',
+      userId: 'user-$id',
+      user: SharedMemberUser(
+        id: 'user-$id',
+        name: name,
+        phone: '+967771554220',
+      ),
+      role: role,
+      canViewMoney: false,
+      canManageTasks: true,
+      canManageMoney: false,
+      createdAt: DateTime(2026, 7, 16),
+      updatedAt: DateTime(2026, 7, 16),
+    );
 
 Map<String, dynamic> _json(
   String id, {

@@ -7,7 +7,7 @@ import 'plan_role_permissions.dart';
 enum ParticipantPreset {
   helper('HELPER', 'مساعد', 'المهام والضيوف والمزودين'),
   family('FAMILY', 'أهل', 'المهام والضيوف، ويشوف المال إذا سمحت'),
-  viewer('VIEWER', 'يشوف بس', 'يتابع الخطة، وما يعدّل شي');
+  viewer('VIEWER', 'يشوف بس', 'يشوف الخطة، وما يعدّل شي');
 
   const ParticipantPreset(this.role, this.label, this.description);
 
@@ -73,18 +73,23 @@ String participantSummary(PlanRolePermissions permissions) {
     MoneyLevel.none => 'بدون المال',
   };
   if (sections.isEmpty) {
-    return permissions.moneyLevel == MoneyLevel.none ? 'متابعة بس' : money;
+    // One name per role: the viewer is «يشوف بس» everywhere («متابعة بس»
+    // stood beside it).
+    return permissions.moneyLevel == MoneyLevel.none
+        ? ParticipantPreset.viewer.label
+        : money;
   }
   return '${sections.join(' و')} · $money';
 }
 
 /// An invite's role said to the one invited before we know who they are
-/// (D75): a duty, not a person, so it reads right for a man or a woman
-/// («دورك: مساعدة في الترتيب»).
+/// (D75). One name per role: the role's own name, as the owner's list says
+/// it beside a man's or a woman's name («دورك: مساعد», «دورك: يشوف بس»);
+/// «مساعدة في الترتيب» and «متابعة بس» were second names for the same roles.
 String participantRoleDuty(String? role) => switch (role) {
   'FAMILY' => 'دورك: من الأهل',
-  'HELPER' => 'دورك: مساعدة في الترتيب',
-  'VIEWER' => 'دورك: متابعة بس',
+  'HELPER' => 'دورك: ${ParticipantPreset.helper.label}',
+  'VIEWER' => 'دورك: ${ParticipantPreset.viewer.label}',
   'CONTRIBUTOR' => 'دورك: مساهمة في الترتيب',
   'MANAGER' => 'دورك: إدارة الخطة',
   'GROOM' || 'BRIDE' => 'دورك: شراكة في الخطة',
@@ -97,7 +102,9 @@ String participantRoleLabel(String role) {
   if (preset != null) return preset.label;
   return switch (role) {
     'OWNER' => 'صاحب الخطة',
-    'GROOM' || 'BRIDE' => 'شريك',
+    'GROOM' => 'شريك',
+    // «العروسة · شريك» said a woman in the masculine.
+    'BRIDE' => 'شريكة',
     'MANAGER' => 'مدير',
     'CONTRIBUTOR' => 'مساهم',
     _ => 'مشارك',
@@ -107,17 +114,18 @@ String participantRoleLabel(String role) {
 /// «أنت مساعد» beside the plan's name on a participant's own screens; a
 /// bride's plan speaks to a woman («أنتِ مساعدة», q17). The role words are
 /// said about someone («يشوف بس» beside a name), so a sentence to the
-/// participant takes its own words: «أنت تتابع بس», «أنت من الأهل».
+/// participant turns the same word to them: «أنت تشوف بس», «أنت من الأهل».
 String participantRoleTag(String? role, {bool feminine = false}) =>
     '${feminine ? 'أنتِ' : 'أنت'} '
     '${participantOwnRoleWord(role, feminine: feminine)}';
 
 /// The reader's own role as a short word, said to them as who they are:
-/// «مساعدة», «من الأهل», «تتابعين بس». «حسابي» showed a woman the
-/// third-person «مساعد» and «يشوف بس» (RA-MO-277).
+/// «مساعدة», «من الأهل», «تشوفين بس». «حسابي» showed a woman the
+/// third-person «مساعد» and «يشوف بس» (RA-MO-277); «تتابع بس» was a second
+/// name for «يشوف بس».
 String participantOwnRoleWord(String? role, {bool feminine = false}) =>
     switch (role) {
-      'VIEWER' => feminine ? 'تتابعين بس' : 'تتابع بس',
+      'VIEWER' => feminine ? 'تشوفين بس' : 'تشوف بس',
       'FAMILY' => 'من الأهل',
       'HELPER' => feminine ? 'مساعدة' : 'مساعد',
       'CONTRIBUTOR' => feminine ? 'مساهمة' : 'مساهم',
@@ -125,6 +133,14 @@ String participantOwnRoleWord(String? role, {bool feminine = false}) =>
       'GROOM' || 'BRIDE' => feminine ? 'شريكة' : 'شريك',
       _ => feminine ? 'مشاركة' : 'مشارك',
     };
+
+/// «لأمينة», «للوالد»: «ل» joined to a name, the article's alif dropped
+/// («لـالوالد» is not written).
+String toPerson(String name) {
+  final value = name.trim();
+  if (value.startsWith('ال')) return 'ل${value.substring(1)}';
+  return 'لـ$value';
+}
 
 /// «771 554 220»: a Yemeni mobile the way it is read out at home; any other
 /// number as it is displayed elsewhere.

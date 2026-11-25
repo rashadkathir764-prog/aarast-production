@@ -165,6 +165,40 @@ void main() {
     expect(find.text('تقدرين تبدّلين بينهم من حسابي'), findsOneWidget);
     expect(find.text('تساعد فيها'), findsNothing);
   });
+
+  // UX critique: «يشوف بس» edits nothing, so «تساعد فيها» spoke to him as
+  // if he worked in the plan.
+  testWidgets('a plan he only reads says «تتابعها»', (tester) async {
+    final json = accountContextJson(
+      role: AccountContextRole.contributor,
+      planId: 'plan-mohammed',
+      displayName: 'عرس محمد',
+    );
+    final permissions = Map<String, dynamic>.from(json['permissions'] as Map)
+      ..['canManageTasks'] = false
+      ..['canManageGuests'] = false;
+    final viewer = AccountContext.fromJson({
+      ...json,
+      'permissions': permissions,
+    });
+    final own = accountContext(
+      role: AccountContextRole.owner,
+      planId: 'plan-saleh',
+      displayName: 'عرس صالح',
+    );
+    final controller = await _controller([viewer, own]);
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider<AccountContextController>.value(
+        value: controller,
+        child: const MaterialApp(home: AccountContextSelectionScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('تتابعها'), findsOneWidget);
+    expect(find.text('تساعد فيها'), findsNothing);
+  });
 }
 
 Future<AccountContextController> _controller(

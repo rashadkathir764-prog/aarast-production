@@ -80,6 +80,9 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
   bool _openingPlan = false;
   String? _otpNoticeMessage;
   bool _otpDeliveryConfirmed = false;
+
+  /// A local test code, shown in its own note.
+  bool _otpLocalDev = false;
   String? _nameError;
   String? _phoneError;
 
@@ -167,6 +170,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
       _otpFieldState = AarastOtpFieldState.idle;
       _otpNoticeMessage = result.noticeMessage;
       _otpDeliveryConfirmed = result.isDeliveryConfirmed;
+      _otpLocalDev = result.isLocalDev;
     });
     _startResendCooldown();
   }
@@ -223,6 +227,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
     setState(() {
       _otpNoticeMessage = result.noticeMessage;
       _otpDeliveryConfirmed = result.isDeliveryConfirmed;
+      _otpLocalDev = result.isLocalDev;
     });
     _startResendCooldown();
   }
@@ -306,6 +311,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
       _resendSeconds = 0;
       _otpNoticeMessage = null;
       _otpDeliveryConfirmed = false;
+      _otpLocalDev = false;
       _accountSetupRequired = false;
       _nameError = null;
       _phoneError = null;
@@ -523,21 +529,25 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
         },
         onSubmitted: (_) => _requestOtp(),
       ),
-      const SizedBox(height: AarastV3Field.gap),
-      JourneyTextField(
-        key: const ValueKey('invite-account-name-field'),
-        label: 'الاسم',
-        hint: 'اسمك',
-        controller: _nameController,
-        textInputAction: TextInputAction.done,
-        autofillHints: const [AutofillHints.name],
-        helper: 'لو هذا أول دخول في اعّرست',
-        helperColor: AarastV3Color.textMuted,
-        errorText: _nameError,
-        onChanged: (_) {
-          if (_nameError != null) setState(() => _nameError = null);
-        },
-      ),
+      // p02: the name is asked only once the server says this number has
+      // no account; «لو هذا أول دخول» was put to everyone, old users too.
+      if (_accountSetupRequired) ...[
+        const SizedBox(height: AarastV3Field.gap),
+        JourneyTextField(
+          key: const ValueKey('invite-account-name-field'),
+          label: 'الاسم',
+          hint: 'اسمك',
+          controller: _nameController,
+          textInputAction: TextInputAction.done,
+          autofillHints: const [AutofillHints.name],
+          helper: 'أول دخول لرقمك في اعّرست',
+          helperColor: AarastV3Color.textMuted,
+          errorText: _nameError,
+          onChanged: (_) {
+            if (_nameError != null) setState(() => _nameError = null);
+          },
+        ),
+      ],
       if (error != null) ...[
         const SizedBox(height: AarastV3Space.x3),
         JourneyNote(
@@ -572,7 +582,23 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
           onPressed: auth.isSubmitting ? null : _returnToPhone,
         ),
       ),
-      if (_otpNoticeMessage case final notice?) ...[
+      // p04: the title already says «طلبنا»; the note under it said it
+      // again with «ما تأكدنا إنه وصل», which worried older readers. It says
+      // what to do instead. A confirmed or a test code keeps its own note.
+      if (!_otpDeliveryConfirmed && !_otpLocalDev)
+        Padding(
+          padding: const EdgeInsets.only(top: AarastV3Space.x2),
+          child: JourneyNote(
+            key: const ValueKey('invite-otp-wait-note'),
+            text: context.say(
+              'لو ما وصلك خلال دقيقة، اضغط «أرسله مرة ثانية».',
+              'لو ما وصلك خلال دقيقة، اضغطي «أرسليه مرة ثانية».',
+            ),
+            icon: LucideIcons.messageCircle,
+            tone: JourneyNoteTone.paper,
+          ),
+        )
+      else if (_otpNoticeMessage case final notice?) ...[
         const SizedBox(height: AarastV3Space.x2),
         JourneyNote(
           text: notice,
@@ -698,6 +724,14 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
     final date = invite.weddingDate;
     final city = invite.weddingCity?.trim() ?? '';
     final ended = invite.hasEndedMembership;
+    final question = _inviteTitle(invite, inviter, planTitle);
+    // p05: «محمد يشتيك معه في عرسه» over «عرس محمد» said it twice; the
+    // plan's name stays where it adds something («عرس رشاد وسارة»).
+    final inviterFirst = inviter.split(RegExp(r'\s+')).first;
+    final titleSaid =
+        planTitle.isEmpty ||
+        question.contains(planTitle) ||
+        (inviterFirst.isNotEmpty && planTitle == 'عرس $inviterFirst');
     return [
       const SizedBox(height: AarastV3Space.x2),
       // A notice's invite is read with the session; no number was proven
@@ -710,9 +744,9 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
         ),
       JourneyEntryQuestion(
         key: const ValueKey('invite-inviter-card'),
-        question: _inviteTitle(invite, inviter, planTitle),
+        question: question,
         help: [
-          if (planTitle.isNotEmpty) planTitle,
+          if (!titleSaid) planTitle,
           if (city.isNotEmpty) city,
           if (date != null) formatArabicWeekdayDayMonth(date),
         ].join(' · '),
@@ -845,7 +879,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
           return JourneyEntryActions(
             primary: JourneyButton(
               key: const Key('invite-accept-button'),
-              label: 'قبول والانضمام',
+              label: 'أقبل وأدخل',
               expand: true,
               large: true,
               loading: sharing.isSubmitting || _openingPlan,

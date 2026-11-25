@@ -18,7 +18,10 @@ import 'account_context_test_data.dart';
 // gate said only «ما عادت ضمن خططك». It is kept on the phone, for the
 // signed-in user only, until the gate has said it, or the account is gone.
 
-const _removedText = 'العروسة شالتك من خطتها. ارجع للرئيسية واختر خطة ثانية.';
+// p17: said as where the reader stands, not «العروسة شالتك من خطتها».
+const _removedText =
+    'ما عدت مشارك في خطة العروسة، واللي سجّلته محفوظ باسمك. '
+    'ارجع للرئيسية واختر خطة ثانية.';
 const _genericText = 'ما عادت ضمن خططك. ارجع للرئيسية واختر خطة ثانية.';
 
 SafeUser _user(String id) =>
@@ -80,8 +83,10 @@ Future<AccountContextController> _takenOff(
   await controller.select(_helping.contextKey);
   gateway.contexts = [_own];
   await controller.refresh();
-  expect(controller.removedPlanPath('plan-2')?.persona,
-      AccountContextPersona.bride);
+  expect(
+    controller.removedPlanPath('plan-2')?.persona,
+    AccountContextPersona.bride,
+  );
   return controller;
 }
 
@@ -177,9 +182,7 @@ void main() {
     );
   });
 
-  testWidgets('another account on the same phone is not told', (
-    tester,
-  ) async {
+  testWidgets('another account on the same phone is not told', (tester) async {
     final preferences = await SharedPreferences.getInstance();
     final gateway = _Gateway([]);
     await _takenOff(preferences, gateway);
@@ -206,10 +209,14 @@ void main() {
       preferences.getKeys().where((key) => key.contains('removed')),
       isEmpty,
     );
-    expect(vault.values.keys.where((key) => key.contains('removed')),
-        isNotEmpty);
+    expect(
+      vault.values.keys.where((key) => key.contains('removed')),
+      isNotEmpty,
+    );
     final second = await _launch(preferences, gateway, vault: vault);
-    expect(second.removedPlanPath('plan-2')?.persona,
-        AccountContextPersona.bride);
+    expect(
+      second.removedPlanPath('plan-2')?.persona,
+      AccountContextPersona.bride,
+    );
   });
 }

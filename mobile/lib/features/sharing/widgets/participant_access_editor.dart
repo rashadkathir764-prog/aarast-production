@@ -13,7 +13,9 @@ String participantReadingNote(BuildContext context) =>
     'أضافهم، ومصادر فلوسك وسلفك تبقى لك.';
 
 /// g06's ready roles and per-section levels, shared by adding a participant
-/// and editing one. Tasks, guests and providers are «لا / يعدّل»; money is
+/// and editing one. Tasks, guests and providers are «يشوف / يعدّل»: every
+/// participant reads them (D80; the server guards only the money's reading),
+/// so «لا» promised a hiding that never happened. Money alone is
 /// «لا / يشوف / يعدّل». Choosing a role resets the levels to its defaults.
 class ParticipantAccessEditor extends StatelessWidget {
   const ParticipantAccessEditor({
@@ -113,7 +115,7 @@ class _LevelRow extends StatelessWidget {
     required this.label,
     required this.selected,
     required this.onChanged,
-    this.options = const ['لا', 'يعدّل'],
+    this.options = const ['يشوف', 'يعدّل'],
   });
 
   final IconData icon;

@@ -62,4 +62,15 @@ void main() {
     expect(notificationWhenLabel(DateTime(2026, 10, 22, 20), now), 'الخميس');
     expect(notificationWhenLabel(DateTime(2026, 10, 1), now), isNot('الخميس'));
   });
+
+  // UX critique: a notice from last Friday evening, read on a Friday
+  // afternoon, is less than seven times 24 hours old and was labelled
+  // «الجمعة», which reads as today. Days are counted by the calendar.
+  test('a notice from the same weekday last week is dated', () {
+    final label = notificationWhenLabel(DateTime(2026, 10, 16, 20), now);
+    expect(label, isNot('الجمعة'));
+    expect(label, contains('16'));
+    // Six calendar days back is still its weekday.
+    expect(notificationWhenLabel(DateTime(2026, 10, 17, 8), now), 'السبت');
+  });
 }

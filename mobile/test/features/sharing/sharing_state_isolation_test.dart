@@ -105,7 +105,7 @@ void main() {
       expect(find.text('المشاركين يديرهم صاحب الخطة'), findsOneWidget);
       expect(find.text('عضو قديم'), findsNothing);
       expect(find.text('احفظ'), findsNothing);
-      expect(find.text('شيله من الخطة'), findsNothing);
+      expect(find.text('شيل من الخطة'), findsNothing);
       expect(api.getSharedMembersCalls, 0);
       expect(tester.takeException(), isNull);
     });

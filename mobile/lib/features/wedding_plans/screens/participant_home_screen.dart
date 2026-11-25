@@ -24,7 +24,8 @@ import '../../account_contexts/account_contexts_api.dart'
         AccountContext,
         AccountContextController,
         AccountContextPermissionChange,
-        AccountContextPersona;
+        AccountContextPersona,
+        AccountContextRole;
 import '../../auth/auth_api.dart' show AuthController;
 import '../../sharing/sharing_api.dart' show participantRoleTag;
 import '../../tasks/tasks_api.dart'
@@ -157,11 +158,18 @@ class _ParticipantHomeScreenState extends State<ParticipantHomeScreen> {
     }
     final next = open.first;
     final rest = open.skip(1).take(3).toList();
+    // p10: «الخطوة الجاية: حدد موعد عقد القران» read as an order to someone
+    // who cannot act on it; the heading says whose step it is.
+    final who = next.whoLine(ownerWord: voice.owner);
+    final doer = who != null && who.startsWith('على ')
+        ? who.substring(4)
+        : null;
     return [
       const SizedBox(height: AarastV3Space.x3),
       _NextTaskCard(
         task: next.toTask(),
-        who: next.whoLine(ownerWord: voice.owner),
+        heading: doer == null ? null : 'الخطوة الجاية عند $doer',
+        who: doer == null ? who : null,
       ),
       JourneySectionTitle(
         'مهام الخطة',
@@ -376,9 +384,11 @@ class _ParticipantHomeScreenState extends State<ParticipantHomeScreen> {
             onOpen: () => _openTask(next),
           ),
           if (rest.isNotEmpty) ...[
+            // p09: «مهامك 3» stood over two rows, the third being the step
+            // above; the count is what the section lists.
             JourneySectionTitle(
-              'مهامك',
-              action: '${open.length}',
+              'باقي مهامك',
+              action: '${rest.length}',
               actionColor: voice.accent,
             ),
             JourneyList(
@@ -502,32 +512,53 @@ class _ParticipantHomeScreenState extends State<ParticipantHomeScreen> {
       // a man in a groom's plan too; the colours are said only where they are
       // not the reader's own.
       final colours = voice.bride
-          ? 'الخطة بألوان صاحبتها. '
+          ? 'الخطة بألوان صاحبتها.'
           : context.journeyProfile.feminine
-          ? 'الخطة بألوان صاحبها. '
+          ? 'الخطة بألوان صاحبها.'
           : '';
-      children.addAll([
-        const SizedBox(height: AarastV3Space.x3),
-        JourneyNote(
-          key: ValueKey(
-            colours.isEmpty
-                ? 'participant-switch-hint'
-                : 'participant-owner-colours',
+      // The way to «حسابي» is said only to whoever has a plan of his own
+      // there; «لو عندك خطة» was said to a father who has none.
+      final ownPlan = controller.contexts.any(
+        (path) =>
+            path.isPlan &&
+            path.role == AccountContextRole.owner &&
+            path.weddingPlanId != widget.weddingPlanId,
+      );
+      final switchHint = ownPlan
+          ? context.say(
+              'تقدر تبدّل لخطتك من «حسابي».',
+              'تقدرين تبدّلين لخطتكِ من «حسابي».',
+            )
+          : '';
+      final note = [
+        if (colours.isNotEmpty) colours,
+        if (switchHint.isNotEmpty) switchHint,
+      ].join(' ');
+      if (note.isNotEmpty) {
+        children.addAll([
+          const SizedBox(height: AarastV3Space.x3),
+          JourneyNote(
+            key: ValueKey(
+              colours.isEmpty
+                  ? 'participant-switch-hint'
+                  : 'participant-owner-colours',
+            ),
+            text: note,
+            icon: LucideIcons.palette,
+            color: voice.accent,
+            soft: voice.soft,
           ),
-          text:
-              '$colours${context.say('لو عندك خطة أنت، تبدّل لها من «حسابي».', 'لو عندك خطة أنتِ، تبدّلين لها من «حسابي».')}',
-          icon: LucideIcons.palette,
-          color: voice.accent,
-          soft: voice.soft,
-        ),
-      ]);
+        ]);
+      }
       if (colours.isEmpty && !selected.permissions.canViewMoney) {
         children.addAll([
           const SizedBox(height: AarastV3Space.x3),
-          const JourneyNote(
-            key: ValueKey('participant-money-hidden'),
-            text: 'المال مخفي عنك.',
-            icon: LucideIcons.eyeOff,
+          // «المال مخفي عنك» read as a secret kept from him; the money is
+          // simply the owner's.
+          JourneyNote(
+            key: const ValueKey('participant-money-hidden'),
+            text: 'المال عند ${voice.owner}.',
+            icon: LucideIcons.lock,
             color: AarastV3Color.textMuted,
             soft: AarastV3Color.paper,
           ),

@@ -169,10 +169,11 @@ void main() {
       expect(find.text('رقم جوالك'), findsOneWidget);
       expect(find.byKey(const Key('invite-phone-field')), findsOneWidget);
       expect(find.text('نفس الرقم اللي وصلته الدعوة عليه.'), findsOneWidget);
-      // D75: a first visit's name is asked with the number; no password.
+      // D75: a first visit's name is asked on this page, but only once the
+      // server says the number has no account (p02); no password.
       expect(
         find.byKey(const ValueKey('invite-account-name-field')),
-        findsOneWidget,
+        findsNothing,
       );
       expect(find.textContaining('كلمة المرور'), findsNothing);
       expect(find.text('أرسل الرمز'), findsOneWidget);
@@ -217,6 +218,13 @@ void main() {
 
       expect(find.text('طلبنا لك رمز على واتساب'), findsOneWidget);
       expect(find.text('أرسلنا لك رمز على واتساب'), findsNothing);
+      // p04: «طلبنا» once, and what to do rather than «ما تأكدنا إنه وصل».
+      expect(
+        find.text('لو ما وصلك خلال دقيقة، اضغط «أرسله مرة ثانية».'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('ما تأكدنا إنه وصل'), findsNothing);
+      expect(find.textContaining('طلبنا نرسل'), findsNothing);
     });
   }
 
@@ -348,7 +356,7 @@ void main() {
         find.text('عرس رشاد وسارة · صنعاء · الخميس 21 يناير'),
         findsOneWidget,
       );
-      expect(find.text('دورك: مساعدة في الترتيب'), findsOneWidget);
+      expect(find.text('دورك: مساعد'), findsOneWidget);
       expect(find.text('موعد العرس'), findsOneWidget);
       // C27: a participant adds tasks and finishes their own.
       expect(find.text('المهام: إضافة مهام وإنهاء اللي عليك'), findsOneWidget);
@@ -373,6 +381,9 @@ void main() {
       );
       expect(find.textContaining('الرفد'), findsNothing);
       expect(find.byKey(const Key('invite-accept-button')), findsOneWidget);
+      // p05: said as the invitee would say it.
+      expect(find.text('أقبل وأدخل'), findsOneWidget);
+      expect(find.text('قبول والانضمام'), findsNothing);
       expect(find.byKey(const Key('invite-decline-button')), findsOneWidget);
       expect(sharingApi.acceptCalls, 0);
       expect(find.byKey(const Key('participant-home')), findsNothing);
@@ -414,8 +425,11 @@ void main() {
         ),
         findsOneWidget,
       );
-      // The one invited is not known yet: words that fit a man or a woman.
-      expect(find.text('دورك: مساعدة في الترتيب'), findsOneWidget);
+      // p05: «عرس سلمى» under a line that already says whose wedding it is
+      // was said twice.
+      expect(find.text('عرس سلمى'), findsNothing);
+      // The role by its one name, as the owner's list says it (finding 9).
+      expect(find.text('دورك: مساعد'), findsOneWidget);
     });
   }
 
@@ -884,7 +898,13 @@ void main() {
     harness.repository.inviteAccountSetupRequired = true;
     await _pumpGuestInvite(tester, harness);
 
-    expect(find.text('لو هذا أول دخول في اعّرست'), findsOneWidget);
+    // p02: «لو هذا أول دخول» was put to everyone; the name waits for the
+    // server's word that this number is new.
+    expect(find.text('لو هذا أول دخول في اعّرست'), findsNothing);
+    expect(
+      find.byKey(const ValueKey('invite-account-name-field')),
+      findsNothing,
+    );
     await _tapVisible(
       tester,
       find.byKey(const Key('invite-request-otp-button')),
@@ -893,6 +913,10 @@ void main() {
     expect(find.text('الرقم اللي وصلت عليه الدعوة مطلوب'), findsOneWidget);
 
     await _openOtpStep(tester);
+    expect(
+      find.byKey(const ValueKey('invite-account-name-field')),
+      findsOneWidget,
+    );
     expect(find.text('الاسم مطلوب لأول دخول في اعّرست'), findsOneWidget);
     for (final gendered in ['اكتب', 'تدخل']) {
       expect(find.textContaining(gendered), findsNothing, reason: gendered);

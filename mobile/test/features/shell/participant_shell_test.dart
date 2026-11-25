@@ -89,17 +89,17 @@ void main() {
       expect(find.textContaining('الخطوة الجاية'), findsOneWidget);
       expect(find.text('رتّب الغداء مع أبو علي'), findsOneWidget);
       expect(find.text('هذي المهمة عليك'), findsOneWidget);
-      expect(find.text('مهامك'), findsOneWidget);
-      expect(find.text('3'), findsOneWidget);
+      // p09: the count is the rows under it, not the step above too.
+      expect(find.text('باقي مهامك'), findsOneWidget);
+      expect(find.text('2'), findsOneWidget);
+      expect(find.text('3'), findsNothing);
       expect(find.text('ذكّر آل الحمدي اللي ما ردّوا'), findsOneWidget);
-      // Privacy: nothing of the money, only that it is hidden.
-      expect(find.text('المال مخفي عنك.'), findsOneWidget);
-      // RA-MO-339: the way to his own plan is said to a man in a groom's plan
-      // too, without the colours (they are his own).
-      expect(
-        find.text('لو عندك خطة أنت، تبدّل لها من «حسابي».'),
-        findsOneWidget,
-      );
+      // Privacy: nothing of the money, only whose it is.
+      expect(find.text('المال عند العريس.'), findsOneWidget);
+      expect(find.text('المال مخفي عنك.'), findsNothing);
+      // RA-MO-339: the way to his own plan is said to a man in a groom's
+      // plan too; here he has none, so it is not said at all.
+      expect(find.textContaining('«حسابي»'), findsNothing);
       expect(find.textContaining('الخطة بألوان'), findsNothing);
       expect(find.textContaining('ر.ي'), findsNothing);
       expect(find.textContaining('اطلب من'), findsNothing);
@@ -258,15 +258,16 @@ void main() {
       // greeting says «أهلًا فيك», as it does with no name at all.
       expect(find.text('أهلًا فيك'), findsOneWidget);
       expect(find.text('أهلًا الوالد'), findsNothing);
-      expect(find.text('أنت تتابع بس'), findsOneWidget);
+      expect(find.text('أنت تشوف بس'), findsOneWidget);
       expect(find.text('أنت يشوف بس'), findsNothing);
-      expect(find.textContaining('الخطوة الجاية'), findsOneWidget);
+      // p10: the step is said as whose it is, not as an order to him.
+      expect(find.textContaining('الخطوة الجاية عند محمد'), findsOneWidget);
       expect(find.text('حدد موعد عقد القران'), findsOneWidget);
-      expect(find.text('على محمد'), findsOneWidget);
+      expect(find.text('على محمد'), findsNothing);
       expect(find.text('مهام الخطة'), findsOneWidget);
       expect(find.text('خلصت 1 من 4'), findsOneWidget);
       expect(find.byKey(const ValueKey('participant-next-done')), findsNothing);
-      expect(find.text('المال مخفي عنك.'), findsOneWidget);
+      expect(find.text('المال عند العريس.'), findsOneWidget);
       expect(harness.tasksApi.listCalls, 0);
 
       await _openTab(tester, 'المهام');
@@ -389,7 +390,7 @@ void main() {
     );
     await harness.pump(tester);
 
-    expect(find.text('أنتِ تتابعين بس'), findsOneWidget);
+    expect(find.text('أنتِ تشوفين بس'), findsOneWidget);
     expect(find.text('على العروسة'), findsNothing);
 
     await _openTab(tester, 'المهام');
@@ -418,12 +419,9 @@ void main() {
 
     expect(find.text('أهلًا نورة'), findsOneWidget);
     expect(find.text('أنتِ مساعدة'), findsOneWidget);
-    expect(
-      find.text(
-        'الخطة بألوان صاحبتها. لو عندك خطة أنتِ، تبدّلين لها من «حسابي».',
-      ),
-      findsOneWidget,
-    );
+    // No plan of her own here, so only the colours are said.
+    expect(find.text('الخطة بألوان صاحبتها.'), findsOneWidget);
+    expect(find.textContaining('«حسابي»'), findsNothing);
     // The owner's hero now (2026-11-18), in the plan's colour.
     final hero = tester.widget<JourneyBox>(
       find
@@ -450,11 +448,12 @@ void main() {
       userPersona: 'GROOM',
       canManageTasks: false,
       canManageGuests: false,
+      ownPlan: true,
     );
     await harness.pump(tester);
 
-    expect(find.text('أنت تتابع بس'), findsOneWidget);
-    expect(find.text('أنتِ تتابعين بس'), findsNothing);
+    expect(find.text('أنت تشوف بس'), findsOneWidget);
+    expect(find.text('أنتِ تشوفين بس'), findsNothing);
     final hero = tester.widget<JourneyBox>(
       find
           .descendant(
@@ -464,8 +463,9 @@ void main() {
           .first,
     );
     expect(hero.color, AarastV3Color.rose);
+    // He has a plan of his own, so the way to it is said.
     expect(
-      find.text('الخطة بألوان صاحبتها. لو عندك خطة أنت، تبدّل لها من «حسابي».'),
+      find.text('الخطة بألوان صاحبتها. تقدر تبدّل لخطتك من «حسابي».'),
       findsOneWidget,
     );
 
@@ -992,6 +992,7 @@ class _Harness {
     String? userPersona,
     List<Map<String, dynamic>>? events,
     bool memory = false,
+    bool ownPlan = false,
   }) async {
     SharedPreferences.setMockInitialValues({});
     final storage = AuthStorage(await SharedPreferences.getInstance());
@@ -1039,6 +1040,7 @@ class _Harness {
       setActiveWeddingPlan: (_) async {},
     );
     gateway.memory = memory;
+    gateway.ownPlan = ownPlan;
     await controller.refresh();
     if (memory) {
       expect(
@@ -1215,6 +1217,9 @@ class _Gateway implements AccountContextsGateway {
   /// server lists it: unavailable, read-only, no write right.
   bool memory = false;
 
+  /// The reader also owns a plan of his own.
+  bool ownPlan = false;
+
   AccountContext get _context {
     if (memory) {
       return accountContext(
@@ -1244,7 +1249,15 @@ class _Gateway implements AccountContextsGateway {
   }
 
   @override
-  Future<List<AccountContext>> listContexts() async => [_context];
+  Future<List<AccountContext>> listContexts() async => [
+    _context,
+    if (ownPlan)
+      accountContext(
+        role: AccountContextRole.owner,
+        planId: 'plan-own',
+        displayName: 'عرسي',
+      ),
+  ];
 
   @override
   Future<AccountContext> validateContext(String contextKey) async => _context;

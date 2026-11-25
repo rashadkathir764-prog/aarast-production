@@ -608,7 +608,13 @@ String notificationWhenLabel(DateTime at, DateTime now) {
     final hours = now.difference(local).inHours;
     return 'قبل ${arabicCount(hours, one: 'ساعة', two: 'ساعتين', few: 'ساعات', many: 'ساعة')}';
   }
-  if (now.difference(local).inDays < 7) return formatArabicWeekday(local);
+  // By the calendar, as the groups above count: last Friday's evening is
+  // under seven times 24 hours old on a Friday afternoon, and «الجمعة»
+  // then read as today.
+  final days = DateTime.utc(now.year, now.month, now.day)
+      .difference(DateTime.utc(local.year, local.month, local.day))
+      .inDays;
+  if (days <= 6) return formatArabicWeekday(local);
   return formatArabicCompactDate(local);
 }
 

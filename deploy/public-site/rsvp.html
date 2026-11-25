@@ -27,7 +27,7 @@
         <p id="rsvp-invite-line" class="rsvp-invite-line"></p>
         <h1 id="rsvp-title" aria-live="polite">نفتح الدعوة…</h1>
         <p id="rsvp-free-text" class="rsvp-free-text" hidden></p>
-        <button id="rsvp-retry" class="rsvp-retry" type="button" hidden>إعادة المحاولة</button>
+        <button id="rsvp-retry" class="rsvp-retry" type="button" hidden>نحاول مرة ثانية</button>
         <dl id="rsvp-details" class="rsvp-details" hidden>
           <div id="rsvp-date-row">
             <dt>الموعد</dt>
@@ -50,6 +50,11 @@
         </dl>
       </section>
 
+      <!-- The occasions before the wedding's day, in day order, above its reply. -->
+      <section id="rsvp-events-before" class="rsvp-events" hidden aria-label="قبل العرس">
+        <div id="rsvp-events-before-list" class="rsvp-events-list"></div>
+      </section>
+
       <section id="rsvp-answer" class="rsvp-answer" hidden aria-labelledby="rsvp-companions-label">
         <p id="rsvp-notice" class="rsvp-status" role="status" hidden></p>
         <h2 id="rsvp-answer-title" class="rsvp-section-title" hidden>العرس</h2>
@@ -62,7 +67,7 @@
       </section>
 
       <section id="rsvp-events" class="rsvp-events" hidden aria-labelledby="rsvp-events-title">
-        <h2 id="rsvp-events-title" class="rsvp-section-title">والدعوة تشمل أيضًا</h2>
+        <h2 id="rsvp-events-title" class="rsvp-section-title">والدعوة تشمل كمان</h2>
         <div id="rsvp-events-list" class="rsvp-events-list"></div>
       </section>
 

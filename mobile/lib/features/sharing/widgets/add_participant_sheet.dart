@@ -169,7 +169,8 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
           JourneyTextField(
             key: const ValueKey('participant-phone-field'),
             label: 'رقم الجوال',
-            hint: '771 554 220',
+            // One hint everywhere, and not one that reads as a typed number.
+            hint: '7XX XXX XXX',
             controller: _phone,
             keyboardType: TextInputType.phone,
             textDirection: TextDirection.ltr,
@@ -239,27 +240,30 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
 
   /// WhatsApp did not take the invite: the link is shown this once.
   Widget _created(PlanInvite invite) {
+    // The invitee is named, not «له / يدخل برقمه», which made every
+    // invitee a man; the verbs follow the reader only.
+    final to = toPerson(_inviteeName(invite));
     final note = switch (invite.deliveryStatus) {
       'UNCERTAIN' => context.say(
-        'ما تأكدنا إنها وصلته على واتساب. انسخ الرابط وأرسله له بنفسك.',
-        'ما تأكدنا إنها وصلته على واتساب. انسخي الرابط وأرسليه له بنفسك.',
+        'ما تأكدنا إنها وصلت $to على واتساب. انسخ الرابط وأرسله بنفسك.',
+        'ما تأكدنا إنها وصلت $to على واتساب. انسخي الرابط وأرسليه بنفسك.',
       ),
       'PENDING' => context.say(
-        'نرسلها له على واتساب الحين. وتقدر تنسخ الرابط وترسله بنفسك.',
-        'نرسلها له على واتساب الحين. وتقدرين تنسخين الرابط وترسلينه بنفسك.',
+        'نرسلها $to على واتساب الحين. وتقدر تنسخ الرابط وترسله بنفسك.',
+        'نرسلها $to على واتساب الحين. وتقدرين تنسخين الرابط وترسلينه بنفسك.',
       ),
       _ => context.say(
-        'ما قدرنا نرسلها على واتساب. انسخ الرابط وأرسله له بأي طريقة.',
-        'ما قدرنا نرسلها على واتساب. انسخي الرابط وأرسليه له بأي طريقة.',
+        'ما قدرنا نرسلها على واتساب. انسخ الرابط وأرسله $to بأي طريقة.',
+        'ما قدرنا نرسلها على واتساب. انسخي الرابط وأرسليه $to بأي طريقة.',
       ),
     };
-    final name = invite.name?.trim();
     return JourneySheetBody(
       key: const ValueKey('invite-created-view'),
       title: 'الدعوة جاهزة',
-      subtitle: name == null || name.isEmpty
-          ? 'يدخل برقمه ويوافق، والرابط يشتغل 7 أيام'
-          : '$name يدخل برقمه ويوافق، والرابط يشتغل 7 أيام',
+      subtitle: context.say(
+        'الدخول بالرقم اللي كتبته، والرابط يشتغل 7 أيام',
+        'الدخول بالرقم اللي كتبتيه، والرابط يشتغل 7 أيام',
+      ),
       children: [
         JourneyNote(
           icon: LucideIcons.alertCircle,
@@ -292,10 +296,19 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
         : InviteShareContent.fromInvite(invite).inviteLink.toString();
     final copied = await copyInviteText(context, text);
     if (!mounted || !copied) return;
+    final to = toPerson(_inviteeName(invite));
     AarastToast.showSuccess(
       context,
-      context.say('نسخنا الرابط، أرسله له.', 'نسخنا الرابط، أرسليه له.'),
+      context.say('نسخنا الرابط، أرسله $to.', 'نسخنا الرابط، أرسليه $to.'),
     );
+  }
+
+  /// The invitee by name, else by number read left to right.
+  String _inviteeName(PlanInvite invite) {
+    final name = invite.name?.trim();
+    if (name != null && name.isNotEmpty) return name;
+    final phone = participantPhone(invite.phone);
+    return phone == null ? 'المدعو' : PhoneNumberUtils.isolateLtr(phone);
   }
 
   String? _checkPhone(SharingProvider provider) {

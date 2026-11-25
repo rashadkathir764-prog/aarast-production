@@ -123,27 +123,64 @@ class WeddingPlanContextGate extends StatelessWidget {
           ? 'selected_context_permission_denied'
           : 'selected_context_mismatch',
     );
-    // RA-MO-339: a plan he was taken off is named by its owner, as P9 does.
+    // RA-MO-339: a plan he was taken off is named by its owner's word, as
+    // P9 does. p17: «العروسة شالتك من خطتها» read as a blame; the line says
+    // where he stands and that his work is kept.
     final removed = samePlan
         ? null
-        : controller.removedPlanPath(weddingPlanId)?.planOwnerRemovedYou;
+        : controller.removedPlanPath(weddingPlanId)?.planOwnerWord;
     if (removed != null) {
       WidgetsBinding.instance.addPostFrameCallback(
         (_) => controller.removedPlanPathShown(weddingPlanId),
       );
     }
+    final closed = samePlan ? _closedSection(selected!, requiredAccess) : null;
     return _MismatchedPlanContext(
-      title: samePlan ? 'هذا القسم مش مفتوح لك' : 'هذي الخطة ما عادت لك',
+      title: samePlan
+          ? (closed == null ? 'هذا القسم مش مفتوح لك' : closed.title)
+          : 'هذي الخطة ما عادت لك',
       message: samePlan
-          ? 'صلاحيتك في هذي الخطة ما تفتح هذا القسم.'
+          ? (closed?.message ?? 'صلاحيتك في هذي الخطة ما تفتح هذا القسم.')
           : removed == null
           ? null
           : context.say(
-              '$removed. ارجع للرئيسية واختر خطة ثانية.',
-              '$removed. ارجعي للرئيسية واختاري خطة ثانية.',
+              'ما عدت مشارك في خطة $removed، واللي سجّلته محفوظ باسمك. '
+                  'ارجع للرئيسية واختر خطة ثانية.',
+              'ما عدتِ مشاركة في خطة $removed، واللي سجّلتيه محفوظ باسمك. '
+                  'ارجعي للرئيسية واختاري خطة ثانية.',
             ),
     );
   }
+}
+
+/// p15: a section a participant's rights do not open, named with who opens
+/// it and where, as the participant's lock tabs say it («المال عند العريس.
+/// يفتحه لك من «المشاركين».»). Null where no owner can open it for them: the
+/// owner's own pages, and an owner reading a memory.
+({String title, String message})? _closedSection(
+  AccountContext selected,
+  WeddingPlanRouteAccess access,
+) {
+  if (selected.role != AccountContextRole.contributor) return null;
+  final section = switch (access) {
+    WeddingPlanRouteAccess.viewMoney => 'المال',
+    WeddingPlanRouteAccess.manageMoney ||
+    WeddingPlanRouteAccess.settleMoney => 'التسجيل في المال',
+    WeddingPlanRouteAccess.manageTasks => 'تعديل المهام',
+    WeddingPlanRouteAccess.manageGuests => 'تعديل الضيوف',
+    WeddingPlanRouteAccess.manageProviders => 'تعديل المزودين',
+    WeddingPlanRouteAccess.inviteMembers => 'دعوة المشاركين',
+    _ => null,
+  };
+  if (section == null) return null;
+  final owner = selected.planOwnerWord;
+  final opens = selected.persona == AccountContextPersona.bride
+      ? 'تفتحه'
+      : 'يفتحه';
+  return (
+    title: '$section مش مفتوح لك',
+    message: '$section عند $owner. $opens لك من «المشاركين».',
+  );
 }
 
 /// A page the gates keep alive while they cannot show it: [child] stays in

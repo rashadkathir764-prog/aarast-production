@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/routing/app_router.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../providers/finance_provider.dart';
 import '../../auth/auth_api.dart' show AuthActionGuard;
@@ -32,17 +34,18 @@ Widget? financeWriteAccessBlock({
     );
   }
   if (!provider.canManageMoney) {
-    return AarastScreenFrame(
-      child: Center(
-        child: AarastEmptyState(
-          title: 'للقراءة بس',
-          message: context.say(
-            'ما عندك صلاحية تعدّل المال في هذي الخطة.',
-            'ما عندك صلاحية تعدّلين المال في هذي الخطة.',
-          ),
-          icon: LucideIcons.lock,
-        ),
-      ),
+    // p16: the page was a dead end that named no one. It says who edits
+    // and leads back to the money he reads; the owner reading a memory is
+    // told why instead (D112, Q-21).
+    final owner = context.planWord('العريس', 'العروسة');
+    return _ReadOnlyMoney(
+      weddingPlanId: weddingPlanId,
+      message: provider.ownerReadsOnly
+          ? 'الخطة في الذكريات، ومالها للقراءة بس.'
+          : context.say(
+              'تقدر تشوف المال بس، والتعديل عند $owner.',
+              'تقدرين تشوفين المال بس، والتعديل عند $owner.',
+            ),
     );
   }
   if (ownerOnly && !provider.canManageBudget) {
@@ -57,4 +60,36 @@ Widget? financeWriteAccessBlock({
     );
   }
   return null;
+}
+
+/// «للقراءة بس» with the way back to the money, inside the page's margins
+/// (the card touched the screen's edges).
+class _ReadOnlyMoney extends StatelessWidget {
+  const _ReadOnlyMoney({required this.weddingPlanId, required this.message});
+
+  final String weddingPlanId;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return AarastScreenFrame(
+      child: Center(
+        child: SingleChildScrollView(
+          padding: AarastV3Density.pageInsets,
+          child: AarastEmptyState(
+            key: const ValueKey('money-read-only'),
+            title: 'للقراءة بس',
+            message: message,
+            icon: LucideIcons.lock,
+            action: JourneyButton(
+              key: const ValueKey('money-read-only-back'),
+              label: context.say('ارجع للمال', 'ارجعي للمال'),
+              icon: LucideIcons.wallet,
+              onPressed: () => context.go(AppRouter.money(weddingPlanId)),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

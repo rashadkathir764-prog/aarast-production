@@ -35,7 +35,7 @@ class LogoutSheet extends StatelessWidget {
     final sending = service?.state == SyncState.syncing;
     final offline = service?.state == SyncState.offline;
     return JourneySheetBody(
-      title: 'الخروج',
+      title: context.say('تطلع من حسابك؟', 'تطلعين من حسابك؟'),
       children: [
         if (unsent > 0) ...[
           JourneyNote(

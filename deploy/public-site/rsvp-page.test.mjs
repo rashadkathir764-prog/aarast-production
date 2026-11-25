@@ -686,3 +686,66 @@ test("RA-OP-31: the page announces its title, not the whole page, and names each
   assert.notEqual(groups[0].attributes["aria-labelledby"], groups[1].attributes["aria-labelledby"]);
   assert.match(html, /id="rsvp-companions"[^>]*role="group"[^>]*aria-labelledby="rsvp-companions-label"/);
 });
+
+// UX critique: «الزفاف» came first whatever its day; the occasions read in
+// the order of their days, the earlier ones above the wedding's reply.
+test("the occasions are in day order around the wedding's reply", async () => {
+  const henna = { ...lunch, id: "event-henna", label: "الحناء", date: "2027-02-16" };
+  const breakfast = { ...lunch, id: "event-breakfast", label: "الصبحة", date: "2027-02-19" };
+  const page = await openPage([[200, invitation([breakfast, lunch, henna])]]);
+  const titles = (id) =>
+    page.element(id).findAll((element) => element.tagName === "h3").map((h) => h.textContent);
+  assert.deepEqual(titles("rsvp-events-before-list"), ["الحناء"]);
+  assert.equal(page.element("rsvp-events-before").hidden, false);
+  // The wedding's own day keeps the server's order, after its reply.
+  assert.deepEqual(titles("rsvp-events-list"), ["الغداء", "الصبحة"]);
+  const ids = page
+    .element("rsvp-events-before-list")
+    .findAll((element) => element.tagName === "h3")
+    .concat(page.element("rsvp-events-list").findAll((element) => element.tagName === "h3"))
+    .map((h) => h.id);
+  assert.equal(new Set(ids).size, ids.length, "each occasion keeps its own heading id");
+  // Before the server answers, and with nothing before the day, it stays off.
+  const plain = await openPage([[200, invitation([lunch])]]);
+  assert.equal(plain.element("rsvp-events-before").hidden, true);
+  assert.match(html, /<section id="rsvp-events-before"[^>]*hidden/);
+  assert.ok(
+    html.indexOf('id="rsvp-events-before"') < html.indexOf('id="rsvp-answer"'),
+    "the earlier occasions sit above the wedding's reply",
+  );
+});
+
+test("the words are the guest's: «أنت و2 معك», «كمان», «جرّب مرة ثانية», one date", async () => {
+  const page = await openPage([
+    [200, invitation([lunch])],
+    [200, { ...invitation([lunch]), attendanceStatus: "CONFIRMED", companionsCount: 2 }],
+  ]);
+  page.element("rsvp-companions").find("+2").click();
+  page.element("rsvp-yes").click();
+  await settle();
+  assert.match(page.element("rsvp-status").textContent, /^سجّلنا حضورك أنت و2 معك\./);
+  assert.doesNotMatch(html, /أيضًا|إعادة المحاولة/);
+  assert.match(html, /والدعوة تشمل كمان/);
+  // The card and each occasion write a day one way, the app's.
+  assert.equal(page.element("rsvp-date").textContent, "الخميس، 18 فبراير 2027");
+  const when = page.element("rsvp-events-list").findAll((element) => hasClass(element, "rsvp-event-when"));
+  assert.equal(when[0].textContent, "الخميس، 18 فبراير 2027 · الظهر");
+
+  const failed = await openPage(["network"]);
+  assert.equal(failed.element("rsvp-retry").textContent, "نحاول مرة ثانية");
+  const bride = await openPage([
+    [200, { ...invitation([lunch]), persona: "BRIDE" }],
+    [409, { statusCode: 409, code: "RSVP_EVENT_NOT_INVITED" }],
+    [500, {}],
+  ]);
+  bride.element("rsvp-events-list").find("حاضرة").click();
+  await settle();
+  assert.equal(bride.element("rsvp-retry").textContent, "جرّبي مرة ثانية");
+});
+
+test("«لحالي» stands visibly chosen, by a mark as well as the fill", () => {
+  assert.match(
+    css,
+    /\.rsvp-chips button\[aria-pressed="true"\]::before\s*\{[^}]*content:\s*"✓/,
+  );
+});

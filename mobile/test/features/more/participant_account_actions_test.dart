@@ -189,11 +189,13 @@ void main() {
     // q10 lists the plans, so g02's «خططك» row is not repeated.
     expect(find.byKey(const ValueKey('account-plans')), findsNothing);
     // C4: deleting the account waits for its 30-day grace, as for the owner.
+    // p13: the account's way out is named apart from leaving the plan.
     await tester.scrollUntilVisible(
-      find.text('الخروج'),
+      find.text('اطلع من حسابك'),
       320,
       scrollable: find.byType(Scrollable).first,
     );
+    expect(find.text('الخروج'), findsNothing);
     expect(find.textContaining('حذف الحساب'), findsNothing);
     expect(tester.takeException(), isNull);
   });
@@ -247,8 +249,22 @@ void main() {
     addTearDown(harness.dispose);
     await harness.pump(tester);
 
-    expect(find.text('ابدأ خطة عرسك'), findsOneWidget);
+    // p13: the last offer, asked, not the first line of a father's menu.
+    expect(find.text('عندك عرس ثاني؟ ابدأ خطة'), findsOneWidget);
+    expect(find.text('ابدأ خطة عرسك'), findsNothing);
     expect(find.text('بنفس حسابك'), findsOneWidget);
+    expect(
+      tester
+          .getTopLeft(find.byKey(const ValueKey('participant-start-own-plan')))
+          .dy,
+      greaterThan(
+        tester.getTopLeft(find.byKey(const ValueKey('participant-leave'))).dy,
+      ),
+    );
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('participant-start-own-plan')),
+    );
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('participant-start-own-plan')));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('new-plan-destination')), findsOneWidget);
@@ -372,7 +388,7 @@ void main() {
 
     expect(
       find.text(
-        'العريس شالك من عرس المشارك. اللي سجّلته قبل يبقى باسمك. '
+        'ما عدت مشارك في عرس المشارك. اللي سجّلته محفوظ باسمك. '
         'تغييرين ما وصلت قبلها، وانحذفت من جوالك.',
       ),
       findsOneWidget,
@@ -403,7 +419,8 @@ void main() {
       findsOneWidget,
     );
     expect(
-      find.text('العريس شالك من عرس المشارك. اللي سجّلته قبل يبقى باسمك.'),
+      // p17: where he stands, not «العريس شالك».
+      find.text('ما عدت مشارك في عرس المشارك. اللي سجّلته محفوظ باسمك.'),
       findsOneWidget,
     );
     expect(find.text('ما فيه تغيير على هذي الخطة'), findsNothing);
@@ -583,7 +600,14 @@ void main() {
       expect(find.byType(JourneySheetBody), findsOneWidget);
       expect(find.text('تطلع من عرس المشارك؟'), findsOneWidget);
       // RA-MO-278: «لو أرسل لك» took the plan's owner for a man.
-      expect(find.text('تقدر ترجع لو وصلتك دعوة ثانية'), findsWidgets);
+      expect(find.text('تقدر ترجع لو وصلتك دعوة ثانية'), findsOneWidget);
+      // p14: what happens to his work is said before he leaves.
+      expect(
+        find.textContaining(
+          'مهامك اللي ما خلصت ترجع للعريس، واللي سجّلته يبقى باسمك.',
+        ),
+        findsOneWidget,
+      );
       await tester.tap(find.byKey(const ValueKey('participant-leave-confirm')));
       await tester.pumpAndSettle();
 

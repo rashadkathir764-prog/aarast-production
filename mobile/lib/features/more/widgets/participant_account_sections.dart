@@ -115,6 +115,7 @@ class _ParticipantAccountSectionsState
       profile: reader,
       builder: (sheetContext) => _LeaveSheet(
         planTitle: planTitle,
+        owner: current.planOwnerWord,
         reader: reader,
         unsent: unsent,
         onLeave: () async {
@@ -189,20 +190,10 @@ class _ParticipantAccountSectionsState
               ),
           ],
         ),
-        const JourneySectionTitle('خطتي'),
-        JourneyList(
-          children: [
-            if (own.isEmpty)
-              JourneyListRow(
-                key: const ValueKey('participant-start-own-plan'),
-                icon: LucideIcons.plus,
-                color: AarastV3Color.brandAccentStrong,
-                soft: AarastV3Color.brandAccentSoft,
-                title: reader.say('ابدأ خطة عرسك', 'ابدئي خطة عرسك'),
-                subtitle: 'بنفس حسابك',
-                onTap: () => context.push(AppRouter.createWeddingPlan),
-              )
-            else
+        if (own.isNotEmpty) ...[
+          const JourneySectionTitle('خطتي'),
+          JourneyList(
+            children: [
               for (final path in own)
                 _PlanRow(
                   key: ValueKey('participant-plan-${path.contextKey}'),
@@ -213,8 +204,9 @@ class _ParticipantAccountSectionsState
                       : 'عريس',
                   onTap: () => _open(path),
                 ),
-          ],
-        ),
+            ],
+          ),
+        ],
         JourneySectionTitle('في ${current.displayName}'),
         JourneyList(
           children: [
@@ -242,9 +234,12 @@ class _ParticipantAccountSectionsState
                 subtitle: reader.say('تضيف ناس للخطة', 'تضيفين ناس للخطة'),
                 onTap: () => context.push(AppRouter.sharing(planId)),
               ),
+            // p13: not the account's door (logOut is «اطلع من حسابك»):
+            // leaving a plan is leaving its people, as the owner's
+            // «شيل من الخطة» draws it.
             JourneyListRow(
               key: const ValueKey('participant-leave'),
-              icon: LucideIcons.logOut,
+              icon: LucideIcons.userMinus,
               color: AarastV3Color.danger,
               soft: AarastV3Color.dangerSoft,
               title: reader.say('اطلع من الخطة', 'اطلعي من الخطة'),
@@ -257,6 +252,28 @@ class _ParticipantAccountSectionsState
             ),
           ],
         ),
+        // p13: a father helping in his son's plan read «ابدأ خطة عرسك»
+        // first thing; starting a plan of one's own is the last offer, and
+        // asked as a question.
+        if (own.isEmpty) ...[
+          const SizedBox(height: AarastV3Space.x4),
+          JourneyList(
+            children: [
+              JourneyListRow(
+                key: const ValueKey('participant-start-own-plan'),
+                icon: LucideIcons.plus,
+                color: AarastV3Color.brandAccentStrong,
+                soft: AarastV3Color.brandAccentSoft,
+                title: reader.say(
+                  'عندك عرس ثاني؟ ابدأ خطة',
+                  'عندك عرس ثاني؟ ابدئي خطة',
+                ),
+                subtitle: 'بنفس حسابك',
+                onTap: () => context.push(AppRouter.createWeddingPlan),
+              ),
+            ],
+          ),
+        ],
       ],
     );
   }
@@ -268,8 +285,9 @@ class _ParticipantAccountSectionsState
 String _helpedLine(AccountContext path, JourneyProfile reader) {
   if (!path.isAvailable) return 'العرس تم';
   final sections = _openSections(path.permissions);
+  // One name for the viewer: «يشوف بس», said to him («تتابع» was a second).
   return sections.isEmpty
-      ? reader.say('تتابع الخطة بس', 'تتابعين الخطة بس')
+      ? reader.say('تشوف الخطة بس', 'تشوفين الخطة بس')
       : sections.join(' و');
 }
 
@@ -365,12 +383,16 @@ const _membershipChangedCode = 'MEMBERSHIP_CHANGED_SINCE_LEAVE_REQUEST';
 class _LeaveSheet extends StatefulWidget {
   const _LeaveSheet({
     required this.planTitle,
+    required this.owner,
     required this.reader,
     required this.onLeave,
     this.unsent = 0,
   });
 
   final String planTitle;
+
+  /// «العريس», «العروسة»: whose the open tasks become again.
+  final String owner;
 
   /// The plan's changes still on this phone; leaving deletes them.
   final int unsent;
@@ -435,10 +457,11 @@ class _LeaveSheetState extends State<_LeaveSheet> {
         'تطلع من ${widget.planTitle}؟',
         'تطلعين من ${widget.planTitle}؟',
       ),
-      subtitle: say(
-        'تقدر ترجع لو وصلتك دعوة ثانية',
-        'تقدرين ترجعين لو وصلتك دعوة ثانية',
-      ),
+      // p14: what happens to his work, as the server does it (J2-08): the
+      // open tasks lose their assignee, the history keeps his name.
+      subtitle:
+          'مهامك اللي ما خلصت ترجع ${_toOwner(widget.owner)}، واللي سجّلته '
+          'يبقى باسمك. ${say('تقدر ترجع لو وصلتك دعوة ثانية.', 'تقدرين ترجعين لو وصلتك دعوة ثانية.')}',
       children: [
         if (widget.unsent > 0) ...[
           JourneyNote(
@@ -483,6 +506,11 @@ class _LeaveSheetState extends State<_LeaveSheet> {
     );
   }
 }
+
+/// «للعريس», «للعروسة», «لصاحب العرس»: the plan's word for its owner after
+/// «ل», the article's alif dropped.
+String _toOwner(String owner) =>
+    owner.startsWith('ال') ? 'ل${owner.substring(1)}' : 'ل$owner';
 
 /// A random version 4 id for the leave request, so a retry is the same one.
 String _newUuidV4() {

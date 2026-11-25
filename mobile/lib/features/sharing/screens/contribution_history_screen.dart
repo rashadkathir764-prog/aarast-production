@@ -9,6 +9,7 @@ import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/currency_label.dart';
 import '../../../core/utils/money_formatters.dart';
+import '../../../core/utils/name_letter.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../finance/finance_api.dart' show FinanceProvider;
 import '../models/contribution_history.dart';
@@ -90,7 +91,11 @@ class _ContributionHistoryScreenState extends State<ContributionHistoryScreen> {
       actors = [
         for (final member in sharing.members)
           if (!member.isOwner)
-            ContributionActor(userId: member.userId, name: _memberName(member)),
+            ContributionActor(
+              userId: member.userId,
+              name: _memberName(member),
+              feminine: member.role == 'BRIDE',
+            ),
       ];
     }
     setState(() {
@@ -130,7 +135,7 @@ class _ContributionHistoryScreenState extends State<ContributionHistoryScreen> {
           padding: AarastV3Density.pageInsets,
           children: [
             JourneySubHeader(
-              title: owner ? 'وش سوّى المشاركين' : 'اللي سجّلته',
+              title: owner ? 'ايش سوّى المشاركين' : 'اللي سجّلته',
               subtitle: owner
                   ? 'كل اللي سوّاه المشاركين في خطتك'
                   : 'كل اللي سوّيته في الخطة، يبقى باسمك',
@@ -295,15 +300,17 @@ String _dayLabel(DateTime day) {
   return formatArabicDayMonth(day);
 }
 
-/// «10:20 الصبح», «4:00 العصر», «7:45 مساءً».
-String _clock(DateTime at) {
+/// «10:20 الصبح», «4:00 العصر», «7:45 المسا»: one set of spoken words, the
+/// same as the provider's join screen («مساءً» sat beside «الصبح»).
+@visibleForTesting
+String historyClock(DateTime at) {
   final hour = at.hour;
   final part = switch (hour) {
     < 4 => 'الليل',
     < 12 => 'الصبح',
     < 15 => 'الظهر',
     < 18 => 'العصر',
-    _ => 'مساءً',
+    _ => 'المسا',
   };
   final twelve = hour % 12 == 0 ? 12 : hour % 12;
   final minute = at.minute.toString().padLeft(2, '0');
@@ -325,24 +332,29 @@ class _ActivityRow extends StatelessWidget {
     final what = activityLine(
       event,
       self: self,
+      feminine: actor?.feminine ?? false,
       shownAmount: context.watch<FinanceProvider?>()?.shownAmount ?? _asIs,
     );
     final at = _when(event);
     return Semantics(
       container: true,
-      label: '$who $what، ${_clock(at)}',
+      label: '$who $what، ${historyClock(at)}',
       excludeSemantics: true,
       child: Padding(
         padding: AarastV3Density.chipInsets,
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            JourneyAvatar(
-              letter: who.trim().isEmpty ? 'م' : who.trim().characters.first,
-              color: color,
-              size: AarastV3Size.mark,
-            ),
-            const SizedBox(width: AarastV3Space.x3),
+            // The reader's own history is all theirs: the same «أ» on
+            // every line said nothing, so the mark shows only beside a name.
+            if (!self) ...[
+              JourneyAvatar(
+                letter: nameLetter(who, empty: 'م'),
+                color: color,
+                size: AarastV3Size.mark,
+              ),
+              const SizedBox(width: AarastV3Space.x3),
+            ],
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -365,7 +377,7 @@ class _ActivityRow extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    _clock(at),
+                    historyClock(at),
                     style: JourneyType.of(
                       JourneyType.caption,
                       color: AarastV3Color.textFaint,
@@ -405,13 +417,14 @@ IconData _icon(ContributionHistoryEvent event) {
 }
 
 /// What a row says after the name, from the frozen snapshot: «سجّل دفعة
-/// الغداء 200,000 ر.ي», «خلّص "استلم البدلة"». [self] speaks to the reader
-/// («سجّلت»).
+/// الغداء 200,000 ر.ي», «خلّص «استلم البدلة»». [self] speaks to the reader
+/// («سجّلت»); [feminine] speaks of a woman («العروسة سجّلت»).
 @visibleForTesting
 /// [shownAmount] applies «أخفِ المبالغ» (G17) to the amount in the line.
 String activityLine(
   ContributionHistoryEvent event, {
   required bool self,
+  bool feminine = false,
   String Function(String text) shownAmount = _asIs,
 }) {
   final s = event.snapshot;
@@ -439,8 +452,11 @@ String activityLine(
           ),
         )
       : null;
-  String verb(String he, String you) => self ? you : he;
-  final noun = switch (event.entityType) {
+  String verb(String he, String she, String you) =>
+      self ? you : (feminine ? she : he);
+  final isTask = event.entityType.startsWith('TASK');
+  final shownTitle = title == null ? null : (isTask ? '«$title»' : title);
+  final kind = switch (event.entityType) {
     'TASK' => 'مهمة',
     'TASK_CHECKLIST_ITEM' => 'بند',
     'GUEST' => 'الضيف',
@@ -454,32 +470,37 @@ String activityLine(
     'PLAN_INVITE' || 'MEMBER_ITEM' => 'مشارك',
     _ => null,
   };
+  // «دفعة التصوير» already says what it is: «سجّل دفعة دفعة التصوير» said
+  // it twice.
+  final noun = kind != null && title != null && title.startsWith(kind)
+      ? null
+      : kind;
   String withTitle(String action) {
-    final parts = [
-      action,
-      ?noun,
-      if (title != null)
-        event.entityType.startsWith('TASK') ? '"$title"' : title,
-      ?amount,
-    ];
+    final parts = [action, ?noun, ?shownTitle, ?amount];
     return parts.join(' ');
   }
 
   return switch (event.action) {
-    'COMPLETED' when title != null =>
-      '${verb('خلّص', 'خلّصت')} ${event.entityType.startsWith('TASK') ? '"$title"' : title}',
-    'COMPLETED' => withTitle(verb('خلّص', 'خلّصت')),
-    'CREATED' => withTitle(verb('أضاف', 'أضفت')),
-    'UPDATED' => withTitle(verb('عدّل', 'عدّلت')),
-    'DELETED' => withTitle(verb('شال', 'شلت')),
-    'ASSIGNED' => withTitle(verb('تكلّف بـ', 'تكلّفت بـ')),
-    'UNASSIGNED' => withTitle(verb('ترك', 'تركت')),
-    'REOPENED' => withTitle(verb('رجّع', 'رجّعت')),
-    'STATUS_CHANGED' => withTitle(verb('غيّر حالة', 'غيّرت حالة')),
-    'PAYMENT_RECORDED' => withTitle(verb('سجّل', 'سجّلت')),
-    'PAYMENT_REVERSED' => withTitle(verb('عكس', 'عكست')),
-    'INVITED' => withTitle(verb('دعا', 'دعيت')),
-    'MEMBER_LEFT' => verb('طلع من الخطة', 'طلعت من الخطة'),
+    'COMPLETED' when shownTitle != null =>
+      '${verb('خلّص', 'خلّصت', 'خلّصت')} $shownTitle',
+    'COMPLETED' => withTitle(verb('خلّص', 'خلّصت', 'خلّصت')),
+    'CREATED' => withTitle(verb('أضاف', 'أضافت', 'أضفت')),
+    'UPDATED' => withTitle(verb('عدّل', 'عدّلت', 'عدّلت')),
+    'DELETED' => withTitle(verb('شال', 'شالت', 'شلت')),
+    // «تكلّف بـ مهمة» read as a form; the task is now on them.
+    'ASSIGNED' => [
+      verb('صار عليه', 'صار عليها', 'صار عليك'),
+      shownTitle ?? noun ?? 'مهمة',
+    ].join(' '),
+    'UNASSIGNED' => withTitle(verb('ترك', 'تركت', 'تركت')),
+    'REOPENED' => withTitle(verb('رجّع', 'رجّعت', 'رجّعت')),
+    'STATUS_CHANGED' => withTitle(
+      verb('غيّر حالة', 'غيّرت حالة', 'غيّرت حالة'),
+    ),
+    'PAYMENT_RECORDED' => withTitle(verb('سجّل', 'سجّلت', 'سجّلت')),
+    'PAYMENT_REVERSED' => withTitle(verb('عكس', 'عكست', 'عكست')),
+    'INVITED' => withTitle(verb('دعا', 'دعت', 'دعيت')),
+    'MEMBER_LEFT' => verb('طلع من الخطة', 'طلعت من الخطة', 'طلعت من الخطة'),
     // RA-MO-272: the owner took a right away. The entry stands under the
     // participant, who did nothing, and it read as a bare «أنت سجّلت». The
     // line says what changed, in words that fit a man or a woman.
@@ -490,7 +511,7 @@ String activityLine(
       'MONEY' => 'بدون صلاحية المال من الحين',
       _ => 'تغيّرت الصلاحيات',
     },
-    _ => withTitle(verb('سجّل', 'سجّلت')),
+    _ => withTitle(verb('سجّل', 'سجّلت', 'سجّلت')),
   };
 }
 

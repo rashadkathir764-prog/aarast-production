@@ -136,6 +136,51 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  // p15: «صلاحيتك في هذي الخطة ما تفتح هذا القسم» named neither the section
+  // nor who opens it; the participant's lock tabs already say both.
+  for (final (access, persona, title, message) in [
+    (
+      WeddingPlanRouteAccess.viewMoney,
+      AccountContextPersona.groom,
+      'المال مش مفتوح لك',
+      'المال عند العريس. يفتحه لك من «المشاركين».',
+    ),
+    (
+      WeddingPlanRouteAccess.manageProviders,
+      AccountContextPersona.bride,
+      'تعديل المزودين مش مفتوح لك',
+      'تعديل المزودين عند العروسة. تفتحه لك من «المشاركين».',
+    ),
+  ]) {
+    testWidgets('a closed section is named with who opens it: $title', (
+      tester,
+    ) async {
+      final contributor = accountContext(
+        role: AccountContextRole.contributor,
+        persona: persona,
+      );
+      final harness = await _Harness.create([contributor]);
+      await harness.controller.refresh();
+      await harness.controller.select(contributor.contextKey);
+
+      await tester.pumpWidget(
+        harness.wrap(
+          WeddingPlanContextGate(
+            weddingPlanId: contributor.weddingPlanId!,
+            requiredAccess: access,
+            child: const Text('closed-content'),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('closed-content'), findsNothing);
+      expect(find.text(title), findsOneWidget);
+      expect(find.text(message), findsOneWidget);
+      expect(find.textContaining('ما تفتح هذا القسم'), findsNothing);
+    });
+  }
+
   test('capability guard allows only permissions from selected context', () {
     final contributor = accountContext(role: AccountContextRole.contributor);
 
@@ -243,10 +288,16 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('private-plan-2'), findsNothing);
-    expect(harness.controller.removedPlanPath('plan-2')?.persona,
-        AccountContextPersona.bride);
     expect(
-      find.text('العروسة شالتك من خطتها. ارجع للرئيسية واختر خطة ثانية.'),
+      harness.controller.removedPlanPath('plan-2')?.persona,
+      AccountContextPersona.bride,
+    );
+    // p17: where he stands and that his work is kept, not «شالتك».
+    expect(
+      find.text(
+        'ما عدت مشارك في خطة العروسة، واللي سجّلته محفوظ باسمك. '
+        'ارجع للرئيسية واختر خطة ثانية.',
+      ),
       findsOneWidget,
     );
     // Still nothing of the plan itself: no id, no title.

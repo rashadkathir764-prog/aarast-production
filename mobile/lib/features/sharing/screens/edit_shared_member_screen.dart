@@ -259,7 +259,9 @@ class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
       Center(
         child: JourneyTextAction(
           key: const ValueKey('member-remove'),
-          label: context.say('شيله من الخطة', 'شيليه من الخطة'),
+          // «شيله» made every participant a man; the page is under their
+          // name already.
+          label: context.say('شيل من الخطة', 'شيلي من الخطة'),
           icon: LucideIcons.userMinus,
           color: AarastV3Color.danger,
           onPressed: provider.isSubmitting
@@ -387,15 +389,20 @@ class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
     final who = name == null || name.isEmpty
         ? member.directionalDisplayName
         : name;
+    // Said by name, not «يطلع … شيله», which made every participant a man.
+    // What follows is the server's (J2-08): the open tasks lose their
+    // assignee, and the history keeps what they did under their name.
     final confirmed = await showJourneySheet<bool>(
       context: context,
       builder: (sheetContext) => JourneySheetBody(
         title: '${context.say('تشيل', 'تشيلين')} $who من الخطة؟',
-        subtitle: 'يطلع على طول، وما يقدر يفتح الخطة بعدها.',
+        subtitle:
+            'الخطة تنقفل عن $who على طول. المهام اللي ما خلصت ترجع لك، '
+            'وكل شي انسجّل باسم $who يبقى.',
         children: [
           JourneyButton(
             key: const ValueKey('member-remove-confirm'),
-            label: context.say('شيله', 'شيليه'),
+            label: context.say('شيل من الخطة', 'شيلي من الخطة'),
             background: AarastV3Color.danger,
             large: true,
             expand: true,
@@ -415,7 +422,7 @@ class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
       member.id,
     );
     if (!mounted || !removed) return;
-    AarastToast.showSuccess(context, 'شلناه من الخطة.');
+    AarastToast.showSuccess(context, 'شلنا $who من الخطة.');
     _leavingDone = true;
     _leave();
   }

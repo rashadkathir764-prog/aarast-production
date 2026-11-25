@@ -12,6 +12,7 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/storage/auth_storage.dart';
 import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
+import '../../../core/utils/name_letter.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/auth_api.dart' show AuthActionGuard, AuthGatePanel;
@@ -287,13 +288,14 @@ class _SharingScreenState extends State<SharingScreen>
       newInviteLinkMessage(reissued),
     );
     if (!mounted || !copied) return;
+    // The invitee is named, not «له»: a pronoun said a man of every
+    // invitee, and the verb follows the reader (RA-MO-276).
+    final to = toPerson(_inviteName(reissued));
     AarastToast.showSuccess(
       context,
       context.say(
-        'نسخنا رابط جديد، أرسله له. القديم ما عاد يشتغل.',
-        // The invitee is not the reader: «لها» followed the reader's own
-        // gender (RA-MO-276).
-        'نسخنا رابط جديد، أرسليه له. القديم ما عاد يشتغل.',
+        'نسخنا رابط جديد، أرسله $to. القديم ما عاد يشتغل.',
+        'نسخنا رابط جديد، أرسليه $to. القديم ما عاد يشتغل.',
       ),
     );
   }
@@ -319,8 +321,10 @@ class _SharingScreenState extends State<SharingScreen>
       builder: (sheetContext) => JourneySheetBody(
         title: '${context.say('تلغي', 'تلغين')} دعوة ${_inviteName(invite)}؟',
         subtitle: context.say(
-          'الرابط اللي عنده ما عاد يشتغل، وتقدر تدعوه من جديد.',
-          'الرابط اللي عنده ما عاد يشتغل، وتقدرين تدعينه من جديد.',
+          'الرابط اللي عند ${_inviteName(invite)} ما عاد يشتغل، '
+              'وتقدر ترسل دعوة جديدة بعدين.',
+          'الرابط اللي عند ${_inviteName(invite)} ما عاد يشتغل، '
+              'وتقدرين ترسلين دعوة جديدة بعدين.',
         ),
         children: [
           JourneyButton(
@@ -377,7 +381,7 @@ class _SharingScreenState extends State<SharingScreen>
       trailing: ready
           ? JourneyRoundButton(
               icon: LucideIcons.history,
-              tooltip: 'وش سوّى المشاركين',
+              tooltip: 'ايش سوّى المشاركين',
               onPressed: () => context.push(
                 AppRouter.contributionHistory(widget.weddingPlanId),
               ),
@@ -589,8 +593,8 @@ class _SharingScreenState extends State<SharingScreen>
           emptyIcon: LucideIcons.users,
           emptyTitle: context.say('لسا ما أضفت أحد', 'لسا ما أضفتِ أحد'),
           emptyMessage: context.say(
-            'اختر له دور من تحت، ويوصله رابط على واتساب.',
-            'اختاري له دور من تحت، ويوصله رابط على واتساب.',
+            'اختر دور من تحت، والرابط يوصل على واتساب.',
+            'اختاري دور من تحت، والرابط يوصل على واتساب.',
           ),
         ),
       const SizedBox(height: AarastV3Space.x2),
@@ -621,10 +625,8 @@ class _SharingScreenState extends State<SharingScreen>
   }
 }
 
-String _letter(String? name) {
-  final value = name?.trim() ?? '';
-  return value.isEmpty ? 'م' : value.characters.first;
-}
+/// The app's one avatar rule: «الوالد» و, «العروسة» ع («ا» on both before).
+String _letter(String? name) => nameLetter(name ?? '', empty: 'م');
 
 String _inviteName(PlanInvite invite) {
   final name = invite.name?.trim();
@@ -680,13 +682,15 @@ class _MemberRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final name = member.user?.name;
-    final summary = participantSummary(member.toPermissions());
+    final role = participantRoleLabel(member.role);
+    final rights = participantSummary(member.toPermissions());
+    // «يشوف بس · يشوف بس» (a16): the rights line says nothing new when it
+    // repeats the role word.
+    final summary = rights == role ? null : rights;
     return AarastPressable(
       key: ValueKey('sharing-member-${member.id}'),
       onTap: onTap,
-      semanticLabel:
-          '${member.displayName}، ${participantRoleLabel(member.role)}، '
-          '$summary',
+      semanticLabel: [member.displayName, role, ?summary].join('، '),
       child: Padding(
         padding: const EdgeInsets.all(AarastV3Space.x3),
         child: Row(
@@ -708,7 +712,7 @@ class _MemberRow extends StatelessWidget {
                       ),
                       const SizedBox(width: AarastV3Space.x2),
                       Text(
-                        participantRoleLabel(member.role),
+                        role,
                         style: JourneyType.of(
                           JourneyType.small,
                           color: AarastV3Color.textMuted,
@@ -716,13 +720,14 @@ class _MemberRow extends StatelessWidget {
                       ),
                     ],
                   ),
-                  Text(
-                    summary,
-                    style: JourneyType.of(
-                      JourneyType.small,
-                      color: AarastV3Color.textMuted,
+                  if (summary != null)
+                    Text(
+                      summary,
+                      style: JourneyType.of(
+                        JourneyType.small,
+                        color: AarastV3Color.textMuted,
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -861,7 +866,7 @@ class _PendingInviteRowState extends State<_PendingInviteRow> {
                           AarastV3Radius.surface,
                         ),
                         semanticLabel: remind
-                            ? context.say('ذكّره', 'ذكّريه')
+                            ? context.say('أرسل تذكير', 'أرسلي تذكير')
                             : context.say('انسخ الرابط', 'انسخي الرابط'),
                         // The small pill keeps its look in a 48 target, so a near
                         // miss does not land on the row's cancel sheet.
@@ -884,7 +889,8 @@ class _PendingInviteRowState extends State<_PendingInviteRow> {
                               ),
                               child: Text(
                                 remind
-                                    ? context.say('ذكّره', 'ذكّريه')
+                                    // «ذكّره» made every invitee a man.
+                                    ? context.say('أرسل تذكير', 'أرسلي تذكير')
                                     : context.say(
                                         'انسخ الرابط',
                                         'انسخي الرابط',
@@ -914,17 +920,15 @@ class _PendingInviteRowState extends State<_PendingInviteRow> {
 }
 
 /// Where the invite stands, from the server's delivery record. Whether it
-/// was opened is not known, so it is not said.
+/// was opened is not known, so it is not said. The line stands under the
+/// invitee's name, so it needs no «له», which made every invitee a man.
 String _deliveryLine(PlanInvite invite, JourneyProfile profile) {
-  final send = profile.say(
-    'أرسل له الرابط بأي طريقة',
-    'أرسلي له الرابط بأي طريقة',
-  );
+  final send = profile.say('أرسل الرابط بأي طريقة', 'أرسلي الرابط بأي طريقة');
   return switch (invite.deliveryStatus) {
     'DELIVERED' => 'الدعوة وصلت ${_dayWord(invite.deliveryAttemptedAt)}',
-    'PENDING' => 'نرسل له الدعوة على واتساب',
+    'PENDING' => 'نرسل الدعوة على واتساب',
     'UNCERTAIN' => 'ما تأكدنا إنها وصلت · $send',
-    'UNAVAILABLE' => 'ما وصلته على واتساب · $send',
+    'UNAVAILABLE' => 'ما وصلت على واتساب · $send',
     _ => 'الدعوة محفوظة · $send',
   };
 }

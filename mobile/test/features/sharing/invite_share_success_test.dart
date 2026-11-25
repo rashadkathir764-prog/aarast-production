@@ -113,10 +113,12 @@ void main() {
       of: find.byKey(ValueKey('participant-level-$section')),
       matching: find.text(word),
     );
+    // D80: every participant reads tasks, guests and providers; only the
+    // money can be closed.
     for (final section in ['المهام', 'الضيوف', 'المزودين']) {
-      expect(level(section, 'لا'), findsOneWidget, reason: section);
+      expect(level(section, 'يشوف'), findsOneWidget, reason: section);
       expect(level(section, 'يعدّل'), findsOneWidget, reason: section);
-      expect(level(section, 'يشوف'), findsNothing, reason: section);
+      expect(level(section, 'لا'), findsNothing, reason: section);
     }
     expect(level('المال', 'لا'), findsOneWidget);
     expect(level('المال', 'يشوف'), findsOneWidget);
@@ -125,7 +127,7 @@ void main() {
     // «يشوف» shows money without changing it; tasks off.
     await tester.tap(level('المال', 'يشوف'));
     await tester.pump();
-    await tester.tap(level('المهام', 'لا'));
+    await tester.tap(level('المهام', 'يشوف'));
     await tester.pump();
     await _fill(tester, name: 'صالح', phone: '777123456');
     await tester.tap(find.byKey(const ValueKey('participant-send')));
@@ -270,7 +272,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey('invite-created-view')), findsOneWidget);
-    expect(find.textContaining('ما تأكدنا إنها وصلته'), findsOneWidget);
+    // Named, not «وصلته», which made «أمينة» a man.
+    expect(find.textContaining('ما تأكدنا إنها وصلت لـأمينة'), findsOneWidget);
     expect(find.textContaining('وصلته الدعوة'), findsNothing);
     expect(find.byKey(const ValueKey('invite-copy-link')), findsOneWidget);
   });

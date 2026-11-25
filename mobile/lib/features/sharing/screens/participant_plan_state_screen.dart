@@ -114,12 +114,17 @@ class _ParticipantPlanStateScreenState
               key: const ValueKey('participant-plan-removed'),
               icon: LucideIcons.userX,
               title: 'ما عاد لك مكان في الخطة',
+              // p17: «العريس شالك من خطته» read as a blame; the line says
+              // where the reader stands and that their work is kept.
               message: [
                 known == null
                     ? 'ما عاد لك مكان في هذي الخطة. اللي سجّلته قبل يبقى باسمك.'
-                    : '${known.planOwnerWord} '
-                          '${_ownerIsBride(known) ? 'شالتك' : 'شالك'} من '
-                          '${known.displayName}. اللي سجّلته قبل يبقى باسمك.',
+                    : context.say(
+                        'ما عدت مشارك في ${known.displayName}. '
+                            'اللي سجّلته محفوظ باسمك.',
+                        'ما عدتِ مشاركة في ${known.displayName}. '
+                            'اللي سجّلتيه محفوظ باسمك.',
+                      ),
                 // RA-MO-275: what had not reached the plan went with it.
                 if (controller.unsentDroppedOnRemoval(widget.weddingPlanId)
                     case final dropped when dropped > 0)

@@ -328,6 +328,13 @@ body {
   border-color: var(--primary);
 }
 
+/* «لحالي» stands chosen before any tap; a mark beside the fill says it is
+   the current choice, not only a colour (DESIGN_SYSTEM: status colour comes
+   with text or an icon). */
+.rsvp-chips button[aria-pressed="true"]::before {
+  content: "✓\00a0";
+}
+
 .rsvp-yes {
   margin-top: 6px;
   padding: 15px 18px;

@@ -105,6 +105,21 @@ assert.doesNotMatch(inviteHtml, /عبر اعّرست|تحقق من رقم|رقم
 assert.doesNotMatch(inviteJs, /غير صالح/);
 assert.match(inviteHtml, /<title>دعوة في اعّرست<\/title>/);
 assert.match(inviteHtml, /href="https:\/\/play\.google\.com\/store\/apps\/details\?id=com\.aarast\.aarast_mobile"/);
+// UX critique: the invite landing kept the old maroon and gold and spoke
+// English («Google Play», «Android»). It wears «فيروز» (D0) as the guest's
+// page does, names the store in Arabic, and says the link opens after.
+const inviteCss = read("invite.css");
+assert.doesNotMatch(inviteCss, /#8f0029|#520019|#d5ad3d|#f7e9b8|burgundy|gold/i);
+assert.match(inviteCss, /--primary: #0b6e69;/);
+assert.match(inviteCss, /--canvas: #f2f4f3;/);
+const inviteVisibleText = inviteHtml
+  .replace(/<head>[\s\S]*<\/head>/, "")
+  .replace(/<!--[\s\S]*?-->/g, "")
+  .replace(/<[^>]+>/g, " ");
+assert.doesNotMatch(inviteVisibleText, /[A-Za-z]/);
+assert.match(inviteHtml, /تنزيل اعّرست من متجر جوجل/);
+assert.match(inviteHtml, /الرابط نفسه في واتساب يفتح الدعوة/);
+assert.doesNotMatch(inviteHtml, /class="ring|♥/);
 // RA-OP-29: the RSVP preview's mark is a real, served file.
 assert.match(nginx, /location = \/rsvp-preview\.png[\s\S]*?max-age=86400/);
 assert.match(nginx, /invite-preview\.png[\s\S]*?max-age=86400/);

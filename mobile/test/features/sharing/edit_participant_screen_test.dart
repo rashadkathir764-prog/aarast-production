@@ -40,7 +40,8 @@ void main() {
     final tasks = tester.widget<JourneyLevelSwitch>(
       find.byKey(const ValueKey('participant-level-المهام')),
     );
-    expect(tasks.options, ['لا', 'يعدّل']);
+    // D80: every participant reads the tasks, so «لا» would lie.
+    expect(tasks.options, ['يشوف', 'يعدّل']);
     expect(tasks.selected, 1);
     expect(find.text('العروسة'), findsNothing);
     expect(find.text('الرفد'), findsNothing);

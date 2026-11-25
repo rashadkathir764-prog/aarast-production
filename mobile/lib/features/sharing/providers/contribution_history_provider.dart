@@ -11,10 +11,19 @@ import '../models/contribution_history.dart';
 /// a name with an event, so the owner asks for each participant by id.
 @immutable
 class ContributionActor {
-  const ContributionActor({required this.userId, required this.name});
+  const ContributionActor({
+    required this.userId,
+    required this.name,
+    this.feminine = false,
+  });
 
   final String userId;
   final String name;
+
+  /// Whether the history speaks of this participant in the feminine
+  /// («العروسة سجّلت»). The server tells a member's gender only through the
+  /// partner role, so any other member keeps the default form.
+  final bool feminine;
 }
 
 /// One history row and who did it; [actor] is null in a participant's own

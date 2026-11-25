@@ -313,10 +313,12 @@ class _MoreScreenState extends State<MoreScreen> {
             JourneyList(
               dividers: false,
               children: [
+                // p13: «الخروج» sat red under «اطلع من الخطة» with the same
+                // door; it says which way out it is.
                 _Row(
                   key: const ValueKey('account-logout'),
                   icon: LucideIcons.logOut,
-                  title: 'الخروج',
+                  title: context.say('اطلع من حسابك', 'اطلعي من حسابك'),
                   color: AarastV3Color.danger,
                   onTap: () => _logout(context),
                 ),

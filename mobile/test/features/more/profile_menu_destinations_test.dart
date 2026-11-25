@@ -42,7 +42,7 @@ void main() {
       scrollable: find.byType(Scrollable).first,
     );
     expect(find.text('تسجيل الدخول'), findsOneWidget);
-    expect(find.text('الخروج'), findsNothing);
+    expect(find.text('اطلع من حسابك'), findsNothing);
     expect(find.byTooltip('تعديل صورة الحساب'), findsNothing);
   });
 
@@ -72,15 +72,15 @@ void main() {
     expect(find.text('تغيير رقم الجوال'), findsOneWidget);
 
     await tester.scrollUntilVisible(
-      find.text('الخروج'),
+      find.text('اطلع من حسابك'),
       320,
       scrollable: find.byType(Scrollable).first,
     );
     // w40 «الخصوصية» (D63, L8) in the account's group.
     expect(find.byKey(const ValueKey('account-privacy')), findsOneWidget);
-    await tester.ensureVisible(find.text('الخروج'));
+    await tester.ensureVisible(find.text('اطلع من حسابك'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('الخروج'));
+    await tester.tap(find.text('اطلع من حسابك'));
     await tester.pumpAndSettle();
     // g11 (D26): out of this phone, and «رجوع». The account's deletion is not
     // here (RA-MO-329): leaving a phone and erasing an account sat in one
@@ -99,13 +99,13 @@ void main() {
     await tester.pumpWidget(harness.widget);
     await _settleEntry(tester);
     await tester.scrollUntilVisible(
-      find.text('الخروج'),
+      find.text('اطلع من حسابك'),
       320,
       scrollable: find.byType(Scrollable).first,
     );
-    await tester.ensureVisible(find.text('الخروج'));
+    await tester.ensureVisible(find.text('اطلع من حسابك'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('الخروج'));
+    await tester.tap(find.text('اطلع من حسابك'));
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey('account-logout-unsent')), findsOneWidget);

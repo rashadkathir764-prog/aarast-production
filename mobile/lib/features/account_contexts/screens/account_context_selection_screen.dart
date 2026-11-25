@@ -153,6 +153,16 @@ class _PathCard extends StatelessWidget {
     // to you is said to you, as who you are (B5): محمد helping in سلمى's
     // plan reads «تساعد فيها».
     final bride = path.persona == AccountContextPersona.bride;
+    // A participant who edits nothing («يشوف بس») is not helping: he
+    // follows the plan.
+    final rights = path.permissions;
+    final edits =
+        rights.canEditPlan ||
+        rights.canManageTasks ||
+        rights.canManageGuests ||
+        rights.canManageProviders ||
+        rights.canManageMoney ||
+        rights.canInviteMembers;
     final (Color color, String tag, String line) = switch (path.role) {
       AccountContextRole.owner => (
         AarastV3Color.brandAccentStrong,
@@ -162,7 +172,9 @@ class _PathCard extends StatelessWidget {
       AccountContextRole.contributor => (
         bride ? AarastV3Color.rose : AarastV3Color.primary,
         context.say('مشارك', 'مشاركة'),
-        context.say('تساعد فيها', 'تساعدين فيها'),
+        edits
+            ? context.say('تساعد فيها', 'تساعدين فيها')
+            : context.say('تتابعها', 'تتابعينها'),
       ),
       AccountContextRole.provider => (
         AarastV3Color.cobalt,

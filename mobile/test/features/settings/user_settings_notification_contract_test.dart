@@ -51,6 +51,25 @@ void main() {
     },
   );
 
+  test('a copy kept before the bookings switch existed reads it on', () {
+    final settings = UserSettings.fromJson({
+      'id': 'settings-1',
+      'userId': 'user-1',
+      'taskRemindersEnabled': true,
+      'paymentRemindersEnabled': true,
+      'providerMessagesEnabled': true,
+    });
+    expect(settings.bookingRemindersEnabled, isTrue);
+    expect(
+      UserSettings.fromJson({
+        'id': 'settings-1',
+        'userId': 'user-1',
+        'bookingRemindersEnabled': false,
+      }).bookingRemindersEnabled,
+      isFalse,
+    );
+  });
+
   test('missing capabilities fail closed for external delivery', () {
     final settings = UserSettings.fromJson({
       'id': 'settings-1',

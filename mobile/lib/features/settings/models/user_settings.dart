@@ -28,7 +28,9 @@ class UserSettings {
       taskRemindersEnabled: json['taskRemindersEnabled'] == true,
       paymentRemindersEnabled: json['paymentRemindersEnabled'] == true,
       providerMessagesEnabled: json['providerMessagesEnabled'] == true,
-      bookingRemindersEnabled: json['bookingRemindersEnabled'] == true,
+      // A copy the phone kept before this switch existed reads it on, as the
+      // server has it for everyone who never touched it.
+      bookingRemindersEnabled: json['bookingRemindersEnabled'] != false,
       channelCapabilities: NotificationChannelCapabilities.fromJson(
         json['channelCapabilities'],
       ),

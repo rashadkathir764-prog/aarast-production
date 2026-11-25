@@ -6,7 +6,10 @@ import { join } from 'node:path';
 import { afterEach, test } from 'node:test';
 import { Module, ServiceUnavailableException } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { HealthController } from '../src/platform/health/health.controller';
+import {
+  HealthController,
+  READINESS_REQUESTS_PER_MINUTE,
+} from '../src/platform/health/health.controller';
 import {
   dependencyRequired,
   READINESS_FETCH,
@@ -413,4 +416,44 @@ test('RA-BE-149: the operator token reads the whole /ready', async () => {
   delete process.env.METRICS_TOKEN;
   const report = await controller.getReadiness('Bearer ');
   assert.equal('otpCapacity' in report.checks, false);
+});
+
+// RA-BE-149: /ready runs real checks (the database, Redis, the media bucket,
+// OpenWA) for whoever asks, so one address may ask it a few times a minute;
+// the liveness routes and the host's own /ready/core stay unlimited.
+function readinessContext(handler: object, ip: string) {
+  const request = { ip, headers: {} };
+  const response = { header: () => undefined };
+  return {
+    getHandler: () => handler,
+    getClass: () => HealthController,
+    switchToHttp: () => ({ getRequest: () => request, getResponse: () => response }),
+  } as never;
+}
+
+test('RA-BE-149: one address asks /ready a few times a minute, the liveness routes stay free', async () => {
+  const { Reflector } = await import('@nestjs/core');
+  const { ThrottlerException, ThrottlerGuard, ThrottlerStorageService } = await import('@nestjs/throttler');
+  const guard = new ThrottlerGuard(
+    { throttlers: [{ ttl: 60_000, limit: 1_000 }] },
+    new ThrottlerStorageService(),
+    new Reflector(),
+  );
+  await guard.onModuleInit();
+  const ready = HealthController.prototype.getReadiness as unknown as object;
+  for (let n = 0; n < READINESS_REQUESTS_PER_MINUTE; n += 1) {
+    assert.equal(await guard.canActivate(readinessContext(ready, '198.51.100.20')), true);
+  }
+  await assert.rejects(
+    guard.canActivate(readinessContext(ready, '198.51.100.20')),
+    ThrottlerException,
+  );
+  // Another address has its own count.
+  assert.equal(await guard.canActivate(readinessContext(ready, '198.51.100.21')), true);
+  for (const route of ['getLiveness', 'getCompatibilityHealth', 'getCoreReadiness'] as const) {
+    const handler = HealthController.prototype[route] as unknown as object;
+    for (let n = 0; n < READINESS_REQUESTS_PER_MINUTE * 3; n += 1) {
+      assert.equal(await guard.canActivate(readinessContext(handler, '198.51.100.20')), true, route);
+    }
+  }
 });

@@ -121,6 +121,13 @@ const lineageOnly = closure
   ? `R12C is closed (lineage commit ${closure.lineageCommit.slice(0, 12)}): this lineage law is proven at the recorded lineage commit by architecture-governance-portability.test.ts`
   : false;
 
+// Closed: the moved Planning location is ordinary reviewed code (the product
+// keeps editing it, RA-MO-335), so its byte lineage is read at the lineage
+// commit, as R12C reads the files it hashed; the live file keeps the exports.
+const lineageText = (relative: string): string => closure
+  ? execFileSync('git', ['show', `${closure.lineageCommit}:${relative}`], { cwd: repositoryRoot, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
+  : readFileSync(path.resolve(repositoryRoot, relative), 'utf8');
+
 const mutate = (manifest: Manifest, change: (value: Manifest) => void): Manifest => {
   const value = structuredClone(manifest);
   change(value);
@@ -716,7 +723,7 @@ test('R12B dependency projection retires exact full records at each declared sta
 test('R12B parity functions accept only exact declared transformations', () => {
   const api = scanner();
   const manifest = loadManifest();
-  const location = readFileSync(path.resolve(repositoryRoot, manifest.locationMove.to), 'utf8');
+  const location = lineageText(manifest.locationMove.to);
   assert.doesNotThrow(() => api.verifyR12bLocationSourceParity({
     source: location,
     target: location,
@@ -747,8 +754,8 @@ test('R12B parity functions accept only exact declared transformations', () => {
 test('R12B strict scan consumes R12A immutable authority and reports exact DTO retirement', () => {
   const api = scanner();
   assert.equal(existsSync(path.resolve(repositoryRoot, locationMove.from)), false);
+  assert.equal(hashBytes(lineageText(locationMove.to)), locationMove.entrySha256);
   const target = readFileSync(path.resolve(repositoryRoot, locationMove.to), 'utf8');
-  assert.equal(hashBytes(target), locationMove.entrySha256);
   for (const name of locationMove.runtimeExports) assert.match(target, new RegExp(`export function ${name}\\(`, 'u'));
   for (const name of locationMove.typeExports) assert.match(target, new RegExp(`export interface ${name}\\s*\\{`, 'u'));
   const result = api.scanR12bPlanningPublicContracts({ repositoryRoot, manifest: loadManifest() });

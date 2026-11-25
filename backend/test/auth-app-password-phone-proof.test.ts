@@ -7,6 +7,7 @@ import { JwtService } from "@nestjs/jwt";
 import { identityJwtModuleOptions, jwtSigningKey } from "../src/modules/identity/internal/auth/jwt-keys";
 import { OtpPurpose } from "@prisma/client";
 import * as bcryptjs from "bcryptjs";
+import { PASSWORD_HASH_COST } from "../src/modules/identity/internal/auth/password-hash";
 import { AuthErrorCode } from "../src/modules/identity/public/auth-error";
 import { resolveJwtSessionScope } from "../src/modules/identity/public/access-token-scope";
 import { JwtAuthGuard } from "../src/modules/identity/public/jwt-auth.guard";
@@ -232,7 +233,7 @@ test("POST /auth/password sets a first password without the current one and keep
 
   assert.deepEqual(result, { passwordSet: true });
   assert.ok(await bcryptjs.compare("first-pass", h.users[0].passwordHash));
-  assert.equal(bcryptjs.getRounds(h.users[0].passwordHash), 10);
+  assert.equal(bcryptjs.getRounds(h.users[0].passwordHash), PASSWORD_HASH_COST);
   assert.equal(other.revokedAt, null, "setting a first password revokes nothing");
   assert.equal(h.throttle.reserved, 0);
 });

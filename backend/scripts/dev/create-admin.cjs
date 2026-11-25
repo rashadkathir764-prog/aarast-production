@@ -47,7 +47,7 @@ async function main() {
   }
 
   const prisma = new PrismaClient();
-  const passwordHash = await bcryptjs.hash(password, 10);
+  const passwordHash = await bcryptjs.hash(password, 12); // PASSWORD_HASH_COST (RA-BE-149)
   try {
     const admin = await prisma.user.upsert({
       where: { phone },

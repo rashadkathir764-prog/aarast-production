@@ -9,7 +9,7 @@ import {
   UserStatus,
   WeddingPersona,
 } from '@prisma/client';
-import * as bcrypt from 'bcryptjs';
+import { hashPassword } from '../../src/modules/identity/internal/auth/password-hash';
 import { demoId } from './support';
 
 export type DemoAccountKey =
@@ -91,8 +91,9 @@ export async function seedAccounts(
   prisma: PrismaClient,
   password: string,
 ): Promise<void> {
-  const appHash = await bcrypt.hash(password, 10);
-  const adminHash = await bcrypt.hash(password, 12);
+  // RA-BE-149: the server's one password cost.
+  const appHash = await hashPassword(password);
+  const adminHash = appHash;
   const now = new Date();
 
   for (const account of DEMO_ACCOUNTS) {

@@ -100,6 +100,20 @@ export class AuthUserRepository {
     });
   }
 
+  /** RA-BE-149: the application password, re-hashed, only if it is still [oldHash]. */
+  replaceApplicationPasswordHash(
+    client: Client,
+    userId: string,
+    field: 'passwordHash' | 'appPasswordHash',
+    oldHash: string,
+    newHash: string,
+  ) {
+    return client.user.updateMany({
+      where: { id: userId, [field]: oldHash },
+      data: { [field]: newHash },
+    });
+  }
+
   markPhoneVerified(tx: Prisma.TransactionClient, user: User, purposeIsLogin: boolean, now: Date) {
     return tx.user.update({
       where: { id: user.id },

@@ -113,6 +113,11 @@ import { AdminTrustedDeviceRepository } from "../../infrastructure/admin-trusted
 import type { IdentityTransientDeliveryAdapter } from "../identity-transient-delivery.adapter";
 import { IDENTITY_TRANSIENT_DELIVERY_IMPLEMENTATION } from "../identity-transient-delivery.internal.module";
 import { PHONE_CHANGED_NOTICE } from "./phone-change-notice";
+import {
+  hashOtpCode,
+  hashPassword,
+  passwordHashNeedsUpgrade,
+} from "./password-hash";
 
 export interface AuthResponse {
   user: SafeUser;
@@ -261,10 +266,12 @@ export class AuthService implements IdentityAuthPort, OnModuleDestroy {
     "قد يستغرق وصول الرمز لحظات. إذا وصلك الرمز فأدخله، وإن لم يصل فأعد الإرسال بعد انتهاء المهلة.";
   /** After the code is proven, the admin has this long to choose a password. */
   private static readonly adminResetPasswordWindowMs = 15 * 60_000;
+  /** Compared when there is no password, at the passwords' cost (RA-BE-149). */
   private static readonly dummyPasswordHash =
-    "$2b$10$jnsLrksGKUtGyEjkRk/CeO5zUi9WwfPpG6.bREun6R8yXlN85DEq6";
-  private static readonly dummyAdminPasswordHash =
     "$2b$12$PtFtxKzdM6q6s1u/HBnUmetEkF.BeoCfw0XZKNvOBGehCCiWLWw8q";
+  /** Compared when there is no code, at the codes' cost (10). */
+  private static readonly dummyOtpCodeHash =
+    "$2b$10$jnsLrksGKUtGyEjkRk/CeO5zUi9WwfPpG6.bREun6R8yXlN85DEq6";
 
   constructor(
     private readonly prisma: PrismaService,
@@ -332,7 +339,7 @@ export class AuthService implements IdentityAuthPort, OnModuleDestroy {
     // Sign-up is phone + code; the password is optional and can be added
     // later through POST /auth/password.
     const passwordHash =
-      dto.password == null ? null : await bcryptjs.hash(dto.password, 10);
+      dto.password == null ? null : await hashPassword(dto.password);
 
     let result: RegistrationResult;
     try {
@@ -519,7 +526,7 @@ export class AuthService implements IdentityAuthPort, OnModuleDestroy {
     const user = await this.validatePasswordCredentials(dto, undefined, {
       device: context.device ?? null,
     });
-    return runSerializableTransaction(this.prisma, async (tx) => {
+    const response = await runSerializableTransaction(this.prisma, async (tx) => {
       const loginAt = new Date();
       const eligible = await this.users.markSuccessfulLogin(tx, user, loginAt);
       if (eligible.count !== 1) {
@@ -532,6 +539,28 @@ export class AuthService implements IdentityAuthPort, OnModuleDestroy {
       const updatedUser = await this.users.requireById(tx, user.id);
       return this.createAuthResponse(updatedUser, false, tx);
     });
+    await this.upgradeApplicationPasswordHash(user, dto.password);
+    return response;
+  }
+
+  /**
+   * RA-BE-149: after a password sign-in, an application password hashed at a
+   * lower cost is stored again at today's. Best-effort: the sign-in already
+   * stands, and a failure is logged and tried again at the next sign-in.
+   * Only the hash the sign-in proved is replaced, never a newer one.
+   */
+  private async upgradeApplicationPasswordHash(user: User, password: string) {
+    const field = user.role === UserRole.ADMIN ? "appPasswordHash" : "passwordHash";
+    const current = user[field];
+    if (!current || !passwordHashNeedsUpgrade(current)) return;
+    try {
+      const upgraded = await hashPassword(password);
+      await this.users.replaceApplicationPasswordHash(
+        this.prisma, user.id, field, current, upgraded,
+      );
+    } catch {
+      this.logger.warn({ event: "password_hash_upgrade_failed" });
+    }
   }
 
   async startAdminLogin(
@@ -773,10 +802,7 @@ export class AuthService implements IdentityAuthPort, OnModuleDestroy {
           : user?.passwordHash;
     const passwordMatch = await bcryptjs.compare(
       dto.password,
-      credentialHash ??
-        (realm === "admin"
-          ? AuthService.dummyAdminPasswordHash
-          : AuthService.dummyPasswordHash),
+      credentialHash ?? AuthService.dummyPasswordHash,
     );
     if (
       !user ||
@@ -804,9 +830,9 @@ export class AuthService implements IdentityAuthPort, OnModuleDestroy {
     if (
       realm === "admin" &&
       credentialHash &&
-      bcryptjs.getRounds(credentialHash) < 12
+      passwordHashNeedsUpgrade(credentialHash)
     ) {
-      const upgradedPasswordHash = await bcryptjs.hash(dto.password, 12);
+      const upgradedPasswordHash = await hashPassword(dto.password);
       const upgraded = await this.users.upgradeAdminPasswordHash(
         this.prisma, user.id, credentialHash, upgradedPasswordHash,
       );
@@ -1227,7 +1253,7 @@ export class AuthService implements IdentityAuthPort, OnModuleDestroy {
         );
       }
     }
-    const passwordHash = await bcryptjs.hash(dto.newPassword, 10);
+    const passwordHash = await hashPassword(dto.newPassword);
 
     let outcome: string[] | "currentInvalid";
     try {
@@ -1647,7 +1673,7 @@ export class AuthService implements IdentityAuthPort, OnModuleDestroy {
     }
 
     const code = selection.generateCode();
-    const codeHash = await bcryptjs.hash(code, 10);
+    const codeHash = await hashOtpCode(code);
     const now = new Date();
     const expiresAt = new Date(
       now.getTime() + otpValidMinutes() * 60 * 1000,
@@ -1965,7 +1991,7 @@ export class AuthService implements IdentityAuthPort, OnModuleDestroy {
 
     const passwordHash =
       hasAccountSetup && password.length > 0
-        ? await bcryptjs.hash(password, 10)
+        ? await hashPassword(password)
         : null;
 
     let result: InviteOtpVerificationResult;
@@ -2254,7 +2280,7 @@ export class AuthService implements IdentityAuthPort, OnModuleDestroy {
   ): Promise<{ reset: true; phone: string }> {
     const phone = PhoneNormalizer.normalizeRequired(dto.phone);
     const now = new Date();
-    const passwordHash = await bcryptjs.hash(dto.newPassword, 10);
+    const passwordHash = await hashPassword(dto.newPassword);
     let result: PasswordResetResult;
     try {
       result = await runSerializableTransaction(this.prisma, async (tx) => {
@@ -2419,7 +2445,7 @@ export class AuthService implements IdentityAuthPort, OnModuleDestroy {
       this.prisma, hashRefreshToken(dto.challengeToken),
     );
     if (!challengeSeed) {
-      await bcryptjs.compare(dto.code, AuthService.dummyPasswordHash);
+      await bcryptjs.compare(dto.code, AuthService.dummyOtpCodeHash);
       throw this.adminResetInvalid();
     }
     const verifiedUntil = new Date(
@@ -2491,7 +2517,7 @@ export class AuthService implements IdentityAuthPort, OnModuleDestroy {
       );
       if ("invalid" in result) {
         if ("compareDummy" in result && result.compareDummy) {
-          await bcryptjs.compare(dto.code, AuthService.dummyPasswordHash);
+          await bcryptjs.compare(dto.code, AuthService.dummyOtpCodeHash);
         }
         otpVerificationsTotal.inc({
           outcome: result.otpVerified ? "verified_then_rejected" : "failure",
@@ -2521,7 +2547,7 @@ export class AuthService implements IdentityAuthPort, OnModuleDestroy {
     );
     if (!challengeSeed) throw this.adminResetInvalid();
 
-    const passwordHash = await bcryptjs.hash(dto.newPassword, 12);
+    const passwordHash = await hashPassword(dto.newPassword);
 
     try {
       const result = await runSerializableTransaction(

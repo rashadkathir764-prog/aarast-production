@@ -623,7 +623,9 @@ class DashboardNextPaymentSchedule {
   static DashboardNextPaymentSchedule? fromJsonOrNull(Object? value) {
     final json = DashboardSummary._mapOrEmpty(value);
     if (json.isEmpty) return null;
-    final dueDate = DashboardSummary._dateTimeOrNull(json['dueDate']);
+    // A due day, read as the Sana'a calendar day the server keeps (a
+    // start-of-Riyadh-day value read raw fell on the day before).
+    final dueDate = planDayFromJson(json['dueDate']);
     if (dueDate == null) return null;
     return DashboardNextPaymentSchedule(
       id: json['id']?.toString() ?? '',
@@ -699,7 +701,7 @@ class DashboardImportantItem {
       tone: json['tone']?.toString() ?? 'info',
       priority: json['priority']?.toString() ?? 'NORMAL',
       actionLabel: json['actionLabel']?.toString() ?? 'عرض التفاصيل',
-      dueDate: DashboardSummary._dateTimeOrNull(json['dueDate']),
+      dueDate: planDayFromJson(json['dueDate']),
       amount: json['amount']?.toString(),
       route: json['route']?.toString(),
       routeTarget: json['routeTarget']?.toString() ?? json['route']?.toString(),

@@ -27,6 +27,7 @@ import '../../wedding_plans/wedding_plans_api.dart'
     show DashboardSummaryProvider, WeddingPlansProvider;
 import '../data/finance_local_data_source.dart';
 import '../models/funding_source.dart';
+import '../models/money_headline.dart';
 import '../models/money_payer_words.dart';
 import '../models/money_share_text.dart';
 import '../models/money_summary.dart';

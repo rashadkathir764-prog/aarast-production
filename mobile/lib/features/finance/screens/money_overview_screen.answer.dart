@@ -191,14 +191,14 @@ class _ShareHero extends StatelessWidget {
     final outstanding = summary.outstanding;
     final soft = AarastV3Color.onPrimary.withValues(alpha: 0.78);
     final owner = profile.readerIsOwner;
-    final lead = owner
-        ? (outstanding?.owner ?? summary.costs.outstanding)
-        : (outstanding?.total ?? summary.costs.outstanding);
+    // MONEY_TERMS: the home's money card reads the same headline.
+    final headline = moneyHeadline(summary, readerIsOwner: owner);
+    final lead = headline.lead;
     // D79: the groom's mahr is its own part of the lead. Beside his
     // agreements, each with its figure; when it is all of it, said
     // without the lead's figure twice; with no mahr, the lead says it all.
-    final ownerMahr = moneyValue(outstanding?.ownerMahr);
-    final ownerAgreements = moneyValue(outstanding?.owner) - ownerMahr;
+    final ownerMahr = headline.mahrPart;
+    final ownerAgreements = headline.agreementsPart;
     // The parts are read with the lead and add up to it (critique م2): a
     // part the tenths of a million would round is written whole, or «1.5»
     // and «2» stood under a lead of «3.4».
@@ -227,8 +227,8 @@ class _ShareHero extends StatelessWidget {
     // D114: his share holds the mahr, so it is never «من العرس».
     final whose = owner ? context.say('باقي عليك', 'باقي عليكِ') : 'باقي يندفع';
     final unit = [?parts.millionUnit, parts.currency].join(' ');
-    final agreed = moneyValue(summary.costs.total);
-    final paid = moneyValue(summary.costs.paid);
+    final agreed = headline.agreed;
+    final paid = headline.paid;
     final Widget? tag;
     if (!owner) {
       tag = null;
@@ -285,7 +285,7 @@ class _ShareHero extends StatelessWidget {
             ),
             const SizedBox(height: AarastV3Space.x2),
           ],
-          JourneyHeroBar(value: agreed <= 0 ? 0 : paid / agreed),
+          JourneyHeroBar(value: headline.paidShare),
           if (agreed > 0) ...[
             const SizedBox(height: AarastV3Space.x1),
             // Read together, and with «الصورة كاملة» below that writes

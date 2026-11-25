@@ -91,10 +91,14 @@ class _BookingRequestSheetState extends State<BookingRequestSheet> {
     final offer = quote.acceptedOffer ?? quote.pendingOffer;
     final day = _day;
     final place = widget.place?.trim() ?? '';
+    final amount = offerAmountLabel(offer);
+    // No agreement yet: the first request, or one asked again after it was
+    // taken out of the money (Q-56).
+    final addsAgreement = (quote.costSuggestion?.costId?.trim() ?? '').isEmpty;
     final subtitle = [
       quoteProviderName(quote),
       ?quote.service?.title,
-      ?offerAmountLabel(offer),
+      ?amount,
     ].join(' · ');
     Widget fact(IconData icon, String text) => Padding(
       padding: const EdgeInsets.symmetric(vertical: AarastV3Space.x1),
@@ -177,6 +181,33 @@ class _BookingRequestSheetState extends State<BookingRequestSheet> {
         step('1', 'يوصلهم طلب الحجز الحين'),
         step('2', 'يأكّدون إن اليوم فاضي، وتوصلك رسالة'),
         step('3', 'يصير «محجوز»، ونذكّركم قبل بأسبوع وبيوم'),
+        // Q-55 (أ), D127: asking for the booking is what puts the offer in
+        // the money; said only while it is not there yet.
+        if (addsAgreement) ...[
+          Row(
+            key: const ValueKey('booking-adds-agreement'),
+            children: [
+              Icon(
+                LucideIcons.wallet,
+                size: AarastV3Icon.md,
+                color: context.accent.primary,
+              ),
+              const SizedBox(width: AarastV3Space.x2),
+              Expanded(
+                child: Text(
+                  amount == null
+                      ? 'ينضاف سعرهم لمالك كاتفاق'
+                      : 'ينضاف $amount لمالك كاتفاق',
+                  style: JourneyType.of(
+                    JourneyType.body,
+                    weight: JourneyType.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AarastV3Space.x2),
+        ],
         const SizedBox(height: AarastV3Space.x1),
         JourneyNote(
           key: const ValueKey('booking-no-payment'),

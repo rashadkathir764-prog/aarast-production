@@ -1762,7 +1762,9 @@ const r19ProviderPortalApi = Object.freeze({
 // -2 (RA-BE-161, 2026-11-24): the assistant's consent is the server's
 // record, so the assistant screen and w40 no longer read the signed-in
 // account's id from the auth owner API (two imports of AuthController gone).
-const r19LegalRecordCount = 275;
+// +1 (Q-74, D127, 2026-11-25): the provider's offer form groups its price as
+// typed with the finance owner API's MoneyInputFormatter; no new export.
+const r19LegalRecordCount = 276;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -2636,6 +2638,20 @@ const trackedCollaborationBatchContracts = [
     source: 'mobile/lib/features/marketplace/screens/provider_requests_screen.dart',
     target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
     show: ['DashboardSummaryProvider'],
+  },
+  // Q-74 (D127): the offer's price groups as typed with the money's own
+  // formatter, as every amount in the app does. A tracked source lists all
+  // its owner API imports, so the offer form's existing marketplace one
+  // (counted since D37) is named here too.
+  {
+    source: 'mobile/lib/features/provider_portal/screens/provider_offer_screen.dart',
+    target: 'mobile/lib/features/finance/finance_api.dart',
+    show: ['MoneyInputFormatter'],
+  },
+  {
+    source: 'mobile/lib/features/provider_portal/screens/provider_offer_screen.dart',
+    target: 'mobile/lib/features/marketplace/marketplace_api.dart',
+    show: ['ProviderPackage', 'QuoteOfferLine', 'QuoteRequest'],
   },
   {
     source: 'mobile/lib/features/provider_portal/screens/provider_portal_screen.dart',

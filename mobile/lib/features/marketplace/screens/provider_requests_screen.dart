@@ -168,9 +168,10 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
         : null;
   }
 
-  /// RA-MO-248: choosing an offer makes a money item, so the server asks
-  /// for the money right too. The button was offered to everyone who
-  /// manages the providers, and the server then refused.
+  /// RA-MO-248: choosing an offer leads to a money item (Q-55: written with
+  /// the booking request), so the server asks for the money right for both;
+  /// Q-65 (أ), D127, for the booking request too. The buttons were offered
+  /// to everyone who manages the providers, and the server then refused.
   bool get _mayChoose => _knownMoney?.canManageMoney ?? true;
 
   /// The server sends no amount to a reader who does not see the money.
@@ -323,8 +324,8 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
                         JourneyNote(
                           key: const ValueKey('requests-choose-note'),
                           text: context.say(
-                            'لما تختار، يصير بند في المال، ونطلب منهم حجز يوم عرسك.',
-                            'لما تختارين، يصير بند في المال، ونطلب منهم حجز يوم عرسك.',
+                            'لما تختار، نطلب منهم حجز يوم عرسك، ولما تطلب الحجز يدخل السعر مالك.',
+                            'لما تختارين، نطلب منهم حجز يوم عرسك، ولما تطلبين الحجز يدخل السعر مالك.',
                           ),
                           icon: LucideIcons.wallet,
                         )
@@ -332,7 +333,7 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
                         const JourneyNote(
                           key: ValueKey('requests-choose-by-money'),
                           text:
-                              'اختيار العرض يصير بند في المال، فهو عند اللي يدير مال الخطة.',
+                              'اختيار العرض وطلب الحجز يضيفون اتفاق في المال، فهم عند اللي يدير مال الخطة.',
                           icon: LucideIcons.lock,
                         ),
                     ],
@@ -342,6 +343,7 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
                     _ChosenCard(
                       quote: quote,
                       paidLine: _paidLine(quote),
+                      mayBook: _mayChoose,
                       busy: marketplace.isSubmitting,
                       onBook: () => _book(quote),
                       onCancelBooking: () => _cancelBooking(quote),
@@ -446,10 +448,10 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
         quote;
   }
 
-  /// «اختر هذا»: the offer becomes a cost in the money tab, then f05 asks
-  /// for the booking. One tap put an agreement in the money and took the
-  /// choice from every other offer of the service, so it asks first and
-  /// says exactly that.
+  /// «اختر هذا», then f05 asks for the booking. Q-55 (أ), D127: choosing
+  /// writes nothing in the money; the offer's agreement goes in when the
+  /// booking is asked for. Choosing takes the choice from every other offer
+  /// of the service, so it asks first and says exactly that.
   Future<void> _choose(QuoteRequest quote) async {
     if (!_ownQuote(quote)) return;
     if (!await _confirmChoice(quote) || !mounted) return;
@@ -463,18 +465,17 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
       );
       return;
     }
-    await context.read<FinanceProvider?>()?.loadMoney(widget.weddingPlanId);
-    if (!mounted) return;
     AarastToast.showSuccess(
       context,
-      '${context.say('اخترت', 'اخترتِ')} ${quoteProviderName(quote)}، وصار بند في المال.',
+      '${context.say('اخترت', 'اخترتِ')} ${quoteProviderName(quote)}.',
     );
     await _book(_fresh(quote));
   }
 
-  /// What choosing does, said before it is done: the offer's amount becomes
-  /// an agreement in the money, and the service's other offers lose their
-  /// «اختر هذا» (only one agreement per service); they are not declined.
+  /// What choosing does, said before it is done: the price enters the money
+  /// when the booking is asked for (Q-55), and the service's other offers
+  /// lose their «اختر هذا» (only one agreement per service); they are not
+  /// declined.
   Future<bool> _confirmChoice(QuoteRequest quote) async {
     final name = quoteProviderName(quote);
     // A reader who does not see the money gets no amount from the server.
@@ -487,8 +488,8 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
       builder: (sheetContext) => JourneySheetBody(
         title: question,
         subtitle: context.say(
-          'ينضاف لمالك كاتفاق، وما تقدر تختار عرض ثاني لهذي الخدمة.',
-          'ينضاف لمالك كاتفاق، وما تقدرين تختارين عرض ثاني لهذي الخدمة.',
+          'السعر يدخل مالك لما تطلب الحجز، وما تقدر تختار عرض ثاني لهذي الخدمة.',
+          'السعر يدخل مالك لما تطلبين الحجز، وما تقدرين تختارين عرض ثاني لهذي الخدمة.',
         ),
         children: [
           JourneyButton(
@@ -532,6 +533,9 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
     final ok = await marketplace.requestBooking(quote, eventDate: day);
     if (!mounted) return;
     if (ok) {
+      // Q-55: the request put the offer's agreement in the money.
+      await context.read<FinanceProvider?>()?.loadMoney(widget.weddingPlanId);
+      if (!mounted) return;
       AarastToast.showSuccess(context, 'وصلهم طلب الحجز. نخبرك لما يأكّدون.');
     } else {
       AarastToast.showError(
@@ -663,26 +667,66 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
     }
   }
 
-  /// x11: the provider is told; the cost stays in the money tab for the
-  /// groom to settle with them.
+  /// x11: the provider is told. Q-56 (أ), D127: the same sheet asks what
+  /// happens to the offer's agreement in the money: taken out (only while
+  /// nothing was paid on it, the record of a payment stays) or kept.
   Future<void> _cancelBooking(QuoteRequest quote) async {
     if (!_ownQuote(quote)) return;
-    final confirmed = await showJourneySheet<bool>(
+    final finance = context.read<FinanceProvider?>();
+    final money =
+        finance != null &&
+            finance.loadedPlanId == widget.weddingPlanId &&
+            !finance.isLoading
+        ? finance
+        : null;
+    final costId = quote.costSuggestion?.costId?.trim() ?? '';
+    final cost = costId.isEmpty ? null : money?.costById(costId);
+    final agreement = cost == null || cost.isCancelled ? null : cost;
+    final choice = await showJourneySheet<_AgreementAfterCancel>(
       context: context,
-      builder: (sheetContext) => _CancelBookingSheet(quote: quote),
+      builder: (sheetContext) => _CancelBookingSheet(
+        quote: quote,
+        agreement: agreement != null
+            ? (agreement.canDelete
+                  ? _AgreementState.removable
+                  : _AgreementState.paid)
+            // There is one, though this reader cannot read it.
+            : costId.isNotEmpty && cost == null
+            ? _AgreementState.unread
+            : _AgreementState.none,
+        managesMoney: money?.canManageMoney ?? false,
+      ),
     );
-    if (confirmed != true || !mounted) return;
+    if (choice == null || !mounted) return;
     final marketplace = context.read<ProviderMarketplaceProvider>();
     final ok = await marketplace.cancelBooking(quote);
     if (!mounted) return;
-    if (ok) {
-      AarastToast.showSuccess(context, 'انلغى الحجز ووصلهم الخبر.');
-    } else {
+    if (!ok) {
       AarastToast.showError(
         context,
         marketplace.errorMessage ?? 'ما قدرنا نلغي الحجز.',
       );
+      return;
     }
+    if (choice == _AgreementAfterCancel.remove &&
+        agreement != null &&
+        money != null) {
+      final removed = await money.deleteCost(agreement);
+      if (!mounted) return;
+      if (!removed) {
+        AarastToast.showError(
+          context,
+          'انلغى الحجز، بس الاتفاق باقي في المال: ${money.errorMessage ?? 'ما قدرنا نشيله.'}',
+        );
+        return;
+      }
+      AarastToast.showSuccess(
+        context,
+        'انلغى الحجز ووصلهم الخبر، وانشال الاتفاق من المال.',
+      );
+      return;
+    }
+    AarastToast.showSuccess(context, 'انلغى الحجز ووصلهم الخبر.');
   }
 
   void _viewCost(QuoteRequest quote) {

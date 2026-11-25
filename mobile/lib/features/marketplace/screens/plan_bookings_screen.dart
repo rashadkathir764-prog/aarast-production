@@ -70,6 +70,12 @@ class _PlanBookingsScreenState extends State<PlanBookingsScreen> {
             .where((quote) => quote.booking != null)
             .toList()
           ..sort(_byState);
+    // Q-65 (أ), D127: asking again puts the agreement in the money, so it
+    // takes the money right; unknown until the plan's summary is read (the
+    // server refuses it then, by name).
+    final mayBook = summary?.planId == widget.weddingPlanId
+        ? summary!.permissions.canManageMoney
+        : true;
     // The wedding day: the plan's, or the day the requests were made for.
     final day =
         (summary?.planId == widget.weddingPlanId
@@ -119,6 +125,7 @@ class _PlanBookingsScreenState extends State<PlanBookingsScreen> {
                 key: ValueKey('booking-${quote.booking!.id}'),
                 quote: quote,
                 now: now,
+                mayBook: mayBook,
                 busy: marketplace.isSubmitting,
                 // G40: the declined kind's category; «المزودين» searches
                 // the money item it lands in.
@@ -207,12 +214,16 @@ class _BookingCard extends StatelessWidget {
     required this.onFindOthers,
     required this.onAskAgain,
     required this.onRate,
+    this.mayBook = true,
     super.key,
   });
 
   final QuoteRequest quote;
   final DateTime now;
   final bool busy;
+
+  /// Q-65: «اطلب حجز مرة ثانية» needs the money right.
+  final bool mayBook;
   final VoidCallback onFindOthers;
   final VoidCallback onAskAgain;
 
@@ -264,11 +275,12 @@ class _BookingCard extends StatelessWidget {
       'EXPIRED' => 'انتهى الطلب، المزود موقوف مؤقتًا',
       _ => _cancelledLine(booking, context.journeyProfile),
     };
-    final askAgain =
+    final mayAskAgain =
         (booking.lifecycleStatus == 'CANCELLED' ||
             booking.lifecycleStatus == 'EXPIRED') &&
         booking.canRequestAgain &&
         quote.status == 'ACCEPTED';
+    final askAgain = mayAskAgain && mayBook;
     final findOthers =
         booking.lifecycleStatus == 'DECLINED' && _serviceName(quote).isNotEmpty;
     final rate = booking.canBeReviewed;
@@ -311,6 +323,16 @@ class _BookingCard extends StatelessWidget {
                 background: AarastV3Color.brandAccentSoft,
                 foreground: AarastV3Color.brandAccentStrong,
                 onPressed: onRate,
+              ),
+            ],
+            // Q-65: who can ask again, said where the button would be.
+            if (mayAskAgain && !mayBook) ...[
+              const SizedBox(height: AarastV3Space.x2),
+              JourneyNote(
+                key: ValueKey('booking-ask-again-by-money-${booking.id}'),
+                text:
+                    'طلب الحجز يضيف اتفاقه في المال، فهو عند صاحب الخطة أو اللي يدير مالها.',
+                icon: LucideIcons.lock,
               ),
             ],
             if (findOthers || askAgain) ...[

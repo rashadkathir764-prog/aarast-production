@@ -61,7 +61,8 @@ export async function findServiceIdsMatchingSearch(client: Client, key: string):
  * The customers' list: providers featured at `now` first (B-43), then the
  * rest, each group in the order the ranking gives (RA-BE-151: smoothed
  * rating, profile, response, a lift for new ones, claimed listings before
- * unclaimed ones; ties by age and id, a total order, so a page never skips
+ * unclaimed ones; Q-73: verified providers before unverified ones, each band
+ * in that order; ties by age and id, a total order, so a page never skips
  * or repeats a provider inside one snapshot). "Featured" is read from the
  * periods at request time by the placement rule (`where` is already the
  * listed providers); a row of the other group is never «مميز», even with a
@@ -77,6 +78,7 @@ export async function searchActiveProviders(client: Client, where: ProviderSearc
     select: {
       id: true,
       userId: true,
+      verifiedAt: true,
       ratingAverage: true,
       ratingCount: true,
       createdAt: true,
@@ -98,6 +100,7 @@ export async function searchActiveProviders(client: Client, where: ProviderSearc
     candidates.map((row) => ({
       id: row.id,
       claimed: row.userId !== null,
+      verified: row.verifiedAt != null,
       featuredNow: row.userId !== null && row.featuredPeriods.length > 0,
       createdAt: row.createdAt,
       ratingAverage: Number(row.ratingAverage),

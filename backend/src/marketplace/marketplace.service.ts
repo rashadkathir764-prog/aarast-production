@@ -644,16 +644,18 @@ export class MarketplaceService {
         createdAt: result.link.createdAt,
         updatedAt: result.link.updatedAt,
       },
-      weddingCost: toWeddingCostResponse(
-        result.cost,
-        result.offer.provider.businessName,
-      ),
-      automaticCostCreated: true,
+      // Q-55 (أ), D127: choosing writes nothing in the money; the agreement
+      // comes with the booking request. An offer an older acceptance put in
+      // the money still names that agreement.
+      weddingCost: result.cost
+        ? toWeddingCostResponse(result.cost, result.offer.provider.businessName)
+        : null,
+      automaticCostCreated: false,
       costSuggestion: {
-        suggestedAction: "VIEW_COST",
-        availableActions: ["VIEW_COST"],
-        automaticCostCreated: true,
-        costId: result.cost.id,
+        suggestedAction: result.cost ? "VIEW_COST" : "NONE",
+        availableActions: result.cost ? ["VIEW_COST"] : [],
+        automaticCostCreated: false,
+        costId: result.cost?.id ?? null,
         quotedAmount: result.offer.amount?.toString() ?? null,
         currency: result.offer.currency ?? null,
         providerId: offer.providerId,
@@ -663,7 +665,9 @@ export class MarketplaceService {
         quoteRequestId: offer.quoteRequestId,
         quoteOfferId: offer.id,
       },
-      nextActions: ["viewCost", "viewAcceptedProvider"],
+      nextActions: result.cost
+        ? ["viewCost", "viewAcceptedProvider"]
+        : ["requestBooking", "viewAcceptedProvider"],
     };
   }
 

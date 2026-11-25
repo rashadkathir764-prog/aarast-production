@@ -126,6 +126,59 @@ void main() {
     );
   });
 
+  // Q-57 (أ), D127: in a bride's plan her phone reaches the provider only if
+  // she switches it on; the amount keeps its default, and the groom's plan
+  // keeps both on (the two tests above).
+  testWidgets('Q-57: a bride\'s phone stays with her unless she switches it on', (
+    tester,
+  ) async {
+    final marketplace = _Marketplace(kind: 'فنانين وفرق');
+    await _pump(tester, marketplace, profile: JourneyProfile.bride);
+
+    expect(find.text('شاركيهم رقمك'), findsOneWidget);
+    expect(
+      tester
+          .widget<JourneyToggle>(find.byKey(const Key('quote-share-contact')))
+          .value,
+      isFalse,
+    );
+    expect(
+      tester
+          .widget<JourneyToggle>(find.byKey(const Key('quote-share-budget')))
+          .value,
+      isTrue,
+    );
+    expect(
+      find.text(
+        'بندك يوصلهم وتقدرين تطفّينه، ورقمك ما يوصلهم إلا لو شغّلتيه. والطلب ينتهي لو ما ردوا خلال 7 أيام.',
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const ValueKey('quote-send')));
+    await tester.pumpAndSettle();
+    expect(marketplace.sent.single['shareContact'], false);
+    expect(marketplace.sent.single['shareBudget'], true);
+  });
+
+  testWidgets('Q-57: the bride switches her phone on and it goes', (
+    tester,
+  ) async {
+    final marketplace = _Marketplace(kind: 'فنانين وفرق');
+    await _pump(tester, marketplace, profile: JourneyProfile.bride);
+
+    await tester.tap(find.byKey(const Key('quote-share-contact')));
+    await tester.pump();
+    expect(
+      tester
+          .widget<JourneyToggle>(find.byKey(const Key('quote-share-contact')))
+          .value,
+      isTrue,
+    );
+    await tester.tap(find.byKey(const ValueKey('quote-send')));
+    await tester.pumpAndSettle();
+    expect(marketplace.sent.single['shareContact'], true);
+  });
+
   testWidgets('a hall request asks how many guests and sends them (C45)', (
     tester,
   ) async {
@@ -242,6 +295,7 @@ Future<void> _pump(
   bool hideAmounts = false,
   double width = 384,
   double textScale = 1,
+  JourneyProfile? profile,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = Size(width, 1200);
@@ -314,7 +368,13 @@ Future<void> _pump(
           value: _Money(apiClient, item, hidden: hideAmounts),
         ),
       ],
-      child: MaterialApp.router(routerConfig: router),
+      child: MaterialApp.router(
+        routerConfig: router,
+        builder: profile == null
+            ? null
+            : (context, child) =>
+                  JourneyProfileScope(profile: profile, child: child!),
+      ),
     ),
   );
   await tester.pumpAndSettle();

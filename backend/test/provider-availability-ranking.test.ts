@@ -91,6 +91,7 @@ const daysAgo = (days: number) => new Date(NOW.getTime() - days * 86_400_000);
 const row = (id: string, over: Partial<RankSignals> = {}): RankSignals => ({
   id,
   claimed: true,
+  verified: true,
   featuredNow: false,
   createdAt: daysAgo(400),
   ratingAverage: 0,
@@ -146,6 +147,53 @@ test("featured first, then claimed listings, then unclaimed ones, however well a
     ]),
     ["featured", "plain", "unclaimed"],
   );
+});
+
+// Q-73 (أ), D127: a provider whose documents were never checked (no
+// verifiedAt) comes after the checked ones; inside each band the order is
+// today's: featured, claimed, unclaimed, then the score.
+test("Q-73: unverified providers come after verified ones, each band in today's order", () => {
+  assert.deepEqual(
+    order([
+      row("unverified-featured", { verified: false, featuredNow: true, ratingAverage: 5, ratingCount: 200 }),
+      row("unverified-claimed", { verified: false, ratingAverage: 5, ratingCount: 100 }),
+      row("verified-unclaimed", { claimed: false }),
+      row("verified-plain", { ratingAverage: 3, ratingCount: 4 }),
+      row("verified-featured", { featuredNow: true, ratingAverage: 2, ratingCount: 4 }),
+      row("unverified-unclaimed", { verified: false, claimed: false }),
+    ]),
+    [
+      "verified-featured",
+      "verified-plain",
+      "verified-unclaimed",
+      "unverified-featured",
+      "unverified-claimed",
+      "unverified-unclaimed",
+    ],
+  );
+});
+
+test("Q-73: the list reads verifiedAt, so an unchecked provider ranks below a checked one", async () => {
+  const candidates = [
+    { id: "unchecked", userId: "u1", verifiedAt: null, ratingAverage: new Prisma.Decimal("5"), ratingCount: 99, createdAt: daysAgo(400), logoUrl: "l", coverUrl: "c", description: "d", address: "a", whatsapp: "w", socialLinks: null, featuredPeriods: [] },
+    { id: "checked", userId: "u2", verifiedAt: daysAgo(10), ratingAverage: new Prisma.Decimal("3"), ratingCount: 2, createdAt: daysAgo(400), logoUrl: null, coverUrl: null, description: null, address: null, whatsapp: null, socialLinks: null, featuredPeriods: [] },
+  ];
+  let selected: any = null;
+  const client: any = {
+    $queryRaw: async () => [],
+    provider: {
+      findMany: async (args: any) => {
+        if (args.where.id) {
+          return args.where.id.in.map((id: string) => ({ id, featuredPeriods: [] }));
+        }
+        selected = args.select;
+        return candidates;
+      },
+    },
+  };
+  const page = await searchActiveProviders(client, { AND: [] } as any, { page: 1, limit: 10, skip: 0 }, NOW);
+  assert.equal(selected.verifiedAt, true);
+  assert.deepEqual(page.rows.map((r: any) => r.id), ["checked", "unchecked"]);
 });
 
 test("equal scores are ordered by age and then id, so a page never repeats or skips", () => {

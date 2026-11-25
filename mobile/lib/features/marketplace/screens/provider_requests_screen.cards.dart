@@ -302,10 +302,15 @@ class _ChosenCard extends StatelessWidget {
     this.onChangeDay,
     this.onConfirmDelivery,
     this.paidLine,
+    this.mayBook = true,
   });
 
   final QuoteRequest quote;
   final bool busy;
+
+  /// Q-65 (أ), D127: asking for the booking puts the agreement in the
+  /// money, so it is offered only with the money right.
+  final bool mayBook;
 
   /// What the agreement in the money stands at: paid and left.
   final String? paidLine;
@@ -473,6 +478,13 @@ class _ChosenCard extends StatelessWidget {
               expand: true,
               onPressed: onRate,
             )
+          else if ((booking == null || booking.canRequestAgain) && !mayBook)
+            const JourneyNote(
+              key: ValueKey('requests-book-by-money'),
+              text:
+                  'طلب الحجز يضيف اتفاقه في المال، فهو عند صاحب الخطة أو اللي يدير مالها.',
+              icon: LucideIcons.lock,
+            )
           else if (booking == null || booking.canRequestAgain)
             JourneyButton(
               key: ValueKey('requests-book-${quote.id}'),
@@ -619,15 +631,71 @@ class _ExpiredCard extends StatelessWidget {
   }
 }
 
-/// x11, what cancelling does before it happens.
-class _CancelBookingSheet extends StatelessWidget {
-  const _CancelBookingSheet({required this.quote});
+/// What happens to the offer's agreement in the money when its booking is
+/// cancelled (Q-56): taken out, or kept.
+enum _AgreementAfterCancel { keep, remove }
+
+/// x11, what cancelling does before it happens. Q-56 (أ), D127: it asks in
+/// the same sheet what happens to the agreement in the money. It can be
+/// taken out only while it has no payment on record (the ledger keeps every
+/// payment); otherwise the sheet says why it stays.
+class _CancelBookingSheet extends StatefulWidget {
+  const _CancelBookingSheet({
+    required this.quote,
+    required this.agreement,
+    required this.managesMoney,
+  });
 
   final QuoteRequest quote;
 
+  /// The offer's agreement in the money, as this sheet reads it.
+  final _AgreementState agreement;
+  final bool managesMoney;
+
+  @override
+  State<_CancelBookingSheet> createState() => _CancelBookingSheetState();
+}
+
+/// The offer's agreement as the cancel sheet reads it.
+enum _AgreementState {
+  /// None in the money.
+  none,
+
+  /// One is there, but this reader cannot read the money.
+  unread,
+
+  /// Nothing on record was paid on it, so it can be taken out.
+  removable,
+
+  /// A payment is on record; the ledger keeps it, so the agreement stays.
+  paid,
+}
+
+class _CancelBookingSheetState extends State<_CancelBookingSheet> {
+  _AgreementAfterCancel? _choice;
+
+  /// The question is asked only when its answer can be carried out.
+  bool get _asks =>
+      widget.managesMoney && widget.agreement == _AgreementState.removable;
+
+  /// What the sheet says of the agreement when it does not ask.
+  String? _agreementLine(BuildContext context) {
+    if (widget.agreement == _AgreementState.none) return null;
+    if (widget.agreement == _AgreementState.unread || !widget.managesMoney) {
+      return 'الاتفاق يبقى في المال، واللي يدير المال يقدر يشيله.';
+    }
+    return context.say(
+      'الاتفاق يبقى في المال لأن عليه دفعات مسجّلة. لو رجّعوا لك شي، سجّله من هناك.',
+      'الاتفاق يبقى في المال لأن عليه دفعات مسجّلة. لو رجّعوا لك شي، سجّليه من هناك.',
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final quote = widget.quote;
     final confirmed = quote.booking?.isConfirmed == true;
+    final asks = _asks;
+    final line = asks ? null : _agreementLine(context);
     Widget effect(IconData icon, String text) => Padding(
       padding: const EdgeInsets.symmetric(vertical: AarastV3Space.x2),
       child: Row(
@@ -653,16 +721,35 @@ class _CancelBookingSheet extends StatelessWidget {
             children: [
               effect(LucideIcons.bellRing, 'يوصلهم إن الحجز انلغى'),
               effect(LucideIcons.calendarX, 'اليوم يرجع فاضي عندهم'),
-              effect(
-                LucideIcons.wallet,
-                context.say(
-                  'البند يبقى في المال: لو رجّعوا لك شي أو ما بتدفع، عدّله من هناك',
-                  'البند يبقى في المال: لو رجّعوا لك شي أو ما بتدفعين، عدّليه من هناك',
-                ),
-              ),
+              if (line != null) effect(LucideIcons.wallet, line),
             ],
           ),
         ),
+        if (asks) ...[
+          const SizedBox(height: AarastV3Space.x4),
+          Text(
+            'والاتفاق اللي في مالك؟',
+            style: JourneyType.of(JourneyType.body, weight: JourneyType.bold),
+          ),
+          const SizedBox(height: AarastV3Space.x2),
+          JourneyOption(
+            key: const ValueKey('requests-cancel-agreement-remove'),
+            title: context.say('شيل الاتفاق من المال', 'شيلي الاتفاق من المال'),
+            selected: _choice == _AgreementAfterCancel.remove,
+            onTap: () => setState(() => _choice = _AgreementAfterCancel.remove),
+          ),
+          const SizedBox(height: AarastV3Space.x2),
+          JourneyOption(
+            key: const ValueKey('requests-cancel-agreement-keep'),
+            title: context.say('خلّه', 'خليه'),
+            subtitle: context.say(
+              'دفعت عربون أو تشتي تتابعه',
+              'دفعتِ عربون أو تشتين تتابعينه',
+            ),
+            selected: _choice == _AgreementAfterCancel.keep,
+            onTap: () => setState(() => _choice = _AgreementAfterCancel.keep),
+          ),
+        ],
         const SizedBox(height: AarastV3Space.x4),
         JourneyButton(
           key: const ValueKey('requests-cancel-booking-confirm'),
@@ -672,7 +759,12 @@ class _CancelBookingSheet extends StatelessWidget {
           background: AarastV3Color.danger,
           expand: true,
           large: true,
-          onPressed: () => Navigator.of(context).pop(true),
+          // Nothing goes before the agreement's question is answered.
+          onPressed: asks && _choice == null
+              ? null
+              : () => Navigator.of(
+                  context,
+                ).pop(_choice ?? _AgreementAfterCancel.keep),
         ),
       ],
     );

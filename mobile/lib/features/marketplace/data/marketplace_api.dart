@@ -1124,7 +1124,8 @@ class ProviderDashboardApi {
   }
 
   /// The application with the service the provider joins with and its
-  /// price (B-10): the server refuses it without one.
+  /// price (B-10), and his work photos by their upload keys (Q-59): the
+  /// server refuses it without one service or with fewer than three photos.
   Future<ProviderDashboardProfile> applyProvider({
     required String businessName,
     required String phone,
@@ -1132,6 +1133,7 @@ class ProviderDashboardApi {
     required List<String> categoryIds,
     required String serviceTitle,
     required String servicePrice,
+    required List<String> portfolioKeys,
     String? serviceDescription,
     String? description,
   }) async {
@@ -1152,6 +1154,9 @@ class ProviderDashboardApi {
               serviceDescription.trim().isNotEmpty)
             'description': serviceDescription.trim(),
         },
+      ],
+      'portfolio': [
+        for (final key in portfolioKeys) {'key': key},
       ],
     });
     return ProviderDashboardProfile.fromJson(json);

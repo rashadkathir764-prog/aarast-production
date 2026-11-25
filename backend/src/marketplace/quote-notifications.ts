@@ -93,7 +93,8 @@ export function offerAcceptedRequesterNotification(args: {
     type: NotificationType.QUOTE_ACCEPTED,
     priority: NotificationPriority.HIGH,
     title: `انقبل عرض ${args.providerName}`,
-    body: "انضاف اتفاقه في المال بدون أي دفعة، والحجز يُطلب من صفحة الطلب.",
+    // Q-55 (أ), D127: choosing adds nothing to the money; the booking does.
+    body: "الحجز ينطلب من صفحة الطلب، ولما ينطلب ينضاف اتفاقه في المال.",
     entityType: "quote_request",
     entityId: args.quoteRequestId,
     routeTarget: requesterQuoteRoute(args.weddingPlanId, args.quoteRequestId),

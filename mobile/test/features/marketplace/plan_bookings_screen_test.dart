@@ -3,6 +3,9 @@ import 'package:aarast_mobile/features/marketplace/data/marketplace_api.dart';
 import 'package:aarast_mobile/features/marketplace/models/marketplace_models.dart';
 import 'package:aarast_mobile/features/marketplace/providers/marketplace_provider.dart';
 import 'package:aarast_mobile/features/marketplace/screens/plan_bookings_screen.dart';
+import 'package:aarast_mobile/features/wedding_plans/data/wedding_plans_api.dart';
+import 'package:aarast_mobile/features/wedding_plans/models/dashboard_summary.dart';
+import 'package:aarast_mobile/features/wedding_plans/providers/dashboard_summary_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -68,9 +71,32 @@ final _quotes = [
   }),
 ];
 
+/// The plan's summary, as the home read it, with the reader's money right.
+class _Summary extends DashboardSummaryProvider {
+  _Summary({required bool managesMoney})
+    : _summary = DashboardSummary.fromJson({
+        'planId': 'plan-1',
+        'permissions': {
+          'canManageProviders': true,
+          'canManageMoney': managesMoney,
+        },
+      }),
+      super(
+        weddingPlansApi: WeddingPlansApi(
+          ApiClient(tokenProvider: () async => null),
+        ),
+      );
+
+  final DashboardSummary _summary;
+
+  @override
+  DashboardSummary? get summary => _summary;
+}
+
 Future<(_Marketplace, List<Object?>)> _pump(
   WidgetTester tester, {
   List<QuoteRequest>? quotes,
+  DashboardSummaryProvider? summary,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = const Size(420, 1400);
@@ -101,8 +127,16 @@ Future<(_Marketplace, List<Object?>)> _pump(
   );
   addTearDown(router.dispose);
   await tester.pumpWidget(
-    ChangeNotifierProvider<ProviderMarketplaceProvider>.value(
-      value: marketplace,
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider<ProviderMarketplaceProvider>.value(
+          value: marketplace,
+        ),
+        if (summary != null)
+          ChangeNotifierProvider<DashboardSummaryProvider>.value(
+            value: summary,
+          ),
+      ],
       child: MaterialApp.router(
         routerConfig: router,
         builder: (context, child) =>
@@ -176,6 +210,31 @@ void main() {
     expect(marketplace.asked, ['cancel']);
     // The cancelled booking's own day, with no plan day to prefer.
     expect(marketplace.askedDays, [DateTime(2027, 1, 21)]);
+  });
+
+  // Q-65 (أ), D127: asking again puts the agreement in the money, so a
+  // helper without the money right is told who can, with no button.
+  testWidgets('Q-65: without the money right, «اطلب حجز مرة ثانية» is not '
+      'offered and the card says who can', (tester) async {
+    await _pump(tester, summary: _Summary(managesMoney: false));
+
+    expect(find.text('اطلب حجز مرة ثانية'), findsNothing);
+    expect(
+      find.byKey(const ValueKey('booking-ask-again-by-money-booking-cancel')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('Q-65: with the money right, asking again is offered', (
+    tester,
+  ) async {
+    await _pump(tester, summary: _Summary(managesMoney: true));
+
+    expect(find.text('اطلب حجز مرة ثانية'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('booking-ask-again-by-money-booking-cancel')),
+      findsNothing,
+    );
   });
 
   // RA-MO-247: both fell under «ملغي · لغيته أنت».

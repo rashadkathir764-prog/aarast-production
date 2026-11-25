@@ -381,6 +381,9 @@ String? bookingErrorMessage(String? code) {
     'BOOKING_ALREADY_OPEN' => 'عندك طلب حجز مفتوح مع هذا المزوّد.',
     'BOOKING_QUOTE_NOT_ACCEPTED' => 'الحجز يُطلب بعد قبول عرض السعر.',
     'BOOKING_NOT_ALLOWED' => 'تغيّر الحجز، وحاله الجديد يطلع لما تتحدث الصفحة.',
+    // Q-65 (أ), D127: the request puts the agreement in the money.
+    'BOOKING_NEEDS_MONEY_RIGHT' =>
+      'طلب الحجز يضيف اتفاقه في المال، فهو عند صاحب الخطة أو اللي يدير مالها.',
     _ => null,
   };
 }

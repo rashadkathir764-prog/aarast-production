@@ -304,49 +304,56 @@ void main() {
     });
   });
 
-  testWidgets(
-    'f04 two offers side by side; choosing one asks for the booking',
-    (tester) async {
-      final h = await _pump(tester, [
-        _offer('q1', 'ضوء صنعاء', '550000'),
-        _offer('q2', 'عدسة سبأ', '480000'),
-      ]);
+  testWidgets('f04 two offers side by side; choosing one asks for the booking', (
+    tester,
+  ) async {
+    final h = await _pump(tester, [
+      _offer('q1', 'ضوء صنعاء', '550000'),
+      _offer('q2', 'عدسة سبأ', '480000'),
+    ]);
 
-      expect(find.text('قارن عروض التصوير'), findsOneWidget);
-      expect(find.byKey(const ValueKey('requests-offer-q1')), findsOneWidget);
-      expect(find.byKey(const ValueKey('requests-offer-q2')), findsOneWidget);
-      expect(find.text('فيلم 10 دقائق'), findsNWidgets(2));
-      expect(
-        find.byKey(const ValueKey('requests-choose-note')),
-        findsOneWidget,
-      );
+    expect(find.text('قارن عروض التصوير'), findsOneWidget);
+    expect(find.byKey(const ValueKey('requests-offer-q1')), findsOneWidget);
+    expect(find.byKey(const ValueKey('requests-offer-q2')), findsOneWidget);
+    expect(find.text('فيلم 10 دقائق'), findsNWidgets(2));
+    expect(find.byKey(const ValueKey('requests-choose-note')), findsOneWidget);
 
-      // The payment line is said once above the offers, not in each card.
-      expect(find.text('يتفقون على الدفع معك مباشرة'), findsOneWidget);
+    // The payment line is said once above the offers, not in each card.
+    expect(find.text('يتفقون على الدفع معك مباشرة'), findsOneWidget);
 
-      await tester.tap(find.byKey(const ValueKey('requests-choose-q1')));
-      await tester.pumpAndSettle();
-      // It asks first, saying what choosing does.
-      expect(h.marketplace.acceptedQuoteIds, isEmpty);
-      expect(find.textContaining('تختار ضوء صنعاء بـ550,000'), findsOneWidget);
-      expect(
-        find.text('ينضاف لمالك كاتفاق، وما تقدر تختار عرض ثاني لهذي الخدمة.'),
-        findsOneWidget,
-      );
-      await tester.tap(find.byKey(const ValueKey('requests-choose-confirm')));
-      await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('requests-choose-q1')));
+    await tester.pumpAndSettle();
+    // It asks first, saying what choosing does: Q-55 (أ), D127, nothing
+    // enters the money until the booking is asked for.
+    expect(h.marketplace.acceptedQuoteIds, isEmpty);
+    expect(find.textContaining('تختار ضوء صنعاء بـ550,000'), findsOneWidget);
+    expect(
+      find.text(
+        'السعر يدخل مالك لما تطلب الحجز، وما تقدر تختار عرض ثاني لهذي الخدمة.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.textContaining('ينضاف لمالك'), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('requests-choose-confirm')));
+    await tester.pumpAndSettle();
 
-      expect(h.marketplace.acceptedQuoteIds, ['q1']);
-      // Money reloads with the cost the server created from the offer.
-      expect(h.finance.loadedPlanId, 'plan-1');
-      // f05 opens on the request's day.
-      expect(find.text('نطلب الحجز؟'), findsOneWidget);
-      expect(find.byKey(const ValueKey('booking-no-payment')), findsOneWidget);
-      await tester.tap(find.byKey(const ValueKey('booking-request')));
-      await tester.pumpAndSettle();
-      expect(h.marketplace.bookingDays, [DateTime(2027, 1, 21)]);
-    },
-  );
+    expect(h.marketplace.acceptedQuoteIds, ['q1']);
+    // Choosing wrote nothing in the money, so it is not read again.
+    final loadsAfterChoosing = h.financeApi.summaryLoads;
+    // f05 opens on the request's day, and says the price enters the money.
+    expect(find.text('نطلب الحجز؟'), findsOneWidget);
+    expect(find.byKey(const ValueKey('booking-no-payment')), findsOneWidget);
+    // The amount keeps its currency on its line (no-break joins).
+    expect(
+      find.textContaining(RegExp(r'^ينضاف 550,000\s*\S*ر\.ي\S* لمالك كاتفاق$')),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const ValueKey('booking-request')));
+    await tester.pumpAndSettle();
+    expect(h.marketplace.bookingDays, [DateTime(2027, 1, 21)]);
+    // The booking put the agreement in the money: it is read again.
+    expect(h.financeApi.summaryLoads, greaterThan(loadsAfterChoosing));
+  });
 
   // UX critique (the Sana'a bride): one tap on «اختاري هذا» put the amount
   // in her money as an agreement and took the choice from the other offers,
@@ -363,7 +370,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.textContaining('تختارين عدسة سبأ بـ480,000'), findsOneWidget);
     expect(
-      find.text('ينضاف لمالك كاتفاق، وما تقدرين تختارين عرض ثاني لهذي الخدمة.'),
+      find.text(
+        'السعر يدخل مالك لما تطلبين الحجز، وما تقدرين تختارين عرض ثاني لهذي الخدمة.',
+      ),
       findsOneWidget,
     );
     expect(find.text('اختاري عدسة سبأ'), findsOneWidget);
@@ -636,6 +645,8 @@ void main() {
     );
     await tester.tap(find.byKey(const ValueKey('requests-book-q1')));
     await tester.pumpAndSettle();
+    // Its agreement is already in the money: nothing more is added.
+    expect(find.byKey(const ValueKey('booking-adds-agreement')), findsNothing);
     await tester.tap(find.byKey(const ValueKey('booking-other-day')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('booking-request')));
@@ -670,11 +681,99 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('يوصلهم إن الحجز انلغى'), findsOneWidget);
+      // Q-56 (أ), D127: the same sheet asks what happens to the agreement;
+      // nothing goes before an answer.
+      expect(find.text('شيل الاتفاق من المال'), findsOneWidget);
+      expect(find.text('خلّه'), findsOneWidget);
+      expect(find.text('دفعت عربون أو تشتي تتابعه'), findsOneWidget);
+      await tester.tap(
+        find.byKey(const ValueKey('requests-cancel-booking-confirm')),
+      );
+      await tester.pumpAndSettle();
+      expect(h.marketplace.cancelledBookings, isEmpty);
+
+      await tester.tap(
+        find.byKey(const ValueKey('requests-cancel-agreement-keep')),
+      );
+      await tester.pumpAndSettle();
       await tester.tap(
         find.byKey(const ValueKey('requests-cancel-booking-confirm')),
       );
       await tester.pumpAndSettle();
       expect(h.marketplace.cancelledBookings, ['q1']);
+      expect(h.financeApi.deletedCosts, isEmpty, reason: 'kept in the money');
+    },
+  );
+
+  testWidgets(
+    'Q-56: cancelling, the bride takes the agreement out of her money',
+    (tester) async {
+      final h = await _pump(tester, [
+        _accepted(booking: _booking('CONFIRMED')),
+      ], profile: JourneyProfile.bride);
+
+      await tester.tap(
+        find.byKey(const ValueKey('requests-cancel-booking-q1')),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('شيلي الاتفاق من المال'), findsOneWidget);
+      expect(find.text('خليه'), findsOneWidget);
+      expect(find.text('دفعتِ عربون أو تشتين تتابعينه'), findsOneWidget);
+      await tester.tap(
+        find.byKey(const ValueKey('requests-cancel-agreement-remove')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const ValueKey('requests-cancel-booking-confirm')),
+      );
+      await tester.pumpAndSettle();
+      expect(h.marketplace.cancelledBookings, ['q1']);
+      expect(h.financeApi.deletedCosts, ['cost-q1']);
+    },
+  );
+
+  testWidgets('Q-56: an agreement with payments stays, and the sheet says why', (
+    tester,
+  ) async {
+    final h = await _pump(tester, [
+      _accepted(booking: _booking('CONFIRMED')),
+    ], costPaid: '100000');
+
+    await tester.tap(find.byKey(const ValueKey('requests-cancel-booking-q1')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('requests-cancel-agreement-remove')),
+      findsNothing,
+    );
+    expect(
+      find.text(
+        'الاتفاق يبقى في المال لأن عليه دفعات مسجّلة. لو رجّعوا لك شي، سجّله من هناك.',
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('requests-cancel-booking-confirm')),
+    );
+    await tester.pumpAndSettle();
+    expect(h.marketplace.cancelledBookings, ['q1']);
+    expect(h.financeApi.deletedCosts, isEmpty);
+  });
+
+  // Q-65 (أ), D127: the booking request puts the agreement in the money, so
+  // the server asks for the money right; the button is not offered without
+  // it, and the card says who can.
+  testWidgets(
+    'Q-65: a helper without the money right is not offered «اطلب الحجز»',
+    (tester) async {
+      await _pump(tester, [_accepted()], managesMoney: false);
+
+      expect(find.byKey(const ValueKey('requests-book-q1')), findsNothing);
+      expect(
+        find.text(
+          'طلب الحجز يضيف اتفاقه في المال، فهو عند صاحب الخطة أو اللي يدير مالها.',
+        ),
+        findsOneWidget,
+      );
     },
   );
 
@@ -867,10 +966,11 @@ void main() {
 }
 
 class _Harness {
-  _Harness(this.marketplace, this.finance, this.chat);
+  _Harness(this.marketplace, this.finance, this.financeApi, this.chat);
 
   final _Marketplace marketplace;
   final FinanceProvider finance;
+  final _Finance financeApi;
   final _Chat chat;
 }
 
@@ -886,12 +986,14 @@ Future<_Harness> _pump(
   bool seesMoney = true,
   bool managesMoney = true,
   JourneyProfile? profile,
+  String costPaid = '0',
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = Size(width, 1400);
   addTearDown(tester.view.reset);
   marketplace ??= _Marketplace(quotes);
-  final finance = FinanceProvider(_Finance());
+  final financeApi = _Finance(costPaid: costPaid);
+  final finance = FinanceProvider(financeApi);
   await finance.loadMoney(
     'plan-1',
     canViewMoney: seesMoney,
@@ -936,7 +1038,7 @@ Future<_Harness> _pump(
     ),
   );
   if (settle) await tester.pumpAndSettle();
-  return _Harness(marketplace, finance, chat);
+  return _Harness(marketplace, finance, financeApi, chat);
 }
 
 class _Marketplace extends ProviderMarketplaceProvider {
@@ -1077,25 +1179,38 @@ class _Chat extends ChatApi {
 }
 
 class _Finance extends FinanceApi {
-  _Finance() : super(ApiClient(tokenProvider: () async => null));
+  _Finance({this.costPaid = '0'})
+    : super(ApiClient(tokenProvider: () async => null));
+
+  /// What is paid on the offer's agreement (Q-56).
+  final String costPaid;
+  int summaryLoads = 0;
+  final deletedCosts = <String>[];
 
   @override
-  Future<MoneySummary> getMoneySummary(String planId) async =>
-      const MoneySummary(
-        planId: 'plan-1',
-        categories: [
-          MoneyCategorySummary(
-            categoryId: 'photo',
-            name: 'التصوير',
-            allocatedAmount: '600000',
-            confirmedCost: '0',
-            outstanding: '0',
-            costsCount: 0,
-            // G40: the server lists the photo kind under this item.
-            providerCategoryIds: ['cat-photo'],
-          ),
-        ],
-      );
+  Future<void> deleteCost(WeddingCost cost) async {
+    deletedCosts.add(cost.id);
+  }
+
+  @override
+  Future<MoneySummary> getMoneySummary(String planId) async {
+    summaryLoads += 1;
+    return const MoneySummary(
+      planId: 'plan-1',
+      categories: [
+        MoneyCategorySummary(
+          categoryId: 'photo',
+          name: 'التصوير',
+          allocatedAmount: '600000',
+          confirmedCost: '0',
+          outstanding: '0',
+          costsCount: 0,
+          // G40: the server lists the photo kind under this item.
+          providerCategoryIds: ['cat-photo'],
+        ),
+      ],
+    );
+  }
 
   @override
   Future<FinancePage<WeddingCost>> getCosts(
@@ -1106,7 +1221,7 @@ class _Finance extends FinanceApi {
     String? categoryId,
     String? search,
     String? payer,
-  }) async => const FinancePage(
+  }) async => FinancePage(
     items: [
       WeddingCost(
         id: 'cost-q1',
@@ -1114,9 +1229,9 @@ class _Finance extends FinanceApi {
         budgetCategoryId: 'photo',
         title: 'صور وفيديو',
         totalAmount: '550000',
-        paidAmount: '0',
-        remainingAmount: '550000',
-        status: 'OPEN',
+        paidAmount: costPaid,
+        remainingAmount: '${550000 - int.parse(costPaid)}',
+        status: costPaid == '0' ? 'OPEN' : 'PARTIALLY_PAID',
         providerId: 'provider-q1',
       ),
     ],

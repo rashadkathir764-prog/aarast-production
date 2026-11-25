@@ -65,14 +65,20 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
   String? _period;
   DateTime? _eventDate;
   WeddingLocationDraft? _eventLocation;
+
   /// RA-BE-155: the item's amount and the phone go with the request unless
   /// the person switches them off; a request that arrived without them
   /// left the provider guessing and sent him to ask in the chat.
   bool _shareBudget = true;
 
-  /// B-08: the phone reaches the provider when shared; on by default, with
-  /// the switch to keep it private.
-  bool _shareContact = true;
+  /// B-08: the phone reaches the provider when shared, with the switch to
+  /// keep it private. Q-57 (أ), D127: on by default in the groom's plan, off
+  /// in the bride's until she switches it on. Null until the person (or a
+  /// draft) chooses.
+  bool? _shareContactChoice;
+
+  bool get _shareContact =>
+      _shareContactChoice ?? !context.journeyProfile.isBride;
   String? _guestError;
   bool _didApplyInitialPlanContext = false;
   final Set<String> _routeLaunchesInFlight = <String>{};
@@ -349,7 +355,7 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
                     subtitle: 'غير كذا يكلمونك من الرسائل بس',
                     value: _shareContact,
                     onChanged: (value) {
-                      setState(() => _shareContact = value);
+                      setState(() => _shareContactChoice = value);
                       _scheduleDraft();
                     },
                   ),
@@ -358,7 +364,18 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
             ),
             const SizedBox(height: AarastV3Space.x3),
             JourneyNote(
-              text: budget != null
+              // Q-57: in the bride's plan the phone goes only when switched on.
+              text: context.journeyProfile.isBride
+                  ? (budget != null
+                        ? context.say(
+                            'بندك يوصلهم وتقدر تطفّيه، ورقمك ما يوصلهم إلا لو شغّلته. والطلب ينتهي لو ما ردوا خلال 7 أيام.',
+                            'بندك يوصلهم وتقدرين تطفّينه، ورقمك ما يوصلهم إلا لو شغّلتيه. والطلب ينتهي لو ما ردوا خلال 7 أيام.',
+                          )
+                        : context.say(
+                            'رقمك ما يوصلهم إلا لو شغّلته. والطلب ينتهي لو ما ردوا خلال 7 أيام.',
+                            'رقمك ما يوصلهم إلا لو شغّلتيه. والطلب ينتهي لو ما ردوا خلال 7 أيام.',
+                          ))
+                  : budget != null
                   ? context.say(
                       'بندك ورقمك يوصلونهم، وتقدر تطفّي أي واحد قبل ما ترسل. والطلب ينتهي لو ما ردوا خلال 7 أيام.',
                       'بندك ورقمك يوصلونهم، وتقدرين تطفّين أي واحد قبل ما ترسلين. والطلب ينتهي لو ما ردوا خلال 7 أيام.',
@@ -496,7 +513,10 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
         _period ??= draft['period'] as String?;
         // A draft written before the switches defaulted on has them.
         _shareBudget = draft['shareBudget'] != false;
-        _shareContact = draft['shareContact'] != false;
+        // A draft without the switch takes the plan's default (Q-57).
+        if (draft['shareContact'] case final bool shared) {
+          _shareContactChoice = shared;
+        }
         final rawDate = draft['eventDate'] as String?;
         _eventDate ??= rawDate == null ? null : DateTime.tryParse(rawDate);
         if (_guestCountController.text.isEmpty) {
@@ -518,7 +538,7 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
       'cityId': _cityId,
       'period': _period,
       'shareBudget': _shareBudget,
-      'shareContact': _shareContact,
+      'shareContact': ?_shareContactChoice,
       'eventDate': _eventDate?.toIso8601String(),
       'guestCount': _guestCountController.text,
       'message': _messageController.text,

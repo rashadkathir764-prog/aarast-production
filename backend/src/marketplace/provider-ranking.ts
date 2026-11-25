@@ -26,6 +26,8 @@ export interface RankSignals {
   id: string;
   /** The owner claimed the listing; an unclaimed one takes no request (D41). */
   claimed: boolean;
+  /** An admin checked his documents (`verifiedAt`); Q-73 (أ), D127. */
+  verified: boolean;
   /** Featured now and shown by the placement rule (B-43). */
   featuredNow: boolean;
   createdAt: Date;
@@ -94,14 +96,17 @@ export function providerRankScore(signals: RankSignals, now: Date): number {
 }
 
 /**
- * Featured first, then claimed listings, then unclaimed ones; inside each
- * group by score, then the newer, then the id (a total order).
+ * Verified providers before unverified ones (Q-73 (أ), D127); inside each
+ * band featured first, then claimed listings, then unclaimed ones; inside
+ * each group by score, then the newer, then the id (a total order).
  */
 export function rankProviders<T extends RankSignals>(rows: readonly T[], now: Date): T[] {
+  const band = (row: T) => (row.verified ? 0 : 1);
   const group = (row: T) => (row.featuredNow ? 0 : row.claimed ? 1 : 2);
   const scored = rows.map((row) => ({ row, score: providerRankScore(row, now) }));
   scored.sort(
     (a, b) =>
+      band(a.row) - band(b.row) ||
       group(a.row) - group(b.row) ||
       b.score - a.score ||
       b.row.createdAt.getTime() - a.row.createdAt.getTime() ||

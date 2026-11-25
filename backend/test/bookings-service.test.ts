@@ -27,6 +27,9 @@ function fakeDatabase() {
   const blocked = new Map<string, any>();
   const offers = new Map<string, any>();
   const notifications: any[] = [];
+  // Q-55 (أ): the agreement each accepted offer put in the money, by offer.
+  const agreements = new Map<string, any>();
+  const agreementWrites: any[] = [];
   const dayKey = (value: Date) => value.toISOString().slice(0, 10);
 
   const addQuote = (id: string, overrides: Record<string, unknown> = {}) => {
@@ -43,7 +46,14 @@ function fakeDatabase() {
       location: null,
       ...overrides,
     });
-    offers.set(`offer-${id}`, { id: `offer-${id}`, quoteRequestId: id, status: "ACCEPTED" });
+    offers.set(`offer-${id}`, {
+      id: `offer-${id}`,
+      quoteRequestId: id,
+      providerId: "provider-1",
+      status: "ACCEPTED",
+      amount: new Prisma.Decimal(550000),
+      currency: "YER",
+    });
   };
 
   const bookingMatches = (row: any, where: any) =>
@@ -148,22 +158,96 @@ function fakeDatabase() {
     bookingChange: {
       updateMany: async () => ({ count: 0 }),
     },
+    // The accepted offer as its agreement reads it (Q-55).
+    quoteOffer: {
+      findUnique: async ({ where }: any) => {
+        const offer = offers.get(where.id);
+        if (!offer) return null;
+        const provider = providers.get(offer.providerId);
+        return {
+          ...offer,
+          quoteRequest: { ...quotes.get(offer.quoteRequestId), service: null },
+          provider: {
+            businessName: provider.businessName,
+            userId: provider.userId,
+            primaryCategoryId: "category-photo",
+          },
+          providerLinks: [],
+        };
+      },
+    },
   };
   const prisma: any = {
     ...tx,
     $transaction: async (operation: (client: any) => Promise<unknown>) => operation(tx),
   };
-  return { prisma, quotes, bookings, notifications, addQuote, providers, offers };
+  // Finance's port as the bookings read and write it: no agreement is
+  // listed for B-18 here (tested on its own), and the agreement an accepted
+  // offer makes is kept by offer (WeddingCost.quoteOfferId is unique).
+  const finance: any = {
+    listCostsForOffers: async () => [],
+    markOfferBookingFellThrough: async () => 0,
+    findCostForAcceptedOffer: async (_tx: unknown, offerId: string) =>
+      agreements.get(offerId) ?? null,
+    createCostFromAcceptedOffer: async (_tx: unknown, input: any) => {
+      if (agreements.has(input.quoteOfferId)) throw new Error("P2002 quoteOfferId");
+      agreementWrites.push(input);
+      const cost = {
+        id: `cost-${input.quoteOfferId}`,
+        weddingPlanId: input.weddingPlanId,
+        providerId: input.providerId,
+        quoteOfferId: input.quoteOfferId,
+        title: input.title,
+        totalAmount: input.amount,
+        paidAmount: new Prisma.Decimal(0),
+        status: "OPEN",
+        createdAt: new Date(),
+        budgetCategory: { name: input.providerCategoryName ?? "أخرى" },
+      };
+      agreements.set(input.quoteOfferId, cost);
+      return cost;
+    },
+  };
+  // The plan's currency and the offer's category, as marketplace's
+  // relations attach them from planning and catalog.
+  const relations: any = {
+    attachOfferContext: async (_tx: unknown, offer: any) => ({
+      ...offer,
+      quoteRequest: {
+        ...offer.quoteRequest,
+        weddingPlan: { id: offer.quoteRequest.weddingPlanId, currency: "YER" },
+        service: null,
+      },
+    }),
+    offerCategory: async () => ({ nameAr: "التصوير", slug: "photography" }),
+  };
+  return {
+    prisma,
+    quotes,
+    bookings,
+    notifications,
+    addQuote,
+    providers,
+    offers,
+    agreements,
+    agreementWrites,
+    finance,
+    relations,
+  };
 }
 
-function service(db: ReturnType<typeof fakeDatabase>) {
+function service(
+  db: ReturnType<typeof fakeDatabase>,
+  { managesMoney = true, history }: { managesMoney?: boolean; history?: any } = {},
+) {
   const permissions: any = {
     assertPlanReadableInTransaction: async (_tx: unknown, planId: string, user: any) => ({
-      plan: { id: planId, ownerUserId: "customer-1", status: "PLANNING" },
+      plan: { id: planId, ownerUserId: "customer-1", status: "PLANNING", persona: "GROOM" },
       isOwner: user.id === "customer-1",
       sharedMember: null,
     }),
     canManageProviders: () => true,
+    canManageMoney: () => managesMoney,
   };
   const notifications: any = {
     createNotificationInTransaction: async (_tx: unknown, input: any) => {
@@ -171,7 +255,18 @@ function service(db: ReturnType<typeof fakeDatabase>) {
       return null;
     },
   };
-  return new BookingsService(db.prisma, permissions, notifications, noAgreements);
+  return new BookingsService(
+    db.prisma,
+    permissions,
+    notifications,
+    db.finance,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    db.relations,
+    history,
+  );
 }
 
 /** No customer keeps an agreement for these offers (B-18 is tested on its own). */
@@ -198,6 +293,74 @@ test("a customer asks for the quote's day and the provider is told", async () =>
   // B-19: a booking request is its own type, opening the request.
   assert.equal(db.notifications[0].type, "BOOKING_REQUESTED");
   assert.equal(db.notifications[0].routeTarget, "/provider/requests/quote-1");
+});
+
+// Q-55 (أ), D127: choosing an offer writes nothing in the money; asking for
+// the booking puts the offer's agreement there, once per offer.
+test("Q-55: asking for the booking writes the offer's agreement in the money, once", async () => {
+  const db = fakeDatabase();
+  db.addQuote("quote-1");
+  const recorded: any[] = [];
+  const history = {
+    recordForContextInTransaction: async (_tx: unknown, _context: unknown, input: any) => {
+      recorded.push(input);
+      return null;
+    },
+  };
+  const bookings = service(db, { history });
+
+  const first = await bookings.requestBooking(customer, "quote-1", {});
+  assert.equal(db.agreementWrites.length, 1);
+  const written = db.agreementWrites[0];
+  assert.equal(written.weddingPlanId, "plan-1");
+  assert.equal(written.providerId, "provider-1");
+  assert.equal(written.quoteOfferId, "offer-quote-1");
+  assert.equal(written.amount.toString(), "550000");
+  // No service named: the provider's name and his own category.
+  assert.equal(written.title, "الفنان علي");
+  assert.equal(written.providerCategoryName, "التصوير");
+  assert.equal(written.providerCategorySlug, "photography");
+  assert.equal(written.planPersona, "GROOM");
+  // The money's history says the agreement came in, once.
+  const money = recorded.filter((input) => input.section === "MONEY");
+  assert.equal(money.length, 1);
+  assert.equal(money[0].entityId, "cost-offer-quote-1");
+  assert.equal(money[0].action, "CREATED");
+
+  // Declined, then asked again: the agreement there is the one kept.
+  await bookings.decideAsProvider(providerUser, first.id, "DECLINE", {});
+  await bookings.requestBooking(customer, "quote-1", { eventDate: "2027-02-19" });
+  assert.equal(db.agreementWrites.length, 1, "a request asked again writes no second agreement");
+  assert.equal(recorded.filter((input) => input.section === "MONEY").length, 1);
+});
+
+test("Q-55: an agreement an older acceptance already wrote is left as it is", async () => {
+  const db = fakeDatabase();
+  db.addQuote("quote-1");
+  db.agreements.set("offer-quote-1", { id: "cost-old", quoteOfferId: "offer-quote-1" });
+
+  const booking = await service(db).requestBooking(customer, "quote-1", {});
+  assert.equal(booking.status, "REQUESTED");
+  assert.equal(db.agreementWrites.length, 0);
+  assert.equal(db.agreements.get("offer-quote-1").id, "cost-old");
+});
+
+// Q-65 (أ), D127: the request puts an agreement in the money, so it takes
+// the money right; a helper without it is told who can, and nothing moves.
+test("Q-65: a member without the money right cannot ask for the booking", async () => {
+  const db = fakeDatabase();
+  db.addQuote("quote-1");
+
+  await assert.rejects(
+    service(db, { managesMoney: false }).requestBooking(customer, "quote-1", {}),
+    (error: any) =>
+      error?.getStatus?.() === 403 &&
+      error?.response?.code === "BOOKING_NEEDS_MONEY_RIGHT" &&
+      /صاحب الخطة/.test(error.response.message),
+  );
+  assert.equal(db.bookings.size, 0);
+  assert.equal(db.agreementWrites.length, 0);
+  assert.equal(db.notifications.length, 0);
 });
 
 test("a booking needs an accepted offer and a single open request", async () => {
@@ -413,12 +576,19 @@ test("the provider reads agreed, paid and left on his booking, and the month's t
           ]
         : [],
     markOfferBookingFellThrough: async () => 1,
+    // The customer's agreement for this offer is already in his money.
+    findCostForAcceptedOffer: async () => ({ id: "cost-1" }),
   };
   const bookings = new BookingsService(
     db.prisma,
-    { assertPlanReadableInTransaction: async () => ({ plan: { id: "plan-1", status: "PLANNING" }, isOwner: true, sharedMember: null }), canManageProviders: () => true } as any,
+    { assertPlanReadableInTransaction: async () => ({ plan: { id: "plan-1", status: "PLANNING" }, isOwner: true, sharedMember: null }), canManageProviders: () => true, canManageMoney: () => true } as any,
     { createNotificationInTransaction: async () => null } as any,
     finance,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    db.relations,
   );
   const requested = await bookings.requestBooking(customer, "quote-1", {});
   await bookings.decideAsProvider(providerUser, requested.id, "CONFIRM", {});
@@ -485,6 +655,7 @@ test("a confirmed booking reminds both sides a week and a day before, once each"
         sharedMember: null,
       }),
       canManageProviders: () => true,
+      canManageMoney: () => true,
     } as any,
     {
       // The real notifications row is unique on its dedupe key.
@@ -500,7 +671,12 @@ test("a confirmed booking reminds both sides a week and a day before, once each"
         return { id: input.dedupeKey };
       },
     } as any,
-    noAgreements,
+    db.finance,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    db.relations,
   );
   const requested = await bookings.requestBooking(customer, "quote-1", {});
   await bookings.decideAsProvider(providerUser, requested.id, "CONFIRM", {});
@@ -590,6 +766,8 @@ test("RA-BE-138: a provider's decline keeps the item, marks it and says so; aski
       marks.push([offerId, at]);
       return 1;
     },
+    // The item the offer made is in the money (Q-55: since the request).
+    findCostForAcceptedOffer: async () => ({ id: "cost-1" }),
   };
   const permissions: any = {
     assertPlanReadableInTransaction: async (_tx: unknown, planId: string) => ({
@@ -598,6 +776,7 @@ test("RA-BE-138: a provider's decline keeps the item, marks it and says so; aski
       sharedMember: null,
     }),
     canManageProviders: () => true,
+    canManageMoney: () => true,
   };
   const notifications: any = {
     createNotificationInTransaction: async (_tx: unknown, input: any) => {
@@ -605,7 +784,17 @@ test("RA-BE-138: a provider's decline keeps the item, marks it and says so; aski
       return null;
     },
   };
-  const bookings = new BookingsService(db.prisma, permissions, notifications, finance);
+  const bookings = new BookingsService(
+    db.prisma,
+    permissions,
+    notifications,
+    finance,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    db.relations,
+  );
   const first = await bookings.requestBooking(customer, "quote-1", {});
   const offerId = db.bookings.get(first.id)!.quoteOfferId;
   assert.deepEqual(marks, [[offerId, null]], "a request is a live item again");

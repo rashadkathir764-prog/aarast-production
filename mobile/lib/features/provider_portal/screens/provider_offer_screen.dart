@@ -17,7 +17,7 @@ import '../providers/provider_dashboard_provider.dart';
 import '../widgets/provider_offer_lines.dart';
 import '../widgets/provider_quick_offer_sheet.dart' show providerPackageMessage;
 import '../widgets/provider_request_parts.dart';
-import '../../../core/forms/latin_digits_formatter.dart';
+import '../../finance/finance_api.dart' show MoneyInputFormatter;
 
 /// How long an offer stays open, in days (p17: 10 by default, D35).
 const _offerValidityDays = [7, 10, 14];
@@ -214,7 +214,10 @@ class _ProviderOfferScreenState extends State<ProviderOfferScreen> {
                         keyboardType: TextInputType.number,
                         // «٥٠٠٠٠٠» from an Arabic keyboard is 500000. Whole
                         // riyals (D112, Q-25): no decimal point is taken.
-                        inputFormatters: const [LatinDigitsFormatter()],
+                        // Q-74 (D127): grouped as typed, as every amount in
+                        // the app («520000» reads «520,000»); the commas go
+                        // before it is checked and sent.
+                        inputFormatters: const [MoneyInputFormatter()],
                         errorText: _amountError,
                         onChanged: (_) {
                           if (_amountError != null) {

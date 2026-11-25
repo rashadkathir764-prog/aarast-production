@@ -801,7 +801,9 @@ test("accepting an offer for a day the provider closed writes no item and says s
   assert.equal(harness.offerStatus, "PENDING");
 });
 
-test("accepting an offer atomically creates one linked cost and is idempotent", async () => {
+// Q-55 (أ), D127: choosing an offer records nothing in the plan's money; its
+// agreement is written when the booking is asked for (bookings-service).
+test("accepting an offer writes nothing in the money and is idempotent", async () => {
   const harness = acceptanceHarness({
     categories: [
       {
@@ -815,16 +817,17 @@ test("accepting an offer atomically creates one linked cost and is idempotent", 
 
   const result = await harness.service.acceptQuoteOffer(requester, OFFER_ID);
   harness.setProviderStatus("SUSPENDED");
+  // A phone that lost the first answer asks again: it still succeeds.
   const replay = await harness.service.acceptQuoteOffer(requester, OFFER_ID);
 
-  assert.equal(result.automaticCostCreated, true);
-  assert.equal(result.weddingCost.id, "cost-from-offer");
-  assert.equal(replay.weddingCost.id, "cost-from-offer");
-  assert.equal(
-    harness.costCreates,
-    1,
-    "network replay must not duplicate cost",
-  );
+  assert.equal(result.automaticCostCreated, false);
+  assert.equal(result.weddingCost, null);
+  assert.equal(replay.weddingCost, null);
+  assert.equal(harness.costCreates, 0, "choosing writes no agreement");
+  assert.equal(harness.createdCost, null);
+  assert.equal(harness.fallbackCreates, 0, "nor a «أخرى» item for one");
+  assert.equal(harness.offerStatus, "ACCEPTED");
+  assert.equal(harness.quoteStatus, "ACCEPTED");
   assert.equal(
     harness.linkWrites,
     1,
@@ -835,19 +838,10 @@ test("accepting an offer atomically creates one linked cost and is idempotent", 
     1,
     "historical replay must not become a new provider operation",
   );
-  assert.equal(
-    harness.fallbackCreates,
-    0,
-    "logical match uses existing category",
-  );
-  assert.equal(harness.createdCost.budgetCategoryId, "category-hall");
-  assert.equal(harness.createdCost.providerId, PROVIDER_ID);
-  assert.equal(harness.createdCost.quoteOfferId, OFFER_ID);
-  assert.equal(harness.createdCost.totalAmount.toString(), "250000");
-  assert.equal(harness.createdCost.paidAmount.toString(), "0");
-  assert.equal(harness.createdCost.title, "خدمة القاعة");
-  assert.equal(result.costSuggestion.suggestedAction, "VIEW_COST");
-  assert.deepEqual(result.nextActions, ["viewCost", "viewAcceptedProvider"]);
+  assert.equal(result.costSuggestion.suggestedAction, "NONE");
+  assert.equal(result.costSuggestion.costId, null);
+  assert.deepEqual(result.costSuggestion.availableActions, []);
+  assert.deepEqual(result.nextActions, ["requestBooking", "viewAcceptedProvider"]);
   assert.equal(harness.providerPermissionChecks, 4);
   assert.equal(harness.moneyPermissionChecks, 4);
 
@@ -875,9 +869,23 @@ test("accepting an offer atomically creates one linked cost and is idempotent", 
   );
 });
 
-test("accepted-offer replay rejects missing or mismatched wedding cost without writes", async () => {
+// Q-55: an accepted offer has no agreement until its booking is asked for,
+// so a replay of the acceptance finds none and is still the same success.
+test("accepted-offer replay without an agreement succeeds without writes", async () => {
+  const harness = acceptedReplayIntegrityHarness({
+    weddingCosts: [],
+    providerLinks: [acceptedReplayLink],
+  });
+  const replay = await harness.execute();
+  assert.equal(replay.acceptedNow, false);
+  assert.equal(replay.cost, null);
+  assert.equal(replay.link.id, acceptedReplayLink.id);
+  assert.equal(harness.businessWrites, 0);
+  assert.equal(harness.providerStatusReads, 0);
+});
+
+test("accepted-offer replay rejects a mismatched wedding cost without writes", async () => {
   const cases = [
-    { label: "missing cost", weddingCosts: [] },
     {
       label: "cost from another wedding plan",
       weddingCosts: [
@@ -943,7 +951,9 @@ test("accepted-offer replay rejects missing or mismatched provider link without 
   }
 });
 
-test("accepting an unmatched provider service creates and uses the other category", async () => {
+// Q-55: the «أخرى» fallback is the agreement's (finance-port.test.ts), and
+// the agreement waits for the booking; choosing alone adds no item.
+test("accepting an unmatched provider service adds no «أخرى» item", async () => {
   const harness = acceptanceHarness({
     categories: [],
     providerCategoryName: "خدمة خاصة غير مصنفة",
@@ -951,10 +961,9 @@ test("accepting an unmatched provider service creates and uses the other categor
 
   const result = await harness.service.acceptQuoteOffer(requester, OFFER_ID);
 
-  assert.equal(result.automaticCostCreated, true);
-  assert.equal(harness.fallbackCreates, 1);
-  assert.equal(harness.createdCost.budgetCategoryId, "category-other");
-  assert.equal(result.weddingCost.categoryName, "أخرى");
+  assert.equal(result.automaticCostCreated, false);
+  assert.equal(harness.fallbackCreates, 0);
+  assert.equal(harness.costCreates, 0);
 });
 
 test("an accepted offer rolls back when its durable notification cannot be written", async () => {

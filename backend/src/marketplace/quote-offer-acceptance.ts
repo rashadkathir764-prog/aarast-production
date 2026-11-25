@@ -29,7 +29,12 @@ import {
   requestedBookableDay,
 } from "./provider-day-availability";
 import { type CollaborationPermissionPort as PermissionService, seesWholePlan } from "../modules/collaboration/public/collaboration-permission.port";
-import { addressFormOf, gendered, textFor } from "../shared-kernel/voice/address-form";
+import {
+  type AddressForm,
+  addressFormOf,
+  gendered,
+  textFor,
+} from "../shared-kernel/voice/address-form";
 import type { FinancePort } from "../modules/finance/public/finance.port";
 import type { MarketplaceRelationsService } from "./marketplace-relations";
 import {
@@ -216,14 +221,17 @@ export async function acceptQuoteOfferInTransaction(
 
     if (!acceptedNow) {
       // The cost an accepted offer is linked to is finance's row, read
-      // through its port on this transaction.
+      // through its port on this transaction. Q-55 (أ): it is written when
+      // the booking is asked for, so an accepted offer may have none yet (or
+      // one an older acceptance wrote); a replay is the same success either
+      // way, and only one belonging elsewhere is refused.
       const cost = await finance.findCostForAcceptedOffer(tx, id);
       const link = current.providerLinks[0] ?? null;
       if (
-        !cost ||
+        (cost &&
+          (cost.weddingPlanId !== weddingPlanId ||
+            cost.providerId !== current.providerId)) ||
         !link ||
-        cost.weddingPlanId !== weddingPlanId ||
-        cost.providerId !== current.providerId ||
         link.weddingPlanId !== weddingPlanId ||
         link.providerId !== current.providerId ||
         link.quoteRequestId !== current.quoteRequestId ||
@@ -239,7 +247,7 @@ export async function acceptQuoteOfferInTransaction(
       throw new NotFoundException("Provider not found");
     }
     assertProviderOperational(provider);
-    // RA-BE-150 (Q-36): the item is written only for a day the provider can
+    // RA-BE-150 (Q-36): an offer is chosen only for a day the provider can
     // still take (his row is locked above); the booking checks it again.
     const askedDay = requestedBookableDay(current.quoteRequest.eventDate);
     if (askedDay && (await providerDayUnavailable(tx, current.providerId, askedDay))) {
@@ -254,23 +262,10 @@ export async function acceptQuoteOfferInTransaction(
       );
     }
 
-    let cost = await finance.findCostForAcceptedOffer(tx, id);
-    if (!cost) {
-      const title =
-        current.quoteRequest.service?.title.trim() ||
-        current.provider.businessName.trim();
-      const category = await relations.offerCategory(tx, current);
-      cost = await finance.createCostFromAcceptedOffer(tx, {
-        weddingPlanId,
-        providerId: current.providerId,
-        quoteOfferId: current.id,
-        title,
-        amount: current.amount,
-        providerCategoryName: category?.nameAr ?? null,
-        providerCategorySlug: category?.slug ?? null,
-        planPersona: planSeed?.persona ?? null,
-      });
-    }
+    // Q-55 (أ), D127: choosing writes nothing in the money. The agreement
+    // comes with the booking request (writeAcceptedOfferAgreementInTransaction);
+    // one an older acceptance wrote stays as it is and is returned.
+    const cost = await finance.findCostForAcceptedOffer(tx, id);
 
     let acceptedOffer = current;
     if (acceptedNow) {
@@ -353,27 +348,6 @@ export async function acceptQuoteOfferInTransaction(
         requiredPermission: ContributionPermission.MANAGE_PROVIDERS,
         occurredAt,
       });
-      await history.recordForContextInTransaction(tx, planContext, {
-        section: ContributionSection.MONEY,
-        entityType: ContributionEntityType.WEDDING_COST,
-        entityId: cost.id,
-        action: ContributionAction.CREATED,
-        snapshot: buildContributionSnapshot(
-          ContributionEntityType.WEDDING_COST,
-          {
-            title: cost.title,
-            categoryLabel: cost.budgetCategory.name,
-            currency: plan.currency,
-            totalAmount: cost.totalAmount,
-            paidAmount: cost.paidAmount,
-            status: cost.status,
-            relevantDate: cost.createdAt,
-          },
-        ),
-        dedupeKey: `money:wedding-cost:${cost.id}:quote-accepted`,
-        requiredPermission: ContributionPermission.MANAGE_MONEY,
-        occurredAt: cost.createdAt,
-      });
     }
 
     if (acceptedNow) {
@@ -407,4 +381,63 @@ export async function acceptQuoteOfferInTransaction(
 
     return { offer: acceptedOffer, cost, link, acceptedNow };
   });
+}
+
+/**
+ * Q-55 (أ), D127: the agreement an accepted offer puts in the plan's money,
+ * written when the customer asks for the booking, inside that request's
+ * transaction (the booking service holds the provider's row and checked the
+ * customer's rights). One per offer (`WeddingCost.quoteOfferId` is unique):
+ * a request asked again finds the one there, whether this wrote it or an
+ * older acceptance did, and writes nothing.
+ */
+export async function writeAcceptedOfferAgreementInTransaction(
+  tx: Prisma.TransactionClient,
+  finance: FinancePort,
+  relations: MarketplaceRelationsService,
+  input: {
+    quoteOfferId: string;
+    weddingPlanId: string;
+    planPersona: string | null;
+    /** The customer's form (B5), for a refusal. */
+    form: AddressForm;
+  },
+) {
+  const existing = await finance.findCostForAcceptedOffer(tx, input.quoteOfferId);
+  if (existing) return { cost: existing, created: false, currency: null };
+  const row = await quoteRepository.findOfferForAcceptance(
+    tx,
+    input.quoteOfferId,
+    input.weddingPlanId,
+  );
+  if (!row || row.status !== QuoteOfferStatus.ACCEPTED) {
+    throw new NotFoundException("Quote offer not found");
+  }
+  const offer = await relations.attachOfferContext(tx, row);
+  const plan = offer.quoteRequest.weddingPlan;
+  if (!plan || plan.id !== input.weddingPlanId) {
+    throw new BadRequestException("Quote offer is not linked to this wedding plan");
+  }
+  if (!offer.amount || !offer.amount.isPositive()) {
+    throw new BadRequestException("Quote offer amount is required before booking");
+  }
+  // Checked when he chose it; the plan's currency may have changed since,
+  // with nothing in the money to hold it.
+  if (offer.currency.toUpperCase() !== plan.currency.toUpperCase()) {
+    throw quoteOfferCurrencyMismatch(plan.currency, "customer", input.form);
+  }
+  const category = await relations.offerCategory(tx, offer);
+  const cost = await finance.createCostFromAcceptedOffer(tx, {
+    weddingPlanId: input.weddingPlanId,
+    providerId: offer.providerId,
+    quoteOfferId: offer.id,
+    title:
+      offer.quoteRequest.service?.title.trim() ||
+      offer.provider.businessName.trim(),
+    amount: offer.amount,
+    providerCategoryName: category?.nameAr ?? null,
+    providerCategorySlug: category?.slug ?? null,
+    planPersona: input.planPersona,
+  });
+  return { cost, created: true, currency: plan.currency };
 }

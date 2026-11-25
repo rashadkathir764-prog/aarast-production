@@ -9,6 +9,10 @@ import {
 import {
   BookingParty,
   BookingStatus,
+  ContributionAction,
+  ContributionEntityType,
+  ContributionPermission,
+  ContributionSection,
   Prisma,
   QuoteRequestStatus,
   WeddingPlanStatus,
@@ -19,8 +23,15 @@ import {
   COLLABORATION_PERMISSION_PORT,
   isPlanDeletionPending,
   type CollaborationPermissionPort as PermissionService,
+  type PlanAccessContext,
+  readerAddressForm,
   seesWholePlan,
 } from "../modules/collaboration/public/collaboration-permission.port";
+import {
+  COLLABORATION_HISTORY_PORT,
+  type CollaborationHistoryPort,
+} from "../modules/collaboration/public/collaboration-history.port";
+import { buildContributionSnapshot } from "../modules/collaboration/public/contribution-snapshot.builder";
 import {
   FINANCE_PORT,
   type FinancePort,
@@ -89,6 +100,8 @@ import {
   providerLedgerTotals,
   readProviderBookingMoney,
 } from "./provider-booking-money";
+import { MarketplaceRelationsService } from "./marketplace-relations";
+import { writeAcceptedOfferAgreementInTransaction } from "./quote-offer-acceptance";
 
 type Tx = Prisma.TransactionClient;
 
@@ -157,6 +170,10 @@ export class BookingsService {
     private readonly plans?: PlanReadPort,
     @Inject(CONVERSATION_LIFECYCLE_PORT)
     private readonly lifecycle?: ConversationLifecyclePort,
+    /** Q-55: the plan's currency and the offer's category, for its agreement. */
+    private readonly relations?: MarketplaceRelationsService,
+    @Inject(COLLABORATION_HISTORY_PORT)
+    private readonly history?: CollaborationHistoryPort,
   ) {}
 
   // ── Customer ─────────────────────────────────────────────────────────
@@ -169,7 +186,16 @@ export class BookingsService {
     return runSerializableTransaction(this.prisma, async (tx) => {
       const quote = await bookings.findQuoteForBooking(tx, quoteRequestId);
       if (!quote) throw new NotFoundException("Quote request not found");
-      await this.assertCustomerAccess(tx, quote, currentUser);
+      const context = await this.assertCustomerAccess(tx, quote, currentUser);
+      // Q-65 (أ), D127: the request puts the offer's agreement in the plan's
+      // money (Q-55), so it takes the money right as well as the providers'.
+      if (context && !this.permissions.canManageMoney(context)) {
+        throw new ForbiddenException({
+          statusCode: 403,
+          code: "BOOKING_NEEDS_MONEY_RIGHT",
+          message: "طلب الحجز يضيف اتفاقه في المال، فهو عند صاحب الخطة أو اللي يدير مالها.",
+        });
+      }
       if (quote.status !== QuoteRequestStatus.ACCEPTED || !quote.offers[0]) {
         bookingError(
           "CONFLICT",
@@ -209,6 +235,11 @@ export class BookingsService {
         requestedByUserId: currentUser.id,
         note: optionalNote(dto.note),
       });
+      // Q-55 (أ), D127: asking for the booking is what puts the offer's
+      // agreement in the plan's money (choosing it wrote nothing).
+      if (context) {
+        await this.writeAgreement(tx, context, currentUser, quote.offers[0].id);
+      }
       // RA-BE-138: asked for again, the agreement is live again.
       await this.finance.markOfferBookingFellThrough(tx, quote.offers[0].id, null);
       // Q-42 (أ): a booking asked again is alive, so its chat notifies again.
@@ -822,6 +853,53 @@ export class BookingsService {
       eventDate: booking.eventDate,
       revision: booking.updatedAt.getTime(),
     };
+  }
+
+  /**
+   * Q-55 (أ): the accepted offer's agreement, written once with the first
+   * booking request; the money's history says it came in, as the
+   * acceptance's did when it wrote it.
+   */
+  private async writeAgreement(
+    tx: Tx,
+    context: PlanAccessContext,
+    currentUser: AuthenticatedUser,
+    quoteOfferId: string,
+  ) {
+    if (!this.relations) {
+      throw new Error("Bookings need the marketplace relations to write the agreement");
+    }
+    const agreement = await writeAcceptedOfferAgreementInTransaction(
+      tx,
+      this.finance,
+      this.relations,
+      {
+        quoteOfferId,
+        weddingPlanId: context.plan.id,
+        planPersona: context.plan.persona ?? null,
+        form: readerAddressForm(currentUser, context),
+      },
+    );
+    if (!agreement.created || !this.history) return;
+    const cost = agreement.cost;
+    await this.history.recordForContextInTransaction(tx, context, {
+      section: ContributionSection.MONEY,
+      entityType: ContributionEntityType.WEDDING_COST,
+      entityId: cost.id,
+      action: ContributionAction.CREATED,
+      snapshot: buildContributionSnapshot(ContributionEntityType.WEDDING_COST, {
+        title: cost.title,
+        categoryLabel: cost.budgetCategory.name,
+        currency: agreement.currency,
+        totalAmount: cost.totalAmount,
+        paidAmount: cost.paidAmount,
+        status: cost.status,
+        relevantDate: cost.createdAt,
+      }),
+      dedupeKey: `money:wedding-cost:${cost.id}:booking-requested`,
+      requiredPermission: ContributionPermission.MANAGE_MONEY,
+      occurredAt: cost.createdAt,
+    });
   }
 
   // ── Shared ───────────────────────────────────────────────────────────

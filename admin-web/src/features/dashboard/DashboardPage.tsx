@@ -1,16 +1,18 @@
 // n01 «الصندوق»: one inbox for the queues this admin can act on, each item with its
 // promise: provider applications and claims waiting for review, open
 // conversation reports and (RA-AD-27) the photos waiting for review, the
-// reported assistant answers and reviews, and the account deletions that
-// failed. The owner column, the «لي / بدون مسؤول / الكل» filters and «ضغط
+// reported assistant answers and reviews, the account deletions that
+// failed and the provider profile changes waiting. The owner column, the «لي / بدون مسؤول / الكل» filters and «ضغط
 // الفريق» are not built.
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Clock } from 'lucide-react';
 import {
   getProviderApplications,
+  getProfileChanges,
   getProviderClaims,
   sentBackAfterRefusal,
+  type ProfileChange,
   type ProviderApplication,
   type ProviderClaimRequest,
 } from '../providers/api';
@@ -83,7 +85,7 @@ type DashboardPageProps = {
   getDeletions: () => Promise<{ deletions: InboxDeletion[] }>;
 };
 
-type Kind = 'join' | 'claim' | 'report' | 'answer' | 'review' | 'photo' | 'failure';
+type Kind = 'join' | 'claim' | 'change' | 'report' | 'answer' | 'review' | 'photo' | 'failure';
 
 type InboxItem = {
   key: string;
@@ -108,6 +110,9 @@ const PROMISES: Record<
   // Not drawn in n01: a claim (B-12) is a joining by another door, so it
   // takes the joining's promise.
   claim: { label: 'استلام ملف', words: 'يومين', ms: 2 * PROMISE.DAY, tag: 'استلام', tone: 'sky' },
+  // RA-AD-27: not drawn in n01; a provider's change of his listing is
+  // reviewed as his joining was, so it takes the joining's promise.
+  change: { label: 'تعديل ملف', words: 'يومين', ms: 2 * PROMISE.DAY, tag: 'تعديل ملف', tone: 'sky' },
   // n07 draws two hours for a photo.
   photo: { label: 'صورة معرض', words: 'ساعتين', ms: 2 * PROMISE.HOUR, tag: 'صورة', tone: 'saffron' },
   // A deletion fails on the day it was due (D63), so it is late from then.
@@ -150,6 +155,18 @@ function claimItem(claim: ProviderClaimRequest): InboxItem {
     sub: `${claim.claimant?.name ?? 'حساب'} يطلب استلام الملف · ${agoWords(claim.createdAt)}`,
     start: claim.createdAt,
     to: '/providers/listed',
+  };
+}
+
+/** A provider's change of his name, logo, cover, city or category (RA-BE-152). */
+function changeItem(change: ProfileChange): InboxItem {
+  return {
+    key: `change-${change.id}`,
+    kind: 'change',
+    title: change.provider.businessName,
+    sub: `يطلب تعديل ملفه · ${agoWords(change.createdAt)}`,
+    start: change.createdAt,
+    to: '/profile-changes',
   };
 }
 
@@ -249,7 +266,7 @@ export function DashboardPage({
   const load = useCallback(async () => {
     setError(null);
     try {
-      const [joins, claims, reports, answers, photos, reviews, failures] = await Promise.all([
+      const [joins, claims, changes, reports, answers, photos, reviews, failures] = await Promise.all([
         // RA-AD-07: every page, so the most overdue are never left out.
         actsOnJoins
           ? everyPage((page, limit) => getProviderApplications({ status: 'PENDING', page, limit }))
@@ -257,6 +274,10 @@ export function DashboardPage({
         actsOnJoins
           ? everyPage((page, limit) => getProviderClaims({ status: 'PENDING', page, limit }))
           : none<ProviderClaimRequest>(),
+        // RA-AD-27: decided with PROVIDERS_WRITE, as a joining.
+        actsOnJoins
+          ? everyPage((page, limit) => getProfileChanges({ status: 'PENDING', page, limit }))
+          : none<ProfileChange>(),
         actsOnReports
           ? everyPage((page, limit) => getOpenReports({ status: 'OPEN', page, limit }))
           : none<InboxReport>(),
@@ -279,6 +300,7 @@ export function DashboardPage({
       const next = [
         ...joins.items.map(joinItem),
         ...claims.items.map(claimItem),
+        ...changes.items.map(changeItem),
         ...reports.items.map(reportItem),
         ...answers.items.map(answerItem),
         ...photos.items.map(photoItem),
@@ -293,7 +315,7 @@ export function DashboardPage({
       );
       setNow(current);
       setOpen(
-        [joins, claims, reports, answers, photos, reviews, failures].reduce(
+        [joins, claims, changes, reports, answers, photos, reviews, failures].reduce(
           (sum, queue) => sum + queue.total,
           0,
         ),
@@ -324,6 +346,7 @@ export function DashboardPage({
     review: actsOnReviews,
     join: actsOnJoins,
     claim: actsOnJoins,
+    change: actsOnJoins,
     photo: actsOnReviews,
     failure: actsOnAccounts,
   };

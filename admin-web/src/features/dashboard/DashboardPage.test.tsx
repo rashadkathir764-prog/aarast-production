@@ -5,6 +5,8 @@ import {
   getProvider,
   getProviderApplications,
   getProviderClaims,
+  getProfileChanges,
+  type ProfileChange,
   type ProviderApplication,
   type ProviderClaimRequest,
 } from '../providers/api';
@@ -18,6 +20,7 @@ vi.mock('../providers/api', async () => ({
   ).sentBackAfterRefusal,
   getProviderApplications: vi.fn(),
   getProviderClaims: vi.fn(),
+  getProfileChanges: vi.fn(),
   getProvider: vi.fn(),
 }));
 
@@ -84,6 +87,14 @@ describe('DashboardPage (n01 الصندوق)', () => {
     vi.mocked(getProviderApplications).mockReset();
     vi.mocked(getProviderClaims).mockReset();
     vi.mocked(getProviderClaims).mockResolvedValue({
+      items: [],
+      page: 1,
+      limit: 100,
+      total: 0,
+      totalPages: 1,
+    });
+    vi.mocked(getProfileChanges).mockReset();
+    vi.mocked(getProfileChanges).mockResolvedValue({
       items: [],
       page: 1,
       limit: 100,
@@ -226,6 +237,44 @@ describe('DashboardPage (n01 الصندوق)', () => {
     expect(claim).toHaveTextContent('عبدالله الحارثي يطلب استلام الملف');
     expect(claim).toHaveTextContent('استلام');
     expect(getProviderClaims).toHaveBeenCalledWith({ status: 'PENDING', page: 1, limit: 100 });
+  });
+
+  // RA-AD-27: a provider's change of his name, logo, cover, city or category
+  // waits for whom decides it, with the joining's two days.
+  it('lists the provider profile changes waiting, with the two-day promise', async () => {
+    authState.adminPermissions = [AdminPermission.PROVIDERS_WRITE];
+    vi.mocked(getProviderApplications).mockResolvedValue({
+      items: [],
+      page: 1,
+      limit: 100,
+      total: 0,
+      totalPages: 1,
+    });
+    vi.mocked(getProfileChanges).mockResolvedValue({
+      items: [
+        {
+          id: 'change-1',
+          status: 'PENDING',
+          createdAt: '2026-10-21T09:00:00.000Z',
+          provider: { id: 'provider-3', businessName: 'قاعة سبأ' },
+        } as ProfileChange,
+      ],
+      page: 1,
+      limit: 100,
+      total: 1,
+      totalPages: 1,
+    });
+
+    renderInbox();
+
+    const table = await screen.findByRole('table', { name: 'بنود الصندوق' });
+    const [row] = within(table).getAllByRole('row').slice(1);
+    expect(row).toHaveTextContent('قاعة سبأ');
+    expect(row).toHaveTextContent('يطلب تعديل ملفه');
+    expect(row).toHaveTextContent('تعديل ملف');
+    expect(row).toHaveTextContent('تعدّى بيوم');
+    expect(getProfileChanges).toHaveBeenCalledWith({ status: 'PENDING', page: 1, limit: 100 });
+    expect(screen.getByText('كل شغل اللوحة في مكان واحد · 1 مفتوح · 1 تعدّت الوقت')).toBeVisible();
   });
 
   it('lists open reports with the four-hour promise and names who reported whom', async () => {

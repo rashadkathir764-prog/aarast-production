@@ -8,6 +8,7 @@ import {
   getReviews,
 } from '../features/moderation/api';
 import { getDataRequests } from '../features/users/api';
+import { getProfileChanges } from '../features/providers/api';
 import type { AdminQueueCount } from './adminNavigation';
 
 export type QueueCounts = Partial<Record<AdminQueueCount, number>>;
@@ -16,8 +17,9 @@ export type QueueCounts = Partial<Record<AdminQueueCount, number>>;
  * The sizes the sidebar shows: pending applications and claims of a listing
  * (the dashboard stats, B-12), open reports (the chats' and the assistant
  * answers'), and the inbox, which holds the queues this admin can act on
- * (RA-AD-27: with the photos waiting, the reported reviews and the failed
- * deletions). A count the server does not give stays hidden.
+ * (RA-AD-27: with the photos waiting, the reported reviews, the failed
+ * deletions and the provider profile changes waiting, which «تعديلات
+ * الملفات» shows too). A count the server does not give stays hidden.
  */
 export function useQueueCounts(
   user: Pick<AdminUser, 'adminPermissions'> | null | undefined,
@@ -52,13 +54,17 @@ export function useQueueCounts(
     const reviews = actsOnReviews
       ? total(getReviews({ reported: 'true', page: 1, limit: 1 }))
       : nothing;
+    // RA-AD-27: a profile change is decided with PROVIDERS_WRITE.
+    const profileChanges = actsOnApplications
+      ? total(getProfileChanges({ status: 'PENDING', page: 1, limit: 1 }))
+      : Promise.resolve(undefined);
     const failures = actsOnAccounts
       ? getDataRequests()
           .then(({ deletions }) => deletions.filter((row) => row.purgeFailedAt !== null).length)
           .catch(() => undefined)
       : nothing;
-    void Promise.all([stats, chats, answers, photos, reviews, failures]).then(
-      ([read, chatReports, answerReports, photoCount, reviewCount, failureCount]) => {
+    void Promise.all([stats, chats, answers, photos, reviews, failures, profileChanges]).then(
+      ([read, chatReports, answerReports, photoCount, reviewCount, failureCount, changeCount]) => {
         if (!alive) return;
         const applications = read?.pendingProviders;
         const claims = read?.pendingClaims;
@@ -70,6 +76,7 @@ export function useQueueCounts(
         const inboxParts = [
           actsOnApplications ? applications : 0,
           actsOnApplications ? claims : 0,
+          actsOnApplications ? changeCount : 0,
           actsOnReports ? chatReports : 0,
           actsOnReports ? answerReports : 0,
           photoCount,
@@ -79,7 +86,7 @@ export function useQueueCounts(
         const inbox = inboxParts.some((part) => part === undefined)
           ? undefined
           : inboxParts.reduce<number>((sum, part) => sum + (part ?? 0), 0);
-        setCounts({ applications, claims, reports, inbox });
+        setCounts({ applications, claims, profileChanges: changeCount, reports, inbox });
       },
     );
     return () => {

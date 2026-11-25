@@ -20,7 +20,7 @@ import {
 import { AdminPermission } from '../features/auth/api';
 
 /** A queue whose size the sidebar shows beside its link. */
-export type AdminQueueCount = 'inbox' | 'applications' | 'claims' | 'reports';
+export type AdminQueueCount = 'inbox' | 'applications' | 'claims' | 'profileChanges' | 'reports';
 
 export type AdminNavigationItem = {
   route: string;
@@ -151,6 +151,8 @@ export const adminNavigationGroups: AdminNavigationGroup[] = [
         permission: AdminPermission.PROVIDERS_READ,
         icon: FilePen,
         isActive: nestedRoute('/profile-changes'),
+        // RA-AD-27: the changes waiting for whom decides them.
+        count: 'profileChanges',
       },
       {
         route: '/services',

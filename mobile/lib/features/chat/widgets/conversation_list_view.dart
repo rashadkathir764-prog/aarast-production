@@ -203,6 +203,9 @@ class _ConversationRow extends StatelessWidget {
     final unread = conversation.unreadMessageCount;
     final service = conversation.latestQuoteRequest?.service?.title.trim();
     final name = conversation.counterpartName;
+    // RA-BE-139: a helper's own thread with the same provider says whose
+    // request it is, so the owner tells it from his own.
+    final through = conversation.throughHelper?.label;
     final last = !conversation.providerJoined
         ? 'المزود ما دخل المحادثة بعد'
         : conversation.lastMessage?.body.trim().isNotEmpty == true
@@ -214,6 +217,7 @@ class _ConversationRow extends StatelessWidget {
       onTap: onTap,
       semanticLabel: [
         name,
+        ?through,
         last,
         if (unread > 0) '$unread غير مقروءة',
       ].join('، '),
@@ -240,6 +244,16 @@ class _ConversationRow extends StatelessWidget {
                       weight: JourneyType.bold,
                     ),
                   ),
+                  if (through != null)
+                    Text(
+                      through,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: JourneyType.of(
+                        JourneyType.caption,
+                        color: AarastV3Color.textMuted,
+                      ),
+                    ),
                   Text(
                     last,
                     maxLines: 1,

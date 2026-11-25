@@ -334,6 +334,23 @@ class ChatTimelineItem {
   };
 }
 
+/// RA-BE-139: whose request a helper's own thread with the provider is, as
+/// the plan's other readers see it. A null name is a member whose account
+/// was erased (RA-BE-178).
+class ChatThroughHelper {
+  const ChatThroughHelper({this.name});
+
+  factory ChatThroughHelper.fromJson(Map<String, dynamic> json) =>
+      ChatThroughHelper(name: json['name']?.toString());
+
+  final String? name;
+
+  String get label {
+    final shown = name?.trim();
+    return 'عن طريق ${shown == null || shown.isEmpty ? 'عضو سابق' : shown}';
+  }
+}
+
 class ChatConversation {
   const ChatConversation({
     required this.id,
@@ -352,6 +369,7 @@ class ChatConversation {
     this.weddingPlan,
     this.latestQuoteRequest,
     this.counterpart,
+    this.throughHelper,
     this.lastMessage,
     this.blockedByMe = false,
     this.blockedByCounterpart = false,
@@ -368,6 +386,7 @@ class ChatConversation {
             _map(json['provider'], ChatProviderSummary.fromJson) ??
             const ChatProviderSummary(id: '', businessName: 'مزود'),
         counterpart: _map(json['counterpart'], ChatUser.fromJson),
+        throughHelper: _map(json['throughHelper'], ChatThroughHelper.fromJson),
         quoteRequestCount: _int(json['quoteRequestCount']),
         latestQuoteRequest: _map(
           json['latestQuoteRequest'],
@@ -398,6 +417,9 @@ class ChatConversation {
   final ChatWeddingPlan? weddingPlan;
   final ChatProviderSummary provider;
   final ChatUser? counterpart;
+
+  /// RA-BE-139: set on a helper's own thread for everyone but him.
+  final ChatThroughHelper? throughHelper;
   final int quoteRequestCount;
   final ChatQuoteRequestSummary? latestQuoteRequest;
   final ChatMessage? lastMessage;
@@ -446,6 +468,7 @@ class ChatConversation {
     weddingPlan: weddingPlan,
     provider: provider,
     counterpart: counterpart,
+    throughHelper: throughHelper,
     quoteRequestCount: quoteRequestCount,
     latestQuoteRequest: latestQuoteRequest,
     lastMessage: lastMessage ?? this.lastMessage,

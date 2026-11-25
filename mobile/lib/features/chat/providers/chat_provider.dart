@@ -8,6 +8,7 @@ import '../../../core/diagnostics/app_logger.dart' show appDebugNote;
 import '../../../core/media/media_upload_api.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/offline/cached_first_load.dart';
+import '../../../core/push/open_conversation.dart';
 import '../../../core/session/session_scoped_change_notifier.dart';
 import '../../../core/storage/auth_storage.dart';
 import '../../../core/utils/app_clock.dart';
@@ -24,10 +25,12 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
     String? sessionUserId,
     ChatOutbox? outbox,
     DateTime Function()? now,
+    OpenConversationRegistry? openConversations,
   }) : _api = api,
        _now = now ?? appNow,
        _realtime = realtime,
        _outbox = outbox,
+       _openConversations = openConversations,
        _sessionUserId = sessionUserId ?? authStorage.readUser()?.id {
     _realtime.onReconnected = _catchUp;
   }
@@ -36,6 +39,10 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
   final ChatRealtimeClient _realtime;
   final ChatOutbox? _outbox;
   final DateTime Function() _now;
+
+  /// The app's record of the conversation on the screen, so a push for a
+  /// message in it is not also shown as a phone notification.
+  final OpenConversationRegistry? _openConversations;
   bool _flushing = false;
 
   /// RA-MO-347 (G38): a conversation whose waiting messages met a transient
@@ -96,6 +103,8 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
     _sessionUserId = userId;
     _realtime.reset();
     _realtimeStarted = false;
+    final active = _activeConversationId;
+    if (active != null) _openConversations?.closed(active);
     _activeConversationId = null;
     _isLoading = false;
     _isSending = false;
@@ -240,6 +249,7 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
   /// the server's answer replaces it, and the requests beside it follow.
   Future<void> openConversation(String conversationId) async {
     _activeConversationId = conversationId;
+    _openConversations?.opened(conversationId);
     _startRealtime();
     _conversationLoadErrors.remove(conversationId);
     await readCachedFirst<ChatTimelinePage>(
@@ -295,6 +305,7 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
     if (_activeConversationId == conversationId) {
       _activeConversationId = null;
     }
+    _openConversations?.closed(conversationId);
   }
 
   Future<void> loadOlder(String conversationId) async {
@@ -883,6 +894,8 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
 
   @override
   void dispose() {
+    final active = _activeConversationId;
+    if (active != null) _openConversations?.closed(active);
     if (_realtime.onReconnected == _catchUp) _realtime.onReconnected = null;
     _realtime.reset();
     super.dispose();

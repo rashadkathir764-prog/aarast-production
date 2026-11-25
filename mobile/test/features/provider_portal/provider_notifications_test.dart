@@ -56,6 +56,23 @@ class _NoticesApi extends NotificationsApi {
   final List<AarastNotification> items;
   final read = <String>[];
 
+  /// Notices past the first page: the server has them, the list does not.
+  final Map<String, AarastNotification> older = {};
+  final opened = <String>[];
+
+  @override
+  Future<AarastNotification> getNotification(String id) async {
+    final notice =
+        items.where((item) => item.id == id).firstOrNull ?? older[id];
+    if (notice == null) {
+      throw const ApiException('غير موجود', statusCode: 404);
+    }
+    return notice;
+  }
+
+  @override
+  Future<void> markOpened(String id) async => opened.add(id);
+
   @override
   Future<NotificationsPage> getNotifications({
     String? weddingPlanId,
@@ -117,11 +134,15 @@ Future<_NoticesApi> _pump(
   WidgetTester tester,
   List<AarastNotification> items, {
   String? openId,
+  List<AarastNotification> older = const [],
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = const Size(420, 1200);
   addTearDown(tester.view.reset);
   final api = _NoticesApi(items);
+  for (final notice in older) {
+    api.older[notice.id] = notice;
+  }
   final notices = NotificationsProvider(api);
   final dashboard = ProviderDashboardProvider(_requests());
   await dashboard.loadDashboard();
@@ -153,6 +174,12 @@ Future<_NoticesApi> _pump(
         path: appRoute('/provider/dashboard'),
         builder: (_, state) => Scaffold(
           body: Text('البوابة ${state.uri.queryParameters['tab'] ?? ''}'),
+        ),
+      ),
+      GoRoute(
+        path: appRoute('/notifications'),
+        builder: (_, state) => Scaffold(
+          body: Text('صندوق الحساب ${state.uri.queryParameters['open']}'),
         ),
       ),
     ],
@@ -259,7 +286,7 @@ void main() {
     expect(find.text('طلب quote-3'), findsOne);
   });
 
-  testWidgets('a push tap for a notice not in his list stays on the inbox', (
+  testWidgets('a push tap for a notice gone says so, on his inbox', (
     tester,
   ) async {
     final api = await _pump(tester, [
@@ -267,6 +294,40 @@ void main() {
     ], openId: 'gone');
     expect(api.read, isEmpty);
     expect(find.byKey(const Key('provider-notice-n2')), findsOne);
+    expect(find.text('لم يعد هذا متاحًا'), findsOne);
+    await tester.pump(const Duration(seconds: 5));
+  });
+
+  // The notice was looked for in his first page alone.
+  testWidgets('a push tap for a notice past his first page opens it, and '
+      'the server hears it was opened', (tester) async {
+    final api = await _pump(
+      tester,
+      [_notice('n2', 'BOOKING_REQUESTED', quoteId: 'quote-2')],
+      openId: 'n-old',
+      older: [_notice('n-old', 'BOOKING_REQUESTED', quoteId: 'quote-3')],
+    );
+    expect(find.text('طلب quote-3'), findsOne);
+    expect(api.opened, ['n-old']);
+  });
+
+  testWidgets('a push tap for a notice of his plan, not his portal, opens '
+      'the account\'s inbox on it', (tester) async {
+    await _pump(
+      tester,
+      const [],
+      openId: 'n-plan',
+      older: [
+        _notice(
+          'n-plan',
+          'TASK_ASSIGNED',
+          quoteId: null,
+          audience: null,
+          routeTarget: '/wedding-plans/plan-1/tasks',
+        ),
+      ],
+    );
+    expect(find.text('صندوق الحساب n-plan'), findsOne);
   });
 
   testWidgets('a message opens its chat', (tester) async {

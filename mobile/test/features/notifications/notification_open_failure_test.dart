@@ -57,9 +57,35 @@ void main() {
 
     expect(find.text('opened tasks'), findsOneWidget);
     expect(api.markReadCalls, 1);
+    // The server hears the push was opened (and marks it read itself).
+    expect(api.opened, ['n1']);
   });
 
-  testWidgets('a push tap for a notice not in the list stays on the inbox', (
+  // The notice was looked for in the first page alone: an older one, or one
+  // pushed out by twenty newer, opened nothing.
+  testWidgets('a push tap for a notice past the first page opens it', (
+    tester,
+  ) async {
+    final api = _Api(failWrites: true);
+    final at = DateTime.utc(2026, 1, 1);
+    api.older['n-old'] = AarastNotification(
+      id: 'n-old',
+      userId: 'u1',
+      weddingPlanId: _planId,
+      type: 'TASK_ASSIGNED_TEST',
+      title: 'مهمة قديمة',
+      body: 'رتّب القاعة',
+      routeTarget: '/wedding-plans/$_planId/tasks',
+      createdAt: at,
+      updatedAt: at,
+    );
+    await _pump(tester, api, openId: 'n-old');
+
+    expect(find.text('opened tasks'), findsOneWidget);
+    expect(api.opened, ['n-old']);
+  });
+
+  testWidgets('a push tap for a notice gone says so, on the inbox', (
     tester,
   ) async {
     final api = _Api(failWrites: true);
@@ -67,7 +93,28 @@ void main() {
 
     expect(find.text('opened tasks'), findsNothing);
     expect(find.text('محمد عطاك مهمة'), findsOneWidget);
+    expect(find.text('لم يعد هذا متاحًا'), findsOneWidget);
     expect(api.markReadCalls, 0);
+    await tester.pump(const Duration(seconds: 5));
+  });
+
+  testWidgets('offline, a push tap opens the phone\'s copy of its notice', (
+    tester,
+  ) async {
+    final api = _Api(failWrites: true)..unreachable = true;
+    await _pump(tester, api, openId: 'n1');
+
+    expect(find.text('opened tasks'), findsOneWidget);
+  });
+
+  testWidgets('offline with no copy of it, the inbox says why it did not '
+      'open', (tester) async {
+    final api = _Api(failWrites: true)..unreachable = true;
+    await _pump(tester, api, openId: 'n-elsewhere');
+
+    expect(find.text('opened tasks'), findsNothing);
+    expect(find.textContaining('لا اتصال بالشبكة'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 5));
   });
 
   testWidgets('a push tap whose target the guards refuse stays on the inbox', (
@@ -354,6 +401,31 @@ class _Api extends NotificationsApi {
       hasMore: false,
     );
   }
+
+  /// Notices past the first page: the server has them, the list does not.
+  final Map<String, AarastNotification> older = {};
+
+  /// The server is out of reach for the notice asked by its id.
+  bool unreachable = false;
+  final List<String> opened = [];
+
+  @override
+  Future<AarastNotification> getNotification(String id) async {
+    if (unreachable) {
+      throw const ApiException('ما وصلنا', isNetworkFailure: true);
+    }
+    final listed = (await getNotifications()).items
+        .where((item) => item.id == id)
+        .firstOrNull;
+    final notice = listed ?? older[id];
+    if (notice == null) {
+      throw const ApiException('غير موجود', statusCode: 404);
+    }
+    return notice;
+  }
+
+  @override
+  Future<void> markOpened(String id) async => opened.add(id);
 
   @override
   Future<int> getUnreadCount({String? weddingPlanId}) async => 1;

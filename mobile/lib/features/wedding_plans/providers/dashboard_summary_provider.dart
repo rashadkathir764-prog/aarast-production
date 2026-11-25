@@ -15,14 +15,20 @@ class DashboardSummaryProvider extends ChangeNotifier
   DashboardSummaryProvider({
     required this.weddingPlansApi,
     Stream<String>? acceptedWrites,
+    Stream<void>? noticeArrivals,
     Duration writeSettle = const Duration(milliseconds: 400),
   }) : _writeSettle = writeSettle {
     _writes = acceptedWrites?.listen(_onAcceptedWrite);
+    _notices = noticeArrivals?.listen((_) => _readAgainSoon());
   }
 
   final WeddingPlansApi weddingPlansApi;
   final Duration _writeSettle;
   StreamSubscription<String>? _writes;
+
+  /// A new notice reached the account (a push in front, the live socket):
+  /// the bell's count is the summary's, so the summary is read again.
+  StreamSubscription<void>? _notices;
   Timer? _readAgain;
 
   bool _isLoading = false;
@@ -39,8 +45,6 @@ class DashboardSummaryProvider extends ChangeNotifier
   /// The home is a projection of the plan: a write anywhere reads it again,
   /// once for a burst of writes.
   void _onAcceptedWrite(String path) {
-    final planId = _summary?.planId;
-    if (planId == null || !_summary!.accountBacked) return;
     const outsideThePlan = [
       '/auth/',
       '/notifications',
@@ -49,6 +53,12 @@ class DashboardSummaryProvider extends ChangeNotifier
       '/media',
     ];
     if (outsideThePlan.any(path.contains)) return;
+    _readAgainSoon();
+  }
+
+  void _readAgainSoon() {
+    final planId = _summary?.planId;
+    if (planId == null || !_summary!.accountBacked) return;
     _readAgain?.cancel();
     _readAgain = Timer(_writeSettle, () => loadDashboard(planId));
   }
@@ -57,6 +67,7 @@ class DashboardSummaryProvider extends ChangeNotifier
   void dispose() {
     _readAgain?.cancel();
     _writes?.cancel();
+    _notices?.cancel();
     super.dispose();
   }
 

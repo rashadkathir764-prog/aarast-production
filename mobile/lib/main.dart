@@ -26,9 +26,12 @@ import 'core/offline/pending_plan_cleanup.dart';
 import 'core/offline/side_outboxes.dart';
 import 'core/preferences/device_preferences.dart';
 import 'core/media/aarast_image_disk_cache.dart';
+import 'core/push/notice_arrivals.dart';
+import 'core/push/open_conversation.dart';
 import 'core/push/push_messaging_gateway.dart';
 import 'core/push/push_notifications_controller.dart';
 import 'core/push/push_registration_api.dart';
+import 'core/push/push_system_notifications.dart';
 import 'core/security/app_lock_controller.dart';
 import 'core/session/session_boundary.dart';
 import 'core/session/session_scoped_change_notifier.dart';
@@ -239,10 +242,20 @@ Future<void> _bootstrapApplication(ObservabilityConfig observability) async {
   WidgetsBinding.instance.addObserver(offlineSyncService);
   await offlineSyncService.refreshStatus();
   final authRepository = AuthRepository(apiClient, authStorage);
+  // A new notice for the account while the app is open (a push in front,
+  // the live socket, the server back): the inbox and the bell read again.
+  final noticeArrivals = NoticeArrivals();
+  // The conversation on the screen: its messages are not shown again as
+  // phone notifications.
+  final openConversations = OpenConversationRegistry();
   final pushNotificationsController = PushNotificationsController(
     preferences: preferences,
     gateway: pushGateway,
     registrationApi: PushRegistrationApi(apiClient),
+    systemNotifications: LocalPushSystemNotifications(),
+    openConversations: openConversations,
+    noticeArrivals: noticeArrivals,
+    reachability: serverReachability,
   );
   // RA-MO-101: «الخروج» names these waiting writes with the rest.
   SideOutboxes.register(() => ChatOutbox.countAll(preferences));
@@ -325,7 +338,10 @@ Future<void> _bootstrapApplication(ObservabilityConfig observability) async {
   );
   final mediaUploadApi = MediaUploadApi(apiClient);
   final chatApi = ChatApi(apiClient, offline: offlineSyncService);
-  final chatRealtimeClient = ChatRealtimeClient(authStorage);
+  final chatRealtimeClient = ChatRealtimeClient(
+    authStorage,
+    onNotificationAvailable: noticeArrivals.announce,
+  );
   // RA-MO-365: the chat's socket closes in the background, opens on return.
   WidgetsBinding.instance.addObserver(chatRealtimeClient);
   final notificationsApi = NotificationsApi(
@@ -424,6 +440,8 @@ Future<void> _bootstrapApplication(ObservabilityConfig observability) async {
         chatOutbox: ChatOutbox(preferences),
         chatApi: chatApi,
         chatRealtimeClient: chatRealtimeClient,
+        noticeArrivals: noticeArrivals,
+        openConversations: openConversations,
         notificationsApi: notificationsApi,
         guestsApi: guestsApi,
         settingsApi: settingsApi,
@@ -523,6 +541,8 @@ class _AarastSessionProviders extends StatelessWidget {
     required this.notificationsApi,
     required this.guestsApi,
     required this.settingsApi,
+    required this.noticeArrivals,
+    required this.openConversations,
   });
 
   final ApiClient apiClient;
@@ -548,6 +568,8 @@ class _AarastSessionProviders extends StatelessWidget {
   final NotificationsApi notificationsApi;
   final GuestsApi guestsApi;
   final SettingsApi settingsApi;
+  final NoticeArrivals noticeArrivals;
+  final OpenConversationRegistry openConversations;
 
   @override
   Widget build(BuildContext context) {
@@ -558,6 +580,16 @@ class _AarastSessionProviders extends StatelessWidget {
       identity: 'account:${sessionUserId ?? 'guest'}',
       builder: (_) => MultiProvider(
         providers: [
+          // The signed-in account hears of its new notices on the live
+          // socket while this session lasts (one socket with the chat's).
+          Provider<_AccountNoticeListening>(
+            lazy: false,
+            create: (_) => _AccountNoticeListening(
+              chatRealtimeClient,
+              signedIn: sessionUserId != null,
+            ),
+            dispose: (_, listening) => listening.end(),
+          ),
           ChangeNotifierProvider(
             create: (_) => WeddingPlansProvider(weddingPlansApi),
           ),
@@ -612,6 +644,7 @@ class _AarastSessionProviders extends StatelessWidget {
                 authStorage: authStorage,
                 sessionUserId: sessionUserId,
                 outbox: chatOutbox,
+                openConversations: openConversations,
               ),
               _unselectedPlanScope,
             ),
@@ -624,6 +657,7 @@ class _AarastSessionProviders extends StatelessWidget {
                 authStorage: authStorage,
                 sessionUserId: sessionUserId,
                 outbox: chatOutbox,
+                openConversations: openConversations,
               ),
             ),
           ),
@@ -635,6 +669,7 @@ class _AarastSessionProviders extends StatelessWidget {
               DashboardSummaryProvider(
                 weddingPlansApi: weddingPlansApi,
                 acceptedWrites: apiClient.acceptedWrites,
+                noticeArrivals: noticeArrivals.stream,
               ),
               _unselectedPlanScope,
             ),
@@ -644,6 +679,7 @@ class _AarastSessionProviders extends StatelessWidget {
               () => DashboardSummaryProvider(
                 weddingPlansApi: weddingPlansApi,
                 acceptedWrites: apiClient.acceptedWrites,
+                noticeArrivals: noticeArrivals.stream,
               ),
             ),
           ),
@@ -768,13 +804,19 @@ class _AarastSessionProviders extends StatelessWidget {
             NotificationsProvider
           >(
             create: (_) => _bindPlanScope(
-              NotificationsProvider(notificationsApi),
+              NotificationsProvider(
+                notificationsApi,
+                arrivals: noticeArrivals.stream,
+              ),
               _unselectedPlanScope,
             ),
             update: (_, accountContexts, current) => _forPlanScope(
               current,
               _planScope(accountContexts),
-              () => NotificationsProvider(notificationsApi),
+              () => NotificationsProvider(
+                notificationsApi,
+                arrivals: noticeArrivals.stream,
+              ),
             ),
           ),
           ChangeNotifierProxyProvider<AccountContextController, GuestsProvider>(
@@ -895,4 +937,19 @@ T _forPlanScope<T extends ChangeNotifier>(
     return current;
   }
   return _bindPlanScope(create(), identity);
+}
+
+/// One account session's listening for its new notices on the live socket
+/// (`notification:available`); a guest session listens to nothing.
+class _AccountNoticeListening {
+  _AccountNoticeListening(this._realtime, {required bool signedIn})
+    : _listening = signedIn ? _realtime.openForNotices() : null;
+
+  final ChatRealtimeClient _realtime;
+  final Object? _listening;
+
+  void end() {
+    final listening = _listening;
+    if (listening != null) _realtime.closeForNotices(listening);
+  }
 }

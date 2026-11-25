@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:aarast_mobile/app.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
+import 'package:aarast_mobile/core/push/push_lifecycle_bridge.dart';
+import 'package:aarast_mobile/core/push/push_notifications_controller.dart';
 import 'package:aarast_mobile/core/session/session_boundary.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
@@ -29,6 +31,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../account_contexts/account_context_test_data.dart';
 import '../../support/app_route_table.dart';
 import '../../support/app_text_scale.dart';
+import '../../support/plugin_like_push_gateway.dart';
 
 String _testInviteToken() => List.filled(43, 'a').join();
 
@@ -792,6 +795,63 @@ void main() {
     },
   );
 
+  // RA-MO-360 for a participant: no moment ever came to them, so the
+  // phone was never asked and the tasks given to them never reached it.
+  testWidgets('a plan joined says on its home what the alerts are for, and '
+      '«اسمح» asks the phone', (tester) async {
+    final harness = await _authHarness();
+    harness.repository.authenticateOnVerify = true;
+    expect(
+      await harness.controller.verifyOtp(
+        phone: '777123456',
+        purpose: 'LOGIN',
+        code: '123456',
+      ),
+      isTrue,
+    );
+    final (push, gateway) = (await tester.runAsync(() async {
+      final gateway = PluginLikePushGateway();
+      final push = PushNotificationsController(
+        preferences: await SharedPreferences.getInstance(),
+        gateway: gateway,
+        registrationApi: RecordingPushRegistry(),
+      );
+      await push.initialize();
+      await push.bindAuthenticatedUser(harness.controller.user?.id);
+      return (push, gateway);
+    }))!;
+    addTearDown(push.dispose);
+    final sharingApi = _FakeSharingApi(
+      invites: [_invite(id: 'invite-42', token: '')],
+      currentUserId: () => harness.controller.user?.id,
+    );
+    await _pumpLinkedInviteScreen(
+      tester,
+      harness,
+      token: 'invite-42',
+      sharingApi: sharingApi,
+      push: push,
+    );
+
+    await _tapVisible(tester, find.byKey(const Key('invite-accept-button')));
+    await tester.pumpAndSettle();
+    // The phone's answer about notifications comes off the frame.
+    for (var i = 0; i < 5; i++) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 10)),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    expect(find.byKey(const Key('participant-home')), findsOneWidget);
+    expect(find.byKey(const ValueKey('push-permission-sheet')), findsOne);
+    expect(find.text('نخبرك بما يخصّك'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('push-permission-allow')));
+    await tester.pumpAndSettle();
+    expect(gateway.permissionRequests, 1);
+  });
+
   testWidgets(
     'J2-02: a signed-in invitee opens an in-app invite notice by its id',
     (tester) async {
@@ -1121,6 +1181,7 @@ Future<GoRouter> _pumpLinkedInviteScreen(
   _AuthHarness harness, {
   required String token,
   required SharingApi sharingApi,
+  PushNotificationsController? push,
 }) async {
   final sharing = SharingProvider(sharingApi);
   final accountContexts = await _accountContexts();
@@ -1163,8 +1224,23 @@ Future<GoRouter> _pumpLinkedInviteScreen(
         ChangeNotifierProvider<AccountContextController>.value(
           value: accountContexts,
         ),
+        if (push != null)
+          ChangeNotifierProvider<PushNotificationsController>.value(
+            value: push,
+          ),
       ],
-      child: MaterialApp.router(theme: AppTheme.light(), routerConfig: router),
+      child: MaterialApp.router(
+        theme: AppTheme.light(),
+        routerConfig: router,
+        // As in the app: the bridge stands above every shell.
+        builder: push == null
+            ? null
+            : (context, child) => AarastPushLifecycleBridge(
+                router: router,
+                authenticatedUserId: harness.controller.user?.id,
+                child: child!,
+              ),
+      ),
     ),
   );
   await tester.pumpAndSettle();

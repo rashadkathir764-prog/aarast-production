@@ -377,6 +377,9 @@ class _UnavailablePushGateway implements PushMessagingGateway {
   Future<PushNotificationTap?> consumeInitialNotificationTap() async => null;
 
   @override
+  Future<int?> androidSdkInt() async => null;
+
+  @override
   Future<String> ensureRegistrationAndGetInstallationId() async => '';
 
   @override

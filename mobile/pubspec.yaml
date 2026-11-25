@@ -49,6 +49,10 @@ dependencies:
   firebase_core: ^4.12.1
   firebase_messaging: ^16.4.3
   firebase_app_installations: ^0.4.2+6
+  # A push that arrives while the app is open is shown as the phone's own
+  # notification (FCM shows none then). Pinned exactly: 22.3.3 is the last
+  # line that builds on this Flutter (23.x needs Flutter 3.44).
+  flutter_local_notifications: 22.3.3
   sentry_flutter: 9.25.0
   url_launcher: ^6.3.3
 

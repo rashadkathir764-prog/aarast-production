@@ -130,6 +130,9 @@ class _Gateway implements PushMessagingGateway {
 
   @override
   Future<PushNotificationTap?> consumeInitialNotificationTap() async => null;
+
+  @override
+  Future<int?> androidSdkInt() async => 33;
 }
 
 class _Registry implements PushInstallationRegistry {

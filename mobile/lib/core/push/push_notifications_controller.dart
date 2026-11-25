@@ -5,12 +5,32 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../diagnostics/app_logger.dart';
+import '../network/server_reachability.dart';
 import '../session/session_teardown_coordinator.dart';
+import 'notice_arrivals.dart';
+import 'open_conversation.dart';
 import 'push_messaging_gateway.dart';
 import 'push_registration_api.dart';
+import 'push_system_notifications.dart';
 
 const pushPermissionRequestedPreferenceKey =
     'aarast.push.permission_requested.v1';
+
+/// Android 13 (API 33): from it on the app asks for notifications itself.
+const _askedNotificationsFromSdk = 33;
+
+/// Why the phone's question is asked now: the explanation before it says
+/// what the alerts are for, as the reader's role needs.
+enum PushPermissionReason {
+  /// A plan made or a reminder set: dates, payments, the providers' answers.
+  plan,
+
+  /// A provider's application sent: the team's decision and new requests.
+  provider,
+
+  /// A plan joined from an invitation: the tasks given to the reader.
+  participant,
+}
 
 class PushNotificationsController extends ChangeNotifier
     implements SessionPushTeardownPort {
@@ -18,13 +38,30 @@ class PushNotificationsController extends ChangeNotifier
     required SharedPreferences preferences,
     required PushMessagingGateway gateway,
     required PushInstallationRegistry registrationApi,
+    PushSystemNotifications systemNotifications =
+        const NoPushSystemNotifications(),
+    OpenConversationRegistry? openConversations,
+    NoticeArrivals? noticeArrivals,
+    ServerReachability? reachability,
   }) : _preferences = preferences,
        _gateway = gateway,
-       _registrationApi = registrationApi;
+       _registrationApi = registrationApi,
+       _system = systemNotifications,
+       _openConversations = openConversations,
+       _noticeArrivals = noticeArrivals,
+       _reachability = reachability,
+       _wasReachable = reachability?.reachable ?? true {
+    reachability?.addListener(_onReachabilityChanged);
+  }
 
   final SharedPreferences _preferences;
   final PushMessagingGateway _gateway;
   final PushInstallationRegistry _registrationApi;
+  final PushSystemNotifications _system;
+  final OpenConversationRegistry? _openConversations;
+  final NoticeArrivals? _noticeArrivals;
+  final ServerReachability? _reachability;
+  bool _wasReachable;
 
   final List<StreamSubscription<void>> _subscriptions = [];
   Future<void> _deviceOperation = Future<void>.value();
@@ -114,9 +151,14 @@ class PushNotificationsController extends ChangeNotifier
           }),
         )
         ..add(_gateway.notificationTaps.listen(_markNotificationsOpenPending))
-        ..add(_gateway.foregroundNotifications.listen(_foreground.add));
+        ..add(_gateway.foregroundNotifications.listen(_onForegroundPush))
+        ..add(_system.taps.listen(_markNotificationsOpenPending));
       final initialTap = await _gateway.consumeInitialNotificationTap();
       if (initialTap != null) _markNotificationsOpenPending(initialTap);
+      // A notification shown while the app was open, tapped after it closed.
+      await _system.initialize();
+      final launchTap = await _system.consumeLaunchTap();
+      if (launchTap != null) _markNotificationsOpenPending(launchTap);
     } on PushUnavailableOnThisPhone {
       _initialized = false;
       _noGoogleServices = true;
@@ -170,8 +212,66 @@ class PushNotificationsController extends ChangeNotifier
 
   Future<void> refreshCurrentRegistration() => _queueCurrentRegistration();
 
+  /// The phone's notification permission as the person set it. From
+  /// Android 13 the plugin says «denied» before the app ever asked (it knows
+  /// only granted or not): never asked by this app, that «denied» is a
+  /// question still to ask. Below 13 notifications are on unless the person
+  /// turned them off, so «denied» there is theirs.
+  Future<PushAuthorizationStatus> _authorization() async {
+    final status = await _gateway.authorizationStatus();
+    if (status != PushAuthorizationStatus.denied ||
+        _preferences.getBool(pushPermissionRequestedPreferenceKey) == true) {
+      return status;
+    }
+    final sdk = await (_sdkInt ??= _gateway.androidSdkInt().then(
+      (value) => value,
+      onError: (Object _) => null,
+    ));
+    return sdk != null && sdk >= _askedNotificationsFromSdk
+        ? PushAuthorizationStatus.notDetermined
+        : status;
+  }
+
+  /// The phone's Android version, asked once.
+  Future<int?>? _sdkInt;
+
+  /// A push that arrived while the app is in front. The inbox and the bell
+  /// read their count again; the phone's own notification says it, unless
+  /// the reader has its conversation open (the message is on the screen).
+  /// A phone that will not show it (notifications off) gets the in-app line.
+  Future<void> _onForegroundPush(PushForegroundNotification push) async {
+    _noticeArrivals?.announce();
+    final conversation = push.conversationId;
+    if (conversation != null &&
+        _openConversations?.isOpen(conversation) == true) {
+      return;
+    }
+    var shown = false;
+    try {
+      shown =
+          await _authorization() == PushAuthorizationStatus.authorized &&
+          await _system.show(push);
+    } on Object {
+      shown = false;
+    }
+    if (!shown && !_foreground.isClosed) _foreground.add(push);
+  }
+
+  /// RA-MO-343's «the server answers again» seen from push: what the phone
+  /// missed meanwhile is read again (the count), and the registration that
+  /// may have failed without a network is made again.
+  void _onReachabilityChanged() {
+    final reachable = _reachability?.reachable ?? true;
+    final cameBack = reachable && !_wasReachable;
+    _wasReachable = reachable;
+    if (!cameBack) return;
+    unawaited(_queueCurrentRegistration());
+    _noticeArrivals?.announce();
+  }
+
   bool _explanationPending = false;
   bool _explainedThisSession = false;
+  PushPermissionReason _explanationReason = PushPermissionReason.plan;
 
   /// RA-MO-360: the phone's «اسمح بالإشعارات» question waits for a reason: a
   /// reminder set, or the first plan made. At that moment ([permissionMomentReached])
@@ -180,10 +280,15 @@ class PushNotificationsController extends ChangeNotifier
   /// the line waits to be shown.
   bool get hasPendingPermissionExplanation => _explanationPending;
 
+  /// What the waiting explanation is for.
+  PushPermissionReason get permissionExplanationReason => _explanationReason;
+
   /// A moment that gives the question a reason. It explains only where the
   /// phone would still ask (an account, push working here, never asked,
   /// notifications neither on nor turned off), and once a session.
-  Future<void> permissionMomentReached() async {
+  Future<void> permissionMomentReached({
+    PushPermissionReason reason = PushPermissionReason.plan,
+  }) async {
     await _initializing;
     if (_explainedThisSession ||
         _explanationPending ||
@@ -194,7 +299,7 @@ class PushNotificationsController extends ChangeNotifier
     }
     final PushAuthorizationStatus status;
     try {
-      status = await _gateway.authorizationStatus();
+      status = await _authorization();
     } on Object {
       return;
     }
@@ -203,6 +308,7 @@ class PushNotificationsController extends ChangeNotifier
         _explainedThisSession) {
       return;
     }
+    _explanationReason = reason;
     _explanationPending = true;
     notifyListeners();
   }
@@ -223,8 +329,7 @@ class PushNotificationsController extends ChangeNotifier
     await _initializing;
     if (!isAvailable) return false;
     try {
-      return await _gateway.authorizationStatus() ==
-          PushAuthorizationStatus.denied;
+      return await _authorization() == PushAuthorizationStatus.denied;
     } on Object {
       return false;
     }
@@ -249,6 +354,8 @@ class PushNotificationsController extends ChangeNotifier
     final normalized = userId?.trim();
     final nextUserId = normalized?.isNotEmpty == true ? normalized : null;
     if (_boundUserId == nextUserId) return Future<void>.value();
+    // The notifications in the tray were the other account's.
+    if (_boundUserId != null) unawaited(_system.cancelAll());
     _boundUserId = nextUserId;
     _registeredFid = null;
     ++_bindingGeneration;
@@ -305,6 +412,8 @@ class PushNotificationsController extends ChangeNotifier
     );
     _registeredFid = null;
     _boundUserId = null;
+    // The account's notices leave the phone with it, the tray's too.
+    unawaited(_system.cancelAll());
     return lease;
   }
 
@@ -401,7 +510,7 @@ class PushNotificationsController extends ChangeNotifier
       return;
     }
     try {
-      final permission = await _gateway.authorizationStatus();
+      final permission = await _authorization();
       if (permission != PushAuthorizationStatus.authorized ||
           !_isCurrentBinding(operation, userId, cancelToken)) {
         return;
@@ -485,6 +594,7 @@ class PushNotificationsController extends ChangeNotifier
 
   @override
   void dispose() {
+    _reachability?.removeListener(_onReachabilityChanged);
     _cancelAndResetBindingOperations('Push controller disposed');
     for (final subscription in _subscriptions) {
       unawaited(subscription.cancel());

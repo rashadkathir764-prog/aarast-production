@@ -1,5 +1,4 @@
 import 'package:aarast_mobile/core/network/api_client.dart';
-import 'package:aarast_mobile/core/push/push_messaging_gateway.dart';
 import 'package:aarast_mobile/core/push/push_notifications_controller.dart';
 import 'package:aarast_mobile/core/push/push_registration_api.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
@@ -16,6 +15,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../support/plugin_like_push_gateway.dart';
 
 // RA-MO-360: a reminder set is the first reason to say what the alerts are
 // for (and to ask the phone); one that was not saved is not.
@@ -65,7 +66,8 @@ Future<PushNotificationsController> _pump(
   final stored = await SharedPreferences.getInstance();
   final push = PushNotificationsController(
     preferences: stored,
-    gateway: _Gateway(),
+    // An Android 13 phone never asked: the plugin says «denied».
+    gateway: PluginLikePushGateway(),
     registrationApi: _Registry(),
   );
   addTearDown(push.dispose);
@@ -137,39 +139,6 @@ class _OneTask extends TaskTimelineApi {
       reminderAt: DateTime.parse(data['reminderAt'] as String),
     );
   }
-}
-
-class _Gateway implements PushMessagingGateway {
-  @override
-  bool get isAvailable => true;
-
-  @override
-  Stream<void> get tokenChanges => const Stream<void>.empty();
-
-  @override
-  Stream<PushNotificationTap> get notificationTaps =>
-      const Stream<PushNotificationTap>.empty();
-
-  @override
-  Stream<PushForegroundNotification> get foregroundNotifications =>
-      const Stream<PushForegroundNotification>.empty();
-
-  @override
-  Future<void> initialize() async {}
-
-  @override
-  Future<PushAuthorizationStatus> authorizationStatus() async =>
-      PushAuthorizationStatus.notDetermined;
-
-  @override
-  Future<PushAuthorizationStatus> requestPermission() async =>
-      PushAuthorizationStatus.authorized;
-
-  @override
-  Future<String> ensureRegistrationAndGetInstallationId() async => 'fid-1';
-
-  @override
-  Future<PushNotificationTap?> consumeInitialNotificationTap() async => null;
 }
 
 class _Registry implements PushInstallationRegistry {

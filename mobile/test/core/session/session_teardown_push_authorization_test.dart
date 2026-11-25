@@ -88,6 +88,9 @@ class _AvailablePushGateway implements PushMessagingGateway {
   Future<PushNotificationTap?> consumeInitialNotificationTap() async => null;
 
   @override
+  Future<int?> androidSdkInt() async => 33;
+
+  @override
   Future<String> ensureRegistrationAndGetInstallationId() async => 'fid-a';
 
   @override

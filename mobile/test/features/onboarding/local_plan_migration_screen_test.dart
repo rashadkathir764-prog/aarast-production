@@ -4,7 +4,6 @@ import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/offline/local_database_json.dart';
 import 'package:aarast_mobile/core/offline/offline_tables.dart';
-import 'package:aarast_mobile/core/push/push_messaging_gateway.dart';
 import 'package:aarast_mobile/core/push/push_notifications_controller.dart';
 import 'package:aarast_mobile/core/push/push_registration_api.dart';
 import 'package:aarast_mobile/core/session/safe_user.dart';
@@ -30,6 +29,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../support/plugin_like_push_gateway.dart';
 
 /// w09 «عندك خطة على هذا الجوال» with the real migration service over fake
 /// plan and money APIs.
@@ -243,7 +244,8 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final push = PushNotificationsController(
       preferences: await SharedPreferences.getInstance(),
-      gateway: _AskingGateway(),
+      // An Android 13 phone never asked: the plugin says «denied».
+      gateway: PluginLikePushGateway(),
       registrationApi: _NoRegistry(),
     );
     addTearDown(push.dispose);
@@ -855,39 +857,6 @@ class _FakeFinanceApi extends FinanceApi {
     for (var i = 0; i < (itemsByPlan[planId] ?? 0); i++)
       BudgetCategory.fromJson({'id': '$planId-$i', 'name': 'بند $i'}),
   ];
-}
-
-class _AskingGateway implements PushMessagingGateway {
-  @override
-  bool get isAvailable => true;
-
-  @override
-  Stream<void> get tokenChanges => const Stream<void>.empty();
-
-  @override
-  Stream<PushNotificationTap> get notificationTaps =>
-      const Stream<PushNotificationTap>.empty();
-
-  @override
-  Stream<PushForegroundNotification> get foregroundNotifications =>
-      const Stream<PushForegroundNotification>.empty();
-
-  @override
-  Future<void> initialize() async {}
-
-  @override
-  Future<PushAuthorizationStatus> authorizationStatus() async =>
-      PushAuthorizationStatus.notDetermined;
-
-  @override
-  Future<PushAuthorizationStatus> requestPermission() async =>
-      PushAuthorizationStatus.authorized;
-
-  @override
-  Future<String> ensureRegistrationAndGetInstallationId() async => 'fid-1';
-
-  @override
-  Future<PushNotificationTap?> consumeInitialNotificationTap() async => null;
 }
 
 class _NoRegistry implements PushInstallationRegistry {

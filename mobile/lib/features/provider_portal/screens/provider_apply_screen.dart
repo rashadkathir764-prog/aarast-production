@@ -12,6 +12,9 @@ import '../../../core/forms/aarast_form_draft_binding.dart';
 import '../../../core/forms/aarast_form_draft_store.dart';
 import '../../../core/media/aarast_network_image.dart';
 import '../../../core/media/media_upload_api.dart' show MediaUploadTicket;
+import '../../../core/push/push_notifications_controller.dart'
+    show PushPermissionReason;
+import '../../../core/push/push_permission_moment.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../../../core/widgets/aarast_toast.dart';
@@ -719,7 +722,7 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
             'انرسل طلبك، بس مكان المحل ما انحفظ. تضيفه من «تعديل طلبك».',
           );
         }
-        await _enterPortal();
+        await _enterPortal(explainAlerts: true);
     }
   }
 
@@ -738,6 +741,9 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
       });
       return;
     }
+    // A claim waits on the team's decision as an application does; the
+    // page stays on its waiting state, where the sheet opens.
+    context.reachPushPermissionMoment(reason: PushPermissionReason.provider);
     final providerId = dashboard.claim?.providerId;
     if (providerId != null && providerId.isNotEmpty) {
       try {
@@ -752,8 +758,11 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
   }
 
   /// The account now has a provider profile: its user and its paths are
-  /// read again, the provider path is opened, then its portal.
-  Future<void> _enterPortal() async {
+  /// read again, the provider path is opened, then its portal. An
+  /// application just sent is the provider's reason to say what the alerts
+  /// are for (RA-MO-360: the team's decision, the new requests); it is
+  /// reached with the move, so the sheet opens on the portal.
+  Future<void> _enterPortal({bool explainAlerts = false}) async {
     if (mounted) setState(() => _leaving = true);
     final auth = context.read<AuthController>();
     final accountContexts = context.read<AccountContextController>();
@@ -769,6 +778,11 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
             providerPath.contextKey) {
       await accountContexts.select(providerPath.contextKey);
       if (!mounted) return;
+    }
+    if (explainAlerts) {
+      context.reachPushPermissionMoment(
+        reason: PushPermissionReason.provider,
+      );
     }
     context.go(AppRouter.providerDashboard);
   }

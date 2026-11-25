@@ -304,6 +304,117 @@ void main() {
     client.dispose();
   });
 
+  group('the account\'s notices on the same socket', () {
+    test('a signed-in account listens without the chat, and hears a new '
+        'notice', () async {
+      var notices = 0;
+      final client = ChatRealtimeClient(
+        storage,
+        socketFactory: factory.call,
+        onNotificationAvailable: () => notices++,
+      );
+      client.openForNotices();
+      await Future<void>.delayed(Duration.zero);
+      expect(factory.sockets, hasLength(1));
+      final socket = factory.sockets.single;
+      socket.serverEvent('chat:ready', {'userId': 'user-1'});
+
+      socket.serverEvent('notification:available', {'notificationId': 'n-1'});
+      expect(notices, 1);
+      client.dispose();
+    });
+
+    test('one socket serves the chat and the notices', () async {
+      final client = ChatRealtimeClient(storage, socketFactory: factory.call);
+      client.openForNotices();
+      await Future<void>.delayed(Duration.zero);
+      factory.sockets.single.serverEvent('chat:ready', {'userId': 'user-1'});
+      await client.connect(
+        onMessage: (_) {},
+        onMessageAvailable: (_, _) {},
+        onActivityAvailable: (_) {},
+        onPermissionRevoked: (_) {},
+        onRead: (_, _, _) {},
+      );
+      expect(factory.sockets, hasLength(1));
+      client.dispose();
+    });
+
+    test('the chat\'s store ending keeps the notices listening on a fresh '
+        'socket, and the ended store hears nothing', () async {
+      var notices = 0;
+      String? revoked;
+      final client = ChatRealtimeClient(
+        storage,
+        socketFactory: factory.call,
+        onNotificationAvailable: () => notices++,
+      );
+      client.openForNotices();
+      final connecting = client.connect(
+        onMessage: (_) {},
+        onMessageAvailable: (_, _) {},
+        onActivityAvailable: (_) {},
+        onPermissionRevoked: (id) => revoked = id,
+        onRead: (_, _, _) {},
+      );
+      await Future<void>.delayed(Duration.zero);
+      factory.sockets.single.serverEvent('chat:ready', {'userId': 'user-1'});
+      await connecting;
+
+      client.reset();
+      await Future<void>.delayed(Duration.zero);
+      expect(factory.sockets, hasLength(2));
+      final fresh = factory.sockets.last;
+      fresh.serverEvent('chat:ready', {'userId': 'user-1'});
+      fresh.serverEvent('conversation:permission-revoked', {
+        'conversationId': 'c-1',
+      });
+      fresh.serverEvent('notification:available', {'notificationId': 'n-1'});
+
+      expect(revoked, isNull);
+      expect(notices, 1);
+      client.dispose();
+    });
+
+    test('a socket back after a gap reads the count again', () async {
+      var notices = 0;
+      final client = ChatRealtimeClient(
+        storage,
+        socketFactory: factory.call,
+        reconnectDelay: Duration.zero,
+        onNotificationAvailable: () => notices++,
+      );
+      client.openForNotices();
+      await Future<void>.delayed(Duration.zero);
+      factory.sockets.single.serverEvent('chat:ready', {'userId': 'user-1'});
+      expect(notices, 0);
+
+      factory.sockets.single.serverDisconnect('transport close');
+      await pumpEventQueue();
+      factory.sockets.last.serverEvent('chat:ready', {'userId': 'user-1'});
+
+      expect(notices, 1);
+      client.dispose();
+    });
+
+    test('only the current session\'s listening ends it', () async {
+      final client = ChatRealtimeClient(storage, socketFactory: factory.call);
+      final first = client.openForNotices();
+      // The next account's tree starts before the last one is taken down.
+      final second = client.openForNotices();
+      await Future<void>.delayed(Duration.zero);
+      final socket = factory.sockets.last;
+      socket.serverEvent('chat:ready', {'userId': 'user-1'});
+
+      client.closeForNotices(first);
+      expect(socket.connected, isTrue);
+
+      client.closeForNotices(second);
+      expect(socket.connected, isFalse);
+      client.dispose();
+    });
+  });
+
   test('activity and permission events expose the conversation id', () async {
     String? activityConversationId;
     String? revokedConversationId;

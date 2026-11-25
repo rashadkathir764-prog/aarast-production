@@ -4,6 +4,7 @@ import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Build
 import android.view.WindowManager
 import androidx.core.content.FileProvider
 import io.flutter.embedding.android.FlutterActivity
@@ -42,10 +43,13 @@ class MainActivity : FlutterActivity() {
             flutterEngine.dartExecutor.binaryMessenger,
             "aarast/push_support",
         ).setMethodCallHandler { call, result ->
-            if (call.method == "googleServicesAvailable") {
-                result.success(googleServicesAvailable())
-            } else {
-                result.notImplemented()
+            when (call.method) {
+                "googleServicesAvailable" -> result.success(googleServicesAvailable())
+                // From Android 13 (33) the app asks for notifications itself,
+                // and before it asks the push plugin reports them «denied»:
+                // the phone's version tells «never asked» from «turned off».
+                "sdkInt" -> result.success(Build.VERSION.SDK_INT)
+                else -> result.notImplemented()
             }
         }
         // D116: the invitation card goes to WhatsApp as a picture, by the

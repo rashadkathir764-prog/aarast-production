@@ -8,7 +8,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
-import 'package:aarast_mobile/core/push/push_messaging_gateway.dart';
 import 'package:aarast_mobile/core/push/push_notifications_controller.dart';
 import 'package:aarast_mobile/core/push/push_registration_api.dart';
 import 'package:dio/dio.dart';
@@ -33,6 +32,7 @@ import 'package:aarast_mobile/features/wedding_plans/models/onboarding_complete.
 import 'package:aarast_mobile/features/wedding_plans/providers/wedding_plans_provider.dart';
 import 'package:aarast_mobile/features/welcome_gateway/screens/smart_welcome_screen.dart';
 
+import '../../support/plugin_like_push_gateway.dart';
 import '../../support/preview_fonts.dart';
 import '../../support/app_route_table.dart';
 import '../../support/app_text_scale.dart';
@@ -1082,7 +1082,8 @@ void main() {
     final preferences = await SharedPreferences.getInstance();
     final push = PushNotificationsController(
       preferences: preferences,
-      gateway: _AskingGateway(),
+      // An Android 13 phone never asked: the plugin says «denied».
+      gateway: PluginLikePushGateway(),
       registrationApi: _NoRegistry(),
     );
     addTearDown(push.dispose);
@@ -1629,39 +1630,6 @@ class _RecordingFinance extends FinanceApi {
       idMap: const {},
     );
   }
-}
-
-class _AskingGateway implements PushMessagingGateway {
-  @override
-  bool get isAvailable => true;
-
-  @override
-  Stream<void> get tokenChanges => const Stream<void>.empty();
-
-  @override
-  Stream<PushNotificationTap> get notificationTaps =>
-      const Stream<PushNotificationTap>.empty();
-
-  @override
-  Stream<PushForegroundNotification> get foregroundNotifications =>
-      const Stream<PushForegroundNotification>.empty();
-
-  @override
-  Future<void> initialize() async {}
-
-  @override
-  Future<PushAuthorizationStatus> authorizationStatus() async =>
-      PushAuthorizationStatus.notDetermined;
-
-  @override
-  Future<PushAuthorizationStatus> requestPermission() async =>
-      PushAuthorizationStatus.authorized;
-
-  @override
-  Future<String> ensureRegistrationAndGetInstallationId() async => 'fid-1';
-
-  @override
-  Future<PushNotificationTap?> consumeInitialNotificationTap() async => null;
 }
 
 class _NoRegistry implements PushInstallationRegistry {

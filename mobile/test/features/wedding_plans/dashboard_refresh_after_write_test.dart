@@ -87,6 +87,28 @@ void main() {
     expect(api.reads, 1);
   });
 
+  // The bell's count is the summary's: a notice that arrives while the app
+  // is open (a push in front, the live socket) reads it again, once for
+  // the push and the socket of the same notice.
+  test('a new notice reads the home again, so the bell counts it', () async {
+    final notices = StreamController<void>.broadcast(sync: true);
+    addTearDown(notices.close);
+    final live = DashboardSummaryProvider(
+      weddingPlansApi: api,
+      noticeArrivals: notices.stream,
+      writeSettle: const Duration(milliseconds: 5),
+    );
+    await live.loadDashboard('plan-1');
+
+    notices
+      ..add(null)
+      ..add(null);
+    await settle();
+
+    expect(api.reads, 2);
+    live.dispose();
+  });
+
   test('a failed read keeps the home it had', () async {
     await provider.loadDashboard('plan-1');
     api.failNext = true;

@@ -20,6 +20,7 @@ import '../../auth/auth_api.dart' show AuthActionGuard, AuthGatePanel;
 import '../../finance/finance_api.dart' show FinanceProvider;
 import '../models/aarast_notification.dart';
 import '../providers/notifications_provider.dart';
+import '../utils/notice_open_lines.dart';
 import '../utils/notification_route_policy.dart';
 import '../utils/notification_line.dart';
 
@@ -39,9 +40,11 @@ class NotificationsScreen extends StatefulWidget {
 
   final String? weddingPlanId;
 
-  /// The notice a push tap named: opened once the list is read, through the
-  /// same guards as a tap on its row. A notice not in the list, or whose
-  /// target the guards refuse, leaves the inbox as it is.
+  /// The notice a push tap named: looked up by its id (wherever it is in
+  /// the list) and opened through the same guards as a tap on its row, in
+  /// its own plan when it is another of the account's. A notice gone says
+  /// so in one line; one whose target the guards refuse leaves the inbox as
+  /// it is.
   final String? openNotificationId;
 
   /// The time the «when» labels and groups are read against; the device
@@ -82,6 +85,26 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       if (!mounted) return;
       _load();
     });
+  }
+
+  /// The store this inbox is on the screen of: a notice that arrives
+  /// meanwhile reads the list again (the store is the plan's, and changes
+  /// with it).
+  NotificationsProvider? _shownOn;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final store = context.read<NotificationsProvider>();
+    if (identical(store, _shownOn)) return;
+    _shownOn?.inboxClosed();
+    _shownOn = store..inboxOpened();
+  }
+
+  @override
+  void dispose() {
+    _shownOn?.inboxClosed();
+    super.dispose();
   }
 
   @override
@@ -376,23 +399,48 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       setState(() => _suppressAccountData = false);
     }
     final provider = context.read<NotificationsProvider>();
+    // The pushed notice is asked for beside the list, by its id.
+    final requested = _lookUpRequestedNotification(provider);
     await provider.loadNotifications(weddingPlanId: widget.weddingPlanId);
-    await _openRequestedNotification(provider);
+    if (requested != null) {
+      await _openRequestedNotification(provider, requested);
+    }
   }
 
   bool _requestedNotificationOpened = false;
 
+  /// Once per screen: a refresh of the list does not open it again.
+  Future<NoticeLookup>? _lookUpRequestedNotification(
+    NotificationsProvider provider,
+  ) {
+    final id = widget.openNotificationId;
+    if (id == null || _requestedNotificationOpened) return null;
+    _requestedNotificationOpened = true;
+    provider.markOpened(id);
+    return provider.lookUpNotice(id);
+  }
+
   Future<void> _openRequestedNotification(
     NotificationsProvider provider,
+    Future<NoticeLookup> requested,
   ) async {
-    final id = widget.openNotificationId;
-    if (id == null || _requestedNotificationOpened || !mounted) return;
-    final notification = provider.notifications
-        .where((item) => item.id == id)
-        .firstOrNull;
-    if (notification == null) return;
-    _requestedNotificationOpened = true;
-    await _openNotification(provider, notification);
+    var lookup = await requested;
+    if (lookup.outcome == NoticeLookupOutcome.unreachable) {
+      // Asked beside the list: the list read since may hold its copy.
+      final copy = await provider.listedNotice(widget.openNotificationId!);
+      if (copy != null) {
+        lookup = (outcome: NoticeLookupOutcome.found, notice: copy);
+      }
+    }
+    if (!mounted) return;
+    switch (lookup.outcome) {
+      case NoticeLookupOutcome.found:
+        await _openNotification(provider, lookup.notice!);
+      case NoticeLookupOutcome.gone:
+        AarastToast.showInfo(context, noticeGoneLine);
+      case NoticeLookupOutcome.unreachable:
+        AarastToast.showInfo(context, noticeUnreachableLine(context));
+    }
   }
 
   Future<void> _markAllRead(NotificationsProvider provider) async {

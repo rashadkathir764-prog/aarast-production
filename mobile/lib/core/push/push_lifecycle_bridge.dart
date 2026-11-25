@@ -163,8 +163,9 @@ class _AarastPushLifecycleBridgeState extends State<AarastPushLifecycleBridge>
     final push = context.read<PushNotificationsController>();
     // The bridge sits above the navigator: the sheet is the navigator's.
     final navigator = widget.router.routerDelegate.navigatorKey.currentContext;
+    final reason = push.permissionExplanationReason;
     if (navigator == null || !push.claimPermissionExplanation()) return;
-    if (await showPushPermissionSheet(navigator)) {
+    if (await showPushPermissionSheet(navigator, reason: reason)) {
       await push.requestPermissionOnFirstOpen();
     }
   }

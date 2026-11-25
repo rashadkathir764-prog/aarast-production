@@ -49,6 +49,29 @@ class NotificationsApi {
     return json == null ? null : _page(json, page: 1, limit: 20);
   }
 
+  /// One notice by its id, as a tap on its push opens it: wherever it is in
+  /// the list (the first page alone was the place it was looked for). The
+  /// server's answer is kept on the phone, and served when it is out of
+  /// reach; a notice gone (404) or not the account's (403) throws.
+  Future<AarastNotification> getNotification(String id) async {
+    final json = await _reads.blob(
+      '/api/v1/notifications/$id',
+      metaKey: 'notification-opened:$id',
+    );
+    return AarastNotification.fromJson(json);
+  }
+
+  /// Tells the server the notice was opened from its push (it marks it read
+  /// too). Server-only and never queued: a refused or missing endpoint must
+  /// not block the phone's queue, and an open is told once or not at all.
+  Future<void> markOpened(String id) async {
+    await _writes.serverOnly(
+      reason: 'تسجيل فتح التنبيه يحتاج اتصالًا.',
+      method: 'PATCH',
+      path: '/api/v1/notifications/$id/opened',
+    );
+  }
+
   Future<int> getUnreadCount({String? weddingPlanId}) async {
     final json = await _reads.blob(
       _path('/api/v1/notifications/unread-count', weddingPlanId),

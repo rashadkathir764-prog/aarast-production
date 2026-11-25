@@ -2,6 +2,8 @@ import 'dart:typed_data';
 
 import 'package:aarast_mobile/core/media/media_upload_api.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
+import 'package:aarast_mobile/core/push/push_lifecycle_bridge.dart';
+import 'package:aarast_mobile/core/push/push_notifications_controller.dart';
 import 'package:aarast_mobile/core/session/safe_user.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
@@ -27,6 +29,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../account_contexts/account_context_test_data.dart';
 import '../../support/app_route_table.dart';
 import '../../support/app_text_scale.dart';
+import '../../support/plugin_like_push_gateway.dart';
 
 // The joining after the account: p02 asks the review team for a listing
 // under this phone (B-12); otherwise p03 «نشاطك», p04 «وين تشتغل؟», p06
@@ -222,6 +225,48 @@ void main() {
       expect(find.text('كذا بيشوفك العرسان'), findsNothing);
     },
   );
+
+  // RA-MO-360 for a provider: no moment ever came to him, so no question,
+  // no registration and no push of the team's decision.
+  testWidgets('an application sent says on the portal what his alerts are '
+      'for, and «اسمح» asks the phone', (tester) async {
+    final (push, gateway) = (await tester.runAsync(() async {
+      SharedPreferences.setMockInitialValues({});
+      final gateway = PluginLikePushGateway();
+      final push = PushNotificationsController(
+        preferences: await SharedPreferences.getInstance(),
+        gateway: gateway,
+        registrationApi: RecordingPushRegistry(),
+      );
+      await push.initialize();
+      await push.bindAuthenticatedUser(_user.id);
+      return (push, gateway);
+    }))!;
+    addTearDown(push.dispose);
+    await _Harness.pump(tester, push: push);
+
+    await _business(tester);
+    await _where(tester);
+    await _photos(tester);
+    await _service(tester);
+    await tester.tap(find.byKey(const ValueKey('provider-apply-send')));
+    await tester.pumpAndSettle();
+    // The phone's answer about notifications comes off the frame.
+    for (var i = 0; i < 5; i++) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 10)),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    expect(find.text('بوابة المزود'), findsOneWidget);
+    expect(find.byKey(const ValueKey('push-permission-sheet')), findsOne);
+    expect(find.text('نخبرك بكل جديد'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('push-permission-allow')));
+    await tester.pumpAndSettle();
+    expect(gateway.permissionRequests, 1);
+  });
 
   testWidgets('without a shop place only the application is sent', (
     tester,
@@ -531,6 +576,7 @@ class _Harness {
     String? existingStatus,
     double width = 390,
     double textScale = 1,
+    PushNotificationsController? push,
   }) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = Size(width, 900);
@@ -600,16 +646,30 @@ class _Harness {
           ChangeNotifierProvider<ProviderDashboardProvider>.value(
             value: dashboard,
           ),
+          if (push != null)
+            ChangeNotifierProvider<PushNotificationsController>.value(
+              value: push,
+            ),
         ],
         child: MaterialApp.router(
           theme: AppTheme.light(),
           routerConfig: router,
-          builder: (context, child) => MediaQuery(
-            data: MediaQuery.of(
-              context,
-            ).copyWith(textScaler: appTextScaler(textScale)),
-            child: child!,
-          ),
+          builder: (context, child) {
+            final scaled = MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(textScaler: appTextScaler(textScale)),
+              child: child!,
+            );
+            // As in the app: the bridge stands above every shell.
+            return push == null
+                ? scaled
+                : AarastPushLifecycleBridge(
+                    router: router,
+                    authenticatedUserId: _user.id,
+                    child: scaled,
+                  );
+          },
         ),
       ),
     );

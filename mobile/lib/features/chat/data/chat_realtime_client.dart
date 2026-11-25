@@ -58,17 +58,27 @@ class ChatReconnectBackoff {
   void reset() => _failures = 0;
 }
 
-/// The chat's live socket. It is closed while the app is in the background
-/// and opened again on the return (RA-MO-365); what came while it was closed
-/// is read through `onReconnected`.
+/// The app's live socket: the chat's rooms, and the account's own room,
+/// where the server says a new notice reached it (`notification:available`).
+/// It is closed while the app is in the background and opened again on the
+/// return (RA-MO-365); what came while it was closed is read through
+/// `onReconnected`. It is open while the chat is in use ([connect]) or the
+/// account listens for its notices ([openForNotices]); one socket serves
+/// both.
 class ChatRealtimeClient with WidgetsBindingObserver {
   ChatRealtimeClient(
     this._authStorage, {
     ChatSocketFactory? socketFactory,
     this.reconnectDelay = const Duration(seconds: 2),
     double Function()? jitter,
+    this.onNotificationAvailable,
   }) : _socketFactory = socketFactory ?? _defaultSocketFactory,
        _backoff = ChatReconnectBackoff(base: reconnectDelay, jitter: jitter);
+
+  /// A new notice reached the account (the server's
+  /// `notification:available`), or the socket came back after a gap in
+  /// which one may have: the inbox and the bell read their count again.
+  final void Function()? onNotificationAvailable;
 
   final AuthStorage _authStorage;
   final ChatSocketFactory _socketFactory;
@@ -87,7 +97,15 @@ class ChatRealtimeClient with WidgetsBindingObserver {
   void Function(String conversationId)? _onPermissionRevoked;
   void Function(String conversationId, String userId, DateTime? lastReadAt)?
   _onRead;
+
+  /// The chat is not in use ([connect] not called since the last [reset]).
   bool _stopped = true;
+
+  /// The account listens for its notices ([openForNotices]).
+  bool _noticesWanted = false;
+
+  /// Something wants the socket open: the chat, or the notices.
+  bool get _live => (!_stopped && _onMessage != null) || _noticesWanted;
 
   /// The app is in the background: no socket is held and none is opened.
   bool _away = false;
@@ -124,6 +142,43 @@ class ChatRealtimeClient with WidgetsBindingObserver {
     _onRead = onRead;
     _stopped = false;
     return _connect();
+  }
+
+  /// The signed-in account listens for its notices while the app is open,
+  /// on the chat's socket (the server joins every socket to its account's
+  /// room). Kept across [reset], which clears the chat alone.
+  ///
+  /// Returns the listening's own key: the next session's listening starts
+  /// before the last one's ends (the account's tree is rebuilt before the
+  /// old one is taken down), so only the current key ends it.
+  Object openForNotices() {
+    final listening = Object();
+    _noticesListening = listening;
+    _noticesWanted = true;
+    if (!_away) unawaited(_connect().catchError((_) {}));
+    return listening;
+  }
+
+  Object? _noticesListening;
+
+  /// The account stopped listening (it signed out); the socket stays only
+  /// while the chat is in use.
+  void closeForNotices(Object listening) {
+    if (!identical(listening, _noticesListening)) return;
+    _noticesListening = null;
+    _noticesWanted = false;
+    if (_live) return;
+    _closeSocket();
+  }
+
+  void _closeSocket() {
+    // Let go of it first: its own «disconnected» must not ask for another.
+    final socket = _socket;
+    _socket = null;
+    socket?.dispose();
+    _reconnectTimer?.cancel();
+    _reconnectTimer = null;
+    _connectFuture = null;
   }
 
   Future<void> _connect() {
@@ -168,13 +223,13 @@ class ChatRealtimeClient with WidgetsBindingObserver {
     if (!_away) return;
     _away = false;
     _backoff.reset();
-    if (_stopped || _onMessage == null) return;
+    if (!_live) return;
     unawaited(_connect().catchError((_) {}));
   }
 
   Future<void> _openSocket() async {
     final token = await _authStorage.readAccessToken();
-    if (_stopped || _away || token == null || token.isEmpty) return;
+    if (!_live || _away || token == null || token.isEmpty) return;
 
     final previous = _socket;
     _socket = null;
@@ -199,7 +254,7 @@ class ChatRealtimeClient with WidgetsBindingObserver {
     _socket = socket;
 
     socket.on('chat:ready', (_) {
-      if (_stopped || !identical(_socket, socket)) return;
+      if (!_live || !identical(_socket, socket)) return;
       _reconnectTimer?.cancel();
       _reconnectTimer = null;
       _backoff.reset();
@@ -207,8 +262,16 @@ class ChatRealtimeClient with WidgetsBindingObserver {
         _emitJoin(socket, conversationId);
       }
       if (!ready.isCompleted) ready.complete();
-      if (_wasReady) onReconnected?.call();
+      if (_wasReady) {
+        if (!_stopped) onReconnected?.call();
+        // A notice may have come in the gap.
+        if (_noticesWanted) onNotificationAvailable?.call();
+      }
       _wasReady = true;
+    });
+    socket.on('notification:available', (_) {
+      if (!_noticesWanted || !identical(_socket, socket)) return;
+      onNotificationAvailable?.call();
     });
     socket.onConnectError((error) {
       if (!ready.isCompleted) {
@@ -284,28 +347,40 @@ class ChatRealtimeClient with WidgetsBindingObserver {
   }
 
   void _scheduleReconnect() {
-    if (_stopped || _away || _reconnectTimer?.isActive == true) return;
+    if (!_live || _away || _reconnectTimer?.isActive == true) return;
     _reconnectTimer = Timer(_backoff.next(), () {
-      if (_stopped || _away || _onMessage == null) return;
+      if (!_live || _away) return;
       _connectFuture = null;
       // A failed attempt schedules the next one itself.
       unawaited(_connect().catchError((_) {}));
     });
   }
 
+  /// The chat's session ends (its store was replaced, the account changed):
+  /// its rooms are left and its socket closed. An account still listening
+  /// for its notices gets a fresh socket, under the token it has now.
   void reset() {
     _stopped = true;
+    // The ended chat's store hears nothing more (a socket kept for the
+    // notices still receives the account room's chat events).
+    _onMessage = null;
+    _onMessageAvailable = null;
+    _onActivityAvailable = null;
+    _onPermissionRevoked = null;
+    _onRead = null;
     _wasReady = false;
     _backoff.reset();
-    _reconnectTimer?.cancel();
-    _reconnectTimer = null;
-    _connectFuture = null;
     _desiredConversationIds.clear();
-    _socket?.dispose();
-    _socket = null;
+    _closeSocket();
+    if (_noticesWanted && !_away) {
+      unawaited(_connect().catchError((_) {}));
+    }
   }
 
-  void dispose() => reset();
+  void dispose() {
+    _noticesWanted = false;
+    reset();
+  }
 }
 
 class _SocketIoConnection implements ChatSocketConnection {

@@ -2118,9 +2118,17 @@ const trackedOwnerApiContracts = [
       { uri: 'models/aarast_notification.dart', show: ['AarastNotification'] },
       {
         uri: 'providers/notifications_provider.dart',
-        show: ['NotificationsProvider'],
+        // A push tap's notice looked up by its id; the provider's inbox
+        // opens it the same way.
+        show: ['NoticeLookup', 'NoticeLookupOutcome', 'NotificationsProvider'],
       },
       { uri: 'screens/notifications_screen.dart', show: ['NotificationsScreen'] },
+      // The lines both inboxes say when a pushed notice is gone or out of
+      // reach.
+      {
+        uri: 'utils/notice_open_lines.dart',
+        show: ['noticeGoneLine', 'noticeUnreachableLine'],
+      },
       // B-38: the server writes Arabic only, so the copy rewriter left; the
       // phone writes a money notice's amount (and hides it) itself.
       { uri: 'utils/notification_line.dart', show: ['notificationLine'] },

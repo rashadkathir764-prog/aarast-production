@@ -14,10 +14,68 @@ class PushForegroundNotification {
   const PushForegroundNotification({
     required this.title,
     required this.message,
+    this.notificationId,
+    this.type,
+    this.androidChannelId,
+    this.tag,
+    this.conversationId,
   });
 
   final String title;
   final String message;
+
+  /// The notice the push announces; a tap on the phone's notification
+  /// opens it as a tap on a background push does.
+  final String? notificationId;
+
+  /// The notice's type (`CHAT_MESSAGE_RECEIVED`…), for its channel when the
+  /// push named none.
+  final String? type;
+
+  /// The phone channel the server chose (`aarast_messages`…).
+  final String? androidChannelId;
+
+  /// The server's tag: the messages of one conversation share one, so a
+  /// second one replaces the first instead of stacking.
+  final String? tag;
+
+  /// The conversation a chat message belongs to, read from its tag; the
+  /// reader who has it open is not shown a notification for it.
+  final String? conversationId;
+}
+
+/// The server's channel of a push type when the push names none, as
+/// `push-notification.policy.ts` maps them; the messages' channel otherwise.
+String pushAndroidChannelFor(String? type) {
+  switch (type?.toUpperCase()) {
+    case 'TASK_ASSIGNED' ||
+        'TASK_DUE_SOON' ||
+        'TASK_OVERDUE' ||
+        'WEDDING_COUNTDOWN':
+      return 'aarast_tasks';
+    case 'PAYMENT_SCHEDULE_DUE_SOON' ||
+        'PAYMENT_SCHEDULE_OVERDUE' ||
+        'LOAN_REPAYMENT_DUE_SOON' ||
+        'LOAN_REPAYMENT_OVERDUE' ||
+        'BUDGET_CATEGORY_EXCEEDED' ||
+        'FUNDING_EXPECTED':
+      return 'aarast_money';
+    default:
+      return 'aarast_messages';
+  }
+}
+
+const _chatTagPrefix = 'aarast_chat_';
+
+/// The conversation of a chat push: the server's `conversationId` when it
+/// sends one, else the id in the tag it gives one conversation's messages.
+String? pushConversationId(Map<String, dynamic> data, String? tag) {
+  final named = data['conversationId']?.toString().trim();
+  if (named != null && named.isNotEmpty) return named;
+  final key = tag?.trim();
+  if (key == null || !key.startsWith(_chatTagPrefix)) return null;
+  final id = key.substring(_chatTagPrefix.length);
+  return id.isEmpty ? null : id;
 }
 
 /// A tap on a notification of the phone's tray. A push carries the id of
@@ -49,6 +107,10 @@ abstract final class PlayServicesCheck {
 
   static Future<bool> available() async =>
       await _channel.invokeMethod<bool>('googleServicesAvailable') ?? false;
+
+  /// The phone's Android version (`Build.VERSION.SDK_INT`), asked of the
+  /// same channel.
+  static Future<int?> sdkInt() => _channel.invokeMethod<int>('sdkInt');
 }
 
 abstract interface class PushMessagingGateway {
@@ -62,9 +124,17 @@ abstract interface class PushMessagingGateway {
 
   Future<void> initialize();
 
+  /// What the push plugin reports. From Android 13 it reports «denied»
+  /// before the app ever asked (it knows only granted or not); the
+  /// controller tells the two apart with [androidSdkInt] and its own record
+  /// of having asked.
   Future<PushAuthorizationStatus> authorizationStatus();
 
   Future<PushAuthorizationStatus> requestPermission();
+
+  /// The phone's Android version; null when it is not Android or cannot
+  /// be read.
+  Future<int?> androidSdkInt();
 
   Future<String> ensureRegistrationAndGetInstallationId();
 
@@ -165,6 +235,16 @@ class FirebasePushMessagingGateway implements PushMessagingGateway {
   }
 
   @override
+  Future<int?> androidSdkInt() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return null;
+    try {
+      return await PlayServicesCheck.sdkInt();
+    } on Object {
+      return null;
+    }
+  }
+
+  @override
   Future<String> ensureRegistrationAndGetInstallationId() async {
     final messaging = _messaging;
     final installations = _installations;
@@ -212,9 +292,19 @@ class FirebasePushMessagingGateway implements PushMessagingGateway {
     final title = rawTitle?.trim() ?? '';
     final body = rawMessage?.trim() ?? '';
     if (title.isEmpty && body.isEmpty) return null;
+    final id = message.data['notificationId']?.toString().trim();
+    final android = notification?.android;
+    final tag = android?.tag?.trim().isNotEmpty == true
+        ? android!.tag!.trim()
+        : message.collapseKey?.trim();
     return PushForegroundNotification(
       title: title.isEmpty ? 'تنبيه جديد' : title,
       message: body.isEmpty ? 'لديك تحديث جديد في اعّرست.' : body,
+      notificationId: id == null || id.isEmpty ? null : id,
+      type: message.data['type']?.toString(),
+      androidChannelId: android?.channelId,
+      tag: tag == null || tag.isEmpty ? null : tag,
+      conversationId: pushConversationId(message.data, tag),
     );
   }
 }

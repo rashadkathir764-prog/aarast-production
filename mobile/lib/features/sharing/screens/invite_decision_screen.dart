@@ -9,6 +9,9 @@ import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/network/api_client.dart'
     show adminAppPasswordRequiredMessage;
 import '../../../core/phone/phone_number_utils.dart';
+import '../../../core/push/push_notifications_controller.dart'
+    show PushPermissionReason;
+import '../../../core/push/push_permission_moment.dart';
 import '../../../core/phone/yemeni_phone_normalizer.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/routing/pop_or_go.dart';
@@ -407,6 +410,11 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
     final router = GoRouter.of(context);
     final selected = await accountContexts.select(contextKey);
     if (!mounted) return;
+    // RA-MO-360: a plan joined is the participant's reason to say what the
+    // alerts are for (the tasks given to them). It is reached with the
+    // move to the plan's home (or on this page when the plan did not
+    // open), so the sheet opens on the page the reader stays on, never on
+    // one the move takes away.
     if (!selected ||
         accountContexts.selectedContext?.contextKey != contextKey) {
       setState(() => _openingPlan = false);
@@ -415,8 +423,14 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
         accountContexts.errorMessage ??
             'ما قدرنا نفتح الخطة. المحاولة من جديد من «فتح الخطة».',
       );
+      context.reachPushPermissionMoment(
+        reason: PushPermissionReason.participant,
+      );
       return;
     }
+    context.reachPushPermissionMoment(
+      reason: PushPermissionReason.participant,
+    );
     router.go(AppRouter.home);
   }
 

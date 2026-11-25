@@ -20,8 +20,13 @@ Future<(DevicePreferences, _Gateway)> _pump(
   PushAuthorizationStatus status = PushAuthorizationStatus.denied,
   PushAuthorizationStatus afterAsking = PushAuthorizationStatus.denied,
   bool noGoogleServices = false,
+  // The app asked once and the person said no: from Android 13 only that
+  // makes «denied» notifications turned off.
+  bool askedBefore = true,
 }) async {
-  SharedPreferences.setMockInitialValues({});
+  SharedPreferences.setMockInitialValues({
+    if (askedBefore) pushPermissionRequestedPreferenceKey: true,
+  });
   final stored = await SharedPreferences.getInstance();
   final preferences = DevicePreferences(stored);
   final gateway = _Gateway(status, afterAsking, noGoogleServices);
@@ -80,6 +85,18 @@ void main() {
     expect(find.text('التنبيهات مقفلة'), findsNothing);
     // «لاحقًا» puts it away like the other card.
     expect(find.byKey(const ValueKey('push-off-later')), findsOneWidget);
+  });
+
+  // The plugin says «denied» on Android 13 before the app ever asked: that
+  // phone was not turned off, it was never asked, and the card told it to
+  // open its settings.
+  testWidgets('an Android 13 phone never asked is not told they are off', (
+    tester,
+  ) async {
+    await _pump(tester, askedBefore: false);
+
+    expect(find.byKey(const ValueKey('push-off-card')), findsNothing);
+    expect(find.text('التنبيهات مقفلة'), findsNothing);
   });
 
   testWidgets('allowed notifications show nothing', (tester) async {
@@ -150,6 +167,10 @@ class _Gateway implements PushMessagingGateway {
     asked += 1;
     return afterAsking;
   }
+
+  /// An Android 13 phone: «denied» is the plugin's word for «not granted».
+  @override
+  Future<int?> androidSdkInt() async => 33;
 
   @override
   Future<String> ensureRegistrationAndGetInstallationId() async => 'fid-1';

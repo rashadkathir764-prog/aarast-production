@@ -4,14 +4,20 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/routing/app_router.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
+import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../marketplace/marketplace_api.dart' show QuoteRequest;
 import '../../notifications/notifications_api.dart'
     show
         AarastNotification,
+        NoticeLookup,
+        NoticeLookupOutcome,
         NotificationsProvider,
         isSafeNotificationRouteTarget,
+        noticeGoneLine,
+        noticeUnreachableLine,
         resolveNotificationRouteTarget;
 import '../providers/provider_dashboard_provider.dart';
 import '../widgets/provider_request_parts.dart';
@@ -59,33 +65,85 @@ class _ProviderNotificationsScreenState
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
+  /// The store this inbox is on the screen of, so a notice that arrives
+  /// meanwhile reads the list again.
+  NotificationsProvider? _shownOn;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final store = context.read<NotificationsProvider>();
+    if (identical(store, _shownOn)) return;
+    _shownOn?.inboxClosed();
+    _shownOn = store..inboxOpened();
+  }
+
+  @override
+  void dispose() {
+    _shownOn?.inboxClosed();
+    super.dispose();
+  }
+
   Future<void> _load() async {
     if (!mounted) return;
     final dashboard = context.read<ProviderDashboardProvider>();
     final notices = context.read<NotificationsProvider>();
+    // The pushed notice is asked for by its id, beside the list.
+    final requested = _lookUpRequestedNotice(notices);
     await Future.wait([
       notices.loadNotifications(),
       // A notice opened from outside the portal still names its request.
       if (dashboard.quoteRequests.isEmpty && !dashboard.isLoading)
         dashboard.loadDashboard(),
     ]);
-    await _openRequestedNotice(notices);
+    if (requested != null) await _openRequestedNotice(notices, requested);
   }
 
   bool _requestedNoticeOpened = false;
 
-  /// A push tap names its notice: it opens as a tap on its row does, through
-  /// the same guards, and is marked read. A notice that is not in the list,
-  /// or whose target the guards refuse, leaves the inbox as it is.
-  Future<void> _openRequestedNotice(NotificationsProvider notices) async {
+  Future<NoticeLookup>? _lookUpRequestedNotice(NotificationsProvider notices) {
     final id = widget.openNotificationId;
-    if (id == null || _requestedNoticeOpened || !mounted) return;
-    final notice = notices.notifications
-        .where((item) => item.id == id && isProviderNotice(item))
-        .firstOrNull;
-    if (notice == null) return;
+    if (id == null || _requestedNoticeOpened) return null;
     _requestedNoticeOpened = true;
-    await _open(notices, notice);
+    notices.markOpened(id);
+    return notices.lookUpNotice(id);
+  }
+
+  /// A push tap names its notice: looked up by its id, it opens as a tap on
+  /// its row does, through the same guards, and is marked read. A notice
+  /// that is not his (the account's plan's) opens in the account's inbox,
+  /// which opens it in its plan; one gone says so in one line.
+  Future<void> _openRequestedNotice(
+    NotificationsProvider notices,
+    Future<NoticeLookup> requested,
+  ) async {
+    var lookup = await requested;
+    if (lookup.outcome == NoticeLookupOutcome.unreachable) {
+      // Asked beside the list: the list read since may hold its copy.
+      final copy = await notices.listedNotice(widget.openNotificationId!);
+      if (copy != null) {
+        lookup = (outcome: NoticeLookupOutcome.found, notice: copy);
+      }
+    }
+    if (!mounted) return;
+    switch (lookup.outcome) {
+      case NoticeLookupOutcome.found:
+        final notice = lookup.notice!;
+        if (isProviderNotice(notice)) {
+          await _open(notices, notice);
+          return;
+        }
+        context.go(
+          Uri(
+            path: AppRouter.notifications,
+            queryParameters: {AppRouter.openNotificationParameter: notice.id},
+          ).toString(),
+        );
+      case NoticeLookupOutcome.gone:
+        AarastToast.showInfo(context, noticeGoneLine);
+      case NoticeLookupOutcome.unreachable:
+        AarastToast.showInfo(context, noticeUnreachableLine(context));
+    }
   }
 
   @override

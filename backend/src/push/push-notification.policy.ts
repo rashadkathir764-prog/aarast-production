@@ -2,44 +2,64 @@ import { NotificationType } from "@prisma/client";
 import { isQuietHour, quietHoursEnd } from "../shared-kernel/time/quiet-hours";
 import { reminderWhenWords } from "../shared-kernel/voice/day-words";
 
-const PUSH_NOTIFICATION_TYPES = new Set<NotificationType>([
-  NotificationType.TASK_ASSIGNED,
-  NotificationType.TASK_DUE_SOON,
-  NotificationType.TASK_OVERDUE,
-  NotificationType.CHAT_MESSAGE_RECEIVED,
-  NotificationType.WEDDING_COUNTDOWN,
-  // A price offer for the customer and every booking step for the other
-  // side: each waits on a decision (V1 checklist 4.6).
-  NotificationType.QUOTE_OFFER_RECEIVED,
-  NotificationType.BOOKING_UPDATED,
-  // B-19: a booking request has its own type; it waits on the provider.
-  NotificationType.BOOKING_REQUESTED,
-  // B-04: a request the provider has not answered ends tomorrow.
-  NotificationType.QUOTE_REQUEST_EXPIRING,
-  // RA-BE-187, RA-BE-188 (Q-40): the money reminders the app promises
-  // («نذكّرك» on a payment date, a loan's repayments and promised money).
-  NotificationType.PAYMENT_SCHEDULE_DUE_SOON,
-  NotificationType.PAYMENT_SCHEDULE_OVERDUE,
-  NotificationType.LOAN_REPAYMENT_DUE_SOON,
-  NotificationType.LOAN_REPAYMENT_OVERDUE,
-  NotificationType.BUDGET_CATEGORY_EXCEEDED,
-  NotificationType.FUNDING_EXPECTED,
-  // RA-BE-186 (Q-48 أ): the provider's account approved or refused. Reviews
-  // stay in the inbox; the steps that need a fix or a wait are in the inbox
-  // and the portal.
-  NotificationType.PROVIDER_APPROVED,
-  NotificationType.PROVIDER_REJECTED,
-]);
+/**
+ * RA-MO-360: the phone's notification channel of a push, the one place a
+ * person can mute a kind of alert on their own: «رسائل», «مهام وتذكيرات»,
+ * «المال» (the channels are made in `MainActivity.kt`). Every type that
+ * reaches a phone is listed here with its channel, so a new push type cannot
+ * go out without one.
+ */
+export type PushAndroidChannelId =
+  | "aarast_messages"
+  | "aarast_tasks"
+  | "aarast_money";
+
+const MESSAGES: PushAndroidChannelId = "aarast_messages";
+const TASKS: PushAndroidChannelId = "aarast_tasks";
+const MONEY: PushAndroidChannelId = "aarast_money";
+
+const PUSH_CHANNEL_BY_TYPE: ReadonlyMap<NotificationType, PushAndroidChannelId> =
+  new Map<NotificationType, PushAndroidChannelId>([
+    [NotificationType.TASK_ASSIGNED, TASKS],
+    [NotificationType.TASK_DUE_SOON, TASKS],
+    [NotificationType.TASK_OVERDUE, TASKS],
+    [NotificationType.CHAT_MESSAGE_RECEIVED, MESSAGES],
+    [NotificationType.WEDDING_COUNTDOWN, TASKS],
+    // A price offer for the customer and every booking step for the other
+    // side: each waits on a decision (V1 checklist 4.6).
+    [NotificationType.QUOTE_OFFER_RECEIVED, MESSAGES],
+    [NotificationType.BOOKING_UPDATED, MESSAGES],
+    // B-19: a booking request has its own type; it waits on the provider.
+    [NotificationType.BOOKING_REQUESTED, MESSAGES],
+    // B-04: a request the provider has not answered ends tomorrow.
+    [NotificationType.QUOTE_REQUEST_EXPIRING, MESSAGES],
+    // RA-BE-187, RA-BE-188 (Q-40): the money reminders the app promises
+    // («نذكّرك» on a payment date, a loan's repayments and promised money).
+    [NotificationType.PAYMENT_SCHEDULE_DUE_SOON, MONEY],
+    [NotificationType.PAYMENT_SCHEDULE_OVERDUE, MONEY],
+    [NotificationType.LOAN_REPAYMENT_DUE_SOON, MONEY],
+    [NotificationType.LOAN_REPAYMENT_OVERDUE, MONEY],
+    [NotificationType.BUDGET_CATEGORY_EXCEEDED, MONEY],
+    [NotificationType.FUNDING_EXPECTED, MONEY],
+    // RA-BE-186 (Q-48 أ): the provider's account approved or refused. Reviews
+    // stay in the inbox; the steps that need a fix or a wait are in the inbox
+    // and the portal.
+    [NotificationType.PROVIDER_APPROVED, MESSAGES],
+    [NotificationType.PROVIDER_REJECTED, MESSAGES],
+  ]);
 
 /**
  * RA-BE-186: these types are written for both sides of a request, and only
  * the provider's side pushes. The customer's own request received, offer
  * accepted and the provider's apology stay in the inbox.
  */
-const PROVIDER_AUDIENCE_PUSH_TYPES = new Set<NotificationType>([
-  NotificationType.QUOTE_REQUEST_SUBMITTED,
-  NotificationType.QUOTE_ACCEPTED,
-  NotificationType.QUOTE_REJECTED,
+const PROVIDER_AUDIENCE_PUSH_CHANNEL_BY_TYPE: ReadonlyMap<
+  NotificationType,
+  PushAndroidChannelId
+> = new Map<NotificationType, PushAndroidChannelId>([
+  [NotificationType.QUOTE_REQUEST_SUBMITTED, MESSAGES],
+  [NotificationType.QUOTE_ACCEPTED, MESSAGES],
+  [NotificationType.QUOTE_REJECTED, MESSAGES],
 ]);
 
 function isProviderAudience(data: unknown): boolean {
@@ -56,8 +76,21 @@ export function isPushNotificationType(
   type: NotificationType,
   data?: unknown,
 ): boolean {
-  if (PROVIDER_AUDIENCE_PUSH_TYPES.has(type)) return isProviderAudience(data);
-  return PUSH_NOTIFICATION_TYPES.has(type);
+  if (PROVIDER_AUDIENCE_PUSH_CHANNEL_BY_TYPE.has(type)) {
+    return isProviderAudience(data);
+  }
+  return PUSH_CHANNEL_BY_TYPE.has(type);
+}
+
+/** The channel a push of [type] goes to on an Android phone. */
+export function pushAndroidChannelId(type: NotificationType): PushAndroidChannelId {
+  const channel =
+    PUSH_CHANNEL_BY_TYPE.get(type) ??
+    PROVIDER_AUDIENCE_PUSH_CHANNEL_BY_TYPE.get(type);
+  if (channel === undefined) {
+    throw new Error(`${type} is not a push type, so it has no phone channel`);
+  }
+  return channel;
 }
 
 /**

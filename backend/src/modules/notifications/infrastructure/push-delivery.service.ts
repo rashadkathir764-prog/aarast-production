@@ -3,6 +3,7 @@ import { Notification, NotificationType } from "@prisma/client";
 import { FirebasePushClient } from "../../../push/firebase-push.client";
 import {
   isPushNotificationType,
+  pushAndroidChannelId,
   pushNotificationCopy,
 } from "../../../push/push-notification.policy";
 import { runSerializableTransaction } from "../../../platform/database/serializable-transaction";
@@ -229,7 +230,7 @@ export class PushDeliveryService implements PushDeliveryPort {
         ttl: PUSH_TTL_MS,
         collapseKey: alertKey,
         notification: {
-          channelId: "aarast_updates",
+          channelId: pushAndroidChannelId(notification.type),
           icon: "ic_stat_aarast",
           color: "#4C7180",
           defaultSound: true,

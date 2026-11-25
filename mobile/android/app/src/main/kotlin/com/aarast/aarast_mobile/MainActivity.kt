@@ -20,7 +20,7 @@ import java.io.File
 class MainActivity : FlutterActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        createUpdatesNotificationChannel()
+        createNotificationChannels()
     }
 
     // D112 (Q-8): while a money screen is in front and the account's lock is
@@ -101,21 +101,38 @@ class MainActivity : FlutterActivity() {
         }
     }
 
-    private fun createUpdatesNotificationChannel() {
+    /**
+     * RA-MO-360: one channel per kind of alert, so the phone's own settings
+     * quiet «رسائل», «مهام وتذكيرات» or «المال» alone. The push gateway
+     * names these ids (`push-notification.policy.ts`).
+     *
+     * The one old channel («رسائل ومهام اعّرست», `aarast_updates`) is carried
+     * over once: what the person did to it (muting it, lowering it) is kept
+     * on the new ones, then it is removed so it is not left in the settings.
+     */
+    private fun createNotificationChannels() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val manager = getSystemService(NotificationManager::class.java)
-        val channel = NotificationChannel(
-            "aarast_updates",
-            "رسائل ومهام اعّرست",
-            NotificationManager.IMPORTANCE_HIGH,
-        ).apply {
-            description = "إشعارات الرسائل الجديدة وتحديثات المهام"
-            lockscreenVisibility = Notification.VISIBILITY_PRIVATE
-            enableVibration(true)
-            enableLights(true)
-            lightColor = Color.rgb(76, 113, 128)
-            setShowBadge(true)
+        val oldChannelId = "aarast_updates"
+        val importance = manager.getNotificationChannel(oldChannelId)?.importance
+            ?: NotificationManager.IMPORTANCE_HIGH
+        listOf(
+            Triple("aarast_messages", "رسائل", "الرسائل الجديدة وطلبات الحجز والعروض"),
+            Triple("aarast_tasks", "مهام وتذكيرات", "المهام وتذكيراتها وعدّ العرس التنازلي"),
+            Triple("aarast_money", "المال", "مواعيد الدفعات وسداد القروض والميزانية"),
+        ).forEach { (id, name, summary) ->
+            // A channel's importance is the person's after it exists: the
+            // call only adds one that is not there yet.
+            val channel = NotificationChannel(id, name, importance).apply {
+                description = summary
+                lockscreenVisibility = Notification.VISIBILITY_PRIVATE
+                enableVibration(true)
+                enableLights(true)
+                lightColor = Color.rgb(76, 113, 128)
+                setShowBadge(true)
+            }
+            manager.createNotificationChannel(channel)
         }
-        manager.createNotificationChannel(channel)
+        manager.deleteNotificationChannel(oldChannelId)
     }
 }

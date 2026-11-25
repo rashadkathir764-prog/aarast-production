@@ -112,10 +112,25 @@ void main() {
       'android/app/src/main/res/values/colors.xml',
     ).readAsStringSync();
 
-    expect(manifest, contains('android:value="aarast_updates"'));
+    // RA-MO-360: one channel per kind of alert, so the phone's settings can
+    // quiet one without the others; a message with no channel of its own
+    // falls to «رسائل».
+    expect(manifest, contains('android:value="aarast_messages"'));
+    expect(manifest, isNot(contains('aarast_updates')));
     expect(manifest, contains('android:resource="@drawable/ic_stat_aarast"'));
     expect(activity, contains('NotificationManager.IMPORTANCE_HIGH'));
     expect(activity, contains('setShowBadge(true)'));
+    for (final (id, name) in const [
+      ('aarast_messages', 'رسائل'),
+      ('aarast_tasks', 'مهام وتذكيرات'),
+      ('aarast_money', 'المال'),
+    ]) {
+      expect(activity, matches(RegExp('"$id",\\s*"$name"')), reason: id);
+    }
+    // The one old channel is carried over (the person's own importance) and
+    // then removed, so «رسائل ومهام اعّرست» does not stay in the settings.
+    expect(activity, contains('deleteNotificationChannel(oldChannelId)'));
+    expect(activity, contains('getNotificationChannel(oldChannelId)'));
     expect(notificationIcon, contains('M12,2.4L14.15,9.85'));
     expect(
       colors,

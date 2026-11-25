@@ -8,6 +8,7 @@ import { PushInstallationsService } from "../src/modules/notifications/infrastru
 import { validateRuntimeEnvironment } from "../src/platform/config/runtime-environment";
 import {
   isPushNotificationType,
+  pushAndroidChannelId,
   pushNotificationCopy,
 } from "../src/push/push-notification.policy";
 import { getJwtSecret } from "../src/modules/identity/internal/auth/jwt-secret";
@@ -39,6 +40,31 @@ test("push policy is limited to the notification types that wait on a person", (
   );
   // Reviews stay in the inbox.
   assert.equal(isPushNotificationType(NotificationType.REVIEW_RECEIVED), false);
+});
+
+// RA-MO-360: the phone's settings list «رسائل», «مهام وتذكيرات» and «المال»,
+// so a person can quiet one kind of alert without losing the others.
+test("every push type goes to one of the three phone channels, by what it is about", () => {
+  const pushTypes = Object.values(NotificationType).filter((type) =>
+    isPushNotificationType(type, { recipientAudience: "PROVIDER" }),
+  );
+  assert.ok(pushTypes.length >= 18);
+  for (const type of pushTypes) {
+    assert.ok(
+      ["aarast_messages", "aarast_tasks", "aarast_money"].includes(
+        pushAndroidChannelId(type),
+      ),
+      type,
+    );
+  }
+  assert.equal(pushAndroidChannelId(NotificationType.CHAT_MESSAGE_RECEIVED), "aarast_messages");
+  assert.equal(pushAndroidChannelId(NotificationType.BOOKING_REQUESTED), "aarast_messages");
+  assert.equal(pushAndroidChannelId(NotificationType.TASK_DUE_SOON), "aarast_tasks");
+  assert.equal(pushAndroidChannelId(NotificationType.WEDDING_COUNTDOWN), "aarast_tasks");
+  assert.equal(pushAndroidChannelId(NotificationType.PAYMENT_SCHEDULE_DUE_SOON), "aarast_money");
+  assert.equal(pushAndroidChannelId(NotificationType.FUNDING_EXPECTED), "aarast_money");
+  // A type that never reaches a phone has no channel to name.
+  assert.throws(() => pushAndroidChannelId(NotificationType.REVIEW_RECEIVED));
 });
 
 // A price offer and each booking step wait on the other side's decision, so
@@ -292,7 +318,8 @@ test("delivery removes permanent invalid installations and retries transient fai
   assert.equal(sent.data.notificationId, "notification-1");
   assert.equal(sent.data.weddingPlanId, undefined);
   assert.equal(sent.data.routeTarget, undefined);
-  assert.equal(sent.android.notification.channelId, "aarast_updates");
+  // RA-MO-360: a chat message goes to «رسائل», not the one old channel.
+  assert.equal(sent.android.notification.channelId, "aarast_messages");
   assert.equal(sent.android.priority, "high");
   assert.equal(sent.android.notification.priority, "high");
   assert.equal(sent.android.notification.defaultSound, true);

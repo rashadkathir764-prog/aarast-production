@@ -156,15 +156,20 @@ async function run() {
       media.verify?.headers?.['cache-control'] === 'private, no-store',
     );
     check('chat upload returns no public URL', media.verify?.body?.publicUrl === null);
+    // RA-BE-178: a private upload's path is opaque (`chat-image/<uuid>/<uuid>.<ext>`)
+    // and never names its uploader; who owns it is its upload ticket's.
+    const attachmentRef = media.verify?.body?.attachmentRef;
     check(
-      'verified chat upload returns opaque owned reference',
-      typeof media.verify?.body?.attachmentRef === 'string' &&
-        media.verify.body.attachmentRef.startsWith(`chat-image/${requester.user.id}/`),
+      'verified chat upload returns opaque reference without the uploader id',
+      typeof attachmentRef === 'string' &&
+        /^chat-image\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.[a-z0-9]+$/.test(attachmentRef) &&
+        !attachmentRef.includes(requester.user.id),
     );
     const verifiedKey = media.verify?.body?.key;
     const verifiedTicket = verifiedKey
       ? await prisma.mediaUploadTicket.findUnique({ where: { key: verifiedKey } })
       : null;
+    check('verified chat upload ticket is owned by its uploader', verifiedTicket?.userId === requester.user.id);
     check(
       'verified chat upload has a durable unconsumed ticket',
       verifiedTicket?.status === 'VERIFIED' && verifiedTicket.consumedAt === null,

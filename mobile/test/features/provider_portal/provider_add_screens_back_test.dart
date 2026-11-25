@@ -19,6 +19,7 @@ Future<void> _pump(
   Widget screen, {
   ProviderDashboardProfile? profile,
   List<MarketplaceService> services = const [],
+  _Dashboard? dashboard,
 }) async {
   final client = ApiClient(tokenProvider: () async => null);
   final router = GoRouter(
@@ -39,7 +40,7 @@ Future<void> _pump(
           create: (_) => _Marketplace(client),
         ),
         ChangeNotifierProvider<ProviderDashboardProvider>(
-          create: (_) => _Dashboard(client, profile, services),
+          create: (_) => dashboard ?? _Dashboard(client, profile, services),
         ),
       ],
       child: MaterialApp.router(routerConfig: router),
@@ -65,6 +66,77 @@ void main() {
       );
     });
   }
+
+  // RA-TS-24: these two were a read of the screens' source for
+  // `currencyLabelAr(defaultCurrencyCode)` and `currency: defaultCurrencyCode`.
+  // The form is filled and sent, and what it hands over is what is checked.
+  const approved = ProviderDashboardProfile(
+    id: 'provider-1',
+    businessName: 'استوديو ضوء',
+    status: 'ACTIVE',
+    ratingAverage: 0,
+    ratingCount: 0,
+    primaryCategoryId: 'cat-photo',
+  );
+
+  testWidgets('a new service is priced in rials and sent in YER', (
+    tester,
+  ) async {
+    final dashboard = _Dashboard(
+      ApiClient(tokenProvider: () async => null),
+      approved,
+      const [],
+    );
+    await _pump(tester, const AddProviderServiceScreen(), dashboard: dashboard);
+    expect(find.text('ر.ي'), findsOneWidget);
+    expect(find.text('ر.س'), findsNothing);
+
+    await tester.enterText(find.byType(TextField).first, 'تصوير الزفة');
+    await tester.tap(find.text('الفئة'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('تصوير').last);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).at(1), '150000');
+    await tester.tap(find.text('إضافة الخدمة'));
+    await tester.pumpAndSettle();
+
+    expect(dashboard.created, [
+      {
+        'kind': 'service',
+        'title': 'تصوير الزفة',
+        'categoryId': 'cat-photo',
+        'basePrice': '150000',
+        'currency': 'YER',
+      },
+    ]);
+  });
+
+  testWidgets('a new package is priced in rials and sent in YER', (
+    tester,
+  ) async {
+    final dashboard = _Dashboard(
+      ApiClient(tokenProvider: () async => null),
+      approved,
+      const [],
+    );
+    await _pump(tester, const AddProviderPackageScreen(), dashboard: dashboard);
+    expect(find.text('ر.ي'), findsOneWidget);
+    expect(find.text('ر.س'), findsNothing);
+
+    await tester.enterText(find.byType(TextField).first, 'باقة الذهب');
+    await tester.enterText(find.byType(TextField).at(1), '250000');
+    await tester.tap(find.text('إضافة الباقة'));
+    await tester.pumpAndSettle();
+
+    expect(dashboard.created, [
+      {
+        'kind': 'package',
+        'title': 'باقة الذهب',
+        'price': '250000',
+        'currency': 'YER',
+      },
+    ]);
+  });
 
   // RA-BE-152: after approval a new service goes only in a section his
   // listing already shows in (his category, or an active service's); a new
@@ -121,6 +193,48 @@ class _Marketplace extends ProviderMarketplaceProvider {
 class _Dashboard extends ProviderDashboardProvider {
   _Dashboard(ApiClient client, this.profile, this.services)
     : super(ProviderDashboardApi(client));
+
+  /// What the form handed to the provider, as `createService` and
+  /// `createPackage` were called.
+  final created = <Map<String, Object?>>[];
+
+  @override
+  Future<bool> createService({
+    required String title,
+    required String categoryId,
+    String? description,
+    String? basePrice,
+    String? priceUnit,
+    String? currency,
+    String? cityId,
+  }) async {
+    created.add({
+      'kind': 'service',
+      'title': title,
+      'categoryId': categoryId,
+      'basePrice': basePrice,
+      'currency': currency,
+    });
+    return true;
+  }
+
+  @override
+  Future<bool> createPackage({
+    required String title,
+    String? serviceId,
+    String? description,
+    String? price,
+    String? currency,
+    List<String> items = const [],
+  }) async {
+    created.add({
+      'kind': 'package',
+      'title': title,
+      'price': price,
+      'currency': currency,
+    });
+    return true;
+  }
 
   @override
   final ProviderDashboardProfile? profile;

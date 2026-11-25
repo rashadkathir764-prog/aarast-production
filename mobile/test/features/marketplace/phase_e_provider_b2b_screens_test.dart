@@ -31,17 +31,12 @@ void main() {
       }
     });
 
-    test('provider service and package forms keep Arabic currency UI', () {
-      for (final path in [
-        'lib/features/provider_portal/screens/add_provider_service_screen.dart',
-        'lib/features/provider_portal/screens/add_provider_package_screen.dart',
-      ]) {
-        final source = File(path).readAsStringSync();
-        expect(source, contains('currencyLabelAr(defaultCurrencyCode)'));
-        expect(source, contains('currency: defaultCurrencyCode'));
-        expect(source, isNot(contains("currency: 'YER'")));
-      }
-
+    // RA-TS-24: the forms' currency is now asserted by filling and sending
+    // them (`provider_add_screens_back_test.dart`: «a new service is priced in
+    // rials and sent in YER», and the package's). What stays here is the label
+    // of the code they use.
+    test('the default currency of a provider listing is the rial', () {
+      expect(defaultCurrencyCode, 'YER');
       expect(currencyLabelAr(defaultCurrencyCode), 'ر.ي');
     });
 

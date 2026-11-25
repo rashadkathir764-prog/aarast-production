@@ -86,9 +86,7 @@ class _ProviderCard extends StatelessWidget {
       isFeatured: provider.isFeaturedAt(appNow()),
       isVerified: provider.isVerified,
       isClaimed: provider.isClaimed,
-      dayLabel: askedDay == null || dayFree == null
-          ? null
-          : '${dayFree ? 'فاضي' : 'مشغول'} يوم ${askedDay.day}',
+      dayLabel: providerDayLabel(askedDay, dayFree),
       dayFree: dayFree,
       ratingAverage: provider.ratingAverage,
       ratingCount: provider.ratingCount,

@@ -93,7 +93,9 @@ void main() {
       priceAgeLabel: 'محدّث هذا الشهر',
     );
 
-    expect(find.text('450,000 ر.ي · محدّث هذا الشهر'), findsOneWidget);
+    // Changed on purpose (UX critique, explore.png): the age's words hold
+    // together, so «الشهر» never falls to a line of its own.
+    expect(find.text('450,000 ر.ي · محدّث هذا الشهر'), findsOneWidget);
     expect(find.byKey(const Key('provider-card-verified')), findsOneWidget);
     expect(find.byKey(const Key('provider-card-unclaimed-note')), findsNothing);
     expect(tester.takeException(), isNull);
@@ -286,7 +288,7 @@ void main() {
           imageUrl: 'https://media.example/provider-cover/a.jpg',
         );
         expect(
-          find.text('1,000,000 ر.ي · محدّث هذا الشهر'),
+          find.text('1,000,000 ر.ي · محدّث هذا الشهر'),
           findsOneWidget,
           reason: 'at $width × $scale',
         );

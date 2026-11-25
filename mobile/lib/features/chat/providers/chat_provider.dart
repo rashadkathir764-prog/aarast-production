@@ -73,6 +73,11 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
       _timelines[conversationId] ?? const [];
   List<ChatQuoteRequestSummary> quoteRequestsFor(String conversationId) =>
       _quoteRequests[conversationId] ?? const [];
+
+  /// The conversation's requests were read, from the server or the phone's
+  /// copy; an empty list then means none, not «still loading».
+  bool quoteRequestsRead(String conversationId) =>
+      _quoteRequests.containsKey(conversationId);
   bool canLoadOlder(String conversationId) =>
       _nextTimelineCursors[conversationId] != null;
   bool isLoadingOlder(String conversationId) =>

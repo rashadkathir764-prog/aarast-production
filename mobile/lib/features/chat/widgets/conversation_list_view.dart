@@ -20,10 +20,15 @@ class ConversationListView extends StatefulWidget {
     this.iconFor,
     this.now,
     this.planId,
+    this.onExplore,
     super.key,
   });
 
   final bool embedded;
+
+  /// Where an empty list starts her: «استكشف». The providers tab passes its
+  /// own tab; alone, the list opens the providers page.
+  final VoidCallback? onExplore;
 
   /// The plan whose conversations show; all of the account's when null.
   final String? planId;
@@ -109,6 +114,11 @@ class _ConversationListViewState extends State<ConversationListView> {
                 'أول ما تطلب عرض من مزود، تبدأ محادثتكم هنا.',
                 'أول ما تطلبين عرض من مزود، تبدأ محادثتكم هنا.',
               ),
+              // An empty list names where to start, with the way there.
+              emptyAction: context.say('دوّر في استكشف', 'دوّري في استكشف'),
+              onEmptyAction:
+                  widget.onExplore ??
+                  () => context.go(AppRouter.providerMarketplace),
             )
           else ...[
             // D87 (RA-MO-260): a copy on the phone is shown as what it is.

@@ -176,6 +176,30 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
   /// The server sends no amount to a reader who does not see the money.
   bool get _seesMoney => _knownMoney?.canViewMoney ?? true;
 
+  /// «مدفوع 100,000 ر.ي · باقي 450,000 ر.ي»: what the chosen offer's
+  /// agreement in the money stands at, from that agreement itself; null
+  /// while the money is not read, not seen, or the agreement is not found.
+  String? _paidLine(QuoteRequest quote) {
+    final money = _knownMoney;
+    if (money == null || !money.canViewMoney) return null;
+    final costId = quote.costSuggestion?.costId?.trim();
+    final cost = costId == null || costId.isEmpty
+        ? null
+        : money.costById(costId);
+    final paid = num.tryParse(cost?.paidAmount ?? '');
+    final left = num.tryParse(cost?.remainingAmount ?? '');
+    if (paid == null || left == null) return null;
+    final currency = money.summary.currency;
+    String shown(num value) => money.shownAmount(
+      fullMoneyParts(value, currencyCode: currency).plainText,
+    );
+    if (left <= 0) return 'مدفوع كله';
+    return [
+      paid > 0 ? 'مدفوع ${shown(paid)}' : 'ما اندفع شي بعد',
+      'باقي ${shown(left)}',
+    ].join(' · ');
+  }
+
   @override
   Widget build(BuildContext context) {
     final marketplace = context.watch<ProviderMarketplaceProvider>();
@@ -274,6 +298,17 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
                         ),
                       ),
                   if (offers.isNotEmpty) ...[
+                    // True of every offer, so said once above them, not in
+                    // each card.
+                    Text(
+                      'يتفقون على الدفع معك مباشرة',
+                      key: const ValueKey('requests-pay-directly'),
+                      style: JourneyType.of(
+                        JourneyType.small,
+                        color: AarastV3Color.textMuted,
+                      ),
+                    ),
+                    const SizedBox(height: AarastV3Space.x2),
                     _OffersRow(
                       offers: offers,
                       busy: marketplace.isSubmitting,
@@ -306,6 +341,7 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
                     const SizedBox(height: AarastV3Space.x3),
                     _ChosenCard(
                       quote: quote,
+                      paidLine: _paidLine(quote),
                       busy: marketplace.isSubmitting,
                       onBook: () => _book(quote),
                       onCancelBooking: () => _cancelBooking(quote),
@@ -411,9 +447,12 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
   }
 
   /// «اختر هذا»: the offer becomes a cost in the money tab, then f05 asks
-  /// for the booking.
+  /// for the booking. One tap put an agreement in the money and took the
+  /// choice from every other offer of the service, so it asks first and
+  /// says exactly that.
   Future<void> _choose(QuoteRequest quote) async {
     if (!_ownQuote(quote)) return;
+    if (!await _confirmChoice(quote) || !mounted) return;
     final marketplace = context.read<ProviderMarketplaceProvider>();
     final ok = await marketplace.acceptQuote(quote);
     if (!mounted) return;
@@ -431,6 +470,46 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
       '${context.say('اخترت', 'اخترتِ')} ${quoteProviderName(quote)}، وصار بند في المال.',
     );
     await _book(_fresh(quote));
+  }
+
+  /// What choosing does, said before it is done: the offer's amount becomes
+  /// an agreement in the money, and the service's other offers lose their
+  /// «اختر هذا» (only one agreement per service); they are not declined.
+  Future<bool> _confirmChoice(QuoteRequest quote) async {
+    final name = quoteProviderName(quote);
+    // A reader who does not see the money gets no amount from the server.
+    final amount = offerAmountLabel(quote.pendingOffer);
+    final question = amount == null
+        ? context.say('تختار $name؟', 'تختارين $name؟')
+        : context.say('تختار $name بـ$amount؟', 'تختارين $name بـ$amount؟');
+    final confirmed = await showJourneySheet<bool>(
+      context: context,
+      builder: (sheetContext) => JourneySheetBody(
+        title: question,
+        subtitle: context.say(
+          'ينضاف لمالك كاتفاق، وما تقدر تختار عرض ثاني لهذي الخدمة.',
+          'ينضاف لمالك كاتفاق، وما تقدرين تختارين عرض ثاني لهذي الخدمة.',
+        ),
+        children: [
+          JourneyButton(
+            key: const ValueKey('requests-choose-confirm'),
+            label: context.say('اختر $name', 'اختاري $name'),
+            background: context.accent.primary,
+            expand: true,
+            large: true,
+            onPressed: () => Navigator.of(sheetContext).pop(true),
+          ),
+          const SizedBox(height: AarastV3Space.x2),
+          JourneyButton.quiet(
+            key: const ValueKey('requests-choose-back'),
+            label: 'رجوع',
+            expand: true,
+            onPressed: () => Navigator.of(sheetContext).pop(false),
+          ),
+        ],
+      ),
+    );
+    return confirmed == true;
   }
 
   Future<void> _book(QuoteRequest quote) async {
@@ -453,7 +532,7 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
     final ok = await marketplace.requestBooking(quote, eventDate: day);
     if (!mounted) return;
     if (ok) {
-      AarastToast.showSuccess(context, 'وصلهم طلب الحجز. نخبرك لما يأكدون.');
+      AarastToast.showSuccess(context, 'وصلهم طلب الحجز. نخبرك لما يأكّدون.');
     } else {
       AarastToast.showError(
         context,
@@ -567,7 +646,10 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
     if (ok) {
       AarastToast.showSuccess(
         context,
-        'انسجّل إنك استلمت. ما يبقى إلا تقييمهم.',
+        context.say(
+          'انسجّل إنك استلمت. ما يبقى إلا تقييمهم.',
+          'انسجّل إنك استلمتِ. ما يبقى إلا تقييمهم.',
+        ),
       );
     } else {
       AarastToast.showError(

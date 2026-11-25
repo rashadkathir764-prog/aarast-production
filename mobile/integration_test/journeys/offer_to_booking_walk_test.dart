@@ -31,7 +31,9 @@ void main() {
       await walk.step('f05_choose', 'اختر هذا', () async {
         // The studio has an account to confirm from; «عدسة سبأ» is unclaimed.
         await walk.tapText('اختر هذا', last: true, wait: 4);
+        // Choosing asks first: it adds the offer to the money as an agreement.
         walk.note(walk.visibleTexts().take(24).join(' · '));
+        await walk.tapKey('requests-choose-confirm', wait: 4);
       });
 
       await walk.step('f05_book', 'اطلب الحجز', () async {

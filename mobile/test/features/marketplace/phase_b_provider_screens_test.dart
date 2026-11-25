@@ -105,6 +105,29 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    // UX critique: «فاضي يوم 21» was on the list's card only; the page she
+    // opens from it says it too, from the same answer.
+    testWidgets('provider details say whether her wedding day is free', (
+      tester,
+    ) async {
+      _setTallView(tester);
+      await tester.pumpWidget(
+        ChangeNotifierProvider<ProviderMarketplaceProvider>.value(
+          value: _DayAnswered(),
+          child: const MaterialApp(
+            home: ProviderDetailsScreen(providerId: _providerId),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('provider-details-day')),
+        findsOneWidget,
+      );
+      expect(find.text('فاضي يوم 21'), findsOneWidget);
+    });
+
     testWidgets('provider details stay safe at 320px RTL and 1.3 scale', (
       tester,
     ) async {
@@ -531,7 +554,8 @@ void main() {
         find.byKey(const ValueKey('compare-provider-provider-2')),
         findsOneWidget,
       );
-      expect(find.text('قارن الملفين'), findsOneWidget);
+      // Changed on purpose (UX critique): «قارن بينهم».
+      expect(find.text('قارن بينهم'), findsOneWidget);
       expect(find.text('قاعة السلام'), findsOneWidget);
       expect(find.text('قاعة الأمل'), findsOneWidget);
       // Each in its own currency, never the raw code.
@@ -543,6 +567,43 @@ void main() {
       expect(find.text('أنسب لك'), findsNothing);
       expect(find.text('اطلب عرض سعر'), findsOneWidget);
       expect(find.text('ما يستقبل طلبات لين يستلم صاحبه ملفه'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    // UX critique: a band beside a photographer compares nothing; the
+    // screen says why and leads back to pick again.
+    testWidgets('f09 compare refuses two different services and says why', (
+      tester,
+    ) async {
+      _setTallView(tester);
+      final authStorage = await _authenticatedStorage();
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            Provider<AuthStorage>.value(value: authStorage),
+            ChangeNotifierProvider<ProviderMarketplaceProvider>.value(
+              value: _HallAndBand(),
+            ),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.light(),
+            home: const FavoriteProvidersScreen(
+              providerIds: [_providerId, 'band'],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('compare-not-same-kind')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('compare-provider-$_providerId')),
+        findsNothing,
+      );
       expect(tester.takeException(), isNull);
     });
 
@@ -579,7 +640,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(tester.takeException(), isNull);
-      expect(find.text('قارن الملفين'), findsOneWidget);
+      expect(find.text('قارن بينهم'), findsOneWidget);
     });
   });
 }
@@ -695,6 +756,39 @@ class _TwoSaved extends _FakeMarketplaceProvider {
 
   @override
   List<ProviderPackage> packagesFor(String id) => [_package()];
+}
+
+/// The directory listed the hall for the wedding day, and it is free.
+class _DayAnswered extends _FakeMarketplaceProvider {
+  @override
+  DateTime? get eventDate => DateTime(2027, 1, 21);
+
+  @override
+  List<MarketplaceProvider> get providers => const [
+    MarketplaceProvider(
+      id: _providerId,
+      businessName: 'قاعة السلام',
+      ownerName: 'مالك القاعة',
+      ratingAverage: 4.7,
+      ratingCount: 12,
+      availableOnEventDate: true,
+    ),
+  ];
+}
+
+/// A hall and a band saved together.
+class _HallAndBand extends _TwoSaved {
+  @override
+  MarketplaceProvider? providerDetails(String id) => id == 'band'
+      ? const MarketplaceProvider(
+          id: 'band',
+          businessName: 'فرقة الأفراح',
+          ownerName: 'مالك',
+          ratingAverage: 0,
+          ratingCount: 0,
+          primaryCategory: ProviderCategory(id: 'cat-band', nameAr: 'فرق'),
+        )
+      : super.providerDetails(id);
 }
 
 /// The fixture hall, priced in riyals.

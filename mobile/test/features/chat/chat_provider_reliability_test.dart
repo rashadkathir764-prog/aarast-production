@@ -664,6 +664,40 @@ void main() {
     expect(find.text('ضيافة الأصالة'), findsNothing);
   });
 
+  // UX critique: the empty list said where conversations come from with
+  // no way there; it now opens «استكشف».
+  testWidgets('an empty conversation list leads to «استكشف»', (tester) async {
+    final chat = ChatProvider(
+      api: _FakeChatApi(conversations: const []),
+      realtime: _FakeRealtimeClient(storage),
+      authStorage: storage,
+    );
+    await chat.initialize();
+    addTearDown(chat.dispose);
+    var explored = 0;
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider<ChatProvider>.value(
+        value: chat,
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: Scaffold(
+            body: ConversationListView(
+              embedded: true,
+              planId: 'plan-1',
+              onExplore: () => explored++,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('ما في محادثات بعد'), findsOneWidget);
+    await tester.tap(find.text('دوّر في استكشف'));
+    expect(explored, 1);
+  });
+
   testWidgets('f08 rows say the last word, when, and how many are unread', (
     tester,
   ) async {
@@ -1352,6 +1386,23 @@ void main() {
         chat.dispose();
       });
 
+      // UX critique (chat.png): the conversation's requests were read, but
+      // the offer's request was not among them, and the card said
+      // «يتحمّل العرض…» for ever. Read is read: it says the offer did not
+      // show, and still names what the event carries.
+      testWidgets('an offer whose request is not among those read does not '
+          'load for ever', (tester) async {
+        final chat = chatWith(requests: const []);
+        await tester.pumpWidget(_chatApp(chat));
+        await tester.pumpAndSettle();
+
+        expect(find.text('يتحمّل العرض…'), findsNothing);
+        expect(find.text('العرض ما ظهر'), findsOneWidget);
+        expect(find.textContaining('عرض التصوير'), findsOneWidget);
+        expect(find.text('اقبل العرض'), findsNothing);
+        chat.dispose();
+      });
+
       testWidgets('RA-MO-330: an offer with no price shows the one the event '
           'carries', (tester) async {
         final chat = chatWith(
@@ -1575,7 +1626,8 @@ void main() {
       expect(find.text('احظر المزود'), findsOneWidget);
       expect(find.text('ما يقدر يراسلك'), findsOneWidget);
       expect(
-        find.text('الحظر ما يلغي الحجز المؤكد. ألغه من "الحجوزات" لو تشتي.'),
+        // Changed on purpose (UX critique): Arabic quotes, not English ones.
+        find.text('الحظر ما يلغي الحجز المؤكد. ألغه من «الحجوزات» لو تشتي.'),
         findsOneWidget,
       );
 

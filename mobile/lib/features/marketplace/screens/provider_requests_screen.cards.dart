@@ -100,9 +100,12 @@ class _OfferCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final offer = quote.pendingOffer!;
     final amount = offerAmountLabel(offer);
+    // The offer's title when it is not the service's, which is said just
+    // above it («صور وفيديو» was written twice on a card).
+    final service = quote.service?.title.trim();
     final details = [offer.title, offer.message]
         .map((line) => line?.trim() ?? '')
-        .where((line) => line.isNotEmpty)
+        .where((line) => line.isNotEmpty && line != service)
         .toList();
     final until = offer.validUntil;
     final ends = until == null ? null : offerEndsLabel(until, appNow());
@@ -251,13 +254,6 @@ class _OfferCard extends StatelessWidget {
                 color: AarastV3Color.brandAccentStrong,
               ),
             ),
-          Text(
-            'يتفقون على الدفع معك مباشرة',
-            style: JourneyType.of(
-              JourneyType.small,
-              color: AarastV3Color.textMuted,
-            ),
-          ),
           const SizedBox(height: AarastV3Space.x3),
           if (onChoose != null)
             JourneyButton(
@@ -305,10 +301,14 @@ class _ChosenCard extends StatelessWidget {
     required this.onChat,
     this.onChangeDay,
     this.onConfirmDelivery,
+    this.paidLine,
   });
 
   final QuoteRequest quote;
   final bool busy;
+
+  /// What the agreement in the money stands at: paid and left.
+  final String? paidLine;
   final VoidCallback onBook;
   final VoidCallback onCancelBooking;
   final VoidCallback onViewCost;
@@ -422,6 +422,16 @@ class _ChosenCard extends StatelessWidget {
             Text(
               amount,
               style: JourneyType.of(JourneyType.lead, weight: JourneyType.bold),
+            ),
+          if (paidLine case final paid?)
+            Text(
+              paid,
+              key: ValueKey('requests-chosen-paid-${quote.id}'),
+              style: JourneyType.of(
+                JourneyType.small,
+                weight: JourneyType.bold,
+                color: AarastV3Color.textMuted,
+              ),
             ),
           Text(
             detail,
@@ -646,8 +656,8 @@ class _CancelBookingSheet extends StatelessWidget {
               effect(
                 LucideIcons.wallet,
                 context.say(
-                  'البند يبقى في المال: لو رجّعوا لك شيء أو ما بتدفع، عدّله من هناك',
-                  'البند يبقى في المال: لو رجّعوا لك شيء أو ما بتدفعين، عدّليه من هناك',
+                  'البند يبقى في المال: لو رجّعوا لك شي أو ما بتدفع، عدّله من هناك',
+                  'البند يبقى في المال: لو رجّعوا لك شي أو ما بتدفعين، عدّليه من هناك',
                 ),
               ),
             ],

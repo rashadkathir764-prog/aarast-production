@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart'
-    show JourneyProfile;
+    show JourneyProfile, JourneyProfileScope;
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/utils/app_clock.dart';
 import 'package:aarast_mobile/features/chat/data/chat_api.dart';
@@ -321,7 +321,19 @@ void main() {
         findsOneWidget,
       );
 
+      // The payment line is said once above the offers, not in each card.
+      expect(find.text('يتفقون على الدفع معك مباشرة'), findsOneWidget);
+
       await tester.tap(find.byKey(const ValueKey('requests-choose-q1')));
+      await tester.pumpAndSettle();
+      // It asks first, saying what choosing does.
+      expect(h.marketplace.acceptedQuoteIds, isEmpty);
+      expect(find.textContaining('تختار ضوء صنعاء بـ550,000'), findsOneWidget);
+      expect(
+        find.text('ينضاف لمالك كاتفاق، وما تقدر تختار عرض ثاني لهذي الخدمة.'),
+        findsOneWidget,
+      );
+      await tester.tap(find.byKey(const ValueKey('requests-choose-confirm')));
       await tester.pumpAndSettle();
 
       expect(h.marketplace.acceptedQuoteIds, ['q1']);
@@ -335,6 +347,61 @@ void main() {
       expect(h.marketplace.bookingDays, [DateTime(2027, 1, 21)]);
     },
   );
+
+  // UX critique (the Sana'a bride): one tap on «اختاري هذا» put the amount
+  // in her money as an agreement and took the choice from the other offers,
+  // with nothing asked. «رجوع» leaves everything as it was.
+  testWidgets('choosing asks the bride first; going back chooses nothing', (
+    tester,
+  ) async {
+    final h = await _pump(tester, [
+      _offer('q1', 'ضوء صنعاء', '550000'),
+      _offer('q2', 'عدسة سبأ', '480000'),
+    ], profile: JourneyProfile.bride);
+
+    await tester.tap(find.byKey(const ValueKey('requests-choose-q2')));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('تختارين عدسة سبأ بـ480,000'), findsOneWidget);
+    expect(
+      find.text('ينضاف لمالك كاتفاق، وما تقدرين تختارين عرض ثاني لهذي الخدمة.'),
+      findsOneWidget,
+    );
+    expect(find.text('اختاري عدسة سبأ'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('requests-choose-back')));
+    await tester.pumpAndSettle();
+    expect(h.marketplace.acceptedQuoteIds, isEmpty);
+    expect(find.text('نطلب الحجز؟'), findsNothing);
+    expect(find.byKey(const ValueKey('requests-choose-q1')), findsOneWidget);
+  });
+
+  testWidgets('the delivery received speaks to the bride in her form', (
+    tester,
+  ) async {
+    final delivered = MarketplaceBooking.fromJson({
+      'id': 'booking-1',
+      'quoteRequestId': 'q1',
+      'providerId': 'provider-q1',
+      'eventDate': '2025-01-21',
+      'status': 'CONFIRMED',
+      'lifecycleStatus': 'COMPLETED',
+      'deliveredAt': '2025-02-01T10:00:00.000Z',
+    });
+    final h = await _pump(tester, [
+      _accepted(booking: delivered),
+    ], profile: JourneyProfile.bride);
+
+    await tester.tap(
+      find.byKey(const ValueKey('requests-confirm-delivery-q1')),
+    );
+    await tester.pump();
+    expect(h.marketplace.confirmedDeliveries, ['q1']);
+    expect(
+      find.text('انسجّل إنك استلمتِ. ما يبقى إلا تقييمهم.'),
+      findsOneWidget,
+    );
+    await tester.pumpAndSettle(const Duration(seconds: 5));
+  });
 
   // RA-MO-334: an offer's price was written inside a left-to-right isolate,
   // which in an Arabic line puts «ر.ي» before the number the eye reads
@@ -559,6 +626,14 @@ void main() {
     final h = await _pump(tester, [_accepted()]);
 
     expect(find.text('باقي تطلب منهم حجز يوم عرسك'), findsOneWidget);
+    // UX critique: the price alone; what is paid and left of its agreement
+    // in the money is said under it.
+    final paid = find.byKey(const ValueKey('requests-chosen-paid-q1'));
+    expect(paid, findsOneWidget);
+    expect(
+      tester.widget<Text>(paid).data,
+      startsWith('ما اندفع شي بعد · باقي 550,000'),
+    );
     await tester.tap(find.byKey(const ValueKey('requests-book-q1')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('booking-other-day')));
@@ -810,6 +885,7 @@ Future<_Harness> _pump(
   bool settle = true,
   bool seesMoney = true,
   bool managesMoney = true,
+  JourneyProfile? profile,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = Size(width, 1400);
@@ -850,8 +926,12 @@ Future<_Harness> _pump(
       ],
       child: MaterialApp.router(
         routerConfig: router,
-        builder: (context, child) =>
-            Directionality(textDirection: TextDirection.rtl, child: child!),
+        builder: (context, child) => Directionality(
+          textDirection: TextDirection.rtl,
+          child: profile == null
+              ? child!
+              : JourneyProfileScope(profile: profile, child: child!),
+        ),
       ),
     ),
   );
@@ -938,6 +1018,14 @@ class _Marketplace extends ProviderMarketplaceProvider {
   @override
   Future<bool> cancelBooking(QuoteRequest quote) async {
     cancelledBookings.add(quote.id);
+    return true;
+  }
+
+  final confirmedDeliveries = <String>[];
+
+  @override
+  Future<bool> confirmBookingDelivery(QuoteRequest quote) async {
+    confirmedDeliveries.add(quote.id);
     return true;
   }
 

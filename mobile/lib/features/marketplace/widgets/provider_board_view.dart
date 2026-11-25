@@ -11,12 +11,16 @@ class ProviderBoardView extends StatelessWidget {
     required this.rows,
     required this.onOpen,
     required this.onSearch,
+    this.onExplore,
     super.key,
   });
 
   final List<ProviderBoardRow> rows;
   final ValueChanged<ProviderBoardRow> onOpen;
   final ValueChanged<ProviderBoardRow> onSearch;
+
+  /// Opens «استكشف»: the way to start from an empty board.
+  final VoidCallback? onExplore;
 
   @override
   Widget build(BuildContext context) {
@@ -41,6 +45,18 @@ class ProviderBoardView extends StatelessWidget {
                 color: AarastV3Color.textMuted,
               ),
             ),
+            // An empty board names where to start, with the way there.
+            if (onExplore != null) ...[
+              const SizedBox(height: AarastV3Space.x3),
+              JourneyButton(
+                key: const ValueKey('provider-board-empty-explore'),
+                label: context.say('دوّر في استكشف', 'دوّري في استكشف'),
+                icon: LucideIcons.search,
+                background: context.accent.primary,
+                expand: true,
+                onPressed: onExplore,
+              ),
+            ],
           ],
         ),
       );

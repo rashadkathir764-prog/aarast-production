@@ -168,9 +168,11 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
           color: context.accent.primary,
           soft: context.accent.primarySoft,
           title: context.planWord('نبدأ بالقاعة', 'نبدأ بالصالة'),
-          message: context.say(
-            'لأنها تحدد يومك وعدد ضيوفك،\nوالقاعات تنحجز قبل بشهرين.',
-            'لأنها تحدد يومك وعدد ضيفاتك،\nوالصالات تنحجز قبل بشهرين.',
+          // The plan's words, not the reader's: a helper reads this too,
+          // and the day and the guests are the wedding's, not theirs.
+          message: context.planWord(
+            'لأنها تحدد يوم العرس وعدد الضيوف،\nوالقاعات تنحجز قبل بشهرين.',
+            'لأنها تحدد يوم العرس وعدد الضيفات،\nوالصالات تنحجز قبل بشهرين.',
           ),
           ways: [
             JourneyStartWay(
@@ -298,6 +300,9 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
               rows: board,
               onOpen: _openBoardRow,
               onSearch: (row) => _searchService(row, marketplace, tabs),
+              onExplore: tabs.contains('استكشف')
+                  ? () => _selectTab('استكشف', tabs)
+                  : null,
             ),
         ],
       ),
@@ -453,7 +458,8 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
                             provider: provider,
                             price: _favoritePrice(marketplace, provider),
                             picked: picked.contains(provider.id),
-                            onPick: () => _togglePick(provider.id, picked),
+                            onPick: () =>
+                                _togglePick(provider, picked, favorites),
                             onOpen: () => _openProviderDetails(provider.id),
                           ),
                         ),
@@ -477,18 +483,36 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
               AarastV3Space.x4,
               bottomGap - AarastV3Space.x4,
             ),
-            child: JourneyButton(
-              key: const ValueKey('providers-favorites-compare'),
-              label: context.say('قارن الملفين', 'قارني الملفين'),
-              icon: LucideIcons.columns,
-              background: context.accent.primary,
-              large: true,
-              expand: true,
-              onPressed: picked.length == 2
-                  ? () => _pushOnce(
-                      AppRouter.compareProviders(picked.first, picked.last),
-                    )
-                  : null,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Why the button waits: only the same service compares.
+                if (picked.length < 2) ...[
+                  Text(
+                    'المقارنة تكون بين اثنين من نفس الخدمة.',
+                    key: const ValueKey('providers-favorites-same-kind'),
+                    textAlign: TextAlign.center,
+                    style: JourneyType.of(
+                      JourneyType.small,
+                      color: AarastV3Color.textMuted,
+                    ),
+                  ),
+                  const SizedBox(height: AarastV3Space.x2),
+                ],
+                JourneyButton(
+                  key: const ValueKey('providers-favorites-compare'),
+                  label: context.say('قارن بينهم', 'قارني بينهم'),
+                  icon: LucideIcons.columns,
+                  background: context.accent.primary,
+                  large: true,
+                  expand: true,
+                  onPressed: picked.length == 2
+                      ? () => _pushOnce(
+                          AppRouter.compareProviders(picked.first, picked.last),
+                        )
+                      : null,
+                ),
+              ],
             ),
           ),
       ],
@@ -518,11 +542,12 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
         'حسب الطلب';
   }
 
-  /// The picks still saved, or the first two saved providers.
+  /// The picks still saved, or the first two saved providers of the same
+  /// kind: a band is never set beside a photographer.
   List<String> _comparePicks(List<MarketplaceProvider> favorites) {
     final saved = favorites.map((provider) => provider.id).toList();
     return _comparePicked?.where(saved.contains).toList() ??
-        saved.take(2).toList();
+        firstSameKindPair(favorites);
   }
 
   Widget _exploreTab(ProviderMarketplaceProvider provider) {

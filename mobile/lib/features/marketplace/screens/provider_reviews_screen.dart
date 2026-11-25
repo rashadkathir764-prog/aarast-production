@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -16,6 +14,7 @@ import '../models/marketplace_models.dart';
 import '../providers/marketplace_provider.dart';
 import '../widgets/provider_board_view.dart' show providerServiceIcon;
 import '../widgets/provider_details_view.dart' show providerMoneyLabel;
+import '../widgets/rating_star.dart';
 
 /// A star's touch margin, as a share of the star, so a row of five stays
 /// reachable at any star size.
@@ -337,7 +336,7 @@ class _Stars extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    final row = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         for (var star = 1; star <= 5; star++)
@@ -349,53 +348,24 @@ class _Stars extends StatelessWidget {
             borderRadius: BorderRadius.circular(size),
             child: Padding(
               padding: EdgeInsets.all(size * _starTapInset),
-              child: SizedBox.square(
+              // Given and empty differ in shape, not by colour alone.
+              child: RatingStar(
                 key: ValueKey('reviews-star-$star'),
-                dimension: size,
-                child: CustomPaint(
-                  painter: _StarPainter(
-                    star <= rating ? AarastV3Color.saffron : AarastV3Color.line,
-                  ),
-                ),
+                filled: star <= rating,
+                size: size,
               ),
             ),
           ),
       ],
     );
+    // A rating only shown is read as one figure («4 من 5»).
+    return onRate != null
+        ? row
+        : Semantics(
+            label: '$rating من 5',
+            child: ExcludeSemantics(child: row),
+          );
   }
-}
-
-/// A filled five-point star; Lucide draws only the outline.
-class _StarPainter extends CustomPainter {
-  const _StarPainter(this.color);
-
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final centre = size.center(Offset.zero);
-    final outer = size.shortestSide / 2;
-    final inner = outer * 0.48;
-    final path = Path();
-    for (var point = 0; point < 10; point++) {
-      final radius = point.isEven ? outer : inner;
-      final angle = -math.pi / 2 + point * math.pi / 5;
-      final at = centre + Offset(math.cos(angle), math.sin(angle)) * radius;
-      point == 0 ? path.moveTo(at.dx, at.dy) : path.lineTo(at.dx, at.dy);
-    }
-    path.close();
-    canvas.drawPath(
-      path,
-      Paint()
-        ..color = color
-        ..strokeJoin = StrokeJoin.round
-        ..strokeWidth = outer * 0.12
-        ..style = PaintingStyle.fill,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _StarPainter old) => old.color != color;
 }
 
 /// g04: the provider being rated, then the ones already rated.

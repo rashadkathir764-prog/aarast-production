@@ -214,6 +214,25 @@ class MarketplaceProvider {
 
   bool get isVerified => verifiedAt != null;
 
+  /// The kind of service he is, for comparing like with like (a band is
+  /// never set beside a photographer): his main category, else the one
+  /// category all his services share; null when that is not known.
+  String? get kindId {
+    final primary = primaryCategory?.id ?? primaryCategoryId;
+    if (primary != null && primary.isNotEmpty) return primary;
+    final kinds = {
+      for (final service in services) ?service.category?.id,
+      for (final category in serviceSummary?.categories ?? const [])
+        category.id,
+    };
+    return kinds.length == 1 ? kinds.single : null;
+  }
+
+  /// Whether [other] is known to be another kind of service, so the two do
+  /// not compare. An unknown kind does not stop a comparison.
+  bool differsInKindFrom(MarketplaceProvider other) =>
+      kindId != null && other.kindId != null && kindId != other.kindId;
+
   /// «مميز» now: the one reading every card, list and page uses, so an
   /// offline copy drops the badge once the placement passed.
   bool isFeaturedAt(DateTime now) =>
@@ -221,6 +240,19 @@ class MarketplaceProvider {
 }
 
 /// How quickly a provider answers quote requests, from its own history.
+/// The ids of the first two of [providers] that are not different kinds of
+/// service, in their order; empty when no two are.
+List<String> firstSameKindPair(List<MarketplaceProvider> providers) {
+  for (var i = 0; i < providers.length; i++) {
+    for (var j = i + 1; j < providers.length; j++) {
+      if (!providers[i].differsInKindFrom(providers[j])) {
+        return [providers[i].id, providers[j].id];
+      }
+    }
+  }
+  return const [];
+}
+
 class ProviderResponsiveness {
   const ProviderResponsiveness({
     required this.sampleSize,

@@ -541,6 +541,13 @@ void main() {
 
     expect(find.text('ما طلبت من أحد بعد'), findsOneWidget);
     expect(find.text('نبدأ بالقاعة'), findsOneWidget);
+    // The wedding's day and guests, read alike by the owner and a helper.
+    expect(
+      find.text(
+        'لأنها تحدد يوم العرس وعدد الضيوف،\nوالقاعات تنحجز قبل بشهرين.',
+      ),
+      findsOneWidget,
+    );
     expect(find.text('قاعات لعرسك'), findsOneWidget);
     expect(find.text('على قد بندك في صنعاء'), findsOneWidget);
     expect(find.text('حجزت برا اعّرست'), findsOneWidget);
@@ -885,10 +892,102 @@ void main() {
     // A third pick lets go of the first one picked.
     await tester.tap(find.byKey(const ValueKey('providers-favorite-pick-p3')));
     await tester.pump();
-    await tester.tap(find.text('قارن الملفين'));
+    // Changed on purpose (UX critique): «قارن بينهم», not «الملفين».
+    await tester.tap(find.text('قارن بينهم'));
     await tester.pumpAndSettle();
 
     expect(find.text('compare p2,p3'), findsOneWidget);
+  });
+
+  // UX critique (favorites_compare.png): a band was set beside a
+  // photographer. Only the same service compares.
+  testWidgets('f09 compares only providers of the same service', (
+    tester,
+  ) async {
+    FavoriteProvider saved(String id, String name, String kind) =>
+        FavoriteProvider(
+          id: 'fav-$id',
+          providerId: id,
+          provider: MarketplaceProvider(
+            id: id,
+            businessName: name,
+            ownerName: 'مالك',
+            ratingAverage: 0,
+            ratingCount: 0,
+            primaryCategory: ProviderCategory(id: kind, nameAr: kind),
+          ),
+        );
+    final marketplace = _FakeMarketplaceProvider(
+      favorites: [
+        saved('band', 'فرقة الأفراح', 'cat-band'),
+        saved('p1', 'ضوء صنعاء', 'cat-photo'),
+        saved('p2', 'عدسة سبأ', 'cat-photo'),
+      ],
+      pages: {'band': const [], 'p1': const [], 'p2': const []},
+    );
+    await _pump(tester, marketplace, finance: _LoadedFinance());
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const ValueKey('providers-tabs')),
+        matching: find.text('المفضلة'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // The first two of the same service start picked, not the first two.
+    expect(
+      find.byKey(const ValueKey('providers-favorites-same-kind')),
+      findsNothing,
+    );
+    await tester.tap(find.text('قارن بينهم'));
+    await tester.pumpAndSettle();
+    expect(find.text('compare p1,p2'), findsOneWidget);
+  });
+
+  testWidgets('f09 picking another service starts a new pair', (tester) async {
+    FavoriteProvider saved(String id, String name, String kind) =>
+        FavoriteProvider(
+          id: 'fav-$id',
+          providerId: id,
+          provider: MarketplaceProvider(
+            id: id,
+            businessName: name,
+            ownerName: 'مالك',
+            ratingAverage: 0,
+            ratingCount: 0,
+            primaryCategory: ProviderCategory(id: kind, nameAr: kind),
+          ),
+        );
+    final marketplace = _FakeMarketplaceProvider(
+      favorites: [
+        saved('p1', 'ضوء صنعاء', 'cat-photo'),
+        saved('p2', 'عدسة سبأ', 'cat-photo'),
+        saved('band', 'فرقة الأفراح', 'cat-band'),
+      ],
+      pages: {'band': const [], 'p1': const [], 'p2': const []},
+    );
+    await _pump(tester, marketplace, finance: _LoadedFinance());
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const ValueKey('providers-tabs')),
+        matching: find.text('المفضلة'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.byKey(const ValueKey('providers-favorite-pick-band')),
+    );
+    await tester.pump();
+    // The band alone is picked: nothing to set beside it, and it says why.
+    expect(
+      find.byKey(const ValueKey('providers-favorites-same-kind')),
+      findsOneWidget,
+    );
+    final compare = tester.widget<JourneyButton>(
+      find.byKey(const ValueKey('providers-favorites-compare')),
+    );
+    expect(compare.onPressed, isNull);
   });
 
   testWidgets('x22 is gone once a provider is saved', (tester) async {
@@ -1006,7 +1105,7 @@ void main() {
       find.byKey(const ValueKey('providers-favorite-pick-p3')),
       label: 'اختره للمقارنة',
     );
-    await tester.tap(find.text('قارن الملفين'));
+    await tester.tap(find.text('قارن بينهم'));
     await tester.pumpAndSettle();
     expect(find.text('compare p2,p3'), findsOneWidget);
     semantics.dispose();

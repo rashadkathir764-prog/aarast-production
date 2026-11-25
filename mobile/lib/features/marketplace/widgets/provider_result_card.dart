@@ -20,6 +20,15 @@ const _thumbSide = AarastV3Size.markHero;
 const _shelfLogoSide = AarastV3Media.logoLarge;
 const _shelfLogoRing = 3.0;
 
+/// RA-BE-150 (Q-36): «فاضي يوم 21» or «مشغول يوم 21», the plan's wedding
+/// day [askedDay] against his calendar ([free], as the directory answered
+/// for that day); null when no day was asked or no answer came. The list's
+/// card and the provider's page read it alike.
+String? providerDayLabel(DateTime? askedDay, bool? free) =>
+    askedDay == null || free == null
+    ? null
+    : '${free ? 'فاضي' : 'مشغول'} يوم ${askedDay.day}';
+
 /// Where a row stands in its group: the group is one paper surface with a
 /// hair between rows (Rashad 2026-11-19), so only its outer corners round.
 enum ProviderRowPlace { only, first, middle, last }
@@ -281,9 +290,11 @@ class ProviderResultCard extends StatelessWidget {
           TextSpan(
             children: [
               TextSpan(text: price),
+              // The age breaks whole, never «الشهر» alone on a line
+              // (UX critique, explore.png): its words hold together.
               if (age != null)
                 TextSpan(
-                  text: ' · $age',
+                  text: ' · ${age.replaceAll(' ', ' ')}',
                   style: JourneyType.of(
                     JourneyType.small,
                     color: AarastV3Color.textMuted,

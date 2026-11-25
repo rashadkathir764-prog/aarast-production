@@ -14,7 +14,9 @@ import '../models/marketplace_models.dart';
 import '../models/provider_portfolio.dart';
 import 'provider_board_view.dart' show providerServiceIcon;
 import 'provider_photo_gallery.dart';
+import 'provider_result_card.dart' show providerDayLabel;
 import 'provider_trust_signals.dart';
+import 'rating_star.dart';
 import '../../../core/utils/keep_currency_on_line.dart';
 
 /// f03 «صفحة المزود»: the photos, who the provider is and how they answer,
@@ -36,8 +38,16 @@ class ProviderDetailsView extends StatelessWidget {
     this.portfolio,
     this.onReportReview,
     this.readerUserId,
+    this.eventDate,
+    this.dayFree,
     super.key,
   });
+
+  /// The plan's wedding day and whether he is free on it: said «فاضي يوم 21»
+  /// or «مشغول يوم 21» as the list's card says it ([providerDayLabel]).
+  final DateTime? eventDate;
+  final bool? dayFree;
+  String? get dayLabel => providerDayLabel(eventDate, dayFree);
 
   /// RA-ST-05 (D94): «بلّغ عن التقييم» on a review; null where it cannot be
   /// sent. Never offered on the reader's own review ([readerUserId]).
@@ -155,18 +165,33 @@ class ProviderDetailsView extends StatelessWidget {
                   place: place,
                 ),
               ],
-              if (responds != null) ...[
+              if (responds != null ||
+                  (dayLabel != null && dayFree != null)) ...[
                 const SizedBox(height: AarastV3Space.x2),
                 Wrap(
                   spacing: 6,
                   runSpacing: 6,
                   children: [
-                    JourneyTag(
-                      key: const ValueKey('provider-details-responds'),
-                      label: responds,
-                      color: AarastV3Color.mint,
-                      soft: AarastV3Color.mintSoft,
-                    ),
+                    // Her wedding day against his calendar, as on the card
+                    // she came from.
+                    if (dayLabel case final day? when dayFree != null)
+                      JourneyTag(
+                        key: const ValueKey('provider-details-day'),
+                        label: day,
+                        color: dayFree!
+                            ? AarastV3Color.mint
+                            : AarastV3Color.textMuted,
+                        soft: dayFree!
+                            ? AarastV3Color.mintSoft
+                            : AarastV3Color.line,
+                      ),
+                    if (responds != null)
+                      JourneyTag(
+                        key: const ValueKey('provider-details-responds'),
+                        label: responds,
+                        color: AarastV3Color.mint,
+                        soft: AarastV3Color.mintSoft,
+                      ),
                   ],
                 ),
               ],
@@ -301,13 +326,12 @@ class _ReviewWithReply extends StatelessWidget {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
+                            // Given and empty differ in shape, not by
+                            // colour alone.
                             for (var star = 1; star <= 5; star++)
-                              Icon(
-                                LucideIcons.star,
+                              RatingStar(
+                                filled: star <= rating,
                                 size: AarastV3Icon.sm,
-                                color: star <= rating
-                                    ? AarastV3Color.saffron
-                                    : AarastV3Color.line,
                               ),
                           ],
                         ),

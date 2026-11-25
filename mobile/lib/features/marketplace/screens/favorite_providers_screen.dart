@@ -32,13 +32,13 @@ class _FavoriteProvidersScreenState extends State<FavoriteProvidersScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
+  /// The two chosen, or the first two saved of the same kind of service.
   List<String> _ids(ProviderMarketplaceProvider marketplace) {
     final chosen = widget.providerIds.where((id) => id.isNotEmpty).toList();
     if (chosen.length >= 2) return chosen.take(2).toList();
-    return marketplace.favoriteProviders
-        .map((item) => item.providerId)
-        .take(2)
-        .toList();
+    return firstSameKindPair([
+      for (final item in marketplace.favoriteProviders) ?item.provider,
+    ]);
   }
 
   Future<void> _load() async {
@@ -71,13 +71,30 @@ class _FavoriteProvidersScreenState extends State<FavoriteProvidersScreen> {
         padding: AarastV3Density.pageInsets,
         children: [
           JourneySubHeader(
-            title: context.say('قارن الملفين', 'قارني الملفين'),
+            title: context.say('قارن بينهم', 'قارني بينهم'),
             subtitle: _subtitle(providers),
             onBack: () => context.canPop()
                 ? context.pop()
                 : context.go(AppRouter.providerMarketplace),
           ),
-          if (providers.length == 2)
+          // A band beside a photographer compares nothing.
+          if (providers.length == 2 &&
+              providers[0].differsInKindFrom(providers[1]))
+            JourneyListState(
+              key: const ValueKey('compare-not-same-kind'),
+              phase: JourneyListPhase.empty,
+              section: JourneySection.providers,
+              emptyTitle: 'المقارنة تكون بين اثنين من نفس الخدمة',
+              emptyMessage: context.say(
+                'اختر من المفضلة اثنين من نفس الخدمة، مثل قاعتين أو مصورين.',
+                'اختاري من المفضلة اثنين من نفس الخدمة، مثل صالتين أو مصورتين.',
+              ),
+              emptyAction: context.say('ارجع للمفضلة', 'ارجعي للمفضلة'),
+              onEmptyAction: () => context.canPop()
+                  ? context.pop()
+                  : context.go(AppRouter.providerMarketplace),
+            )
+          else if (providers.length == 2)
             IntrinsicHeight(
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -114,6 +131,20 @@ class _FavoriteProvidersScreenState extends State<FavoriteProvidersScreen> {
             const JourneyListState(
               phase: JourneyListPhase.loading,
               section: JourneySection.providers,
+            )
+          else if (marketplace.favoriteProviders.length >= 2)
+            // Saved, but no two of the same service.
+            JourneyListState(
+              key: const ValueKey('compare-no-same-kind'),
+              phase: JourneyListPhase.empty,
+              section: JourneySection.providers,
+              emptyTitle: 'المقارنة تكون بين اثنين من نفس الخدمة',
+              emptyMessage: context.say(
+                'احفظ مزود ثاني من نفس خدمة واحد من مفضلتك، وقارن بينهم.',
+                'احفظي مزود ثاني من نفس خدمة واحد من مفضلتك، وقارني بينهم.',
+              ),
+              emptyAction: context.say('افتح استكشف', 'افتحي استكشف'),
+              onEmptyAction: () => context.go(AppRouter.providerMarketplace),
             )
           else
             JourneyListState(

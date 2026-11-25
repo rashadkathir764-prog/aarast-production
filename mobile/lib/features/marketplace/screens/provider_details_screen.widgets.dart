@@ -1,5 +1,18 @@
 part of 'provider_details_screen.dart';
 
+/// RA-BE-150: whether the provider is free on her wedding day. The day's
+/// answer comes with the directory's list (the page asks no day), so it is
+/// read from the card she came from when the details do not carry it.
+bool? _dayFree(
+  ProviderMarketplaceProvider state,
+  MarketplaceProvider provider,
+) =>
+    provider.availableOnEventDate ??
+    state.providers
+        .where((listed) => listed.id == provider.id)
+        .firstOrNull
+        ?.availableOnEventDate;
+
 /// f03's footer: «اطلب عرض سعر» (or where the latest request stands) and
 /// «واتساب». An unclaimed listing (w33) cannot take requests, so it says so
 /// and keeps WhatsApp only.

@@ -122,7 +122,10 @@ void main() {
       ),
     );
     expect(find.text('طلب الاستلام قيد المراجعة'), findsOneWidget);
-    expect(find.textContaining('نبلغك هنا.'), findsOneWidget);
+    expect(
+      find.textContaining('يوصلك تنبيه على جوالك لما نقرر.'),
+      findsOneWidget,
+    );
     expect(find.text('الملف ما يستقبل طلبات لين نسلّمك إياه'), findsOneWidget);
     await tester.tap(find.byKey(const Key('provider-claim-pending-back')));
     await tester.tap(find.byKey(const Key('provider-claim-pending-support')));

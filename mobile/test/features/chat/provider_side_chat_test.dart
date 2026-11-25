@@ -148,10 +148,37 @@ void main() {
     expect(find.text('احظر المزود'), findsNothing);
     expect(
       find.text(
-        'الحظر ما يلغي حجز العميل المؤكد. ألغه من "حجوزاتك" في الرئيسية لو تشتي.',
+        'الحظر ما يلغي حجز العميل المؤكد. ألغه من «حجوزاتك» في الرئيسية لو تشتي.',
       ),
       findsOneWidget,
     );
+    chat.dispose();
+  });
+
+  // UX critique: block and report hid behind a tap on the name with no
+  // sign; a visible «⋯» beside it opens the same options.
+  testWidgets('a visible «⋯» beside the name opens the options', (
+    tester,
+  ) async {
+    final chat = _chat(storage);
+    await tester.pumpWidget(
+      _app(
+        chat,
+        ChatScreen(
+          conversationId: 'conversation-1',
+          providerLine: (_, _) async => null,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final options = find.byKey(const ValueKey('chat-options'));
+    expect(options, findsOneWidget);
+    expect(find.byTooltip('خيارات المحادثة'), findsOneWidget);
+    expect(tester.getSize(options).height, greaterThanOrEqualTo(48));
+    await tester.tap(options);
+    await tester.pumpAndSettle();
+    expect(find.text('احظر العميل'), findsOneWidget);
     chat.dispose();
   });
 

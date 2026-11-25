@@ -90,6 +90,29 @@ void main() {
     expect(searched, ['artist']);
   });
 
+  // UX critique: the empty board told her to look in «استكشف» with no
+  // way there.
+  testWidgets('an empty board leads to «استكشف»', (tester) async {
+    var explored = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: JourneyProfileScope(
+          profile: JourneyProfile.bride,
+          child: Scaffold(
+            body: ProviderBoardView(
+              rows: const [],
+              onOpen: (_) {},
+              onSearch: (_) {},
+              onExplore: () => explored++,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('دوّري في استكشف'));
+    expect(explored, 1);
+  });
+
   test('the row icons are pictures only, for the bride\'s items too', () {
     expect(providerServiceIcon('البخور'), LucideIcons.flame);
     expect(providerServiceIcon('المزينة والنقاشة'), LucideIcons.sparkles);

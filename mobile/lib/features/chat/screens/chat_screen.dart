@@ -282,6 +282,11 @@ class _ChatScreenState extends State<ChatScreen> {
           return _EventView(
             event: event,
             request: _requestOf(requests, event.quoteRequestId),
+            // Read, or no longer being read (a failed load): either way the
+            // card stops saying it is loading.
+            requestsSettled:
+                chat.quoteRequestsRead(widget.conversationId) ||
+                !chat.isLoading,
             customerSide: customerSide,
             now: now,
             onOpenQuote: event.quoteRequestId == null
@@ -323,6 +328,16 @@ class _ChatScreenState extends State<ChatScreen> {
                   ? null
                   : () => _openOptions(conversation),
               titleTapLabel: 'خيارات المحادثة',
+              // The block and the report hid behind the title with no sign
+              // (UX critique): a visible «⋯» opens the same options.
+              trailing: conversation == null
+                  ? null
+                  : JourneyRoundButton(
+                      key: const ValueKey('chat-options'),
+                      icon: LucideIcons.moreHorizontal,
+                      tooltip: 'خيارات المحادثة',
+                      onPressed: () => _openOptions(conversation),
+                    ),
             ),
           ),
           if (strip != null)
@@ -674,6 +689,7 @@ class _EventView extends StatelessWidget {
   const _EventView({
     required this.event,
     required this.request,
+    required this.requestsSettled,
     required this.customerSide,
     required this.now,
     required this.onOpenQuote,
@@ -683,6 +699,10 @@ class _EventView extends StatelessWidget {
 
   final ChatConversationEvent event;
   final ChatQuoteRequestSummary? request;
+
+  /// The conversation's requests are read (or their reading ended): a
+  /// request not among them is not «still loading».
+  final bool requestsSettled;
   final bool customerSide;
   final DateTime now;
   final VoidCallback? onOpenQuote;
@@ -715,7 +735,7 @@ class _EventView extends StatelessWidget {
           key: key,
           offer: _offer,
           payload: event.data,
-          requestLoaded: request != null,
+          requestLoaded: request != null || requestsSettled,
           serviceTitle: request?.service?.title,
           customerSide: customerSide,
           now: now,
@@ -1028,12 +1048,12 @@ class _OptionsSheet extends StatelessWidget {
         JourneyNote(
           text: provider
               ? context.say(
-                  'الحظر ما يلغي حجز العميل المؤكد. ألغه من "حجوزاتك" في الرئيسية لو تشتي.',
-                  'الحظر ما يلغي حجز العميل المؤكد. ألغيه من "حجوزاتك" في الرئيسية لو تشتين.',
+                  'الحظر ما يلغي حجز العميل المؤكد. ألغه من «حجوزاتك» في الرئيسية لو تشتي.',
+                  'الحظر ما يلغي حجز العميل المؤكد. ألغيه من «حجوزاتك» في الرئيسية لو تشتين.',
                 )
               : context.say(
-                  'الحظر ما يلغي الحجز المؤكد. ألغه من "الحجوزات" لو تشتي.',
-                  'الحظر ما يلغي الحجز المؤكد. ألغيه من "الحجوزات" لو تشتين.',
+                  'الحظر ما يلغي الحجز المؤكد. ألغه من «الحجوزات» لو تشتي.',
+                  'الحظر ما يلغي الحجز المؤكد. ألغيه من «الحجوزات» لو تشتين.',
                 ),
           color: AarastV3Color.danger,
           soft: AarastV3Color.dangerSoft,

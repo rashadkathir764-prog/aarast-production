@@ -388,6 +388,9 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                     'طلباتي' => _boardTab(provider, board, tabs),
                     'المحادثات' => ConversationListView(
                       embedded: true,
+                      onExplore: tabs.contains('استكشف')
+                          ? () => _selectTab('استكشف', tabs)
+                          : null,
                       iconFor: _conversationIcon,
                       planId: _conversationsPlanId(context),
                     ),
@@ -455,10 +458,21 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
   }
 
   /// f09: a box picks a provider to compare; a third pick lets go of the
-  /// one picked first.
-  void _togglePick(String id, List<String> picked) {
+  /// one picked first, and a pick of another kind of service starts a new
+  /// pair with it (a band is never set beside a photographer).
+  void _togglePick(
+    MarketplaceProvider provider,
+    List<String> picked,
+    List<MarketplaceProvider> favorites,
+  ) {
+    final id = provider.id;
     final next = [...picked];
     if (!next.remove(id)) {
+      next.removeWhere(
+        (other) => favorites.any(
+          (saved) => saved.id == other && saved.differsInKindFrom(provider),
+        ),
+      );
       next.add(id);
       if (next.length > 2) next.removeAt(0);
     }

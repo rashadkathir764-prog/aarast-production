@@ -137,13 +137,20 @@ export class FinancePortService implements FinancePort {
       select: { id: true },
     });
     if (costs.length === 0) return;
-    const ofCosts = { weddingCostId: { in: costs.map((cost) => cost.id) } };
-    // The same transaction-local ledger purge as the plan erasure below.
-    await tx.$executeRaw`
-      SELECT set_config('aarast.allow_ledger_purge', 'on', true)
-    `;
-    await tx.costPayment.deleteMany({ where: ofCosts });
-    await tx.paymentSchedule.deleteMany({ where: ofCosts });
+    // RA-BE-180: the append-only ledger opens only to the database's eraser,
+    // which checks that each cost is being erased (the same as the plan
+    // erasure below).
+    await tx.$queryRaw<Array<{ removed: number }>>(
+      Prisma.sql`
+        SELECT "aarast_erase_cost_ledger"("id") AS "removed"
+        FROM "WeddingCost"
+        WHERE "privateToUserId" = ${userId}
+        ORDER BY "id" ASC
+      `,
+    );
+    await tx.paymentSchedule.deleteMany({
+      where: { weddingCost: { privateToUserId: userId } },
+    });
     await tx.weddingCost.deleteMany({ where: { privateToUserId: userId } });
   }
 
@@ -474,13 +481,20 @@ export class FinancePortService implements FinancePort {
     tx: Prisma.TransactionClient,
     weddingPlanIds: readonly string[],
   ): Promise<void> {
+    if (weddingPlanIds.length === 0) return;
     const inPlans = { weddingPlanId: { in: [...weddingPlanIds] } };
-    // CostPayment is append-only during normal product work. Account
-    // erasure is the one explicit, transaction-local purge path.
-    await tx.$executeRaw`
-      SELECT set_config('aarast.allow_ledger_purge', 'on', true)
-    `;
-    await tx.costPayment.deleteMany({ where: { weddingCost: inPlans } });
+    // RA-BE-180: CostPayment is append-only. Only the database's eraser
+    // deletes a cost's payments (SECURITY DEFINER, migration
+    // 20261125150000), and only for a cost whose plan, owner or holder is
+    // being erased; no session setting opens the ledger any more.
+    await tx.$queryRaw<Array<{ removed: number }>>(
+      Prisma.sql`
+        SELECT "aarast_erase_cost_ledger"("id") AS "removed"
+        FROM "WeddingCost"
+        WHERE "weddingPlanId" IN (${Prisma.join([...weddingPlanIds])})
+        ORDER BY "id" ASC
+      `,
+    );
     await tx.paymentSchedule.deleteMany({ where: { weddingCost: inPlans } });
     await tx.weddingCost.deleteMany({ where: inPlans });
     // Funding sources reference the plan (Restrict); their repayments cascade.

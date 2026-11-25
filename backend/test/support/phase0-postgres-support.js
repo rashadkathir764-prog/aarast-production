@@ -200,10 +200,18 @@ async function cleanupQuoteFixtureGraph(prisma, fixture) {
     await tx.planProviderLink.deleteMany({
       where: { weddingPlanId: fixture.plan.id, providerId: fixture.provider.id },
     });
-    await tx.$executeRaw`
-      SELECT set_config('aarast.allow_ledger_purge', 'on', true)
+    // RA-BE-180: the append-only ledger opens only to the database's eraser,
+    // for a plan whose deletion is due; the fixture's plan is made so first.
+    const due = new Date(Date.now() - 60_000);
+    await tx.weddingPlan.update({
+      where: { id: fixture.plan.id },
+      data: { deletionRequestedAt: due, deletionScheduledFor: due },
+    });
+    await tx.$queryRaw`
+      SELECT "aarast_erase_cost_ledger"("id") AS "removed"
+      FROM "WeddingCost"
+      WHERE "weddingPlanId" = ${fixture.plan.id}
     `;
-    await tx.costPayment.deleteMany({ where: { weddingCostId: { in: costIds } } });
     await tx.paymentSchedule.deleteMany({ where: { weddingCostId: { in: costIds } } });
     await tx.weddingCost.deleteMany({ where: { id: { in: costIds } } });
     await tx.quoteOffer.deleteMany({ where: { quoteRequestId: fixture.quoteRequest.id } });

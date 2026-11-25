@@ -157,6 +157,27 @@ SELECT format(
 
 SELECT format('REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM %I', :'runtime_user')
 \gexec
+-- RA-BE-180, RA-BE-181: the runtime calls the application's own routines by
+-- name: the folded search text (aarast_search_fold and the *_search_text
+-- functions) and the ledger's eraser (aarast_erase_cost_ledger, SECURITY
+-- DEFINER). Every routine the migrations made is executable by it (a trigger
+-- function cannot be called directly); the extensions' routines stay revoked.
+SELECT format(
+  'GRANT EXECUTE ON FUNCTION %s TO %I',
+  routine.oid::regprocedure,
+  :'runtime_user'
+)
+FROM pg_proc AS routine
+JOIN pg_namespace AS namespace ON namespace.oid = routine.pronamespace
+WHERE namespace.nspname = 'public'
+  AND routine.prokind IN ('f', 'p')
+  AND NOT EXISTS (
+    SELECT 1 FROM pg_depend AS dependency
+    WHERE dependency.classid = 'pg_proc'::regclass
+      AND dependency.objid = routine.oid
+      AND dependency.deptype = 'e'
+  )
+\gexec
 SELECT format(
   'REVOKE USAGE ON TYPE %I.%I FROM %I',
   namespace.nspname,
@@ -206,6 +227,14 @@ SELECT format(
 SELECT format(
   'ALTER DEFAULT PRIVILEGES FOR ROLE %I IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC',
   :'migrator_user'
+)
+\gexec
+-- A routine a later migration adds is the runtime's to call from its first
+-- deploy (this file runs before the migrations).
+SELECT format(
+  'ALTER DEFAULT PRIVILEGES FOR ROLE %I IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO %I',
+  :'migrator_user',
+  :'runtime_user'
 )
 \gexec
 SELECT format(

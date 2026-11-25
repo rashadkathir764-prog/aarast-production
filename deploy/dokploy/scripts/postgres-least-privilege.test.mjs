@@ -113,3 +113,23 @@ test('example credentials keep the three PostgreSQL identities explicit', () => 
   assert.doesNotMatch(envExample, /^POSTGRES_USER=/m);
   assert.doesNotMatch(envExample, /^DATABASE_URL=/m);
 });
+
+// RA-BE-180, RA-BE-181: the runtime calls the application's own routines by
+// name (the folded search text, the ledger's eraser). Every routine the
+// migrator made is executable by the runtime, those already there and those a
+// later migration adds (default privileges, so a new routine works from its
+// first deploy); extension routines stay revoked, and PUBLIC keeps none.
+test('the runtime may execute the routines the migrations made, and no extension routine', () => {
+  const revokeAll = roleSql.indexOf('REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM %I');
+  const grantOwn = roleSql.indexOf('GRANT EXECUTE ON FUNCTION %s TO %I');
+  assert.ok(revokeAll > 0 && grantOwn > revokeAll, 'the grant follows the revoke');
+  const grantBlock = roleSql.slice(grantOwn, roleSql.indexOf('\\gexec', grantOwn));
+  assert.match(grantBlock, /routine\.oid::regprocedure/);
+  assert.match(grantBlock, /namespace\.nspname = 'public'/);
+  assert.match(grantBlock, /deptype = 'e'/, 'extension routines are left out');
+  assert.match(
+    roleSql,
+    /ALTER DEFAULT PRIVILEGES FOR ROLE %I IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO %I/,
+  );
+  assert.match(roleSql, /REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC/);
+});

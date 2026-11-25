@@ -7,8 +7,9 @@ import { Prisma, UserRole } from "@prisma/client";
 import { newAccountDeletionReceiptHash } from "../src/modules/identity/internal/profile/users.service";
 import { erasureNotices, usersService } from "./support/owner-ports";
 
+// RA-BE-180: a cost's payments go through the database's eraser
+// ("ledgerPurge" below), never a `costPayment.deleteMany`.
 const PLAN_CHILDREN = [
-  "costPayment",
   "paymentSchedule",
   "weddingCost",
   "fundingSource",
@@ -122,6 +123,10 @@ function recordingTx(
           .sort()
           .map((id) => ({ id }));
       }
+      if (text.includes('"aarast_erase_cost_ledger"')) {
+        calls.push("ledgerPurge");
+        return [];
+      }
       if (text.includes('FROM "WeddingCost"')) {
         calls.push("lockCosts");
         return planIds.map((id) => ({ id: `cost-${id}` }));
@@ -146,7 +151,7 @@ function recordingTx(
       throw new Error(`Unexpected account-deletion lock query: ${text}`);
     },
     $executeRaw: async () => {
-      calls.push("ledgerPurge");
+      calls.push("executeRaw");
       return 1;
     },
     // D65: planning deletes the plans' events just before the plans.
@@ -334,6 +339,7 @@ function recordingTx(
     },
   };
   for (const child of PLAN_CHILDREN) tx[child] = del(child);
+  tx.costPayment = del("costPayment");
   // V1 checklist 4.4: the erased plans' costs are read to find their
   // receipts, which go (with their files scheduled) before the ledger.
   tx.weddingCost.findMany = async ({ where }: any = {}) =>
@@ -562,7 +568,6 @@ test("account deletion clears plan children before plans and deletes the user la
   assert.equal(at("lockProviders"), -1);
   assert.ok(at("lockPlans") < at("lockCosts"));
   assert.ok(at("lockCosts") < at("ledgerPurge"));
-  assert.ok(at("lockCosts") < at("costPayment"));
   assert.ok(at("lockCosts") < at("lockConversations"));
   assert.ok(at("lockConversations") < at("lockQuoteRequests"));
   const planLock = queries.find((query) =>
@@ -574,10 +579,12 @@ test("account deletion clears plan children before plans and deletes the user la
   assert.match(planLock?.text ?? "", /ORDER BY "id" ASC\s+FOR UPDATE/);
   assert.match(costLock?.text ?? "", /ORDER BY "id" ASC\s+FOR UPDATE/);
   assert.deepEqual(costLock?.values, ["plan-1", "plan-2"]);
-  // The append-only ledger is unlocked only inside this transaction and
-  // children are erased from ledger to category in dependency order.
-  assert.ok(at("ledgerPurge") < at("costPayment"));
-  assert.ok(at("costPayment") < at("paymentSchedule"));
+  // RA-BE-180: the append-only ledger opens to the database's eraser only
+  // (no session setting), and children are erased from ledger to category
+  // in dependency order.
+  assert.equal(at("costPayment"), -1);
+  assert.equal(at("executeRaw"), -1);
+  assert.ok(at("ledgerPurge") < at("paymentSchedule"));
   assert.ok(at("paymentSchedule") < at("weddingCost"));
   assert.ok(at("weddingCost") < at("budgetCategory"));
   // The Restrict edge is cleared before the owned Conversation/Plan graph.
@@ -673,8 +680,8 @@ test("a partner's account deletion purges its private costs and tasks in the oth
         query.values.includes("u1"),
     ),
   );
-  assert.ok(at("ledgerPurge") >= 0 && at("ledgerPurge") < at("costPayment"));
-  assert.ok(at("costPayment") < at("paymentSchedule"));
+  assert.ok(at("ledgerPurge") >= 0 && at("ledgerPurge") < at("paymentSchedule"));
+  assert.equal(at("costPayment"), -1);
   assert.ok(at("paymentSchedule") < at("weddingCost"));
   assert.ok(at("weddingTask") >= 0 && at("weddingTask") < at("user.delete"));
   // The other plan itself is untouched.

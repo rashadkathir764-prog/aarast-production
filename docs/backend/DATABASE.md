@@ -58,7 +58,7 @@ run the local demo seed `backend/prisma/demo-seed.ts`, see
 | OutboxEvent | Durable PostgreSQL queue for conversation message/activity availability, notification availability, FCM delivery requests, conversation-access revocation, all-user-session revocation, and one-session revocation. Domain/session rows and their events commit together. Workers claim with `FOR UPDATE SKIP LOCKED`, reclaim stale locks, retry with bounded exponential delay, and retain exhausted events as `FAILED` dead letters. Strict realtime and push dispatch are processed only after their adapter action resolves; unavailable or rejected delivery remains retryable. |
 | BudgetCategory | One plan-owned budget group with an optional allocation. Allocations never replace `WeddingPlan.estimatedBudget`. A positive allocation requires a non-null general budget, and total allocations may not exceed it. `kind` (B5, D55) is `WEDDING` (default) or `MAHR`: the groom's mahr item, outside the wedding budget, at most one per plan (partial unique index `BudgetCategory_one_mahr_per_plan`) and never with an allocation (CHECK `BudgetCategory_mahr_has_no_allocation`); a budget replacement reads and replaces only `WEDDING` items, and the budget's confirmed cost, paid and remaining count only them. Migration `20261026100000_add_mahr_and_starter_defaults`. |
 | WeddingCost | The only cost backbone. Every cost belongs to a WeddingPlan and exactly one BudgetCategory, has a positive total, and may reference either an Aarast provider/accepted quote context or an external party. Paid and outstanding values come from its payment ledger. It has no due-date field; payment timing belongs only to `PaymentSchedule.dueDate`. `privateToUserId` (V1 checklist 4.10), when set, is the one account (the owner or the partner who recorded it) that sees the cost; null is the shared plan's. |
-| CostPayment | An append-only money-out ledger under one WeddingCost. `PAYMENT` and `REVERSAL` are immutable rows; the original payment remains, one payment may have at most one reversal, and category/provider context is inherited through the cost instead of duplicated client input. This is planning data, not payment processing. |
+| CostPayment | An append-only money-out ledger under one WeddingCost. `PAYMENT` and `REVERSAL` are immutable rows; the original payment remains, one payment may have at most one reversal, and category/provider context is inherited through the cost instead of duplicated client input. This is planning data, not payment processing. RA-BE-180: no session setting opens it; a row is deleted only inside `aarast_erase_cost_ledger(cost)` (migration `20261125150000_ledger_erasure_function`, SECURITY DEFINER, owned by the migrator), which refuses a cost whose plan, plan owner or private holder is not due for erasure, and the trigger takes the delete only as that owner and from that function's frame. |
 | PaymentSchedule | A dated, non-reserving reminder under one WeddingCost. `dueDate` is required and is the only payment-reminder date. A pending schedule never changes totals, reserves outstanding balance, or blocks a direct payment. Each schedule is independently capped by the row-locked outstanding cost on create/update. Paying creates one linked CostPayment; reversing it reopens that schedule, while fully paying the cost cancels all other pending reminders. |
 | CostReceipt | A receipt photo kept with a WeddingCost, optionally naming one of its CostPayments (same-cost composite FK). `storageKey` names private media read only through short-lived signed URLs. `uploadedByUserId` is a plain id (no FK to User). Account erasure deletes the receipts of the plans and private costs it erases; RA-BE-178 (D112): a receipt the account uploaded on another person's cost stays, and its `uploadedByUserId` is set to null («عضو سابق»). A cost with receipts cannot be deleted (Restrict). |
 | Task | Implemented as `WeddingTask` for WeddingPlan planning work, including title, optional description/due date, status, priority, checklist support, and two exclusive responsibility modes: a registered participant through `assigneeUserId`, or a manual/contact responsible through optional `responsibleName`, `responsiblePhone`, and `responsibleSource`. A database CHECK prevents both modes from being stored together. `privateToUserId` (V1 checklist 4.10), when set, is the one account (the owner or the partner who created it) that sees the task; null is the shared plan's. Account erasure deletes the account's private costs (with their payments, schedules and receipts) and private tasks in other plans. |
@@ -549,7 +549,7 @@ rewrite as permission to restore a removed live model.
 | `IdempotencyKey` | 10 | `id`, `userId`, `completedAt`, `expiresAt`, `createdAt` |
 | `AccountDeletionReceipt` | 2 | `deletedAt` |
 | `ErasedAccount` | 2 | `userId`, `erasedAt` |
-| `User` | 64 | `id`, `appAccountActivatedAt`, `phoneVerifiedAt`, `lastLoginAt`, `activeWeddingPlanId`, `onboardingCompletedAt`, `deletionRequestedAt`, `deletionPurgeFailedAt` |
+| `User` | 72 | `id`, `appAccountActivatedAt`, `phoneVerifiedAt`, `lastLoginAt`, `activeWeddingPlanId`, `onboardingCompletedAt`, `deletionRequestedAt`, `deletionPurgeFailedAt` |
 | `DataExport` | 7 | `id`, `userId`, `createdAt`, `expiresAt`, `downloadedAt` |
 | `MediaUploadTicket` | 16 | `userId`, `expiresAt`, `verifiedAt`, `consumedAt`, `consumedById`, `deletedAt`, `createdAt`, `updatedAt` |
 | `AdminLoginChallenge` | 9 | `id`, `userId`, `otpId`, `expiresAt`, `consumedAt`, `createdAt` |
@@ -567,7 +567,7 @@ rewrite as permission to restore a removed live model.
 | `BudgetCategory` | 14 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
 | `WeddingCost` | 30 | `id`, `weddingPlanId`, `budgetCategoryId`, `providerId`, `quoteOfferId`, `privateToUserId`, `bookingFellThroughAt`, `createdAt` |
 | `CostPayment` | 17 | `id`, `weddingCostId`, `paidAt`, `paymentScheduleId`, `lowersScheduleId`, `reversalOfId`, `createdAt` |
-| `CostReceipt` | 10 | `id`, `weddingCostId`, `costPaymentId`, `uploadedByUserId`, `createdAt` |
+| `CostReceipt` | 11 | `id`, `weddingCostId`, `costPaymentId`, `uploadedByUserId`, `createdAt` |
 | `PaymentSchedule` | 16 | `id`, `weddingCostId`, `paidAt`, `cancelledByPaidInFullAt`, `remindAt`, `createdAt`, `updatedAt` |
 | `FundingSource` | 15 | `id`, `weddingPlanId`, `receivedAt`, `expectedAt`, `createdAt`, `updatedAt` |
 | `LoanRepayment` | 10 | `id`, `fundingSourceId`, `paidAt`, `createdAt`, `updatedAt` |
@@ -596,7 +596,7 @@ rewrite as permission to restore a removed live model.
 | `ReferenceCatalogItem` | 9 | `id`, `catalogId`, `createdAt`, `updatedAt` |
 | `ReferenceCatalogItemRevision` | 19 | `id`, `itemId`, `createdAt` |
 | `ProviderCategory` | 13 | `id`, `createdAt`, `updatedAt` |
-| `Provider` | 56 | `id`, `userId`, `cityId`, `primaryCategoryId`, `reviewedAt`, `reviewedById`, `resubmittedAt`, `reopenedAt` |
+| `Provider` | 57 | `id`, `userId`, `cityId`, `primaryCategoryId`, `reviewedAt`, `reviewedById`, `resubmittedAt`, `reopenedAt` |
 | `ProviderService` | 19 | `id`, `providerId`, `categoryId`, `priceUpdatedAt`, `cityId`, `createdAt`, `updatedAt` |
 | `ProviderServiceImage` | 7 | `id`, `serviceId`, `createdAt` |
 | `ProviderPackage` | 13 | `id`, `providerId`, `serviceId`, `createdAt`, `updatedAt` |
@@ -606,17 +606,17 @@ rewrite as permission to restore a removed live model.
 | `QuoteOffer` | 28 | `id`, `quoteRequestId`, `providerId`, `revisedAt`, `revisionNoticeAt`, `withdrawnAt`, `createdAt`, `updatedAt` |
 | `PlanProviderLink` | 12 | `id`, `weddingPlanId`, `providerId`, `quoteRequestId`, `quoteOfferId`, `createdAt`, `updatedAt` |
 | `Booking` | 28 | `id`, `quoteRequestId`, `quoteOfferId`, `providerId`, `requestedByUserId`, `confirmedAt`, `declinedAt`, `cancelledAt` |
-| `BookingChange` | 12 | `id`, `bookingId`, `requestedByUserId`, `decidedAt`, `createdAt`, `updatedAt` |
+| `BookingChange` | 13 | `id`, `bookingId`, `requestedByUserId`, `decidedAt`, `createdAt`, `updatedAt` |
 | `ProviderBlockedDate` | 5 | `id`, `providerId`, `createdAt` |
 | `ProviderProfileViewDay` | 4 | `providerId` |
-| `ProviderReviewEvent` | 8 | `id`, `providerId`, `actorId`, `createdAt` |
+| `ProviderReviewEvent` | 9 | `id`, `providerId`, `actorId`, `createdAt` |
 | `ProviderReviewNote` | 5 | `id`, `eventId` |
-| `ProviderClaimRequest` | 9 | `id`, `providerId`, `userId`, `createdAt`, `decidedAt`, `decidedById` |
+| `ProviderClaimRequest` | 10 | `id`, `providerId`, `userId`, `createdAt`, `decidedAt`, `decidedById` |
 | `QuoteOfferVersion` | 13 | `id`, `quoteOfferId`, `createdAt` |
-| `ProviderFeaturedPeriod` | 14 | `id`, `providerId`, `startsAt`, `endsAt`, `grantedById`, `createdAt`, `endedAt`, `endedById` |
-| `PortfolioItem` | 15 | `id`, `providerId`, `reviewedAt`, `reviewedById`, `createdAt`, `updatedAt` |
+| `ProviderFeaturedPeriod` | 15 | `id`, `providerId`, `startsAt`, `endsAt`, `grantedById`, `createdAt`, `endedAt`, `endedById` |
+| `PortfolioItem` | 16 | `id`, `providerId`, `reviewedAt`, `reviewedById`, `createdAt`, `updatedAt` |
 | `ReviewReport` | 9 | `id`, `reviewId`, `reporterUserId`, `resolvedAt`, `createdAt`, `updatedAt` |
-| `ProviderProfileChange` | 14 | `id`, `providerId`, `cityId`, `primaryCategoryId`, `decidedAt`, `decidedById`, `createdAt`, `updatedAt` |
+| `ProviderProfileChange` | 15 | `id`, `providerId`, `cityId`, `primaryCategoryId`, `decidedAt`, `decidedById`, `createdAt`, `updatedAt` |
 | `Conversation` | 24 | `id`, `weddingPlanId`, `accountRequesterUserId`, `providerId`, `createdByUserId`, `lastActivityAt`, `closedAt`, `pushStopsAt` |
 | `ConversationParticipant` | 11 | `id`, `conversationId`, `userId`, `joinedAt`, `revokedAt`, `lastReadAt`, `mutedAt`, `createdAt` |
 | `ConversationEvent` | 14 | `id`, `conversationId`, `quoteRequestId`, `quoteOfferId`, `actorUserId`, `occurredAt`, `createdAt` |

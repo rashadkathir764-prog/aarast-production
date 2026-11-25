@@ -194,6 +194,8 @@ model CostReceipt {
   createdAt        DateTime     @default(now())
   weddingCost      WeddingCost  @relation(fields: [weddingCostId], references: [id], onDelete: Restrict)
   costPayment      CostPayment? @relation(fields: [costPaymentId, weddingCostId], references: [id, weddingCostId], onDelete: Restrict, map: "CostReceipt_payment_same_cost_fkey")
+  // RA-BE-180: who uploaded it; the receipt stays when the account goes (RA-BE-178).
+  uploadedByUser   User?        @relation("CostReceiptUploader", fields: [uploadedByUserId], references: [id], onDelete: SetNull)
 
   @@index([weddingCostId, createdAt])
   @@index([costPaymentId])

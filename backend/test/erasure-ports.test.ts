@@ -312,6 +312,9 @@ test('collaboration closes tenures, marks scopes deleted, removes members then i
   ]);
 });
 
+// RA-BE-180: no session setting opens the append-only ledger any more; each
+// erased cost's payments go through the database's own eraser, which checks
+// that the cost is being erased (migration 20261125150000).
 test('finance locks the plan costs in the money mutation order and purges the ledger payments-first', async () => {
   const { tx, calls, statements } = recorder();
   const service = new FinancePortService(catalogWithoutMoneyLinks);
@@ -321,15 +324,35 @@ test('finance locks the plan costs in the money mutation order and purges the le
   await service.deletePlanBudgetCategoriesInTransaction(tx, ['plan-1']);
   assert.deepEqual(statements, [
     'SELECT "id" FROM "WeddingCost" WHERE "weddingPlanId" IN (?) ORDER BY "id" ASC FOR UPDATE',
-    "SELECT set_config('aarast.allow_ledger_purge', 'on', true)",
+    'SELECT "aarast_erase_cost_ledger"("id") AS "removed" FROM "WeddingCost" WHERE "weddingPlanId" IN (?) ORDER BY "id" ASC',
   ]);
-  assert.deepEqual(calls.slice(1), [
-    ['costPayment.deleteMany', { where: { weddingCost: { weddingPlanId: { in: ['plan-1'] } } } }],
+  assert.ok(statements.every((statement) => !/allow_ledger_purge|set_config/.test(statement)));
+  assert.deepEqual(calls.slice(2), [
     ['paymentSchedule.deleteMany', { where: { weddingCost: { weddingPlanId: { in: ['plan-1'] } } } }],
     ['weddingCost.deleteMany', { where: { weddingPlanId: { in: ['plan-1'] } } }],
     // Funding sources reference the plan; their loan repayments cascade.
     ['fundingSource.deleteMany', { where: { weddingPlanId: { in: ['plan-1'] } } }],
     ['budgetCategory.deleteMany', { where: { weddingPlanId: { in: ['plan-1'] } } }],
+  ]);
+  assert.equal(calls.some(([name]) => name === 'costPayment.deleteMany'), false);
+});
+
+test("finance erases the account's private costs' payments through the database's eraser", async () => {
+  const { tx, calls, statements } = recorder();
+  const costs = tx.weddingCost as unknown as Record<string, (args: unknown) => Promise<unknown>>;
+  (tx as unknown as Record<string, unknown>).weddingCost = {
+    findMany: async () => [{ id: 'cost-1' }],
+    deleteMany: costs.deleteMany,
+  };
+  const service = new FinancePortService(catalogWithoutMoneyLinks);
+  await service.purgePrivateCostsInTransaction(tx, 'user-1');
+  assert.deepEqual(statements, [
+    'SELECT "aarast_erase_cost_ledger"("id") AS "removed" FROM "WeddingCost" WHERE "privateToUserId" = ? ORDER BY "id" ASC',
+  ]);
+  assert.equal(calls.some(([name]) => name === 'costPayment.deleteMany'), false);
+  assert.deepEqual(calls.slice(-2), [
+    ['paymentSchedule.deleteMany', { where: { weddingCost: { privateToUserId: 'user-1' } } }],
+    ['weddingCost.deleteMany', { where: { privateToUserId: 'user-1' } }],
   ]);
 });
 

@@ -146,6 +146,8 @@ model Provider {
   city              City                     @relation(fields: [cityId], references: [id])
   primaryCategory   ProviderCategory?        @relation(fields: [primaryCategoryId], references: [id], onDelete: SetNull)
   reviewedBy        User?                    @relation("ProviderReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+  // RA-BE-180: the admin who checked the documents.
+  verifiedBy        User?                    @relation("ProviderVerifiedBy", fields: [verifiedById], references: [id], onDelete: SetNull)
   services          ProviderService[]
   packages          ProviderPackage[]
   favorites         FavoriteProvider[]
@@ -440,13 +442,15 @@ model BookingChange {
   fromDate          DateTime            @db.Date
   toDate            DateTime            @db.Date
   status            BookingChangeStatus @default(PENDING)
-  requestedByUserId String
+  // RA-BE-180: a real reference; the person may leave and the change stays.
+  requestedByUserId String?
   note              String?             @db.Text
   declineReason     String?             @db.Text
   decidedAt         DateTime?
   createdAt         DateTime            @default(now())
   updatedAt         DateTime            @updatedAt
   booking           Booking             @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  requestedByUser   User?               @relation("BookingChangeRequester", fields: [requestedByUserId], references: [id], onDelete: SetNull)
 
   @@index([bookingId, status])
 }
@@ -487,6 +491,8 @@ model ProviderReviewEvent {
   actorId    String?
   createdAt  DateTime                @default(now())
   provider   Provider                @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  // RA-BE-180: the account that acted; the event stays when it goes.
+  actor      User?                   @relation("ProviderReviewEventActor", fields: [actorId], references: [id], onDelete: SetNull)
   notes      ProviderReviewNote[]
 
   @@index([providerId, sequence])
@@ -521,6 +527,8 @@ model ProviderClaimRequest {
   decidedAt   DateTime?
   decidedById String?
   provider    Provider            @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  // RA-BE-180: the deciding admin.
+  decidedBy   User?               @relation("ProviderClaimDecidedBy", fields: [decidedById], references: [id], onDelete: SetNull)
 
   @@index([status, createdAt])
   @@index([userId, createdAt])
@@ -577,6 +585,8 @@ model ProviderFeaturedPeriod {
   endingNoticeAt DateTime?
   endNoticeAt    DateTime?
   provider       Provider  @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  // RA-BE-180: the admin who ended it.
+  endedBy        User?     @relation("ProviderFeaturedPeriodEndedBy", fields: [endedById], references: [id], onDelete: SetNull)
 
   @@index([providerId, startsAt])
   @@index([endsAt])
@@ -602,6 +612,8 @@ model PortfolioItem {
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
   provider        Provider            @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  // RA-BE-180: the reviewing admin.
+  reviewedBy      User?               @relation("PortfolioItemReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
 
   @@index([providerId, sortOrder])
   @@index([status, createdAt])
@@ -651,6 +663,8 @@ model ProviderProfileChange {
   createdAt         DateTime                    @default(now())
   updatedAt         DateTime                    @updatedAt
   provider          Provider                    @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  // RA-BE-180: the deciding admin.
+  decidedBy         User?                       @relation("ProviderProfileChangeDecidedBy", fields: [decidedById], references: [id], onDelete: SetNull)
 
   @@index([providerId, status])
   @@index([status, createdAt])

@@ -119,6 +119,15 @@ model User {
   assignedWeddingTasks         WeddingTask[]                 @relation("AssignedWeddingTasks")
   guestInvitationSendsCreated  GuestInvitationSend[]         @relation("GuestInvitationSendCreator")
   bookingsRequested            Booking[]                     @relation("BookingRequester")
+  // RA-BE-180: the plain ids that now are references (SET NULL).
+  bookingChangesRequested      BookingChange[]               @relation("BookingChangeRequester")
+  providerReviewEventsActed    ProviderReviewEvent[]         @relation("ProviderReviewEventActor")
+  decidedProviderClaims        ProviderClaimRequest[]        @relation("ProviderClaimDecidedBy")
+  endedFeaturedPeriods         ProviderFeaturedPeriod[]      @relation("ProviderFeaturedPeriodEndedBy")
+  reviewedPortfolioItems       PortfolioItem[]               @relation("PortfolioItemReviewedBy")
+  decidedProfileChanges        ProviderProfileChange[]       @relation("ProviderProfileChangeDecidedBy")
+  verifiedProviders            Provider[]                    @relation("ProviderVerifiedBy")
+  uploadedCostReceipts         CostReceipt[]                 @relation("CostReceiptUploader")
   sentPlanInvites              PlanInvite[]                  @relation("PlanInviteInviter")
   receivedPlanInvites          PlanInvite[]                  @relation("PlanInviteInvitee")
   refreshTokens                RefreshToken[]

@@ -80,6 +80,12 @@ class AccountContextController extends ChangeNotifier {
   final Map<String, int> _droppedOnRemoval = {};
   int unsentDroppedOnRemoval(String planId) => _droppedOnRemoval[planId] ?? 0;
 
+  /// RA-MO-339: the path last known of a plan the participant was taken off
+  /// (its owner's word, its persona), so the gate that shuts it says whose
+  /// plan it was; null for a plan never held, or held again.
+  final Map<String, AccountContext> _removedPlanPaths = {};
+  AccountContext? removedPlanPath(String planId) => _removedPlanPaths[planId];
+
   List<AccountContext> _contexts = const [];
   AccountContext? _selectedContext;
   AccountContextPermissionChange? _permissionChange;
@@ -178,11 +184,12 @@ class AccountContextController extends ChangeNotifier {
     var blockedPlanIds = const <String>{};
     AccountContextPermissionChange? permissionChange;
     // The plans this phone held as a participant before asking.
-    final heldAsParticipant = {
+    final heldPaths = <String, AccountContext>{
       for (final context in [..._contexts, ?_storedContext()])
         if (context.role == AccountContextRole.contributor)
-          ?context.weddingPlanId,
+          ?context.weddingPlanId: context,
     };
+    final heldAsParticipant = heldPaths.keys.toSet();
     try {
       final beforeRefresh = _beforeRefresh;
       if (beforeRefresh != null) blockedPlanIds = await beforeRefresh();
@@ -276,13 +283,15 @@ class AccountContextController extends ChangeNotifier {
       _notePermissionChange(permissionChange, selected);
       _hasLoadedContexts = true;
       _lastRefreshAnswered = true;
-      await _forgetRemovedPlans(
-        heldAsParticipant,
-        stillHeld: {
-          for (final context in serverContexts) ?context.weddingPlanId,
-          ...blockedPlanIds,
-        },
-      );
+      final stillHeld = {
+        for (final context in serverContexts) ?context.weddingPlanId,
+        ...blockedPlanIds,
+      };
+      _removedPlanPaths.removeWhere((planId, _) => stillHeld.contains(planId));
+      for (final planId in heldAsParticipant.difference(stillHeld)) {
+        _removedPlanPaths[planId] = heldPaths[planId]!;
+      }
+      await _forgetRemovedPlans(heldAsParticipant, stillHeld: stillHeld);
       if (!_sameContext(previousContext, selected)) {
         appLogEvent(
           selected == null
@@ -557,6 +566,7 @@ class AccountContextController extends ChangeNotifier {
   }) async {
     ++_generation;
     _contexts = const [];
+    _removedPlanPaths.clear();
     _selectedContext = null;
     _permissionChange = null;
     _hasLoadedContexts = false;

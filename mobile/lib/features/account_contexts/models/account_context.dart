@@ -252,6 +252,12 @@ class AccountContext {
     _ => 'صاحب العرس',
   };
 
+  /// RA-MO-339: who took a participant off this plan, in the plan's word
+  /// for its owner («العروسة شالتك من خطتها»), as P9 says it.
+  String get planOwnerRemovedYou => persona == AccountContextPersona.bride
+      ? '$planOwnerWord شالتك من خطتها'
+      : '$planOwnerWord شالك من خطته';
+
   /// The server's wire shape, so a kept copy reads back through [fromJson]
   /// and its contract checks.
   Map<String, dynamic> toJson() => {

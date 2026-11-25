@@ -212,6 +212,53 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  // RA-MO-339: a participant taken off a plan was told only «هذي الخطة ما
+  // عادت لك»; P9 names who took him off. The gate keeps the path it last
+  // knew and names the plan's owner the same way, in his word for her.
+  testWidgets('a participant taken off a plan is told whose plan it was', (
+    tester,
+  ) async {
+    final own = accountContext(role: AccountContextRole.owner);
+    final helping = accountContext(
+      role: AccountContextRole.contributor,
+      planId: 'plan-2',
+      persona: AccountContextPersona.bride,
+    );
+    final harness = await _Harness.create([own, helping]);
+    await harness.controller.refresh();
+    await harness.controller.select(helping.contextKey);
+
+    await tester.pumpWidget(
+      harness.wrap(
+        const WeddingPlanContextGate(
+          weddingPlanId: 'plan-2',
+          child: Text('private-plan-2'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    harness.gateway.contexts = [own];
+    await harness.controller.refresh();
+    await tester.pumpAndSettle();
+
+    expect(find.text('private-plan-2'), findsNothing);
+    expect(harness.controller.removedPlanPath('plan-2')?.persona,
+        AccountContextPersona.bride);
+    expect(
+      find.text('العروسة شالتك من خطتها. ارجع للرئيسية واختر خطة ثانية.'),
+      findsOneWidget,
+    );
+    // Still nothing of the plan itself: no id, no title.
+    expect(find.textContaining('plan-2'), findsNothing);
+    expect(tester.takeException(), isNull);
+
+    // Asked into the plan again, it is no longer a removed one.
+    harness.gateway.contexts = [own, helping];
+    await harness.controller.refresh();
+    expect(harness.controller.removedPlanPath('plan-2'), isNull);
+  });
+
   // RA-MO-135: a participant's contexts are read again each time the app
   // comes back to the front and on each pull to refresh. The gate drew its
   // spinner in place of the page for that long, so the page under it was

@@ -123,9 +123,20 @@ class WeddingPlanContextGate extends StatelessWidget {
           ? 'selected_context_permission_denied'
           : 'selected_context_mismatch',
     );
+    // RA-MO-339: a plan he was taken off is named by its owner, as P9 does.
+    final removed = samePlan
+        ? null
+        : controller.removedPlanPath(weddingPlanId)?.planOwnerRemovedYou;
     return _MismatchedPlanContext(
       title: samePlan ? 'هذا القسم مش مفتوح لك' : 'هذي الخطة ما عادت لك',
-      message: samePlan ? 'صلاحيتك في هذي الخطة ما تفتح هذا القسم.' : null,
+      message: samePlan
+          ? 'صلاحيتك في هذي الخطة ما تفتح هذا القسم.'
+          : removed == null
+          ? null
+          : context.say(
+              '$removed. ارجع للرئيسية واختر خطة ثانية.',
+              '$removed. ارجعي للرئيسية واختاري خطة ثانية.',
+            ),
     );
   }
 }

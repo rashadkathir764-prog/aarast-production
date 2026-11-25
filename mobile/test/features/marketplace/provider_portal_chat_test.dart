@@ -1,6 +1,11 @@
 import 'dart:io';
 
 import 'package:aarast_mobile/core/network/api_client.dart';
+import 'package:aarast_mobile/core/routing/app_router.dart';
+import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
+import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
+import 'package:aarast_mobile/features/chat/screens/chat_screen.dart';
+import 'package:aarast_mobile/features/chat/screens/quote_conversation_entry_screen.dart';
 import 'package:aarast_mobile/core/diagnostics/app_logger.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
@@ -9,14 +14,15 @@ import 'package:aarast_mobile/features/chat/data/chat_api.dart';
 import 'package:aarast_mobile/features/chat/data/chat_realtime_client.dart';
 import 'package:aarast_mobile/features/chat/models/chat_models.dart';
 import 'package:aarast_mobile/features/chat/providers/chat_provider.dart';
+import 'package:aarast_mobile/features/chat/widgets/conversation_list_view.dart';
 import 'package:aarast_mobile/features/marketplace/data/marketplace_api.dart';
 import 'package:aarast_mobile/features/marketplace/models/marketplace_models.dart';
 import 'package:aarast_mobile/features/provider_portal/providers/provider_dashboard_provider.dart';
 import 'package:aarast_mobile/features/provider_portal/screens/provider_portal_screen.dart';
+import 'package:aarast_mobile/features/provider_portal/widgets/provider_portal_bottom_nav.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../../support/library_source.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -33,39 +39,123 @@ void main() {
     expect(source, contains('ChatProvider('));
   });
 
-  test('user chat surfaces initialize the realtime session', () {
-    final listSource = File(
-      'lib/features/chat/widgets/conversation_list_view.dart',
-    ).readAsStringSync();
-    final quoteEntrySource = File(
-      'lib/features/chat/screens/quote_conversation_entry_screen.dart',
-    ).readAsStringSync();
-
-    expect(listSource, contains('.initialize()'));
-    expect(listSource, contains('onRefresh: chat.initialize'));
-    expect(quoteEntrySource, contains('.openQuote('));
-  });
-
-  test('direct conversation routes require an authenticated account', () {
-    // The router's route trees live in per-area part files of the router
-    // library (spec M6); the contract reads the whole library.
-    final source = readLibrarySource('lib/core/routing/app_router.dart');
-
-    expect(
-      source,
-      matches(
-        RegExp(r"path: '/conversations/:id',[\s\S]{0,450}ProviderAuthGate\("),
+  // RA-TS-24: this read two widget files for `.initialize()` and
+  // `.openQuote(`. The widgets are pumped and what they asked of the chat
+  // provider is counted.
+  Future<(AuthStorage, _CountingChatApi, _CountingRealtimeClient, ChatProvider)>
+  chatOf() async {
+    SharedPreferences.setMockInitialValues({});
+    final storage = AuthStorage(await SharedPreferences.getInstance());
+    await storage.saveSession(
+      accessToken: 'access-token',
+      user: const SafeUser(
+        id: 'user-1',
+        name: 'المستخدم',
+        role: 'USER',
+        status: 'ACTIVE',
       ),
     );
-    expect(
-      source,
-      matches(
-        RegExp(
-          r"path: '/quotes/:id/conversation',[\s\S]{0,450}ProviderAuthGate\(",
+    final api = _CountingChatApi();
+    final realtime = _CountingRealtimeClient(storage);
+    final chat = ChatProvider(
+      api: api,
+      realtime: realtime,
+      authStorage: storage,
+    );
+    return (storage, api, realtime, chat);
+  }
+
+  testWidgets('the conversation list opens the realtime session and refreshes '
+      'it by a pull', (tester) async {
+    final (_, api, realtime, chat) = await chatOf();
+    addTearDown(chat.dispose);
+    await tester.pumpWidget(
+      ChangeNotifierProvider<ChatProvider>.value(
+        value: chat,
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: const Scaffold(body: ConversationListView()),
         ),
       ),
     );
+    await tester.pumpAndSettle();
+
+    expect(realtime.connectCalls, 1);
+    expect(api.listCalls, 1);
+
+    await tester.fling(
+      find.byType(Scrollable).first,
+      const Offset(0, 400),
+      1000,
+    );
+    await tester.pumpAndSettle();
+    expect(api.listCalls, 2);
+    expect(realtime.connectCalls, 1);
   });
+
+  testWidgets(
+    'a quote\'s conversation entry asks for that quote\'s conversation',
+    (tester) async {
+      final (_, api, _, chat) = await chatOf();
+      addTearDown(chat.dispose);
+      await tester.pumpWidget(
+        ChangeNotifierProvider<ChatProvider>.value(
+          value: chat,
+          child: MaterialApp(
+            theme: AppTheme.light(),
+            home: const QuoteConversationEntryScreen(
+              quoteRequestId: 'quote-42',
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      expect(api.quoteLookups, ['quote-42']);
+    },
+  );
+
+  // RA-TS-24: this read app_router.dart for «ProviderAuthGate(» near each
+  // path. The real router, signed out, is asked for each path instead.
+  for (final path in const [
+    '/conversations/conversation-1',
+    '/quotes/quote-1/conversation',
+  ]) {
+    testWidgets('$path asks a signed-out visitor to sign in first', (
+      tester,
+    ) async {
+      SharedPreferences.setMockInitialValues({});
+      final preferences = await SharedPreferences.getInstance();
+      final storage = AuthStorage(preferences);
+      final apiClient = ApiClient(tokenProvider: storage.readAccessToken);
+      final auth = AuthController(AuthRepository(apiClient, storage))
+        ..restoreSession();
+      final router = AppRouter.create();
+      addTearDown(auth.dispose);
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(
+        ChangeNotifierProvider<AuthController>.value(
+          value: auth,
+          child: MaterialApp.router(
+            theme: AppTheme.light(),
+            routerConfig: router,
+          ),
+        ),
+      );
+      await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+      router.go(path);
+      await tester.pump();
+      await tester.pump();
+
+      expect(router.state.uri.path, path);
+      expect(find.byKey(const Key('provider-auth-gate')), findsOneWidget);
+      expect(find.byKey(const Key('provider-auth-gate-login')), findsOneWidget);
+      expect(find.byType(ChatScreen), findsNothing);
+      expect(find.byType(QuoteConversationEntryScreen), findsNothing);
+    });
+  }
 
   test(
     'chat initialization connects realtime once and refreshes REST',
@@ -113,22 +203,52 @@ void main() {
     },
   );
 
-  test('provider portal keeps the five approved Arabic destinations', () {
-    final portalSource = File(
-      'lib/features/provider_portal/screens/provider_portal_screen.dart',
-    ).readAsStringSync();
-    final navigationSource = File(
-      'lib/features/provider_portal/widgets/provider_portal_bottom_nav.dart',
-    ).readAsStringSync();
-    final source = '$portalSource\n$navigationSource';
+  // RA-TS-24: this read the portal's two source files for the five labels.
+  testWidgets('provider portal keeps the five approved Arabic destinations', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final authStorage = AuthStorage(await SharedPreferences.getInstance());
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<ProviderDashboardProvider>.value(
+            value: _FakeProviderDashboardProvider(),
+          ),
+          ChangeNotifierProvider<ChatProvider>.value(
+            value: _FakeChatProvider(authStorage),
+          ),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: const ProviderPortalScreen(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
     // p28 (D39): the calendar takes the services' place, as drawn.
-    for (final label in ['الرئيسية', 'الطلبات', 'التقويم', 'الرسائل', 'ملفي']) {
-      expect(source, contains(label));
+    const destinations = ['الرئيسية', 'الطلبات', 'التقويم', 'الرسائل', 'ملفي'];
+    final nav = find.byType(ProviderPortalBottomNav);
+    expect(nav, findsOneWidget);
+    for (final label in destinations) {
+      expect(
+        find.descendant(of: nav, matching: find.text(label)),
+        findsOneWidget,
+        reason: label,
+      );
     }
-    expect(source, contains('IndexedStack'));
-    expect(source, contains('ProviderPortalBottomNav'));
-    expect(source, isNot(contains('حجز مؤكد')));
-    expect(source, isNot(contains('دفع')));
+    // Five, and no sixth: a booking's money has no tab here.
+    expect(
+      find.descendant(of: nav, matching: find.byType(Text)),
+      findsNWidgets(destinations.length),
+    );
+    expect(find.textContaining('حجز مؤكد'), findsNothing);
+    expect(find.textContaining('دفع'), findsNothing);
+
+    // The pages stay alive behind the bar: a tab left and come back to is
+    // the one that was open (an IndexedStack, not a rebuilt page).
+    expect(find.byType(IndexedStack), findsWidgets);
   });
 
   test('chat conversation parses unified provider and plan context', () {
@@ -388,11 +508,18 @@ class _CountingChatApi extends ChatApi {
   _CountingChatApi() : super(ApiClient(tokenProvider: () async => null));
 
   int listCalls = 0;
+  final quoteLookups = <String>[];
 
   @override
   Future<ChatConversationPage> listConversations({String? cursor}) async {
     listCalls += 1;
     return const ChatConversationPage(items: []);
+  }
+
+  @override
+  Future<ChatConversation> conversationForQuote(String quoteRequestId) async {
+    quoteLookups.add(quoteRequestId);
+    throw const ApiException('x', statusCode: 404);
   }
 }
 

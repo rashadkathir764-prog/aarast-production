@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:aarast_mobile/features/notifications/models/aarast_notification.dart';
 import 'package:aarast_mobile/features/notifications/utils/notification_route_policy.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -21,16 +19,38 @@ AarastNotification _notice({
 );
 
 void main() {
-  test(
-    'notification UI cannot restore legacy installment or finance routing',
-    () {
-      final source = File(
-        'lib/features/notifications/screens/notifications_screen.dart',
-      ).readAsStringSync();
-      expect(source, isNot(contains("contains('INSTALLMENT')")));
-      expect(source, isNot(contains("area == 'finance'")));
-    },
-  );
+  // RA-TS-24: this was a read of notifications_screen.dart for two strings.
+  // What it guarded is behaviour of the resolver and of the safe-target
+  // check: the phone no longer steers a notice by its type or its data, and
+  // the finance area is not a shell tab.
+  test('a legacy installment or finance notice is no route of its own', () {
+    for (final type in const [
+      'INSTALLMENT_DUE',
+      'INSTALLMENT_OVERDUE',
+      'FINANCE_REMINDER',
+    ]) {
+      expect(
+        resolveNotificationRouteTarget(
+          _notice(
+            type: type,
+            data: const {
+              'area': 'finance',
+              'weddingPlanId': 'plan-1',
+              'weddingCostId': 'cost-1',
+              'installmentId': 'installment-1',
+            },
+          ),
+        ),
+        isNull,
+        reason: '$type opens nothing the server did not write',
+      );
+    }
+    // And the finance area is no shell tab a notice could open.
+    expect(
+      isPlanShellNotificationRouteTarget('/wedding-plans/plan-1/finance'),
+      isFalse,
+    );
+  });
 
   // B-19: the server writes each notice's exact screen (the route table in
   // backend/src/shared-kernel/routes/notification-routes.ts, and the

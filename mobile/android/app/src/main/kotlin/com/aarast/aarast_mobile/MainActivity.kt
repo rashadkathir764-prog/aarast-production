@@ -1,15 +1,9 @@
 package com.aarast.aarast_mobile
 
-import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.Color
-import android.os.Build
-import android.os.Bundle
 import android.view.WindowManager
 import androidx.core.content.FileProvider
 import io.flutter.embedding.android.FlutterActivity
@@ -17,12 +11,9 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import java.io.File
 
+// The notification channels are made as the process starts, before this
+// page: AarastApplication.
 class MainActivity : FlutterActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        createNotificationChannels()
-    }
-
     // D112 (Q-8): while a money screen is in front and the account's lock is
     // on, the app asks for a secure window: no screenshot, no recording, and
     // no picture of it in the recent-apps list. Asked from
@@ -121,40 +112,5 @@ class MainActivity : FlutterActivity() {
         } catch (_: Exception) {
             "error"
         }
-    }
-
-    /**
-     * RA-MO-360: one channel per kind of alert, so the phone's own settings
-     * quiet «رسائل», «مهام وتذكيرات» or «المال» alone. The push gateway
-     * names these ids (`push-notification.policy.ts`).
-     *
-     * The one old channel («رسائل ومهام اعّرست», `aarast_updates`) is carried
-     * over once: what the person did to it (muting it, lowering it) is kept
-     * on the new ones, then it is removed so it is not left in the settings.
-     */
-    private fun createNotificationChannels() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
-        val manager = getSystemService(NotificationManager::class.java)
-        val oldChannelId = "aarast_updates"
-        val importance = manager.getNotificationChannel(oldChannelId)?.importance
-            ?: NotificationManager.IMPORTANCE_HIGH
-        listOf(
-            Triple("aarast_messages", "رسائل", "الرسائل الجديدة وطلبات الحجز والعروض"),
-            Triple("aarast_tasks", "مهام وتذكيرات", "المهام وتذكيراتها وعدّ العرس التنازلي"),
-            Triple("aarast_money", "المال", "مواعيد الدفعات وسداد القروض والميزانية"),
-        ).forEach { (id, name, summary) ->
-            // A channel's importance is the person's after it exists: the
-            // call only adds one that is not there yet.
-            val channel = NotificationChannel(id, name, importance).apply {
-                description = summary
-                lockscreenVisibility = Notification.VISIBILITY_PRIVATE
-                enableVibration(true)
-                enableLights(true)
-                lightColor = Color.rgb(76, 113, 128)
-                setShowBadge(true)
-            }
-            manager.createNotificationChannel(channel)
-        }
-        manager.deleteNotificationChannel(oldChannelId)
     }
 }

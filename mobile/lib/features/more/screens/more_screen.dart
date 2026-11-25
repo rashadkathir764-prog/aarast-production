@@ -447,13 +447,18 @@ class _MoreScreenState extends State<MoreScreen> {
     return null;
   }
 
+  // XFile.name splits on the platform's own separator only, so a name can
+  // still carry a folder written with the other one; the last part of
+  // either is the file's name.
   static String _avatarFileName(XFile file) {
-    final name = file.name.trim();
+    final name = _lastPathPart(file.name);
     if (name.isNotEmpty) return name;
-    final pathParts = file.path.split(RegExp(r'[\\/]'));
-    final fromPath = pathParts.isEmpty ? '' : pathParts.last.trim();
+    final fromPath = _lastPathPart(file.path);
     return fromPath.isEmpty ? 'avatar.jpg' : fromPath;
   }
+
+  static String _lastPathPart(String value) =>
+      value.split(RegExp(r'[\\/]')).last.trim();
 }
 
 class _GroupTitle extends StatelessWidget {

@@ -35,6 +35,29 @@ class _PendingServerRepository extends AuthRepository {
   Future<SafeUser> me() => answer.future;
 }
 
+const _knownUser = SafeUser(
+  id: 'known',
+  name: 'Known',
+  role: 'USER',
+  status: 'ACTIVE',
+);
+
+/// A phone that holds an account: its token and the account read last.
+class _KnownAccountRepository extends AuthRepository {
+  _KnownAccountRepository(super.apiClient, super.authStorage);
+
+  final Completer<SafeUser> answer = Completer<SafeUser>();
+
+  @override
+  SafeUser? readCachedUser() => _knownUser;
+
+  @override
+  Future<String?> readAccessToken() async => 'token';
+
+  @override
+  Future<SafeUser> me() => answer.future;
+}
+
 /// Stands for AarastPushLifecycleBridge and AarastAuthFlowRedirector: above
 /// the navigator, it sends the app somewhere once the account is known.
 class _ElsewhereFirst extends StatefulWidget {
@@ -199,6 +222,32 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('home'), findsOneWidget);
+  });
+
+  testWidgets('an account the phone already holds is not a first open, '
+      'even on the first run of an update that never marked one', (
+    tester,
+  ) async {
+    // D123: a known account opens at once. The update adds the «seen» mark,
+    // so without this every existing user got the 900ms welcome once.
+    late DevicePreferences device;
+    late _KnownAccountRepository known;
+    await tester.pumpWidget(
+      await _opening(
+        celebratedBefore: false,
+        repository: (api, storage) =>
+            known = _KnownAccountRepository(api, storage),
+        capture: (preferences, _) => device = preferences,
+      ),
+    );
+
+    expect(find.byType(JourneyCelebrationSky), findsNothing);
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('home'), findsOneWidget);
+    expect(device.openingCelebrated, isTrue, reason: 'never a first open now');
+    known.answer.complete(_knownUser);
+    await tester.pumpAndSettle();
   });
 
   testWidgets('a later open never overrides a place the app chose first', (

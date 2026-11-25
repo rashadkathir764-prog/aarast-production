@@ -404,7 +404,10 @@ class _MineRow extends StatelessWidget {
                         'افتح ${task.title} من جديد',
                         'افتحي ${task.title} من جديد',
                       )
-                    : 'خلّص ${task.title}',
+                    : context.say(
+                        'خلّص ${task.title}',
+                        'خلّصي ${task.title}',
+                      ),
                 onTap: busy ? null : onToggle,
                 excludeSemantics: true,
                 child: AarastPressable(

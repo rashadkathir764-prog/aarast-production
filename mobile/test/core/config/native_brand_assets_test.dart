@@ -102,9 +102,16 @@ void main() {
     final manifest = File(
       'android/app/src/main/AndroidManifest.xml',
     ).readAsStringSync();
+    // The channels are made as the process starts (a push can wake a closed
+    // app after an update), not when the page opens.
     final activity = File(
-      'android/app/src/main/kotlin/com/aarast/aarast_mobile/MainActivity.kt',
+      'android/app/src/main/kotlin/com/aarast/aarast_mobile/AarastNotificationChannels.kt',
     ).readAsStringSync();
+    final application = File(
+      'android/app/src/main/kotlin/com/aarast/aarast_mobile/AarastApplication.kt',
+    ).readAsStringSync();
+    expect(manifest, contains('android:name=".AarastApplication"'));
+    expect(application, contains('AarastNotificationChannels.ensure(this)'));
     final notificationIcon = File(
       'android/app/src/main/res/drawable/ic_stat_aarast.xml',
     ).readAsStringSync();

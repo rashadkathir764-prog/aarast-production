@@ -5,7 +5,7 @@
 
     <application
         android:label="${aarastAppLabel}"
-        android:name="${applicationName}"
+        android:name=".AarastApplication"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:allowBackup="false"

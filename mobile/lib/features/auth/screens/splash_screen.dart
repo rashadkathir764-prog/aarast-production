@@ -45,7 +45,14 @@ class _SplashScreenState extends State<SplashScreen>
     super.initState();
     _auth = context.read<AuthController>();
     final preferences = context.read<DevicePreferences?>();
-    _celebrate = !(preferences?.openingCelebrated ?? false);
+    // D123: an account the phone already holds (read before this page, in
+    // restoreSession) opens at once; it is never a first open, also on the
+    // first run of an update that never marked one.
+    final knownAccount = _auth.user != null;
+    _celebrate = !(preferences?.openingCelebrated ?? false) && !knownAccount;
+    if (knownAccount && preferences?.openingCelebrated == false) {
+      unawaited(preferences?.markOpeningCelebrated());
+    }
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 900),

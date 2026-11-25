@@ -117,3 +117,22 @@ test("RA-BE-149: an unknown currency is a 400 that names its code", async () => 
   );
   assert.equal(accepted.currency, "SAR");
 });
+
+test("RA-BE-149: no saved row keeps a currency the server refuses, and none is changed to get there", () => {
+  // A row in another currency would be stuck: each later save repeats it and
+  // gets the 400, and a phone's queued change waits to be deleted (D85).
+  const sql = readFileSync(
+    path.join(process.cwd(), "prisma/migrations/20261125200000_supported_currencies/migration.sql"),
+    "utf8",
+  ).replace(/\r\n/g, "\n");
+  const list = SUPPORTED_CURRENCIES.map((code) => `'${code}'`).join(", ");
+  const tables = ["WeddingPlan", "ProviderService", "ProviderPackage", "QuoteOffer", "QuoteOfferVersion"];
+  const check = sql.indexOf("RAISE EXCEPTION");
+  assert.ok(check > 0, "rows outside the list stop the migration, named");
+  for (const table of tables) {
+    assert.ok(sql.indexOf(`('${table}')`) < check, `${table} is checked`);
+    const constraint = sql.indexOf(`ADD CONSTRAINT "${table}_currency_supported" CHECK ("currency" IN (${list}))`);
+    assert.ok(constraint > check, `${table} is held to the list after its check`);
+  }
+  assert.doesNotMatch(sql, /^\s*(UPDATE|DELETE)\b/mu, "no amount or currency is rewritten");
+});

@@ -76,7 +76,9 @@ test('task templates cover every role with a due offset before the wedding', () 
     assert.ok(supportedCatalogIconKeys.has(item.icon), item.key);
     const persona = item.metadata?.persona;
     assert.equal(item.showForGroom, persona !== 'BRIDE', item.key);
-    assert.equal(item.showForBride, persona !== 'GROOM', item.key);
+    // One shared task is the groom's alone: the bride has her own photographer.
+    const brideHasHerOwn = item.key === 'task-shared-photo';
+    assert.equal(item.showForBride, persona !== 'GROOM' && !brideHasHerOwn, item.key);
   }
   // The Yemeni essentials the client listed are offered as tasks.
   for (const word of ['المهر', 'الشرط', 'الشبكة', 'الكسوة', 'القات', 'الفنان', 'الزفة', 'مخدرة', 'النقش', 'الشقة', 'شهر العسل']) {
@@ -111,6 +113,16 @@ test("the bride's tasks hold her photographer, her kosha and her hospitality", (
       'task-bride-naqsh', 'task-bride-subhia', 'task-bride-gold', 'task-bride-trousseau',
     ],
   );
+});
+
+test("a bride's plan is not offered the shared photographer beside her own", () => {
+  // «حجز المصور» beside «حجز المصورة النسائية» was the same task twice.
+  const shared = taskStarterDefaults.find((item) => item.key === 'task-shared-photo');
+  assert.equal(shared?.showForGroom, true);
+  assert.equal(shared?.showForBride, false);
+  const sharedDate = taskStarterDefaults.find((item) => item.key === 'task-shared-date');
+  assert.equal(sharedDate?.showForBride, true, 'the other shared tasks stay hers too');
+  assert.equal(shared?.groupSubtitleAr, 'الأساسيات اللي يتفقون عليها.');
 });
 
 test('catalog publication separates drafts from the public bootstrap', () => {

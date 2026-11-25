@@ -268,7 +268,7 @@ const taskGroups: TaskGroupSeed[] = [
   {
     key: 'shared-tasks',
     nameAr: 'مهام مشتركة',
-    subtitleAr: 'الأساسيات التي يتفق عليها الطرفان.',
+    subtitleAr: 'الأساسيات اللي يتفقون عليها.',
     persona: 'SHARED',
     items: [
       ['task-shared-date', 'تحديد موعد العرس', 'sparkles', 300, true],
@@ -334,6 +334,10 @@ const taskGroups: TaskGroupSeed[] = [
   },
 ];
 
+// A shared task a bride's plan does not take, because hers says it in her
+// own words: «حجز المصور» beside «حجز المصورة النسائية» was the same task twice.
+const notForBride = new Set(['task-shared-photo']);
+
 export const taskStarterDefaults: DefaultReferenceCatalogItem[] = taskGroups.flatMap(
   (group, groupIndex) =>
     group.items.map(([key, nameAr, icon, daysBefore, recommended], itemIndex) => ({
@@ -345,7 +349,7 @@ export const taskStarterDefaults: DefaultReferenceCatalogItem[] = taskGroups.fla
       icon,
       sortOrder: (groupIndex + 1) * 100 + (itemIndex + 1) * 10,
       showForGroom: group.persona !== 'BRIDE',
-      showForBride: group.persona !== 'GROOM',
+      showForBride: group.persona !== 'GROOM' && !notForBride.has(key),
       isRecommended: recommended ?? false,
       metadata: { persona: group.persona, daysBefore: String(daysBefore) },
     })),

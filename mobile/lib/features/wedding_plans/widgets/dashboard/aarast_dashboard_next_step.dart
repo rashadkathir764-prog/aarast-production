@@ -122,8 +122,7 @@ class _JourneyNextStep extends StatelessWidget {
               TextSpan(text: reason),
             ],
           ),
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
+          // RA-MO-328: it wraps; at 320 and 1.3 two lines cut the reason.
           style: JourneyType.of(
             JourneyType.small,
             color: AarastV3Color.textMuted,

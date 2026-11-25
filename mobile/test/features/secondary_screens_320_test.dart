@@ -692,6 +692,7 @@ class _FakeSharingProvider extends SharingProvider {
     required String role,
     required PlanRolePermissions permissions,
     required SharedMember from,
+    ParticipantGender? gender,
   }) async {
     updateCalls += 1;
     _submitting = true;

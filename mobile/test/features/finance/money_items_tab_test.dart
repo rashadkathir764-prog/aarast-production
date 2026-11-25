@@ -447,18 +447,17 @@ void main() {
       );
 
       final glance = find.byKey(const ValueKey('item-glance'));
-      expect(_said(tester, glance), contains('500,000')); // his estimate
       expect(_said(tester, glance), contains('350,000')); // agreed, left
-      // Its share is said apart from its own estimate (D109).
+      // D127 (Q-72): an estimate he typed himself (500,000) is what the
+      // item's expected cost is counted from (D109), so it is said and he
+      // can change it; hiding it under the 400,000 share left the over-share
+      // card below counted from a figure the page did not show.
+      expect(find.text('تقديرك'), findsOneWidget);
+      expect(_said(tester, glance), contains('500,000'));
+      expect(find.byKey(const ValueKey('item-estimate')), findsOneWidget);
       expect(
-        tester.widget<Text>(find.byKey(const ValueKey('item-share'))).data,
-        contains('400,000'),
-      );
-      expect(
-        tester
-            .widget<Text>(find.byKey(const ValueKey('item-against-estimate')))
-            .data,
-        allOf(contains('أقل من تقديرك بـ150,000'), contains('(200,000')),
+        provider.categoryById('c-photo')!.estimatedAmount,
+        anyOf('500000', '500000.00'),
       );
       // Expected 550,000 against its 400,000 share; the reserve (the
       // budget not shared out: 3,000,000 − 3,000,000 shared) cannot cover
@@ -506,7 +505,9 @@ void main() {
       expect(_said(tester, paid), contains('400,000'));
     });
 
-    testWidgets('an estimate of its own: free, may pass the budget', (
+    // D127 (Q-72): with a share of the budget the item says the share
+    // alone, and «حط تقدير» is not offered beside it.
+    testWidgets('a share of the budget: said alone, no estimate offered', (
       tester,
     ) async {
       final provider = await tester.runAsync(_plan);
@@ -515,32 +516,56 @@ void main() {
         provider!,
         at: AppRouter.moneyCategoryDetails(_planId, 'c-gold'),
       );
+
       expect(find.text('المخصص له'), findsOneWidget);
+      expect(
+        _said(tester, find.byKey(const ValueKey('item-glance'))),
+        contains('600,000'),
+      );
+      expect(find.byKey(const ValueKey('item-estimate')), findsNothing);
+      expect(find.text('حط تقدير'), findsNothing);
+      expect(find.text('تقديرك'), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
+    // Changed on purpose (D127, Q-72): an estimate of its own is offered on
+    // an item with no share of the budget; it was the gold, which has one.
+    testWidgets('an estimate of its own: free, may pass the budget', (
+      tester,
+    ) async {
+      final provider = await tester.runAsync(_plan);
+      await _open(
+        tester,
+        provider!,
+        at: AppRouter.moneyCategoryDetails(_planId, 'c-cake'),
+      );
+      expect(find.text('تقديرك'), findsOneWidget);
 
       await tester.tap(find.byKey(const ValueKey('item-estimate')));
       await tester.pumpAndSettle();
-      // Others expect 1,750,000; with 1,500,000 the items pass 3,000,000
-      // by 250,000: said under the field, not refused.
+      // Others expect 2,350,000; with 1,500,000 the items pass 3,000,000
+      // by 850,000: said under the field, not refused.
       await tester.enterText(
         find.byKey(const ValueKey('item-estimate-field')),
         '1500000',
       );
       await tester.pump();
-      expect(find.textContaining('فوق الميزانية بـ250,000'), findsOneWidget);
+      expect(find.textContaining('فوق الميزانية بـ850,000'), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('item-estimate-save')));
       await _settle(tester);
 
-      final gold = provider.summary.categories.singleWhere(
-        (item) => item.categoryId == 'c-gold',
+      final cake = provider.summary.categories.singleWhere(
+        (item) => item.categoryId == 'c-cake',
       );
-      expect(gold.estimateFromAllocation, isFalse);
-      expect(moneyValue(gold.expectedCost), 1500000);
-      // Its share stays.
-      expect(
-        moneyValue(provider.categoryById('c-gold')!.allocatedAmount),
-        600000,
-      );
+      expect(cake.estimateFromAllocation, isFalse);
+      expect(moneyValue(cake.expectedCost), 1500000);
+      // It still has no share.
+      expect(provider.categoryById('c-cake')!.allocatedAmount, isNull);
       expect(find.text('تقديرك'), findsOneWidget);
+      expect(
+        _said(tester, find.byKey(const ValueKey('item-glance'))),
+        contains('1,500,000'),
+      );
       expect(tester.takeException(), isNull);
     });
 

@@ -164,12 +164,17 @@ class _MoneyLead extends StatelessWidget {
     required this.value,
     required this.color,
     this.tag,
+    this.note,
     this.showLabel = true,
   });
 
   final String label;
   final String value;
   final Color color;
+
+  /// D127 (Q-53): what of the figure is the mahr («منها المهر 350 ألف»),
+  /// right under it; null when none of it is.
+  final String? note;
 
   /// False where the card's title row already says [label] (Rashad
   /// 2026-11-17: «المال» over «باقي عليك» was two rows for one name).
@@ -210,6 +215,15 @@ class _MoneyLead extends StatelessWidget {
             ),
           ),
         ),
+        if (note case final note?)
+          Text(
+            note,
+            key: const ValueKey('dashboard-money-lead-mahr'),
+            style: JourneyType.of(
+              JourneyType.small,
+              color: AarastV3Color.textMuted,
+            ),
+          ),
         if (tag case final tag?) ...[
           const SizedBox(height: AarastV3Space.x1),
           tag,

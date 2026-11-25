@@ -173,14 +173,6 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
         amountsHidden ? '••••' : _sumFigure(value, currency);
     String sumFigure(double value) => figure(value);
 
-    // D59: the owner reads what is left to them; anyone else reads it as
-    // the owner's, and what others paid for the owner is said as theirs.
-    final leftLabel = context.ownerDid(
-      'باقي تدفع',
-      'باقي تدفعين',
-      groom: 'باقي على العريس',
-      bride: 'باقي على العروسة',
-    );
     final paidByOthers =
         dashboardAmount(summary.moneySummary.paidByOthers) ?? 0;
     final paidByOwner =
@@ -226,6 +218,9 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
         mahrInside: mahrInside || (withMahr && widget.mahrCardShown)
             ? mahr.total
             : null,
+        // D127 (Q-54): and says it is outside the budget, or «منها المهر 2
+        // مليون» over a budget still all free read as wrong arithmetic.
+        mahrInBudget: mahrInside,
         figure: (value) => write(value.toDouble()),
       ))
         _MoneyCellData(
@@ -258,15 +253,30 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
 
     final ownerLeft = funding?.ownerLeft;
     final verdict = known ? funding.verdict : null;
-    // D114: the owner's share, the mahr with it: never «من العرس».
-    final ownerLeftLabel = context.say('باقي عليك', 'باقي عليكِ');
-    final Widget lead;
-    var leadWords = const <String>[];
+    // D114: the owner's share, the mahr with it: never «من العرس». D59:
+    // anyone else reads it as the owner's.
+    // D127 (Q-53): the card's one lead figure, «الملخص»'s (D102): before the
+    // money tab's read it stood as «باقي تدفع», every agreement left whoever
+    // pays, and the figure changed under the reader's eyes once it came.
+    final ownerLeftLabel = context.ownerDid(
+      'باقي عليك',
+      'باقي عليكِ',
+      groom: 'باقي على العريس',
+      bride: 'باقي على العروسة',
+    );
+    // What of it is the mahr (the groom's, which pays): on him whether the
+    // budget holds it or not (D114), said under the figure.
+    final mahrLeft = withMahr ? mahr.total - mahr.settled : 0.0;
     final agreedAny = agreed > 0;
+    final ownerLead = ownerLeft != null && (agreedAny || ownerLeft > 0);
+    String? leadMahr(String Function(double) write) =>
+        ownerLead && mahrLeft > 0 ? 'منها المهر ${write(mahrLeft)}' : null;
+    Widget? lead;
+    var leadWords = const <String>[];
     // The title row names the lead figure where there is one, so «المال»
     // and «باقي عليك» are not two rows over one number.
     var title = 'المال';
-    if (ownerLeft != null && (agreedAny || ownerLeft > 0)) {
+    if (ownerLead) {
       title = ownerLeftLabel;
       // D102, D103: the owner reads what «الملخص» says; D113: its verdict is
       // a short tag beside the label (the whole sentence stood up to five
@@ -276,6 +286,8 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
         label: ownerLeftLabel,
         showLabel: false,
         value: amount(ownerLeft),
+        // Sum-safe, as the cells: it is read against the figure over it.
+        note: leadMahr(figure),
         color: AarastV3Color.ink,
         tag: verdict == null
             ? null
@@ -317,20 +329,14 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
           ),
         ],
       );
-    } else {
-      title = leftLabel;
-      lead = _MoneyLead(
-        label: leftLabel,
-        showLabel: false,
-        value: amount(left),
-        color: AarastV3Color.ink,
-      );
     }
+    // Else agreements and the owner's share not read yet (the money tab's
+    // read on its way, or failed: the home says so): no lead rather than a
+    // figure of another meaning (D127, Q-53); what was agreed and paid say
+    // themselves below.
 
     final side = <Widget>[
       if (known) ...[
-        if (ownerLeft == null)
-          _SideFigure('$leftLabel ${figure(left)}', AarastV3Color.ink),
         _SideFigure('معك ${figure(funding.inHand)}', context.accent.primary),
         if (funding.pledged > 0)
           _SideFigure('موعود ${figure(funding.pledged)}', AarastV3Color.lilac),
@@ -359,10 +365,10 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
             ? 'المال، المبالغ مخفية مؤقتًا'
             : [
                 'المال',
-                if (ownerLeft != null)
-                  '$ownerLeftLabel ${_spoken(ownerLeft, currency)}'
-                else if (agreedAny)
-                  '$leftLabel ${_spoken(left, currency)}',
+                if (ownerLead) ...[
+                  '$ownerLeftLabel ${_spoken(ownerLeft, currency)}',
+                  ?leadMahr(spoken),
+                ],
                 ...leadWords,
                 ?verdict?.words,
                 if (known) 'معك ${_spoken(funding.inHand, currency)}',
@@ -464,24 +470,25 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
                   ),
                 ],
               ),
-              ExcludeSemantics(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Expanded(flex: 3, child: lead),
-                    if (side.isNotEmpty) ...[
-                      const SizedBox(width: AarastV3Space.x3),
-                      Flexible(
-                        flex: 2,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: side,
+              if (lead != null || side.isNotEmpty)
+                ExcludeSemantics(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Expanded(flex: 3, child: lead ?? const SizedBox.shrink()),
+                      if (side.isNotEmpty) ...[
+                        const SizedBox(width: AarastV3Space.x3),
+                        Flexible(
+                          flex: 2,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: side,
+                          ),
                         ),
-                      ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
-              ),
               if (known && funding.dues.isNotEmpty) ...[
                 const SizedBox(height: AarastV3Space.x3),
                 _DuesStrip(

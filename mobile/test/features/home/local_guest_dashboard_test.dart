@@ -285,7 +285,9 @@ void main() {
       await pumpHome(tester, inside: true);
 
       expect(find.text('الاتفاق مع أهل العروسة'), findsOneWidget);
-      expect(find.textContaining('منها المهر'), findsOneWidget);
+      // Changed on purpose (D127, Q-53): «باقي عليك» says the mahr left in
+      // it too, under «اتفقت على»'s own.
+      expect(find.textContaining('منها المهر'), findsNWidgets(2));
       expect(find.textContaining('برّا الميزانية'), findsNothing);
       // The mahr is not an agreement with a provider: the step stays.
       expect(find.text('سجّل أول اتفاق'), findsOneWidget);
@@ -297,11 +299,19 @@ void main() {
       await pumpHome(tester, inside: false);
 
       expect(find.text('الاتفاق مع أهل العروسة'), findsOneWidget);
-      expect(find.textContaining('برّا الميزانية'), findsNothing);
+      // Changed on purpose (D127, Q-54): «اتفقت على» says the mahr in it is
+      // outside the budget, or the budget still all free read as wrong
+      // arithmetic.
+      expect(
+        find.textContaining('منها المهر 2 مليون، برّا الميزانية'),
+        findsOneWidget,
+      );
       // Changed on purpose (walks 2026-11-18): «اتفقت على» holds the mahr
       // and says so under it (D79); without it the figure read as his
       // agreements alone. The card says what was handed and what is left.
-      expect(find.textContaining('منها المهر'), findsOneWidget);
+      // Changed on purpose (D127, Q-53): «باقي عليك» says the mahr left in
+      // it too.
+      expect(find.textContaining('منها المهر'), findsNWidgets(2));
       expect(find.text('سجّل أول اتفاق'), findsOneWidget);
     });
   });

@@ -416,7 +416,10 @@ void main() {
       ),
     );
 
-    expect(find.textContaining('باقي على العروسة'), findsWidgets);
+    // Changed on purpose (D127, Q-53): the lead is only what is left on her
+    // (the money tab's read, the owner's); every agreement left, her
+    // father's share in it, no longer stands in as «باقي على العروسة».
+    expect(find.textContaining('باقي على العروسة'), findsNothing);
     expect(find.textContaining('اتفقت العروسة على 4.5'), findsOneWidget);
     expect(find.textContaining('العروسة دفعت 1.3'), findsOneWidget);
     expect(find.textContaining('دفع عنها 1.3'), findsOneWidget);

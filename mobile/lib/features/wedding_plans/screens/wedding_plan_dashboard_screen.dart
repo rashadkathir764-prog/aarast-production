@@ -380,6 +380,18 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
   /// b02: the owner's money in hand, promised and short from the money
   /// section (only the owner receives funding). Null until it is loaded.
   DashboardHomeFunding? _homeFunding(DashboardSummary summary, String planId) {
+    // Q-53 (D127): a plan kept on the phone leads with what is on its owner,
+    // as LocalGuestDashboardScreen says it; nothing else of the money in is
+    // known here.
+    if (_localSummary case final local? when _isLocalGuestPlan) {
+      return DashboardHomeFunding(
+        inHand: 0,
+        pledged: 0,
+        shortfall: null,
+        sourcesCount: 0,
+        ownerLeft: local.ownerOutstandingTotal.toDouble(),
+      );
+    }
     if (_isLocalGuestPlan ||
         !summary.canViewMoney ||
         !summary.permissions.isOwner) {

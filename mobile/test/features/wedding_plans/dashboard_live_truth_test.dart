@@ -126,6 +126,15 @@ void main() {
         home: Scaffold(
           body: AarastDashboardView(
             summary: summary,
+            // The owner's money read before any source of money: what is
+            // left on him is known, the money in is not.
+            funding: const DashboardHomeFunding(
+              inHand: 0,
+              pledged: 0,
+              shortfall: null,
+              sourcesCount: 0,
+              ownerLeft: 500000,
+            ),
             userName: 'العريس',
             bottomPadding: 24,
             onNotifications: () {},
@@ -148,8 +157,11 @@ void main() {
     // agreed and paid sit on the far side, the bar splits paid and left.
     // Changed on purpose (Rashad 2026-11-17): the title row names the lead
     // figure, so «المال» over «باقي تدفع» is one row.
+    // Changed on purpose (D127, Q-53): one lead figure before and after a
+    // source of money, «الملخص»'s «باقي عليك»; no «باقي تدفع».
     expect(find.text('المال'), findsNothing);
-    expect(find.text('باقي تدفع'), findsOneWidget);
+    expect(find.text('باقي عليك'), findsOneWidget);
+    expect(find.textContaining('باقي تدفع'), findsNothing);
     // RA-MO-334: one money format in the card: the lead was «500,000 ر.ي»
     // over «اتفقت على 900 ألف»; it is «500 ألف ر.ي» (see
     // dashboard_money_card_figures_test).

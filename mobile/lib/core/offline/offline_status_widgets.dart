@@ -10,7 +10,10 @@ import '../theme/app_theme.dart';
 import '../utils/app_clock.dart';
 import '../utils/arabic_count.dart';
 import '../widgets/aarast_loading_state.dart' show AarastInlineSpinner;
+import 'local_database_contract.dart';
 import 'offline_sync_service.dart';
+import 'offline_tables.dart';
+import 'sync_queue.dart';
 import 'sync_status.dart';
 
 /// Who reads the banner: what the phone keeps differs by side.
@@ -332,13 +335,20 @@ class _PendingChangesSheet extends StatelessWidget {
 
   final OfflineSyncService service;
 
+  Future<(List<PendingChangeSummary>, Map<String, String>)> _load() async {
+    final changes = await service.loadPendingChanges();
+    final screens = await _refusedChangeScreens(service.database);
+    return (changes, screens);
+  }
+
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<List<PendingChangeSummary>>(
+    return FutureBuilder<(List<PendingChangeSummary>, Map<String, String>)>(
       key: const Key('sync-issues-sheet'),
-      future: service.loadPendingChanges(),
+      future: _load(),
       builder: (context, snapshot) {
-        final changes = snapshot.data ?? const <PendingChangeSummary>[];
+        final changes = snapshot.data?.$1 ?? const <PendingChangeSummary>[];
+        final screens = snapshot.data?.$2 ?? const <String, String>{};
         final now = appNow();
         final canRetry = changes.any((change) => !change.changedElsewhere);
         // A refused change does not wait for the network (D86): it waits for
@@ -430,6 +440,16 @@ class _PendingChangesSheet extends StatelessWidget {
                                 }
                               }
                             : null,
+                        // D127 (Q-70): where it has a screen, the thing
+                        // itself opens, to be fixed and sent again.
+                        onOpen: switch (screens[change.id]) {
+                          final screen? when change.blocked => () {
+                            final router = GoRouter.of(context);
+                            Navigator.of(context).pop();
+                            router.push(screen);
+                          },
+                          _ => null,
+                        },
                       ),
                   ],
                 ),
@@ -475,14 +495,81 @@ Future<bool> _confirmDiscard(BuildContext context, String title) async {
   return sure == true;
 }
 
+/// D127 (Q-70): the screen each refused change opens on, by its queue id:
+/// a task, a guest and an agreement their own, a payment or a date to pay
+/// its agreement. Only where the phone holds the thing (made offline and
+/// never accepted, its copy is there); a delete, or a kind with no screen
+/// of its own, opens nothing.
+Future<Map<String, String>> _refusedChangeScreens(
+  LocalDatabase database,
+) async {
+  Future<bool> held(String table, String id) async =>
+      await database.readCachedItem(table: table, id: id) != null;
+  Future<String?> costOf(List<String> tables, String id) async {
+    for (final table in tables) {
+      final costId = (await database.readCachedItem(
+        table: table,
+        id: id,
+      ))?['costId']?.toString();
+      if (costId != null && costId.isNotEmpty) return costId;
+    }
+    return null;
+  }
+
+  Future<String?> screenOf(SyncQueueItem item) async {
+    final planId = item.planId;
+    final id = item.localEntityId;
+    if (planId == null || id == null || id.isEmpty) return null;
+    if (item.operation == 'delete') return null;
+    switch (item.entityType) {
+      case 'task':
+        return await held(OfflineTables.cachedTasks, id)
+            ? AppRouter.taskDetails(planId, id)
+            : null;
+      case 'guest':
+        return await held(OfflineTables.cachedGuests, id)
+            ? AppRouter.guestDetails(planId, id)
+            : null;
+      case 'cost':
+        return await held(OfflineTables.cachedCosts, id)
+            ? AppRouter.moneyCostDetails(planId, id)
+            : null;
+      case 'cost_payment' || 'payment_schedule':
+        final costId = await costOf(
+          item.entityType == 'cost_payment'
+              ? const [OfflineTables.cachedCostPayments]
+              // Paying a date writes a payment under the date's own id.
+              : const [
+                  OfflineTables.cachedPaymentSchedules,
+                  OfflineTables.cachedCostPayments,
+                ],
+          id,
+        );
+        return costId != null && await held(OfflineTables.cachedCosts, costId)
+            ? AppRouter.moneyCostDetails(planId, costId)
+            : null;
+    }
+    return null;
+  }
+
+  return {
+    for (final item in await database.blockedSyncItems())
+      item.id: ?await screenOf(item),
+  };
+}
+
 class _PendingChangeRow extends StatelessWidget {
   const _PendingChangeRow({
     required this.change,
     required this.now,
     this.onDiscard,
+    this.onOpen,
   });
 
   final Future<void> Function()? onDiscard;
+
+  /// D127 (Q-70): opens the refused thing; null where it has no screen.
+  final VoidCallback? onOpen;
 
   final PendingChangeSummary change;
   final DateTime now;
@@ -513,13 +600,29 @@ class _PendingChangeRow extends StatelessWidget {
       // The reason is why it was refused: read whole, never cut at a line.
       subtitleMaxLines: change.reason != null ? 3 : 1,
       trailing: change.blocked
-          ? (onDiscard == null
+          ? (onDiscard == null && onOpen == null
                 ? null
-                : JourneyTextAction(
-                    key: ValueKey('sync-discard-${change.id}'),
-                    label: ReaderVoice.say('احذفه', 'احذفيه'),
-                    color: AarastV3Color.danger,
-                    onPressed: onDiscard,
+                // One over the other: side by side they squeezed the
+                // reason at 320 wide.
+                : Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      if (onOpen != null)
+                        JourneyTextAction(
+                          key: ValueKey('sync-open-${change.id}'),
+                          label: ReaderVoice.say('افتحه', 'افتحيه'),
+                          color: context.accent.primary,
+                          onPressed: onOpen,
+                        ),
+                      if (onDiscard != null)
+                        JourneyTextAction(
+                          key: ValueKey('sync-discard-${change.id}'),
+                          label: ReaderVoice.say('احذفه', 'احذفيه'),
+                          color: AarastV3Color.danger,
+                          onPressed: onDiscard,
+                        ),
+                    ],
                   ))
           : const Icon(
               LucideIcons.clock,

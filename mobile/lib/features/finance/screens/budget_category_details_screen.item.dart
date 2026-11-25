@@ -36,8 +36,17 @@ class _ItemGlance extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final mahr = category.isMahr;
-    final estimate = item?.estimate;
-    final fromShare = item?.estimateFromAllocation ?? false;
+    // D127 (Q-72): an item with a share of the budget says the share alone,
+    // and «حط تقدير» is not offered over it: «تقديرك» beside «المخصص له»
+    // were two figures for one question. An estimate he typed himself is
+    // still his figure: it is what the item's expected cost and the «أكثر من
+    // تقديرك» line are counted from (D109), so it is said, never hidden
+    // under a share that the screen's own sums do not use.
+    final ownTyped =
+        item?.estimate != null && !(item?.estimateFromAllocation ?? false);
+    final shared = !mahr && category.allocatedAmount != null && !ownTyped;
+    final estimate = shared ? category.allocatedAmount : item?.estimate;
+    final fromShare = shared || (item?.estimateFromAllocation ?? false);
     final own = estimate != null && !fromShare;
     final agreed = moneyValue(item?.confirmedCost ?? category.confirmedCost);
     final paid = item?.paid ?? category.paid;
@@ -143,7 +152,7 @@ class _ItemGlance extends StatelessWidget {
           color: context.accent.primary,
           onPressed: onExpense,
         ),
-      if (onEstimate != null)
+      if (onEstimate != null && !shared)
         JourneyTextAction(
           key: const ValueKey('item-estimate'),
           label: own
@@ -203,19 +212,6 @@ class _ItemGlance extends StatelessWidget {
                       strong: true,
                     ),
             ),
-            // Its share of the budget, when it has one besides its own
-            // estimate (D109: the two are apart).
-            if (own && category.allocatedAmount != null) ...[
-              const SizedBox(height: AarastV3Space.x2),
-              Text(
-                'المخصص له من الميزانية ${money(category.allocatedAmount)}',
-                key: const ValueKey('item-share'),
-                style: JourneyType.of(
-                  JourneyType.small,
-                  color: AarastV3Color.textMuted,
-                ),
-              ),
-            ],
             if (against != null) ...[
               const SizedBox(height: AarastV3Space.x3),
               Text(

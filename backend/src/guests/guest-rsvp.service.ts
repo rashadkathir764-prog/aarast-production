@@ -1245,7 +1245,9 @@ export class GuestRsvpService {
         entityType: "wedding_plan",
         entityId: plan.id,
         routeTarget: noticeRoutes.guestAttendance(plan.id),
-        data: { weddingPlanId: plan.id, replies: true },
+        // How many replied this hour stays in the app; the push says only
+        // that replies came.
+        data: { weddingPlanId: plan.id, replies: true, repliesCount: answered },
       });
       return;
     }

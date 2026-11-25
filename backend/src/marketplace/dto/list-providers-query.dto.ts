@@ -1,4 +1,4 @@
-import { IsOptional, IsString } from 'class-validator';
+import { IsIn, IsOptional, IsString } from 'class-validator';
 
 export class ListProvidersQueryDto {
   @IsString()
@@ -28,12 +28,31 @@ export class ListProvidersQueryDto {
 
   /**
    * RA-BE-150 (Q-36): the wedding's day (`YYYY-MM-DD`). Each provider then
-   * says whether he takes that day (`availableOnEventDate`); nobody is
-   * filtered out by it.
+   * says what is known of that day (`dayStatus`); nobody is filtered out by
+   * it unless `hideBusy` asks.
    */
   @IsString()
   @IsOptional()
   eventDate?: string;
+
+  /**
+   * D131: `best` (default, «الأنسب»), `rating` («الأعلى تقييمًا») or
+   * `price` («الأقل سعرًا»); docs/project/PROVIDER_RANKING.md.
+   */
+  @IsString()
+  @IsIn(['best', 'rating', 'price'])
+  @IsOptional()
+  sort?: string;
+
+  /**
+   * D131: `true` leaves out the providers known to take nothing on
+   * `eventDate` (he closed it, or Aarast's bookings filled it). Needs
+   * `eventDate`. A provider kept is not known to be free.
+   */
+  @IsString()
+  @IsIn(['true', 'false'])
+  @IsOptional()
+  hideBusy?: string;
 
   @IsString()
   @IsOptional()

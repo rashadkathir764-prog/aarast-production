@@ -3,16 +3,21 @@ import "reflect-metadata";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Prisma } from "@prisma/client";
-import { listProvidersUnavailableOn } from "../src/modules/marketplace/infrastructure/marketplace-booking.repository";
+import {
+  listProvidersDayStatus,
+  listProvidersUnavailableOn,
+} from "../src/modules/marketplace/infrastructure/marketplace-booking.repository";
 import { searchActiveProviders } from "../src/modules/marketplace/infrastructure/marketplace-core.repository";
 import {
   providerDayUnavailable,
   requestedBookableDay,
 } from "../src/marketplace/provider-day-availability";
 import { MarketplaceQuery } from "../src/marketplace/marketplace.presenter";
+import { providerDirectoryOptions } from "../src/marketplace/provider-directory";
 import {
   NEWCOMER_DAYS,
   profileCompleteness,
+  orderProviders,
   rankProviders,
   smoothedRating,
   type RankSignals,
@@ -228,4 +233,71 @@ test("the list is cut after ranking: the page holds the ranked rows, only they a
   assert.deepEqual(await page(2, 2), [["p1", 0], ["p4", 0]], "an unclaimed listing is last and never badged");
   assert.deepEqual(await page(4, 2), []);
   assert.deepEqual(wholeReads, [["p3", "p2"], ["p1", "p4"]]);
+});
+
+// ── D131: the order the customer picks, and the day said only with proof ──
+
+const priced = (id: string, lowestPriceYer: number | null, over: Partial<RankSignals> = {}) => ({
+  ...row(id, over),
+  lowestPriceYer,
+});
+
+test("«الأعلى تقييمًا» orders by the smoothed rating, without the featured lift, unclaimed last", () => {
+  const ids = orderProviders(
+    [
+      priced("featured-low", null, { featuredNow: true, ratingAverage: 3, ratingCount: 40 }),
+      priced("one-review", null, { ratingAverage: 5, ratingCount: 1 }),
+      priced("long-record", null, { ratingAverage: 4.8, ratingCount: 63 }),
+      priced("unclaimed-top", null, { claimed: false, ratingAverage: 5, ratingCount: 90 }),
+    ],
+    "rating",
+    NOW,
+  ).map((r) => r.id);
+  assert.deepEqual(ids, ["long-record", "one-review", "featured-low", "unclaimed-top"]);
+});
+
+test("«الأقل سعرًا» orders by his lowest rial price, the unpriced after, unclaimed last", () => {
+  const ids = orderProviders(
+    [
+      priced("dear", 900000),
+      priced("none", null),
+      priced("cheap", 250000),
+      priced("unclaimed-cheapest", 1000, { claimed: false }),
+      priced("cheap-too", 250000, { createdAt: daysAgo(3) }),
+    ],
+    "price",
+    NOW,
+  ).map((r) => r.id);
+  // Equal prices keep «الأنسب»'s order (the newer first, by the newcomer lift).
+  assert.deepEqual(ids, ["cheap-too", "cheap", "dear", "none", "unclaimed-cheapest"]);
+});
+
+test("«الأنسب» is the ranking itself", () => {
+  const rows = [priced("a", 1, { ratingAverage: 5, ratingCount: 30 }), priced("b", 2, { featuredNow: true })];
+  assert.deepEqual(
+    orderProviders(rows, "best", NOW).map((r) => r.id),
+    rankProviders(rows, NOW).map((r) => r.id),
+  );
+});
+
+test("the sort and hideBusy are read from the query; hideBusy needs a day", () => {
+  assert.equal(providerDirectoryOptions({}, null).sort, "best");
+  assert.equal(providerDirectoryOptions({ sort: "price" }, null).sort, "price");
+  assert.throws(() => providerDirectoryOptions({ sort: "cheapest" }, null), /sort/);
+  assert.equal(providerDirectoryOptions({ eventDate: "2027-02-18", hideBusy: "true" }, DAY).hideBusy, true);
+  assert.throws(() => providerDirectoryOptions({ hideBusy: "true" }, null), /hideBusy needs eventDate/);
+  assert.equal(
+    providerDirectoryOptions({ eventDate: "2026-01-01", hideBusy: "true" }, null).hideBusy,
+    false,
+    "a day already past (no availability day) hides nobody",
+  );
+});
+
+test("the day's status names why he takes nothing, and says nothing of the rest", async () => {
+  const tx = fakeTx({ closed: ["closed"], confirmed: { full: 1, room: 1 }, capacity: { room: 2 } });
+  const status = await listProvidersDayStatus(tx, ["closed", "full", "room", "free"], DAY);
+  assert.equal(status.get("closed"), "CLOSED");
+  assert.equal(status.get("full"), "FULL");
+  assert.equal(status.has("room"), false);
+  assert.equal(status.has("free"), false, "not known busy is not «free»: no entry");
 });

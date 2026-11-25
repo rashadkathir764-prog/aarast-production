@@ -138,6 +138,18 @@ export class OutboxWorker {
         event_type: event.type,
         outcome: terminal ? 'failed' : 'retry',
       });
+      if (terminal) {
+        try {
+          await this.dispatcher.recordTerminalFailure(
+            event,
+            outboxFailureCode(error),
+          );
+        } catch (recordError) {
+          this.logger.error(
+            `Outbox terminal failure not recorded for ${event.id}: ${outboxFailureCode(recordError)}`,
+          );
+        }
+      }
     }
   }
 }

@@ -1,13 +1,15 @@
 import { NotificationType } from "@prisma/client";
+import { startOfRiyadhDay } from "../shared-kernel/time/business-day";
 import { isQuietHour, quietHoursEnd } from "../shared-kernel/time/quiet-hours";
+import { REMINDER_SCHEDULE } from "../shared-kernel/time/reminder-schedule";
 import { reminderWhenWords } from "../shared-kernel/voice/day-words";
 
 /**
  * RA-MO-360: the phone's notification channel of a push, the one place a
  * person can mute a kind of alert on their own: «رسائل», «مهام وتذكيرات»,
- * «المال» (the channels are made in `MainActivity.kt`). Every type that
- * reaches a phone is listed here with its channel, so a new push type cannot
- * go out without one.
+ * «المال» (the channels are made in the app's `AarastApplication`). Every
+ * type that reaches a phone is listed here with its channel, so a new push
+ * type cannot go out without one.
  */
 export type PushAndroidChannelId =
   | "aarast_messages"
@@ -54,12 +56,24 @@ const PUSH_CHANNEL_BY_TYPE: ReadonlyMap<NotificationType, PushAndroidChannelId> 
     // Q-50 (أ), D124: the reporter hears what came of his report; it waits
     // on no one, so it is held through the quiet hours.
     [NotificationType.CONVERSATION_REPORT_CLOSED, MESSAGES],
+    // Both sides of a request hear its end: the provider that his offer was
+    // not taken, the plan that a provider declined, withdrew his offer or
+    // let the request run out. Each changes what the plan does next.
+    [NotificationType.QUOTE_REJECTED, MESSAGES],
+    // An invitation to a plan waits on its invitee; the inviter hears it
+    // was taken; a provider hears of a new review on his page.
+    [NotificationType.SHARING_INVITATION, MESSAGES],
+    [NotificationType.SHARING_INVITE_ACCEPTED, MESSAGES],
+    [NotificationType.REVIEW_RECEIVED, MESSAGES],
+    // The guests' replies, as one digest at most every few hours
+    // (`REMINDER_SCHEDULE.guestRepliesDigest`); never through the night.
+    [NotificationType.GUEST_RESPONDED, TASKS],
   ]);
 
 /**
  * RA-BE-186: these types are written for both sides of a request, and only
- * the provider's side pushes. The customer's own request received, offer
- * accepted and the provider's apology stay in the inbox.
+ * the provider's side pushes. The customer's own request received and offer
+ * accepted stay in the inbox: the customer did them.
  */
 const PROVIDER_AUDIENCE_PUSH_CHANNEL_BY_TYPE: ReadonlyMap<
   NotificationType,
@@ -67,7 +81,6 @@ const PROVIDER_AUDIENCE_PUSH_CHANNEL_BY_TYPE: ReadonlyMap<
 > = new Map<NotificationType, PushAndroidChannelId>([
   [NotificationType.QUOTE_REQUEST_SUBMITTED, MESSAGES],
   [NotificationType.QUOTE_ACCEPTED, MESSAGES],
-  [NotificationType.QUOTE_REJECTED, MESSAGES],
 ]);
 
 function isProviderAudience(data: unknown): boolean {
@@ -90,6 +103,53 @@ export function isPushNotificationType(
   return PUSH_CHANNEL_BY_TYPE.has(type);
 }
 
+/**
+ * The plan right a push of [type] still needs when it goes out (a held or
+ * retried push may leave hours after its notice was written, and a member
+ * may have lost the right meanwhile): `MONEY` money visibility, `TASKS` the
+ * task right, `PROVIDERS` the provider right, `MEMBER` only a place in the
+ * plan, `NONE` nothing of the plan (a notice of no plan, the provider's own
+ * business, an invitation to someone not in it yet, a conversation, which
+ * messaging guards itself).
+ */
+export type PushPlanRight = "NONE" | "MEMBER" | "MONEY" | "TASKS" | "PROVIDERS";
+
+const MONEY_PUSH_TYPES = new Set<NotificationType>([
+  NotificationType.PAYMENT_SCHEDULE_DUE_SOON,
+  NotificationType.PAYMENT_SCHEDULE_OVERDUE,
+  NotificationType.LOAN_REPAYMENT_DUE_SOON,
+  NotificationType.LOAN_REPAYMENT_OVERDUE,
+  NotificationType.BUDGET_CATEGORY_EXCEEDED,
+  NotificationType.FUNDING_EXPECTED,
+]);
+const TASK_PUSH_TYPES = new Set<NotificationType>([
+  NotificationType.TASK_ASSIGNED,
+  NotificationType.TASK_DUE_SOON,
+  NotificationType.TASK_OVERDUE,
+]);
+const PROVIDER_PUSH_TYPES = new Set<NotificationType>([
+  NotificationType.QUOTE_OFFER_RECEIVED,
+  NotificationType.QUOTE_REJECTED,
+  NotificationType.BOOKING_UPDATED,
+]);
+
+export function pushPlanRight(
+  notification: { type: NotificationType; weddingPlanId: string | null; data?: unknown },
+): PushPlanRight {
+  const { type, weddingPlanId, data } = notification;
+  if (!weddingPlanId || isProviderAudience(data)) return "NONE";
+  if (
+    type === NotificationType.SHARING_INVITATION ||
+    type === NotificationType.CHAT_MESSAGE_RECEIVED
+  ) {
+    return "NONE";
+  }
+  if (MONEY_PUSH_TYPES.has(type)) return "MONEY";
+  if (TASK_PUSH_TYPES.has(type)) return "TASKS";
+  if (PROVIDER_PUSH_TYPES.has(type)) return "PROVIDERS";
+  return "MEMBER";
+}
+
 /** The channel a push of [type] goes to on an Android phone. */
 export function pushAndroidChannelId(type: NotificationType): PushAndroidChannelId {
   const channel =
@@ -106,18 +166,120 @@ export function pushAndroidChannelId(type: NotificationType): PushAndroidChannel
  * writing now, so they reach the phone at any hour; every other push is held
  * through quiet hours (OTP is no notification and never comes through here).
  */
-const QUIET_HOURS_EXEMPT_TYPES = new Set<NotificationType>([
-  NotificationType.CHAT_MESSAGE_RECEIVED,
-  NotificationType.BOOKING_REQUESTED,
-]);
+const QUIET_HOURS_EXEMPT_TYPES = new Set<NotificationType>(
+  REMINDER_SCHEDULE.quietHours.alwaysThrough,
+);
 
+/** Whether [type] reaches the phone at any hour, whatever its plan's date. */
 export function isQuietHoursExempt(type: NotificationType): boolean {
   return QUIET_HOURS_EXEMPT_TYPES.has(type);
 }
 
+/** What a quiet-hours decision reads of the notice beyond its type. */
+export interface QuietHoursContext {
+  /** The plan the notice is about; a notice of no plan has no wedding week. */
+  weddingPlanId?: string | null;
+  /** That plan's wedding day, when it has one. */
+  weddingDate?: Date | null;
+  /** The notice's own data (its booking step, its request's end, its due day). */
+  data?: unknown;
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Whole Sana'a days from `at`'s day to the wedding day, by the countdown's
+ * own count (`daysUntilWedding` in `plan-reminders.ts`): 0 on the day,
+ * negative once it passed.
+ */
+function daysToWedding(weddingDate: Date, at: Date): number {
+  return Math.round(
+    (startOfRiyadhDay(weddingDate).getTime() - startOfRiyadhDay(at).getTime()) /
+      DAY_MS,
+  );
+}
+
+/**
+ * The kind a wedding-week rule matches (`REMINDER_SCHEDULE.quietHours
+ * .weddingWeek.through[].kinds`): a booking's step, how a request ended for
+ * the plan, a payment due today. Null when the notice has none.
+ */
+function quietHoursKind(type: NotificationType, data: unknown, at: Date): string | null {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return null;
+  const fields = data as Record<string, unknown>;
+  switch (type) {
+    case NotificationType.BOOKING_UPDATED:
+      return fields.recipientAudience === "CUSTOMER" &&
+        typeof fields.bookingEvent === "string"
+        ? fields.bookingEvent
+        : null;
+    case NotificationType.QUOTE_REJECTED:
+      return fields.recipientAudience === "CUSTOMER" &&
+        typeof fields.status === "string"
+        ? fields.status
+        : null;
+    case NotificationType.PAYMENT_SCHEDULE_DUE_SOON: {
+      if (typeof fields.dueDate !== "string") return null;
+      const due = new Date(fields.dueDate);
+      if (Number.isNaN(due.getTime())) return null;
+      return startOfRiyadhDay(due).getTime() === startOfRiyadhDay(at).getTime()
+        ? "DUE_TODAY"
+        : null;
+    }
+    default:
+      return null;
+  }
+}
+
+/**
+ * The one quiet-hours rule (RA-BE-185, and the wedding week). From 21:00 to
+ * 09:00 in Aden a push waits for the morning, except:
+ *
+ * - a chat message and a booking request, at any time: someone is writing
+ *   now (`alwaysThrough`);
+ * - in the 7 days before the plan's wedding day and on the day (Sana'a
+ *   calendar days, as the reminders count them), news that changes the
+ *   wedding: a booking declined, cancelled, its provider suspended or gone,
+ *   its day change decided; a provider who declined the request or
+ *   withdrew his offer; a payment due today or overdue (`weddingWeek`);
+ * - on the wedding day itself, every notice of the plan except the guests'
+ *   replies digest (`weddingDay`).
+ *
+ * Everything else, and every notice of no plan or of a plan with no date, is
+ * held. Eight days before is held; the day after is held. The guests'
+ * replies are never let through the night.
+ */
+export function bypassesQuietHours(
+  type: NotificationType,
+  at: Date,
+  context: QuietHoursContext = {},
+): boolean {
+  if (isQuietHoursExempt(type)) return true;
+  const rules = REMINDER_SCHEDULE.quietHours;
+  if (!context.weddingPlanId || !context.weddingDate) return false;
+  const days = daysToWedding(context.weddingDate, at);
+  if (days < 0 || days > rules.weddingWeek.daysBefore) return false;
+  if (
+    days === 0 &&
+    !(rules.weddingDay.allPlanNoticesExcept as readonly NotificationType[]).includes(type)
+  ) {
+    return true;
+  }
+  const rule = rules.weddingWeek.through.find((entry) => entry.type === type);
+  if (!rule) return false;
+  const kinds = rule.kinds as readonly string[];
+  if (kinds.length === 0) return true;
+  const kind = quietHoursKind(type, context.data, at);
+  return kind !== null && kinds.includes(kind);
+}
+
 /** The instant a push made at `at` may go out, or null when it goes out now. */
-export function pushNotBefore(type: NotificationType, at: Date): Date | null {
-  if (isQuietHoursExempt(type) || !isQuietHour(at)) return null;
+export function pushNotBefore(
+  type: NotificationType,
+  at: Date,
+  context: QuietHoursContext = {},
+): Date | null {
+  if (!isQuietHour(at) || bypassesQuietHours(type, at, context)) return null;
   return quietHoursEnd(at);
 }
 
@@ -153,6 +315,13 @@ function taskDueDays(data: unknown): number | null {
 function isRefusalNotice(data: unknown, field: "claimStatus" | "decision"): boolean {
   if (!data || typeof data !== "object" || Array.isArray(data)) return false;
   return (data as Record<string, unknown>)[field] === "REJECTED";
+}
+
+/** How a request ended, as its notice's data says (`REJECTED`, `WITHDRAWN`, `EXPIRED`). */
+function noticeStatus(data: unknown): string | null {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return null;
+  const status = (data as Record<string, unknown>).status;
+  return typeof status === "string" ? status : null;
 }
 
 /** A FUNDING_EXPECTED notice for the expected day itself, not the day before. */
@@ -284,10 +453,52 @@ export function pushNotificationCopy(
         title: "انقبل عرضك",
         body: "تفاصيله في اعّرست.",
       };
+    // The plan's side of a request's end: which provider stays in the app.
     case NotificationType.QUOTE_REJECTED:
+      if (!isProviderAudience(data)) {
+        switch (noticeStatus(data)) {
+          case "WITHDRAWN":
+            return {
+              title: "سُحب عرض",
+              body: "سحب أحد المزوّدين عرضه، والتفاصيل في اعّرست.",
+            };
+          case "EXPIRED":
+            return {
+              title: "انتهى طلب دون رد",
+              body: "انتهت مدة أحد الطلبات دون رد، والتفاصيل في اعّرست.",
+            };
+          default:
+            return {
+              title: "اعتذار عن طلب",
+              body: "اعتذر أحد المزوّدين عن طلب، والتفاصيل في اعّرست.",
+            };
+        }
+      }
       return {
         title: "عرضك ما انقبل",
         body: "تفاصيله في اعّرست.",
+      };
+    case NotificationType.SHARING_INVITATION:
+      return {
+        title: "دعوة إلى خطة عرس",
+        body: "وصلتك دعوة للمشاركة في خطة، والتفاصيل في اعّرست.",
+      };
+    case NotificationType.SHARING_INVITE_ACCEPTED:
+      return {
+        title: "قُبلت الدعوة",
+        body: "انضم مشارك جديد إلى الخطة، والتفاصيل في اعّرست.",
+      };
+    case NotificationType.REVIEW_RECEIVED:
+      return {
+        title: "تقييم جديد",
+        body: "وصل تقييم جديد على ملفك، والتفاصيل في اعّرست.",
+      };
+    // How many replied stays in the app; the lock screen says only that
+    // some did.
+    case NotificationType.GUEST_RESPONDED:
+      return {
+        title: "ردود جديدة",
+        body: "وصلت ردود جديدة على دعوتك، والتفاصيل في اعّرست.",
       };
     case NotificationType.PROVIDER_APPROVED:
       return {

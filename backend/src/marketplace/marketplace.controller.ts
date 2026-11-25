@@ -70,6 +70,12 @@ export class ProvidersController {
     return this.marketplaceService.findProviders(query);
   }
 
+  /** D131 (F8): how many providers each category chip opens, under the list's filter. */
+  @Get("category-counts")
+  countProvidersByCategory(@Query() query: ListProvidersQueryDto) {
+    return this.marketplaceService.countProvidersByCategory(query);
+  }
+
   @Get(":id/services")
   findProviderServices(@Param("id") id: string) {
     return this.marketplaceService.findProviderServices(id);

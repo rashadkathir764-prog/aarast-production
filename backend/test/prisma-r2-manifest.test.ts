@@ -34,7 +34,7 @@ const expectedOwners: ManifestOwner[] = [
   { owner: 'marketplace', file: 'marketplace.prisma', models: ['Provider', 'ProviderService', 'ProviderServiceImage', 'ProviderPackage', 'FavoriteProvider', 'ProviderReview', 'QuoteRequest', 'QuoteOffer', 'PlanProviderLink', 'Booking', 'BookingChange', 'ProviderBlockedDate', 'ProviderProfileViewDay', 'ProviderReviewEvent', 'ProviderReviewNote', 'ProviderClaimRequest', 'QuoteOfferVersion', 'ProviderFeaturedPeriod', 'PortfolioItem', 'ReviewReport', 'ProviderProfileChange'], enums: ['ProviderStatus', 'ReviewStatus', 'QuoteRequestStatus', 'QuoteOfferStatus', 'PlanProviderLinkStatus', 'BookingStatus', 'BookingParty', 'ProviderReviewEventKind', 'ProviderReviewField', 'ProviderClaimStatus', 'BookingChangeStatus', 'PortfolioItemStatus', 'ProviderProfileChangeStatus'] },
   { owner: 'media', file: 'media.prisma', models: ['MediaUploadTicket'], enums: ['MediaUploadStatus'] },
   { owner: 'messaging', file: 'messaging.prisma', models: ['Conversation', 'ConversationParticipant', 'ConversationEvent', 'ChatMessage', 'ChatAttachment', 'ConversationReport'], enums: ['ConversationScope', 'ConversationEventType', 'ConversationReportStatus'] },
-  { owner: 'notifications', file: 'notifications.prisma', models: ['NotificationPreference', 'PushInstallation', 'Notification'], enums: ['NotificationType', 'NotificationPriority', 'PushPlatform'] },
+  { owner: 'notifications', file: 'notifications.prisma', models: ['NotificationPreference', 'PushInstallation', 'Notification'], enums: ['NotificationType', 'NotificationPriority', 'PushPlatform', 'PushDeliveryState'] },
   { owner: 'planning', file: 'planning.prisma', models: ['WeddingPlan', 'PlanEvent', 'ErasedPlan'], enums: ['OnboardingPath', 'WeddingPersona', 'WeddingPlanStatus', 'PlanEventType', 'PlanEventTimeSlot'] },
   { owner: 'platform', file: 'platform.prisma', models: ['IdempotencyKey', 'OutboxEvent'], enums: [] },
   { owner: 'tasks', file: 'tasks.prisma', models: ['WeddingTask', 'WeddingTaskChecklistItem'], enums: ['WeddingTaskStatus', 'WeddingTaskPriority'] },
@@ -107,9 +107,10 @@ test('R2 Prisma manifest is exact plain data with immutable provenance and deter
   // Home guidance: + BudgetItemSuggestion («ما أحتاجها» / «بعدين»).
   // D105: + EstimateCover. D107: + CostEntryKind.
   // Q-67 (D127): + ParticipantGender.
-  assert.equal(manifest.owners.flatMap((entry) => entry.enums).length, 64);
+  // + PushDeliveryState (notifications: a notification's honest push state).
+  assert.equal(manifest.owners.flatMap((entry) => entry.enums).length, 65);
   assert.equal(new Set(manifest.owners.flatMap((entry) => entry.models)).size, 77);
-  assert.equal(new Set(manifest.owners.flatMap((entry) => entry.enums)).size, 64);
+  assert.equal(new Set(manifest.owners.flatMap((entry) => entry.enums)).size, 65);
 });
 
 test('R2 Prisma manifest equals the current registry and ordered live single-schema declarations', () => {
@@ -131,7 +132,7 @@ test('R2 Prisma manifest equals the current registry and ordered live single-sch
   assert.deepEqual(manifest.modelOrder, readLivePrismaModelOrder());
   assert.deepEqual(manifest.owners.flatMap((entry) => entry.enums).sort(), orderedDeclarations('enum').sort());
   assert.equal(manifest.modelOrder.length, 77);
-  assert.equal(orderedDeclarations('enum').length, 64);
+  assert.equal(orderedDeclarations('enum').length, 65);
 });
 
 test('manifest registry comparison rejects a User and IdempotencyKey owner swap', () => {

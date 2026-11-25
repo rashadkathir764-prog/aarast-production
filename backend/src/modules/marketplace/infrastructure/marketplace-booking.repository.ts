@@ -114,7 +114,21 @@ export async function listProvidersUnavailableOn(
   providerIds: readonly string[],
   day: Date,
 ): Promise<Set<string>> {
-  if (providerIds.length === 0) return new Set();
+  return new Set((await listProvidersDayStatus(client, providerIds, day)).keys());
+}
+
+/**
+ * D131: why each of [providerIds] takes nothing on [day], for those with a
+ * reason: he closed it, or Aarast's confirmed bookings filled his daily
+ * number. A provider missing from the map is not known to be free (his
+ * bookings outside Aarast are not here), only not known to be busy.
+ */
+export async function listProvidersDayStatus(
+  client: Tx,
+  providerIds: readonly string[],
+  day: Date,
+): Promise<Map<string, "CLOSED" | "FULL">> {
+  if (providerIds.length === 0) return new Map();
   const ids = [...providerIds];
   const [closed, confirmed, capacities] = await Promise.all([
     client.providerBlockedDate.findMany({
@@ -131,14 +145,19 @@ export async function listProvidersUnavailableOn(
       select: { id: true, dailyBookingCapacity: true },
     }),
   ]);
-  const unavailable = new Set(closed.map((row) => row.providerId));
+  const status = new Map<string, "CLOSED" | "FULL">(
+    closed.map((row) => [row.providerId, "CLOSED" as const]),
+  );
   const taken = new Map(confirmed.map((row) => [row.providerId, row._count._all]));
   for (const row of capacities) {
-    if (bookingDayFull(taken.get(row.id) ?? 0, row.dailyBookingCapacity)) {
-      unavailable.add(row.id);
+    if (
+      !status.has(row.id) &&
+      bookingDayFull(taken.get(row.id) ?? 0, row.dailyBookingCapacity)
+    ) {
+      status.set(row.id, "FULL");
     }
   }
-  return unavailable;
+  return status;
 }
 
 /** Confirmed bookings per day from `today` on (p28 «باقي N»). */

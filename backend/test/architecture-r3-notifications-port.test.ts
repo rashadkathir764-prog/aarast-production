@@ -65,13 +65,18 @@ test('Task 4 publishes the exact notifications service contract and signature ty
   // notification preference table itself, and the plan dashboard's
   // notification preview insights used to query itself. Frozen surfaces
   // stay, may grow.
+  // A provider's news about a plan's request or booking reaches everyone who
+  // manages its providers, not the requester alone: the recipients and the
+  // fan-out that writes each his own notice.
   assert.deepEqual(interfaceMethods(path, 'NotificationsPort'), [
     'createNotificationInTransaction',
+    'createProviderUpdateNotificationsInTransaction',
     'getPlanNotificationDashboard',
     'listProviderMessagePreferences',
     'notifyTaskDue',
     'purgeMoneyForMember',
     'resolveProviderUpdateRecipientInTransaction',
+    'resolveProviderUpdateRecipientsInTransaction',
     'visibilityWhereForUser',
   ]);
   // The visibility filter the port returns is declared by its exact keys

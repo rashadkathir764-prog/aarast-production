@@ -95,29 +95,41 @@ test("a new request splits: the customer's acknowledgement stays in the inbox, t
   assert.equal(isPushNotificationType(providerNotices[0]!.type, providerNotices[0]!.data), true);
 });
 
-test("an offer accepted or rejected pushes to the provider, never the customer's side of the same type", () => {
+// The notifications overhaul (2026-11-26), on purpose: this test used to pin
+// that the provider's apology and a withdrawn offer stay in the plan's
+// inbox, so a plan learnt late that it had to find another provider. They
+// change what the plan does next and now reach the phone; the customer's
+// own acts (his request received, his offer accepted) still do not.
+test("an offer accepted or rejected pushes to the provider; the plan's side pushes only what the provider did", () => {
   for (const notice of providerNotices) {
     assert.equal(isPushNotificationType(notice.type, notice.data), true, `${notice.type}/provider`);
   }
-  for (const notice of customerNotices) {
+  const [requestReceived, offerAccepted, providerDeclined, offerWithdrawn] = customerNotices;
+  for (const notice of [requestReceived!, offerAccepted!]) {
     assert.equal(isPushNotificationType(notice.type, notice.data), false, `${notice.type}/customer`);
+  }
+  for (const notice of [providerDeclined!, offerWithdrawn!]) {
+    assert.equal(isPushNotificationType(notice.type, notice.data), true, `${notice.type}/customer`);
   }
   // A type that is split by audience does not push without saying who it is for.
   for (const type of [
     NotificationType.QUOTE_REQUEST_SUBMITTED,
     NotificationType.QUOTE_ACCEPTED,
-    NotificationType.QUOTE_REJECTED,
   ]) {
     assert.equal(isPushNotificationType(type), false, type);
     assert.equal(isPushNotificationType(type, { recipientAudience: "CUSTOMER" }), false, type);
     assert.equal(isPushNotificationType(type, { recipientAudience: "PROVIDER" }), true, type);
   }
+  assert.equal(isPushNotificationType(NotificationType.QUOTE_REJECTED, { recipientAudience: "CUSTOMER" }), true);
+  assert.equal(isPushNotificationType(NotificationType.QUOTE_REJECTED, { recipientAudience: "PROVIDER" }), true);
 });
 
 // Q-60 (أ), D127 (amends Q-48): every decision the team takes on his
 // account reaches the phone: approved, to fix, refused and stopped. Back in
-// review is his own act, and reviews stay in the inbox.
-test("every team decision on the provider's account pushes; his own resubmission and reviews stay in the inbox", () => {
+// review is his own act. A new review on his page reaches it too (the
+// notifications overhaul, 2026-11-26); the reply to a review stays in the
+// inbox.
+test("every team decision on the provider's account pushes, and a new review; his own resubmission stays in the inbox", () => {
   for (const status of [
     ProviderStatus.ACTIVE,
     ProviderStatus.NEEDS_CHANGES,
@@ -143,7 +155,8 @@ test("every team decision on the provider's account pushes; his own resubmission
     rating: 4,
     reviewerName: "خالد القاضي",
   });
-  assert.equal(isPushNotificationType(review.type, review.data), false);
+  assert.equal(isPushNotificationType(review.type, review.data), true);
+  assert.equal(pushAndroidChannelId(review.type), "aarast_messages");
   assert.equal(isPushNotificationType(NotificationType.REVIEW_REPLIED), false);
 });
 

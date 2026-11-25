@@ -1,4 +1,9 @@
-import { NotificationPriority, NotificationType, Prisma } from '@prisma/client';
+import {
+  NotificationPriority,
+  NotificationType,
+  Prisma,
+  PushDeliveryState,
+} from '@prisma/client';
 import type { PrismaService } from '../../../platform/database/prisma.service';
 import {
   MONEY_NOTIFICATION_ENTITY_TYPES,
@@ -22,6 +27,16 @@ export interface DueNotificationRow {
   entityId: string;
   routeTarget: string;
   dedupeKey: string;
+}
+
+/** A notice's push state as it is written with the notice (`PushDeliveryState`). */
+export interface NotificationPushFields {
+  pushState: PushDeliveryState;
+  pushStateAt: Date;
+  pushHeldUntil: Date | null;
+  pushAcceptedDevices: null;
+  pushLastError: null;
+  pushRequestedAt?: Date;
 }
 
 export class NotificationsRepository {
@@ -123,6 +138,7 @@ export class NotificationsRepository {
     client: Prisma.TransactionClient,
     id: string,
     input: CreateNotificationInput & { title: string; body: string },
+    push?: NotificationPushFields,
   ) {
     return client.notification.update({
       where: { id },
@@ -134,6 +150,9 @@ export class NotificationsRepository {
         data: input.data,
         readAt: null,
         archivedAt: null,
+        // Merged unread again: not opened since these words.
+        openedAt: null,
+        ...(push ?? {}),
       },
     });
   }
@@ -142,6 +161,7 @@ export class NotificationsRepository {
   createNotification(
     client: Prisma.TransactionClient,
     input: CreateNotificationInput & { title: string; body: string },
+    push?: NotificationPushFields,
   ) {
     return client.notification.create({
       data: {
@@ -156,7 +176,41 @@ export class NotificationsRepository {
         routeTarget: input.routeTarget ?? null,
         data: input.data,
         dedupeKey: input.dedupeKey,
+        ...(push ?? {}),
       },
+    });
+  }
+
+  /**
+   * The recipient's latest notice of [type] in the plan whose push was
+   * asked for since [since] (a digest pushes once in its window).
+   */
+  recentPushRequest(
+    client: Prisma.TransactionClient,
+    userId: string,
+    weddingPlanId: string,
+    type: NotificationType,
+    since: Date,
+  ) {
+    return client.notification.findFirst({
+      where: { userId, weddingPlanId, type, pushRequestedAt: { gte: since } },
+      orderBy: { pushRequestedAt: 'desc' },
+      select: { id: true },
+    });
+  }
+
+  /**
+   * The person opened the notice from the phone: opened and read, each
+   * kept at its first moment. Idempotent.
+   */
+  async markOpened(tx: Prisma.TransactionClient, id: string, at: Date) {
+    await tx.notification.updateMany({
+      where: { id, openedAt: null },
+      data: { openedAt: at },
+    });
+    await tx.notification.updateMany({
+      where: { id, readAt: null },
+      data: { readAt: at },
     });
   }
 
@@ -203,7 +257,17 @@ export class NotificationsRepository {
     `;
   }
 
-  createDueNotifications(tx: Prisma.TransactionClient, rows: DueNotificationRow[]) {
+  /** The five-minute task-reminder scan's own lock: it never waits on, or skips, the hourly scan. */
+  tryLockTaskReminderScheduler(tx: Prisma.TransactionClient) {
+    return tx.$queryRaw<Array<{ locked: boolean }>>`
+      SELECT pg_try_advisory_xact_lock(20260711, 8) AS locked
+    `;
+  }
+
+  createDueNotifications(
+    tx: Prisma.TransactionClient,
+    rows: Array<DueNotificationRow & Partial<NotificationPushFields>>,
+  ) {
     return tx.notification.createManyAndReturn({ data: rows, skipDuplicates: true });
   }
 

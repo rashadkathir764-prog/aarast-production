@@ -148,6 +148,21 @@ export class OutboxDispatcher {
         throw new Error("UnsupportedOutboxEventType");
     }
   }
+
+  /**
+   * The worker gave up on [event] after its last try failed with
+   * [lastError]: a push's notice says its push failed, so nothing reads it
+   * as sent. Other events have nothing to record.
+   */
+  async recordTerminalFailure(event: OutboxEvent, lastError: string): Promise<void> {
+    if (event.type !== OutboxEventTypes.pushNotificationRequested) return;
+    if (!this.pushDelivery?.recordPushFailed) return;
+    const payload = jsonObject(event.payload);
+    await this.pushDelivery.recordPushFailed(
+      requiredText(payload, "notificationId"),
+      lastError,
+    );
+  }
 }
 
 function deliveredInstallationIds(value: Prisma.JsonObject): string[] {

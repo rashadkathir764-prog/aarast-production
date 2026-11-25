@@ -3,6 +3,8 @@ import {
   Delete,
   Get,
   Header,
+  HttpCode,
+  HttpStatus,
   Param,
   Patch,
   Query,
@@ -12,6 +14,7 @@ import { NotificationType } from "@prisma/client";
 import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
 import { CurrentUser } from "../modules/identity/public/current-user.decorator";
 import { JwtAuthGuard } from "../modules/identity/public/jwt-auth.guard";
+import { REMINDER_SCHEDULE } from "../shared-kernel/time/reminder-schedule";
 import { NotificationsService } from "./notifications.service";
 
 @Controller("api/v1/notifications")
@@ -48,6 +51,17 @@ export class NotificationsController {
     return this.notificationsService.unreadCount(currentUser, weddingPlanId);
   }
 
+  /**
+   * The server's reminder table, as the reminders use it
+   * (`REMINDER_SCHEDULE`): the phone's «متى يصلك» lines read it. Before
+   * `:id`, so «schedule» is not read as a notice's id.
+   */
+  @Get("schedule")
+  @Header("Cache-Control", "private, max-age=3600")
+  schedule() {
+    return { reminderSchedule: REMINDER_SCHEDULE };
+  }
+
   @Get(":id")
   @Header("Cache-Control", "private, no-store")
   findOne(
@@ -63,6 +77,16 @@ export class NotificationsController {
     @Param("id") id: string,
   ) {
     return this.notificationsService.markRead(currentUser, id);
+  }
+
+  /** The person opened the notice from the phone: opened and read, once. */
+  @Patch(":id/opened")
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async markOpened(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param("id") id: string,
+  ): Promise<void> {
+    await this.notificationsService.markOpened(currentUser, id);
   }
 
   @Patch("read-all")

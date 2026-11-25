@@ -13,6 +13,42 @@ import {
 } from "../src/push/push-notification.policy";
 import { getJwtSecret } from "../src/modules/identity/internal/auth/jwt-secret";
 
+/**
+ * A push delivery whose recipient still holds every plan right (a member
+ * with every flag): the access re-check at dispatch lets it through, and
+ * `notification-push-state.test.ts` holds the re-check itself.
+ */
+function pushDelivery(prisma: unknown, firebase: unknown): PushDeliveryService {
+  const client = prisma as any;
+  if (client?.notification && typeof client.notification.updateMany !== "function") {
+    // The push state each outcome records on the notice.
+    client.notification.updateMany = async () => ({ count: 1 });
+  }
+  return new PushDeliveryService(
+    client,
+    firebase as never,
+    {
+      getMembership: async (_client: unknown, weddingPlanId: string, userId: string) => ({
+        weddingPlanId,
+        userId,
+        canViewMoney: true,
+        canManageTasks: true,
+        canManageProviders: true,
+      }),
+      canViewMoney: () => true,
+      canManageTasks: () => true,
+      canManageProviders: () => true,
+    } as never,
+    {
+      getPlan: async (_client: unknown, id: string) => ({
+        id,
+        ownerUserId: "another-owner",
+        deletionRequestedAt: null,
+      }),
+    } as never,
+  );
+}
+
 test("push policy is limited to the notification types that wait on a person", () => {
   assert.equal(isPushNotificationType(NotificationType.TASK_ASSIGNED), true);
   assert.equal(isPushNotificationType(NotificationType.TASK_DUE_SOON), true);
@@ -38,8 +74,15 @@ test("push policy is limited to the notification types that wait on a person", (
     }),
     true,
   );
-  // Reviews stay in the inbox.
-  assert.equal(isPushNotificationType(NotificationType.REVIEW_RECEIVED), false);
+  // The notifications overhaul (2026-11-26), on purpose: a new review, an
+  // invitation, its acceptance and the guests' replies digest reach the
+  // phone; a reply to a review and the plan's own edits stay in the inbox.
+  assert.equal(isPushNotificationType(NotificationType.REVIEW_RECEIVED), true);
+  assert.equal(isPushNotificationType(NotificationType.SHARING_INVITATION), true);
+  assert.equal(isPushNotificationType(NotificationType.SHARING_INVITE_ACCEPTED), true);
+  assert.equal(isPushNotificationType(NotificationType.GUEST_RESPONDED), true);
+  assert.equal(isPushNotificationType(NotificationType.REVIEW_REPLIED), false);
+  assert.equal(isPushNotificationType(NotificationType.PLAN_UPDATED), false);
 });
 
 // RA-MO-360: the phone's settings list «رسائل», «مهام وتذكيرات» and «المال»,
@@ -63,8 +106,10 @@ test("every push type goes to one of the three phone channels, by what it is abo
   assert.equal(pushAndroidChannelId(NotificationType.WEDDING_COUNTDOWN), "aarast_tasks");
   assert.equal(pushAndroidChannelId(NotificationType.PAYMENT_SCHEDULE_DUE_SOON), "aarast_money");
   assert.equal(pushAndroidChannelId(NotificationType.FUNDING_EXPECTED), "aarast_money");
+  assert.equal(pushAndroidChannelId(NotificationType.GUEST_RESPONDED), "aarast_tasks");
+  assert.equal(pushAndroidChannelId(NotificationType.SHARING_INVITATION), "aarast_messages");
   // A type that never reaches a phone has no channel to name.
-  assert.throws(() => pushAndroidChannelId(NotificationType.REVIEW_RECEIVED));
+  assert.throws(() => pushAndroidChannelId(NotificationType.REVIEW_REPLIED));
 });
 
 // A price offer and each booking step wait on the other side's decision, so
@@ -110,13 +155,31 @@ test("push copy remains generic and does not expose notification body data", () 
   assert.equal(copy.body.includes("في اعّرست"), true);
 });
 
-test("disabled push delivery performs no database or Firebase work", async () => {
-  let databaseReads = 0;
-  const service = new PushDeliveryService(
+// The notifications overhaul (2026-11-26), on purpose: this test used to pin
+// that a server without Firebase touched nothing, and so its outbox event
+// finished as if the push went out. It now records DISABLED on the notice
+// and still never calls Firebase or reads the phones.
+test("disabled push delivery records DISABLED and sends nothing", async () => {
+  const states: unknown[] = [];
+  const service = pushDelivery(
     {
       notification: {
-        findUnique: async () => {
-          databaseReads += 1;
+        findUnique: async () => ({
+          id: "notification-1",
+          userId: "user-1",
+          weddingPlanId: null,
+          type: NotificationType.CHAT_MESSAGE_RECEIVED,
+          data: {},
+          readAt: null,
+        }),
+        updateMany: async ({ where, data }: any) => {
+          states.push({ id: where.id, state: data.pushState });
+          return { count: 1 };
+        },
+      },
+      pushInstallation: {
+        findMany: async () => {
+          throw new Error("must not read the phones");
         },
       },
     } as never,
@@ -130,7 +193,7 @@ test("disabled push delivery performs no database or Firebase work", async () =>
 
   await service.dispatchNotification("notification-1");
 
-  assert.equal(databaseReads, 0);
+  assert.deepEqual(states, [{ id: "notification-1", state: "DISABLED" }]);
 });
 
 test("registering a shared-device FID atomically moves it to the current account", async () => {
@@ -227,7 +290,7 @@ test("delivery removes permanent invalid installations and retries transient fai
       },
     },
   };
-  const service = new PushDeliveryService(
+  const service = pushDelivery(
     {
       $transaction: async (operation: (tx: any) => Promise<unknown>) =>
         operation(transaction),
@@ -342,7 +405,7 @@ test("delivery disables push when every registered installation is permanently i
       },
     },
   };
-  const service = new PushDeliveryService(
+  const service = pushDelivery(
     {
       $transaction: async (operation: (tx: any) => Promise<unknown>) =>
         operation(transaction),
@@ -413,7 +476,7 @@ test("ended sessions release the registrations made before them; one made since 
       },
     },
   };
-  const service = new PushDeliveryService(
+  const service = pushDelivery(
     {
       $transaction: async (operation: (tx: any) => Promise<unknown>) =>
         operation(transaction),
@@ -477,7 +540,7 @@ test("an ended session releases its own phone's registration", async () => {
       },
     },
   };
-  const service = new PushDeliveryService(
+  const service = pushDelivery(
     {
       $transaction: async (operation: (tx: any) => Promise<unknown>) =>
         operation(transaction),
@@ -503,7 +566,7 @@ test("a session with no registration releases nothing", async () => {
       },
     },
   };
-  const service = new PushDeliveryService(
+  const service = pushDelivery(
     {
       $transaction: async (operation: (tx: any) => Promise<unknown>) =>
         operation(transaction),
@@ -515,7 +578,7 @@ test("a session with no registration releases nothing", async () => {
 
 test("a refreshed session carries its registration to its next id", async () => {
   const moves: any[] = [];
-  const service = new PushDeliveryService(
+  const service = pushDelivery(
     {
       pushInstallation: {
         updateMany: async (input: any) => {
@@ -557,7 +620,7 @@ test("an overdue task and the wedding day have their own lock-screen words", () 
 test("a push whose notification was read before it goes out is not sent", async () => {
   let sends = 0;
   let installationReads = 0;
-  const service = new PushDeliveryService(
+  const service = pushDelivery(
     {
       notification: {
         findUnique: async () => ({
@@ -619,7 +682,7 @@ function retryService(sentTo: string[][], failing: Set<string>) {
     fid: `fid-${name}`,
     updatedAt: new Date("2026-07-29T00:00:00.000Z"),
   }));
-  return new PushDeliveryService(
+  return pushDelivery(
     {
       notification: {
         findUnique: async () => ({
@@ -704,7 +767,7 @@ test("chat pushes of one conversation share a collapse key and a thread; other p
     "chat-3": { id: "chat-3", type: NotificationType.CHAT_MESSAGE_RECEIVED, entityType: "conversation", entityId: "conversation-8" },
     "task-1": { id: "task-1", type: NotificationType.TASK_ASSIGNED, entityType: "task", entityId: "task-3" },
   };
-  const service = new PushDeliveryService(
+  const service = pushDelivery(
     {
       notification: {
         findUnique: async ({ where }: any) => ({

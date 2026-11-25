@@ -3,6 +3,7 @@ import {
   NotificationPriority,
   NotificationType,
   Prisma,
+  PushDeliveryState,
   WeddingTask,
 } from '@prisma/client';
 
@@ -24,6 +25,10 @@ export interface NotificationResponse {
   data: Prisma.JsonValue | null;
   readAt: Date | null;
   archivedAt: Date | null;
+  /** When the person opened it from the phone (`PATCH .../opened`). */
+  openedAt: Date | null;
+  /** What became of its push; null for a type that never reaches a phone. */
+  pushState: PushDeliveryState | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -139,6 +144,27 @@ export interface NotificationsPort {
     weddingPlanId: string | null,
     requestedUserId: string,
   ): Promise<string>;
+  /**
+   * The plan's owner and every member who manages its providers (the
+   * requester while he still may), deduplicated, without
+   * [excludedUserIds]; a request of no plan has only its requester.
+   */
+  resolveProviderUpdateRecipientsInTransaction(
+    tx: Prisma.TransactionClient,
+    weddingPlanId: string | null,
+    requestedUserId: string,
+    excludedUserIds?: readonly string[],
+  ): Promise<string[]>;
+  /**
+   * [input], written for the request's requester, created for each of
+   * `resolveProviderUpdateRecipientsInTransaction`'s recipients under his
+   * own dedupe key.
+   */
+  createProviderUpdateNotificationsInTransaction(
+    client: NotificationCreateClient,
+    input: CreateNotificationInput,
+    excludedUserIds?: readonly string[],
+  ): Promise<NotificationResponse[]>;
   notifyTaskDue(task: WeddingTask, actorUserId?: string): Promise<void>;
   purgeMoneyForMember(
     client: NotificationPurgeClient,

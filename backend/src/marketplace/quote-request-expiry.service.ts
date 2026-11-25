@@ -140,15 +140,10 @@ export class QuoteRequestExpiryService {
       });
       await settleConversationPush(tx, this.lifecycle, request.conversationId, now);
       if (!isQuoteRequestExpiryNoticeTimely(request.expiresAt, now)) return true;
-      const recipientId = await this.notifications.resolveProviderUpdateRecipientInTransaction(
-        tx,
-        request.weddingPlanId,
-        request.userId,
-      );
-      await this.notifications.createNotificationInTransaction(
+      await this.notifications.createProviderUpdateNotificationsInTransaction(
         tx,
         quoteRequestExpiredRequesterNotification({
-          requesterId: recipientId,
+          requesterId: request.userId,
           weddingPlanId: request.weddingPlanId,
           quoteRequestId: id,
           providerId: request.providerId,

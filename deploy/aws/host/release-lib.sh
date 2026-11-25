@@ -3,29 +3,45 @@
 # release start needs. Sourced, never run on its own.
 
 env_file=/opt/aarast/app/.env
+firebase_dir=/opt/aarast/firebase
 release_lib_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
 # Push notifications: the FCM service account lives in SSM as a SecureString.
 # It is written root-made, backend-readable only (uid 1000, mode 0600) and is
-# never printed. Without it the backend starts with push disabled.
+# never printed. Without it the release stops: a backend started with push
+# off records every push as DISABLED and no phone hears anything, which
+# used to happen without a word. Starting without push on purpose takes
+# AARAST_ALLOW_PUSH_DISABLED=1 (in the environment or the host env file).
+# When the host env file names FIREBASE_EXPECTED_PROJECT_ID, a key of any
+# other project stops the release too (the backend refuses it at boot).
 release_push_env() {
-  local region key_file
+  local region key_file allow expected
   region=$(sed -n 's/^AWS_REGION=//p' "$env_file")
-  install -d -m 0755 /opt/aarast/firebase
-  key_file=/opt/aarast/firebase/service-account.json
+  install -d -m 0755 "$firebase_dir"
+  key_file=$firebase_dir/service-account.json
   if aws ssm get-parameter --region "$region" --name /aarast/firebase-service-account \
        --with-decryption --query Parameter.Value --output text >"$key_file.tmp" 2>/dev/null; then
     chown 1000:1000 "$key_file.tmp"
     chmod 0600 "$key_file.tmp"
     mv -f "$key_file.tmp" "$key_file"
-    export PUSH_NOTIFICATIONS_ENABLED=true
     FIREBASE_PROJECT_ID=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["project_id"])' "$key_file")
+    expected=$(sed -n 's/^FIREBASE_EXPECTED_PROJECT_ID=//p' "$env_file")
+    if [ -n "$expected" ] && [ "$FIREBASE_PROJECT_ID" != "$expected" ]; then
+      echo "FAIL: the FCM key in SSM is for Firebase project $FIREBASE_PROJECT_ID, not $expected (FIREBASE_EXPECTED_PROJECT_ID); nothing was started" >&2
+      return 1
+    fi
+    export PUSH_NOTIFICATIONS_ENABLED=true
     export FIREBASE_PROJECT_ID
     echo "push notifications enabled for $FIREBASE_PROJECT_ID"
   else
     rm -f "$key_file.tmp"
+    allow=${AARAST_ALLOW_PUSH_DISABLED:-$(sed -n 's/^AARAST_ALLOW_PUSH_DISABLED=//p' "$env_file")}
+    if [ "$allow" != "1" ]; then
+      echo "FAIL: no FCM key could be read from SSM /aarast/firebase-service-account, so this release would start with push notifications off and no phone would hear anything. Put the key in SSM, or set AARAST_ALLOW_PUSH_DISABLED=1 to start without push on purpose; nothing was started" >&2
+      return 1
+    fi
     export PUSH_NOTIFICATIONS_ENABLED=false
-    echo "push notifications disabled (no FCM key in SSM)"
+    echo "push notifications disabled on purpose (AARAST_ALLOW_PUSH_DISABLED=1; no FCM key in SSM)"
   fi
 }
 

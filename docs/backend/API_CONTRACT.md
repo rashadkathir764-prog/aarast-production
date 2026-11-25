@@ -33,6 +33,11 @@ Health endpoints have distinct orchestration semantics:
 - An expected `GET /ready` `503` from an orchestration probe is an availability
   signal, not an application error: it is not logged as an error or sent to
   Sentry. Other `5xx` responses remain logged and reported.
+- With the operator's token, `GET /ready` also reports
+  `checks.push: { status: "up" | "disabled", enabled, projectId }`: whether
+  this server sends pushes and to which Firebase project (no secret). It never
+  fails readiness and is absent from the public answer. The backend logs the
+  same once at boot.
 
 ## Common Rules
 
@@ -1115,8 +1120,10 @@ Protected routes:
 
 - `GET /api/v1/notifications`
 - `GET /api/v1/notifications/unread-count`
+- `GET /api/v1/notifications/schedule`
 - `GET /api/v1/notifications/:id`
 - `PATCH /api/v1/notifications/:id/read`
+- `PATCH /api/v1/notifications/:id/opened`
 - `PATCH /api/v1/notifications/read-all`
 - `PATCH /api/v1/notifications/:id/archive`
 - `DELETE /api/v1/notifications/:id`
@@ -1127,9 +1134,74 @@ returns `{ items, page, limit, total, totalPages, hasMore }`. The unread-count
 route accepts optional `weddingPlanId`. Notifications are always owned by the
 authenticated user. List, count, and mark-all reads never generate records;
 task writes create immediate due reminders and an hourly cross-replica locked
-scheduler idempotently repairs task and payment-schedule reminders.
+scheduler idempotently repairs task and payment-schedule reminders. A second
+scheduler, every five minutes under its own lock, makes only the tasks' own
+reminder-time notices, so they arrive within five minutes of their time; the
+dedupe keys keep the two scans from telling one reminder twice.
 Both paths honor the content preferences documented above before persisting a
 notification or outbox row.
+
+`PATCH /api/v1/notifications/:id/opened` (no body) records that the person
+opened the notice from the phone (its push or its row): it sets `openedAt` and
+`readAt`, each only while empty, and answers `204` with no body. Only the
+notice's own recipient, under the same visibility as reading it (another
+account's notice, or one the reader may no longer see, is `404`). Repeating it
+changes nothing.
+
+`GET /api/v1/notifications/schedule` returns the reminder table the server
+itself uses (`REMINDER_SCHEDULE` in
+`backend/src/shared-kernel/time/reminder-schedule.ts`), read-only, for the
+phone's «متى يصلك» lines. Days are Sana'a calendar days; `0` is the day itself:
+
+```json
+{
+  "reminderSchedule": {
+    "version": 1,
+    "timeZone": "Asia/Aden",
+    "dayScan": { "everyHourAtMinute": 5, "firstHour": 9 },
+    "tasks": {
+      "daysBefore": [7, 1, 0],
+      "overdue": "ONCE",
+      "ownReminderTime": { "checkEveryMinutes": 5, "lateUpToHours": 24 }
+    },
+    "payments": { "firstReminderDaysBefore": 7, "ownReminderDay": true, "overdue": "ONCE" },
+    "loanRepayments": { "firstReminderDaysBefore": 7, "overdue": "ONCE" },
+    "promisedMoney": { "daysBefore": [1, 0] },
+    "bookings": { "daysBefore": [7, 1] },
+    "weddingCountdown": { "daysBefore": [30, 7, 1, 0] },
+    "guestRepliesDigest": { "atMostEveryHours": 3 },
+    "quietHours": {
+      "startHour": 21,
+      "endHour": 9,
+      "alwaysThrough": ["CHAT_MESSAGE_RECEIVED", "BOOKING_REQUESTED"],
+      "weddingWeek": {
+        "daysBefore": 7,
+        "through": [
+          { "type": "BOOKING_UPDATED", "kinds": ["DECLINED", "CANCELLED", "PROVIDER_SUSPENDED", "PROVIDER_CLOSED", "CHANGE_ACCEPTED", "CHANGE_DECLINED"] },
+          { "type": "QUOTE_REJECTED", "kinds": ["REJECTED", "WITHDRAWN"] },
+          { "type": "PAYMENT_SCHEDULE_DUE_SOON", "kinds": ["DUE_TODAY"] },
+          { "type": "PAYMENT_SCHEDULE_OVERDUE", "kinds": [] }
+        ]
+      },
+      "weddingDay": { "allPlanNoticesExcept": ["GUEST_RESPONDED"] }
+    }
+  }
+}
+```
+
+A `kinds` list that is empty means every notice of that type.
+
+### Quiet hours
+
+From 21:00 to 09:00 Aden a push waits for 09:00 (the inbox row and the live
+badge do not), except: a chat message and a booking request at any hour; in
+the 7 days before the plan's wedding day and on the day, a booking declined,
+cancelled, its provider suspended or gone, a booking day change decided, a
+provider who declined the request or withdrew his offer, and a payment due
+today or overdue; and on the wedding day every notice of the plan except the
+guests' replies digest. Everything else, and any notice of no plan or of a
+plan with no wedding date, waits. The rule is `bypassesQuietHours` in
+`backend/src/push/push-notification.policy.ts`.
 
 ### Device push installations
 
@@ -1163,7 +1235,50 @@ purged; transient Firebase failures remain retryable.
 Push delivery is disabled unless `PUSH_NOTIFICATIONS_ENABLED=true`. When
 enabled, the backend also requires `FIREBASE_PROJECT_ID` and Application
 Default Credentials supplied by the runtime environment. Credentials are
-never accepted from the mobile client or stored in this repository.
+never accepted from the mobile client or stored in this repository. When
+`FIREBASE_EXPECTED_PROJECT_ID` is set (production names its project in the
+host env file), a different `FIREBASE_PROJECT_ID` fails the boot. The AWS
+release stops when no FCM key can be read from SSM unless
+`AARAST_ALLOW_PUSH_DISABLED=1` says to start without push on purpose.
+
+Push types also include, on the plan's side, a provider who declined the
+request, withdrew his offer or let the request run out (`QUOTE_REJECTED` with
+`recipientAudience: "CUSTOMER"` and `status` `REJECTED`, `WITHDRAWN` or
+`EXPIRED`); an invitation to a plan for an existing account
+(`SHARING_INVITATION`); an accepted invitation, to its inviter and the plan's
+owner (`SHARING_INVITE_ACCEPTED`); a new review, to the provider
+(`REVIEW_RECEIVED`); and the guests' replies (`GUEST_RESPONDED`), pushed as a
+digest at most once every three hours per recipient and plan, never through
+the quiet hours; the reply count is in the notice's `data.repliesCount`, never
+on the lock screen. A provider's news about a plan's request or booking
+(`QUOTE_OFFER_RECEIVED`, `QUOTE_REJECTED`, customer-side `BOOKING_UPDATED`)
+goes to the plan's owner and every member who manages its providers and takes
+the plan's notices, the requester among them while he still may, each with
+his own notice and dedupe key, never to the one who acted.
+
+When a push goes out its recipient must still be the plan's owner or a member
+with the right its type needs (money visibility for money notices, the task
+right for task notices, the provider right for provider news, a place in the
+plan for the others); otherwise it is not sent (`SKIPPED_NO_ACCESS`).
+
+Each push-type notice records what became of its push in `pushState`
+(null for a type that never reaches a phone). Firebase gives no delivery
+receipt, so no state claims the phone showed it:
+
+| State | Set when |
+| --- | --- |
+| `QUEUED` | written, waiting for the delivery worker |
+| `HELD` | written in the quiet hours; waits until `pushHeldUntil` |
+| `SKIPPED_DIGEST` | a guests' reply folded into a digest pushed within three hours |
+| `DISABLED` | this server has no Firebase configured |
+| `SKIPPED_READ` | read in the app before the push went out |
+| `SKIPPED_NO_ACCESS` | the recipient lost the plan right the notice needs |
+| `PREFERENCE_OFF` | the recipient turned push off |
+| `NO_DEVICE` | no phone registered, or every phone it was sent to is gone |
+| `RETRYING` | Firebase refused for a reason worth retrying and took it for no phone yet |
+| `PARTIAL` | Firebase accepted it for some phones; the others are retried |
+| `ACCEPTED` | Firebase accepted it for every phone still registered (`pushAcceptedDevices`) |
+| `FAILED` | the server's Firebase configuration was refused (`messaging/mismatched-credential`, `messaging/sender-id-mismatch`, `messaging/third-party-auth-error`, `messaging/invalid-argument`; not retried, logged as an error), or the eight tries ran out; `pushLastError` holds the short code |
 
 Notification response:
 
@@ -1180,10 +1295,15 @@ Notification response:
     "weddingPlanId": "plan_id"
   },
   "readAt": null,
+  "openedAt": null,
+  "pushState": "ACCEPTED",
   "createdAt": "2026-06-18T00:00:00.000Z",
   "updatedAt": "2026-06-18T00:00:00.000Z"
 }
 ```
+
+`openedAt` is when the person opened it from the phone (`PATCH .../opened`);
+`pushState` is the state above, null for a type that never reaches a phone.
 
 Unread count response:
 
@@ -2510,6 +2630,7 @@ Public/reference routes:
 - `GET /api/v1/catalogs/bootstrap?version=<known-version>`
 - `GET /api/v1/provider-categories`
 - `GET /api/v1/providers`
+- `GET /api/v1/providers/category-counts`
 - `GET /api/v1/providers/:id`
 - `GET /api/v1/providers/:id/services`
 - `GET /api/v1/providers/:id/packages`
@@ -2587,14 +2708,32 @@ category (`categoryId`) or several (`categoryIds`, comma-separated, at most
 50; G40): a provider is listed when its own category or an active service's
 is among them. Sending both is `400`; a value that is not a UUID is `400`.
 
-`GET /api/v1/providers?eventDate=YYYY-MM-DD` (RA-BE-150, Q-36) adds
-`availableOnEventDate` to every item: `false` when the provider closed that
-day or has confirmed as many weddings on it as his daily number (every
-confirmed booking counts), otherwise `true`; `null` without a day (or for a
-day that has passed). Nobody is filtered out by it. The order of the list is
-featured first (B-43), then claimed listings, then unclaimed ones, and inside
-each by a score of a smoothed rating, the profile's completeness, the answer
-speed and a lift for a provider younger than 30 days (RA-BE-151). A quote
+`GET /api/v1/providers?eventDate=YYYY-MM-DD` (RA-BE-150, Q-36, D131) adds
+`dayStatus` to every item: `CLOSED` when the provider closed that day,
+`FULL` when Aarast's confirmed bookings on it reached his daily number
+(every confirmed booking counts), otherwise `null`: nothing is known, which
+is never «free» (his bookings outside Aarast are unknown). The older
+`availableOnEventDate` stays for phones before D131: `false` when he is known
+to be busy, otherwise `null`, never `true`. Nobody is filtered out unless
+`hideBusy=true` is sent with the day: then the providers known to be busy are
+left out before the ranking and the page, so `total` and every page agree;
+`hideBusy` without `eventDate` is `400`.
+
+`sort` picks the order (D131, docs/project/PROVIDER_RANKING.md): `best`
+(default) is verified providers first (Q-73), inside each band the featured
+(B-43), then claimed listings, then unclaimed ones, each by a score of a
+smoothed rating, the profile's completeness, the answer speed and a lift for
+a provider younger than 30 days (RA-BE-151); `rating` is by the smoothed
+rating, `price` by the lowest active service price in Yemeni rials (none in
+rials after), both with no featured lift and unclaimed listings last, ties
+in `best`'s order. Any other value is `400`.
+
+`GET /api/v1/providers/category-counts` (D131) takes the same filters as the
+list except the category, sort and page, and answers `{ total, categories:
+[{ categoryId, count }] }`: how many providers each category chip would
+show, a provider counted in his main category and in each active service's.
+
+A quote
 request, an offer and its acceptance for a day the provider cannot take are
 `409 PROVIDER_DAY_UNAVAILABLE`.
 
@@ -4158,8 +4297,10 @@ configuration, and smoke checks.
 | DELETE | `/api/v1/notifications/:id` | `notifications.remove` | 🔒 |
 | GET | `/api/v1/notifications/:id` | `notifications.findOne` | 🔒 |
 | PATCH | `/api/v1/notifications/:id/archive` | `notifications.archive` | 🔒 |
+| PATCH | `/api/v1/notifications/:id/opened` | `notifications.markOpened` | 🔒 |
 | PATCH | `/api/v1/notifications/:id/read` | `notifications.markRead` | 🔒 |
 | PATCH | `/api/v1/notifications/read-all` | `notifications.markAllRead` | 🔒 |
+| GET | `/api/v1/notifications/schedule` | `notifications.schedule` | 🔒 |
 | GET | `/api/v1/notifications/unread-count` | `notifications.unreadCount` | 🔒 |
 | POST | `/api/v1/onboarding/complete` | `onboarding.complete` | 🔒 |
 | POST | `/api/v1/onboarding/import-local` | `onboarding.importLocal` | 🔒 |
@@ -4224,6 +4365,7 @@ configuration, and smoke checks.
 | POST | `/api/v1/providers/:id/reviews` | `marketplace.createReview` | 🔒 |
 | GET | `/api/v1/providers/:id/services` | `marketplace.findProviderServices` |  |
 | POST | `/api/v1/providers/:id/views` | `marketplace.recordProviderView` |  |
+| GET | `/api/v1/providers/category-counts` | `marketplace.countProvidersByCategory` |  |
 | POST | `/api/v1/public/account-deletion/code` | `public-account-deletion.requestCode` |  |
 | POST | `/api/v1/public/account-deletion/confirm` | `public-account-deletion.confirm` |  |
 | GET | `/api/v1/public/rsvp/:token` | `guest-rsvp.getInvitation` |  |

@@ -26,6 +26,11 @@ export interface OutboxPushSink {
     alreadyDeliveredInstallationIds?: readonly string[],
   ): Promise<void>;
   /**
+   * The push event's retries ran out; its notice records FAILED with
+   * [lastError]. The notifications' sink always has it.
+   */
+  recordPushFailed?(notificationId: string, lastError: string): Promise<void>;
+  /**
    * D112 (Q-11): the account's sessions were ended at [revokedAt]; its
    * push registrations made before then are let go, except [keepFid], the
    * phone that ended the others (RA-BE-133).

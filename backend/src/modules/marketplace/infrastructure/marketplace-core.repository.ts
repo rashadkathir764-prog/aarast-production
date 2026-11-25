@@ -11,7 +11,11 @@ import {
   summarizeResponsiveness,
   type ProviderResponseSample,
 } from "../../../marketplace/provider-responsiveness";
-import { profileCompleteness, rankProviders } from "../../../marketplace/provider-ranking";
+import {
+  orderProviders,
+  profileCompleteness,
+  type ProviderSort,
+} from "../../../marketplace/provider-ranking";
 import { activeFeaturedPeriodInclude } from "../public/featured-placement";
 import { likePatternContaining } from "../../../shared-kernel/text/arabic-search";
 
@@ -58,12 +62,14 @@ export async function findServiceIdsMatchingSearch(client: Client, key: string):
 }
 
 /**
- * The customers' list: providers featured at `now` first (B-43), then the
- * rest, each group in the order the ranking gives (RA-BE-151: smoothed
- * rating, profile, response, a lift for new ones, claimed listings before
- * unclaimed ones; Q-73: verified providers before unverified ones, each band
- * in that order; ties by age and id, a total order, so a page never skips
- * or repeats a provider inside one snapshot). "Featured" is read from the
+ * The customers' list in the order they picked (D131,
+ * docs/project/PROVIDER_RANKING.md). «الأنسب»: verified providers before
+ * unverified ones (Q-73); inside each band those featured at `now` (B-43),
+ * then claimed listings, then unclaimed ones; inside each group the score
+ * (RA-BE-151: smoothed rating, profile, response, a lift for new ones);
+ * ties by age and id, a total order, so a page never skips or repeats a
+ * provider inside one snapshot. «الأعلى تقييمًا» and «الأقل سعرًا» order by
+ * what they say, ties in «الأنسب»'s order (`orderProviders`). "Featured" is read from the
  * periods at request time by the placement rule (`where` is already the
  * listed providers); a row of the other group is never «مميز», even with a
  * period running (an unclaimed listing).
@@ -72,7 +78,13 @@ export async function findServiceIdsMatchingSearch(client: Client, key: string):
  * listed providers' few signals are read whole, ranked here, and only the
  * page's rows are read in full.
  */
-export async function searchActiveProviders(client: Client, where: ProviderSearchWhere, pagination: MarketplacePagination, now: Date) {
+export async function searchActiveProviders(
+  client: Client,
+  where: ProviderSearchWhere,
+  pagination: MarketplacePagination,
+  now: Date,
+  sort: ProviderSort = "best",
+) {
   const candidates = await client.provider.findMany({
     where,
     select: {
@@ -89,6 +101,11 @@ export async function searchActiveProviders(client: Client, where: ProviderSearc
       whatsapp: true,
       socialLinks: true,
       featuredPeriods: activeFeaturedPeriodInclude(now),
+      // D131: «الأقل سعرًا» compares his rial prices.
+      services: {
+        where: { isActive: true, basePrice: { not: null }, currency: "YER" },
+        select: { basePrice: true },
+      },
     },
   });
   const samples = await providerResponseSamples(
@@ -96,7 +113,7 @@ export async function searchActiveProviders(client: Client, where: ProviderSearc
     candidates.map((row) => row.id),
     responsivenessWindow(now),
   );
-  const ranked = rankProviders(
+  const ranked = orderProviders(
     candidates.map((row) => ({
       id: row.id,
       claimed: row.userId !== null,
@@ -109,7 +126,9 @@ export async function searchActiveProviders(client: Client, where: ProviderSearc
       response: summarizeResponsiveness(
         samples.get(row.id) ?? { requests: 0, answered: 0, medianMinutes: null },
       ),
+      lowestPriceYer: lowestPrice(row.services),
     })),
+    sort,
     now,
   );
   // RA-BE-181: every listed provider is a candidate, so the total of the
@@ -137,6 +156,48 @@ export async function searchActiveProviders(client: Client, where: ProviderSearc
     return [featuredIds.has(id) ? row : { ...row, featuredPeriods: [] }];
   });
   return { total, rows: pageRows };
+}
+
+/** D131: the ids of the providers [where] lists, for the busy to be left out of them. */
+export async function listListedProviderIds(client: Client, where: ProviderSearchWhere): Promise<string[]> {
+  const rows = await client.provider.findMany({ where, select: { id: true } });
+  return rows.map((row) => row.id);
+}
+
+/**
+ * D131 (F8): each listed provider's categories, his main one and every
+ * active service's, for the category chips' counts.
+ */
+export async function listListedProviderCategories(
+  client: Client,
+  where: ProviderSearchWhere,
+): Promise<string[][]> {
+  const rows = await client.provider.findMany({
+    where,
+    select: {
+      primaryCategoryId: true,
+      services: { where: { isActive: true }, select: { categoryId: true } },
+    },
+  });
+  return rows.map((row) => [
+    ...new Set([
+      ...(row.primaryCategoryId ? [row.primaryCategoryId] : []),
+      ...row.services.flatMap((service) => (service.categoryId ? [service.categoryId] : [])),
+    ]),
+  ]);
+}
+
+/** His lowest priced active rial service, or null (a fake client may send no services). */
+function lowestPrice(
+  services: ReadonlyArray<{ basePrice: Prisma.Decimal | null }> | undefined,
+): number | null {
+  let lowest: number | null = null;
+  for (const service of services ?? []) {
+    if (service.basePrice === null) continue;
+    const price = Number(service.basePrice);
+    if (lowest === null || price < lowest) lowest = price;
+  }
+  return lowest;
 }
 
 export function findActiveProviderWithServices(client: Client, id: string, now: Date) {

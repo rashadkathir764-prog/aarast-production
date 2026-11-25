@@ -471,7 +471,8 @@ export class BookingsService {
               action === "CONFIRM" ? null : new Date(),
             )
           : 0;
-        await this.notifications.createNotificationInTransaction(
+        // The plan's side: everyone who manages its providers.
+        await this.notifications.createProviderUpdateNotificationsInTransaction(
           tx,
           bookingCustomerNotification(event, {
             bookingId: updated.id,
@@ -484,6 +485,7 @@ export class BookingsService {
             providerName: provider.businessName,
             itemKept: action !== "CONFIRM" && itemsKept > 0,
           }),
+          [currentUser.id],
         );
         return toBookingResponse(updated);
     });
@@ -576,6 +578,19 @@ export class BookingsService {
               const plan = await this.plans.getPlan(tx, booking.quoteRequest.weddingPlanId);
               if (plan && isPlanDeletionPending(plan)) return null;
             }
+            // The plan's side is reminded to everyone who manages its
+            // providers; the provider's to him.
+            if (
+              (reminder.data as { recipientAudience?: unknown } | undefined)
+                ?.recipientAudience === "CUSTOMER"
+            ) {
+              const told =
+                await this.notifications.createProviderUpdateNotificationsInTransaction(
+                  tx,
+                  reminder,
+                );
+              return told.length > 0 ? told : null;
+            }
             return this.notifications.createNotificationInTransaction(tx, reminder);
           });
           if (created) sent += 1;
@@ -620,7 +635,7 @@ export class BookingsService {
       await this.writeAftercare(tx, booking.id, data);
       await this.settlePush(tx, booking.quoteRequest.conversationId, now);
       const updated = await bookings.requireBooking(tx, booking.id);
-      await this.notifications.createNotificationInTransaction(
+      await this.notifications.createProviderUpdateNotificationsInTransaction(
         tx,
         bookingAftercareCustomerNotification(outcome.happened ? "COMPLETED" : "NOT_HAPPENED", {
           ...this.noticeArgs(updated),
@@ -629,6 +644,7 @@ export class BookingsService {
           providerName: owned.businessName,
           reason: outcome.happened ? null : outcome.reason,
         }),
+        [currentUser.id],
       );
       return toBookingResponse(updated);
     });
@@ -688,7 +704,7 @@ export class BookingsService {
         deliveryNote: optionalNote(dto.note),
       });
       const updated = await bookings.requireBooking(tx, booking.id);
-      await this.notifications.createNotificationInTransaction(
+      await this.notifications.createProviderUpdateNotificationsInTransaction(
         tx,
         bookingAftercareCustomerNotification("DELIVERED", {
           ...this.noticeArgs(updated),
@@ -696,6 +712,7 @@ export class BookingsService {
           weddingPlanId: booking.quoteRequest.weddingPlanId,
           providerName: owned.businessName,
         }),
+        [currentUser.id],
       );
       return toBookingResponse(updated);
     });
@@ -813,7 +830,7 @@ export class BookingsService {
         bookingError("CONFLICT", "BOOKING_CHANGE_DECIDED", "الطلب انحسم من قبل.");
       }
       const updated = await bookings.requireBooking(tx, booking.id);
-      await this.notifications.createNotificationInTransaction(
+      await this.notifications.createProviderUpdateNotificationsInTransaction(
         tx,
         bookingAftercareCustomerNotification(accept ? "CHANGE_ACCEPTED" : "CHANGE_DECLINED", {
           ...this.noticeArgs(updated),
@@ -822,6 +839,7 @@ export class BookingsService {
           providerName: provider.businessName,
           reason: accept ? null : optionalNote(dto.reason),
         }),
+        [currentUser.id],
       );
       return toBookingResponse(updated);
     });

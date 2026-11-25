@@ -335,6 +335,55 @@ export function marketplaceService(
   );
 }
 
+/**
+ * A notifications fake written before a provider's news went to everyone
+ * who manages the plan's providers: completed in place with
+ * `createProviderUpdateNotificationsInTransaction`, which tells the one
+ * recipient the fake's `resolveProviderUpdateRecipientInTransaction` names
+ * (the requester when it has none) through its own
+ * `createNotificationInTransaction`. The fan-out itself is the real
+ * service's, tested in `notification-push-state.test.ts`.
+ */
+export function withProviderUpdateFanOut<T>(fake: T): T {
+  const notifications = fake as any;
+  if (
+    notifications &&
+    typeof notifications === 'object' &&
+    typeof notifications.createProviderUpdateNotificationsInTransaction !== 'function' &&
+    typeof notifications.createNotificationInTransaction === 'function'
+  ) {
+    notifications.createProviderUpdateNotificationsInTransaction = async (
+      tx: unknown,
+      input: { userId: string; weddingPlanId?: string | null; dedupeKey?: string },
+    ) => {
+      const recipient =
+        typeof notifications.resolveProviderUpdateRecipientInTransaction === 'function'
+          ? await notifications.resolveProviderUpdateRecipientInTransaction(
+              tx,
+              input.weddingPlanId ?? null,
+              input.userId,
+            )
+          : input.userId;
+      const prefix = `${input.userId}:`;
+      const notice =
+        recipient === input.userId
+          ? input
+          : {
+              ...input,
+              userId: recipient,
+              ...(input.dedupeKey
+                ? {
+                    dedupeKey: `${recipient}:${input.dedupeKey.startsWith(prefix) ? input.dedupeKey.slice(prefix.length) : input.dedupeKey}`,
+                  }
+                : {}),
+            };
+      const created = await notifications.createNotificationInTransaction(tx, notice);
+      return created ? [created] : [];
+    };
+  }
+  return fake;
+}
+
 /** `ProviderDashboardService` with the catalog and provider-account ports and the relations service. */
 export function providerDashboardService(
   prisma: unknown,
@@ -344,7 +393,7 @@ export function providerDashboardService(
 ): ProviderDashboardService {
   return new ProviderDashboardService(
     withOwnerTables(prisma as any),
-    notifications as any,
+    withProviderUpdateFanOut(notifications) as any,
     mediaStorage as any,
     lifecycle as any,
     ownerPorts.catalog,
@@ -556,7 +605,7 @@ export function adminService(
   return new AdminService(
     withOwnerTables(prisma as any),
     realtime as any,
-    notifications as any,
+    withProviderUpdateFanOut(notifications) as any,
     adminOwners,
   );
 }

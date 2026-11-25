@@ -1,28 +1,63 @@
-import { Injectable } from "@nestjs/common";
-import { Notification, NotificationType } from "@prisma/client";
+import { Inject, Injectable, Logger } from "@nestjs/common";
+import {
+  Notification,
+  NotificationType,
+  PushDeliveryState,
+} from "@prisma/client";
 import { FirebasePushClient } from "../../../push/firebase-push.client";
 import {
   isPushNotificationType,
   pushAndroidChannelId,
   pushNotificationCopy,
+  pushPlanRight,
 } from "../../../push/push-notification.policy";
 import { runSerializableTransaction } from "../../../platform/database/serializable-transaction";
 import { PrismaService } from "../../../platform/database/prisma.service";
+import {
+  COLLABORATION_PERMISSION_PORT,
+  type CollaborationPermissionPort,
+  isPlanDeletionPending,
+  type PlanAccessContext,
+} from "../../collaboration/public/collaboration-permission.port";
+import {
+  PLAN_READ_PORT,
+  type PlanReadPort,
+} from "../../planning/public/plan-read.port";
 import type { PushDeliveryPort } from "../public/push-delivery.port";
 
 const MAX_FCM_TARGETS = 500;
 const PUSH_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+/** The phone is gone: its registration is let go. */
 const PERMANENT_FCM_ERRORS = new Set([
   "messaging/installation-id-not-registered",
   "messaging/registration-token-not-registered",
   "messaging/invalid-registration-token",
 ]);
+/**
+ * The server's own Firebase setup is refused (a credential of another
+ * project, a sender the app does not know, a message Firebase cannot take):
+ * no retry can succeed, so it fails at once and is logged as an error.
+ */
+export const CONFIGURATION_FCM_ERRORS = new Set([
+  "messaging/mismatched-credential",
+  "messaging/sender-id-mismatch",
+  "messaging/third-party-auth-error",
+  "messaging/invalid-argument",
+  "app/invalid-credential",
+  "PushConfigurationError",
+]);
 
 @Injectable()
 export class PushDeliveryService implements PushDeliveryPort {
+  private readonly logger = new Logger(PushDeliveryService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly firebase: FirebasePushClient,
+    @Inject(COLLABORATION_PERMISSION_PORT)
+    private readonly permissions: CollaborationPermissionPort,
+    @Inject(PLAN_READ_PORT)
+    private readonly plans: PlanReadPort,
   ) {}
 
   /**
@@ -104,12 +139,20 @@ export class PushDeliveryService implements PushDeliveryPort {
     });
   }
 
+  /**
+   * Sends the notice's push and records, on the notice, what became of it
+   * (`PushDeliveryState`). No outcome is silent any more: a server without
+   * Firebase, push turned off, no phone, a notice read first or a recipient
+   * who lost the plan right each say so. Firebase's acceptance is recorded
+   * as accepted with the count of phones it took, never as delivered (it
+   * gives no delivery receipt). A refusal of the server's own Firebase
+   * configuration is permanent: recorded FAILED with its code and logged as
+   * an error, not retried eight times.
+   */
   async dispatchNotification(
     notificationId: string,
     alreadyDeliveredInstallationIds: readonly string[] = [],
   ): Promise<void> {
-    if (!this.firebase.enabled) return;
-
     // The push preference and the installations are notifications' own
     // rows keyed by the recipient; they used to be reached through
     // identity's user row.
@@ -122,14 +165,28 @@ export class PushDeliveryService implements PushDeliveryPort {
     ) {
       return;
     }
+    if (!this.firebase.enabled) {
+      await this.recordState(notification.id, PushDeliveryState.DISABLED);
+      return;
+    }
     // RA-BE-185: a push held through quiet hours, or retried, whose notice
     // was read meanwhile tells the person nothing new.
-    if (notification.readAt) return;
+    if (notification.readAt) {
+      await this.recordState(notification.id, PushDeliveryState.SKIPPED_READ);
+      return;
+    }
+    if (!(await this.recipientStillEntitled(notification))) {
+      await this.recordState(notification.id, PushDeliveryState.SKIPPED_NO_ACCESS);
+      return;
+    }
     const preference = await this.prisma.notificationPreference.findUnique({
       where: { userId: notification.userId },
       select: { pushEnabled: true },
     });
-    if (preference?.pushEnabled !== true) return;
+    if (preference?.pushEnabled !== true) {
+      await this.recordState(notification.id, PushDeliveryState.PREFERENCE_OFF);
+      return;
+    }
 
     const installations = await this.prisma.pushInstallation.findMany({
       where: { userId: notification.userId, enabled: true },
@@ -140,10 +197,21 @@ export class PushDeliveryService implements PushDeliveryPort {
     const reached = new Set(alreadyDeliveredInstallationIds);
     const targets = installations.filter((item) => !reached.has(item.id));
     const fids = targets.map((item) => item.fid);
-    if (fids.length === 0) return;
+    if (fids.length === 0) {
+      const accepted = installations.filter((item) => reached.has(item.id)).length;
+      await this.recordState(
+        notification.id,
+        accepted > 0 ? PushDeliveryState.ACCEPTED : PushDeliveryState.NO_DEVICE,
+        accepted > 0 ? { acceptedDevices: accepted } : {},
+      );
+      return;
+    }
 
     const permanentFailures = new Set<string>();
     let transientFailure = false;
+    let transientCode: string | null = null;
+    let configurationFailure: string | null = null;
+    let permanentCode: string | null = null;
     for (let index = 0; index < fids.length; index += MAX_FCM_TARGETS) {
       const batchFids = fids.slice(index, index + MAX_FCM_TARGETS);
       try {
@@ -159,12 +227,22 @@ export class PushDeliveryService implements PushDeliveryPort {
           const code = item.error?.code;
           if (code && PERMANENT_FCM_ERRORS.has(code)) {
             permanentFailures.add(batchFids[responseIndex]!);
+            permanentCode ??= code;
+          } else if (code && CONFIGURATION_FCM_ERRORS.has(code)) {
+            configurationFailure ??= code;
           } else {
             transientFailure = true;
+            transientCode ??= code ?? "unknown";
           }
         });
-      } catch {
-        transientFailure = true;
+      } catch (error) {
+        const code = firebaseErrorCode(error);
+        if (CONFIGURATION_FCM_ERRORS.has(code)) {
+          configurationFailure ??= code;
+        } else {
+          transientFailure = true;
+          transientCode ??= code;
+        }
       }
     }
 
@@ -193,16 +271,129 @@ export class PushDeliveryService implements PushDeliveryPort {
         }
       });
     }
+    // Only those still registered: a phone that went away is not listed.
+    const deliveredInstallationIds = installations
+      .filter((item) => reached.has(item.id))
+      .map((item) => item.id);
+    const accepted = deliveredInstallationIds.length;
+    if (configurationFailure) {
+      // The server's own Firebase configuration was refused: every retry
+      // would be refused the same way, so it is not retried, and the
+      // operator hears of it.
+      this.logger.error(
+        `Push refused by Firebase configuration (${configurationFailure}) for notification ${notification.id}; not retried`,
+      );
+      await this.recordState(notification.id, PushDeliveryState.FAILED, {
+        lastError: configurationFailure,
+        ...(accepted > 0 ? { acceptedDevices: accepted } : {}),
+      });
+      return;
+    }
     if (transientFailure) {
+      await this.recordState(
+        notification.id,
+        accepted > 0 ? PushDeliveryState.PARTIAL : PushDeliveryState.RETRYING,
+        {
+          lastError: transientCode,
+          ...(accepted > 0 ? { acceptedDevices: accepted } : {}),
+        },
+      );
       const error = new Error("PushDeliveryRetryRequired") as Error & {
         deliveredInstallationIds: string[];
       };
       error.name = "PushDeliveryRetryRequired";
-      // Only those still registered: a phone that went away is not listed.
-      error.deliveredInstallationIds = installations
-        .filter((item) => reached.has(item.id))
-        .map((item) => item.id);
+      error.deliveredInstallationIds = deliveredInstallationIds;
       throw error;
+    }
+    if (accepted === 0) {
+      // Every phone it was sent to is no longer registered (they were let
+      // go just above): there is no phone to reach.
+      await this.recordState(notification.id, PushDeliveryState.NO_DEVICE, {
+        lastError: permanentCode,
+      });
+      return;
+    }
+    await this.recordState(notification.id, PushDeliveryState.ACCEPTED, {
+      acceptedDevices: accepted,
+      lastError: null,
+    });
+  }
+
+  /**
+   * The outbox gave up on the push (its retries ran out): the notice says
+   * it failed, with the last refusal's code. A push already accepted for
+   * every phone is left as it is.
+   */
+  async recordPushFailed(notificationId: string, lastError: string): Promise<void> {
+    await this.prisma.notification.updateMany({
+      where: {
+        id: notificationId,
+        pushState: { not: PushDeliveryState.ACCEPTED },
+      },
+      data: {
+        pushState: PushDeliveryState.FAILED,
+        pushStateAt: new Date(),
+        // A retry that ran out keeps the Firebase code its last try
+        // recorded; any other failure is named by its own code.
+        ...(lastError === "PushDeliveryRetryRequired"
+          ? {}
+          : { pushLastError: shortCode(lastError) }),
+      },
+    });
+  }
+
+  private async recordState(
+    notificationId: string,
+    state: PushDeliveryState,
+    detail: { acceptedDevices?: number; lastError?: string | null } = {},
+  ): Promise<void> {
+    await this.prisma.notification.updateMany({
+      where: { id: notificationId },
+      data: {
+        pushState: state,
+        pushStateAt: new Date(),
+        ...(detail.acceptedDevices !== undefined
+          ? { pushAcceptedDevices: detail.acceptedDevices }
+          : {}),
+        ...(detail.lastError !== undefined
+          ? { pushLastError: detail.lastError === null ? null : shortCode(detail.lastError) }
+          : {}),
+      },
+    });
+  }
+
+  /**
+   * A held or retried push leaves after its notice was written: the
+   * recipient must still be the plan's owner, or a member who may enter it
+   * with the right this notice needs (`pushPlanRight`), when it goes out.
+   */
+  private async recipientStillEntitled(
+    notification: Pick<Notification, "userId" | "weddingPlanId" | "type" | "data">,
+  ): Promise<boolean> {
+    const right = pushPlanRight(notification);
+    if (right === "NONE" || !notification.weddingPlanId) return true;
+    // The plan is planning's row and the membership collaboration's, read
+    // through their ports.
+    const plan = await this.plans.getPlan(this.prisma, notification.weddingPlanId);
+    if (!plan) return false;
+    if (plan.ownerUserId === notification.userId) return true;
+    if (isPlanDeletionPending(plan)) return false;
+    const member = await this.permissions.getMembership(
+      this.prisma,
+      plan.id,
+      notification.userId,
+    );
+    if (!member) return false;
+    const context: PlanAccessContext = { plan, isOwner: false, sharedMember: member };
+    switch (right) {
+      case "MONEY":
+        return this.permissions.canViewMoney(context);
+      case "TASKS":
+        return this.permissions.canManageTasks(context);
+      case "PROVIDERS":
+        return this.permissions.canManageProviders(context);
+      default:
+        return true;
     }
   }
 
@@ -242,4 +433,15 @@ export class PushDeliveryService implements PushDeliveryPort {
       ...(thread ? { apns: { payload: { aps: { threadId: thread } } } } : {}),
     };
   }
+}
+
+/** Firebase's error code (`messaging/...`), else the error's name. */
+function firebaseErrorCode(error: unknown): string {
+  const code = (error as { code?: unknown } | null)?.code;
+  if (typeof code === "string" && code.length > 0) return code;
+  return error instanceof Error ? error.name : "UnknownError";
+}
+
+function shortCode(value: string): string {
+  return value.replace(/[^A-Za-z0-9_./-]/g, "").slice(0, 120) || "UnknownError";
 }

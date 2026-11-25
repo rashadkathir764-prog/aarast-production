@@ -14,6 +14,7 @@ import {
   PaymentScheduleStatus,
   Prisma,
   ProviderStatus,
+  PushDeliveryState,
   SharedMember,
   SharedMemberRole,
   UserStatus,
@@ -42,10 +43,14 @@ import {
   seesWholePlan,
 } from "../modules/collaboration/public/collaboration-permission.port";
 import {
+  bypassesQuietHours,
   isPushNotificationType,
-  isQuietHoursExempt,
   pushNotBefore,
 } from "../push/push-notification.policy";
+import {
+  REMINDER_SCAN_WINDOW_DAYS,
+  REMINDER_SCHEDULE,
+} from "../shared-kernel/time/reminder-schedule";
 import {
   assertActiveMutationActorInTransaction,
   isLiveAccount,
@@ -123,6 +128,7 @@ import {
 import {
   NotificationsRepository,
   type DueNotificationRow,
+  type NotificationPushFields,
 } from "../modules/notifications/infrastructure/notifications.repository";
 
 type PlanParticipantNotificationInput = Omit<
@@ -406,16 +412,32 @@ export class NotificationsService implements NotificationsPort {
       title: textFor(form, input.title),
       body: textFor(form, input.body),
     };
+    const now = new Date();
     if (input.mergeIntoExisting && input.dedupeKey) {
       const existing = await this.repository.findByDedupeKey(client, input.dedupeKey);
       if (existing) {
-        return this.toResponse(
-          await this.repository.rewriteNotification(client, existing.id, written),
+        // RA-BE-174: the merged notice takes the new words; a digest type
+        // (the guests' replies) pushes again once its window has passed.
+        const push = await this.pushRequest(client, written, now, {
+          mergedIntoId: existing.id,
+        });
+        const rewritten = await this.repository.rewriteNotification(
+          client,
+          existing.id,
+          written,
+          push ? pushRequestFields(push, now) : undefined,
         );
+        await this.enqueuePush(client, rewritten, push);
+        return this.toResponse(rewritten);
       }
     }
-    const created = await this.repository.createNotification(client, written);
-    await this.enqueueNotificationDelivery(client, created);
+    const push = await this.pushRequest(client, written, now);
+    const created = await this.repository.createNotification(
+      client,
+      written,
+      push ? pushRequestFields(push, now) : undefined,
+    );
+    await this.enqueueNotificationDelivery(client, created, push);
     return this.toResponse(created);
   }
 
@@ -487,6 +509,88 @@ export class NotificationsService implements NotificationsPort {
     return membership?.canManageProviders
       ? requestedUserId
       : plan.ownerUserId;
+  }
+
+  /**
+   * Who hears a provider's news about a plan's request or booking (an
+   * offer, a decline, a withdrawn offer, a request run out, a booking's
+   * step): the plan's owner and every member who manages its providers now
+   * and takes the plan's notices, the requester among them while he still
+   * may, once each, never
+   * [excludedUserIds] (the one who acted). A request of no plan has only its
+   * requester. Each recipient gets his own notice and key.
+   */
+  async resolveProviderUpdateRecipientsInTransaction(
+    tx: Prisma.TransactionClient,
+    weddingPlanId: string | null,
+    requestedUserId: string,
+    excludedUserIds: readonly string[] = [],
+  ): Promise<string[]> {
+    const excluded = new Set(excludedUserIds);
+    if (!weddingPlanId) {
+      return excluded.has(requestedUserId) ? [] : [requestedUserId];
+    }
+    // The memberships are collaboration's rows and the plan planning's:
+    // locked for share and read through their ports on this transaction.
+    await this.permissions.lockPlanMembershipsForShareInTransaction(tx, [
+      weddingPlanId,
+    ]);
+    const plan = await this.plans.getPlan(tx, weddingPlanId);
+    if (!plan) throw new NotFoundException("Wedding plan not found");
+    const members = await this.permissions.listPlanMembers(tx, [weddingPlanId]);
+    const recipients = new Set<string>([plan.ownerUserId]);
+    for (const member of members) {
+      // A member who turned the plan's notices off hears only of his own
+      // request.
+      if (
+        member.weddingPlanId === weddingPlanId &&
+        member.canManageProviders &&
+        (member.receiveNotifications || member.userId === requestedUserId)
+      ) {
+        recipients.add(member.userId);
+      }
+    }
+    return [...recipients].filter((userId) => !excluded.has(userId)).sort();
+  }
+
+  /**
+   * A provider's news about a plan's request or booking, written for its
+   * requester ([input]'s `userId`), told to everyone who manages the plan's
+   * providers (`resolveProviderUpdateRecipientsInTransaction`): each his own
+   * notice, the requester's dedupe key re-keyed to him, never the actor.
+   */
+  async createProviderUpdateNotificationsInTransaction(
+    client: NotificationCreateClient,
+    input: CreateNotificationInput,
+    excludedUserIds: readonly string[] = [],
+  ): Promise<NotificationResponse[]> {
+    const recipients = await this.resolveProviderUpdateRecipientsInTransaction(
+      client,
+      input.weddingPlanId ?? null,
+      input.userId,
+      excludedUserIds,
+    );
+    const created: NotificationResponse[] = [];
+    for (const userId of recipients) {
+      const notice = await this.createNotificationInTransaction(
+        client,
+        noticeForRecipient(input, userId),
+      );
+      if (notice) created.push(notice);
+    }
+    return created;
+  }
+
+  /**
+   * The person opened the notice from the phone (its push or its row):
+   * opened and read at their first moment. Only the notice's own recipient,
+   * under the same visibility as reading it; idempotent.
+   */
+  async markOpened(currentUser: AuthenticatedUser, id: string): Promise<void> {
+    await runSerializableTransaction(this.prisma, async (tx) => {
+      await this.lockOwnedForMutation(tx, currentUser, id);
+      await this.repository.markOpened(tx, id, new Date());
+    });
   }
 
   async createForPlanParticipants(
@@ -728,17 +832,24 @@ export class NotificationsService implements NotificationsPort {
    * budget are not a day's, and are made at any hour.
    */
   async generateDueNotifications(
-    options: { dayReminders?: boolean } = {},
+    options: { dayReminders?: boolean; onlyTaskReminderTimes?: boolean } = {},
   ): Promise<number | null> {
-    const dayReminders = options.dayReminders ?? true;
+    // The five-minute scan (`onlyTaskReminderTimes`) makes only the tasks'
+    // own «ذكّرني» times, so they are told on time rather than up to an hour
+    // late; it holds its own lock, and the dedupe keys keep it and the
+    // hourly scan from telling the same reminder twice.
+    const onlyTaskReminderTimes = options.onlyTaskReminderTimes ?? false;
+    const dayReminders = !onlyTaskReminderTimes && (options.dayReminders ?? true);
     return this.prisma.$transaction(
       async (tx) => {
-        const [lock] = await this.repository.tryLockDueScheduler(tx);
+        const [lock] = onlyTaskReminderTimes
+          ? await this.repository.tryLockTaskReminderScheduler(tx)
+          : await this.repository.tryLockDueScheduler(tx);
         if (!lock?.locked) return null;
 
         const today = startOfRiyadhDay();
         const dueWindowEnd = new Date(today);
-        dueWindowEnd.setDate(dueWindowEnd.getDate() + 7);
+        dueWindowEnd.setDate(dueWindowEnd.getDate() + REMINDER_SCAN_WINDOW_DAYS);
         const dueWindowEndOfDay = endOfRiyadhDay(dueWindowEnd);
         // The planning plans and their notified members are planning's and
         // collaboration's rows, read through their ports on this
@@ -818,18 +929,22 @@ export class NotificationsService implements NotificationsPort {
         // G36: a «ذكّرني» time that came within the last day (the job runs
         // hourly; a missed run still reminds, an old time never does).
         const now = new Date();
+        const lateUpToMs =
+          REMINDER_SCHEDULE.tasks.ownReminderTime.lateUpToHours * 60 * 60 * 1000;
         const dueTasks = {
           weddingPlanIds: planningPlanIds,
           dueBefore: dueWindowEndOfDay,
-          reminderWindow: { from: new Date(now.getTime() - 24 * 60 * 60 * 1000), to: now },
+          reminderWindow: { from: new Date(now.getTime() - lateUpToMs), to: now },
         };
         const [taskSeeds, paymentScheduleSeeds] = await Promise.all([
           this.tasks.listDueTasks(tx, dueTasks),
-          this.finance.listDuePaymentSchedules(tx, {
-            ...dueTasks,
-            weddingPlanIds: planIds,
-            remindBefore: endOfRiyadhDay(today),
-          }),
+          onlyTaskReminderTimes
+            ? Promise.resolve([])
+            : this.finance.listDuePaymentSchedules(tx, {
+                ...dueTasks,
+                weddingPlanIds: planIds,
+                remindBefore: endOfRiyadhDay(today),
+              }),
         ]);
         const taskIds = taskSeeds.map((task) => task.id).sort();
         await this.tasks.lockTaskRowsForShareInTransaction(tx, taskIds);
@@ -848,12 +963,14 @@ export class NotificationsService implements NotificationsPort {
         );
         const [tasks, paymentSchedules, preferences] = await Promise.all([
           this.tasks.listDueTasks(tx, { ...dueTasks, taskIds }),
-          this.finance.listDuePaymentSchedules(tx, {
-            ...dueTasks,
-            weddingPlanIds: planIds,
-            remindBefore: endOfRiyadhDay(today),
-            scheduleIds,
-          }),
+          onlyTaskReminderTimes
+            ? Promise.resolve([])
+            : this.finance.listDuePaymentSchedules(tx, {
+                ...dueTasks,
+                weddingPlanIds: planIds,
+                remindBefore: endOfRiyadhDay(today),
+                scheduleIds,
+              }),
           this.repository.dueReminderPreferences(tx, recipientUserIds),
         ]);
         // The provider a cost names is marketplace's row.
@@ -1019,17 +1136,19 @@ export class NotificationsService implements NotificationsPort {
           new Date(today.getTime() + 24 * 60 * 60 * 1000),
         );
         const [exceededCategories, dueLoanRepayments, dueExpectedFunding] =
-          await Promise.all([
-            this.finance.listExceededBudgetCategories(tx, planningPlanIds),
-            this.finance.listDueLoanRepayments(tx, {
-              weddingPlanIds: planIds,
-              dueBefore: dueWindowEndOfDay,
-            }),
-            this.finance.listDueExpectedFunding(tx, {
-              weddingPlanIds: planIds,
-              dueBefore: endOfTomorrow,
-            }),
-          ]);
+          onlyTaskReminderTimes
+            ? [[], [], []]
+            : await Promise.all([
+                this.finance.listExceededBudgetCategories(tx, planningPlanIds),
+                this.finance.listDueLoanRepayments(tx, {
+                  weddingPlanIds: planIds,
+                  dueBefore: dueWindowEndOfDay,
+                }),
+                this.finance.listDueExpectedFunding(tx, {
+                  weddingPlanIds: planIds,
+                  dueBefore: endOfTomorrow,
+                }),
+              ]);
         const ownerWants = (planId: string, key: keyof NotificationContentPreference) => {
           const plan = plansById.get(planId);
           return plan && this.preferenceEnabled(key, preferencesByUserId.get(plan.ownerUserId))
@@ -1085,9 +1204,24 @@ export class NotificationsService implements NotificationsPort {
           }
           written.push(addressDueNotice(row, form));
         }
-        const created = await this.repository.createDueNotifications(tx, written);
+        // Each reminder's push is decided before it is written, with its
+        // plan's wedding day (the quiet-hours rule reads it).
+        const pushes = new Map<string, PushRequest | null>();
+        const rowsWithPush: Array<DueNotificationRow & Partial<NotificationPushFields>> = [];
+        for (const row of written) {
+          const push = await this.pushRequest(tx, row, now, {
+            weddingDate: plansById.get(row.weddingPlanId)?.weddingDate ?? null,
+          });
+          pushes.set(row.dedupeKey, push);
+          rowsWithPush.push(push ? { ...row, ...pushRequestFields(push, now) } : row);
+        }
+        const created = await this.repository.createDueNotifications(tx, rowsWithPush);
         for (const notification of created) {
-          await this.enqueueNotificationDelivery(tx, notification);
+          await this.enqueueNotificationDelivery(
+            tx,
+            notification,
+            pushes.get(notification.dedupeKey ?? "") ?? null,
+          );
         }
         return created.length;
       },
@@ -1146,7 +1280,8 @@ export class NotificationsService implements NotificationsPort {
 
   private async enqueueNotificationDelivery(
     client: NotificationCreateClient,
-    notification: Pick<Notification, "id" | "userId" | "type" | "data">,
+    notification: Pick<Notification, "id" | "userId">,
+    push: PushRequest | null,
   ): Promise<void> {
     await this.outbox.enqueue(client, {
       type: OutboxEventTypes.notificationCreated,
@@ -1157,10 +1292,71 @@ export class NotificationsService implements NotificationsPort {
         userId: notification.userId,
       },
     });
-    if (!isPushNotificationType(notification.type, notification.data)) return;
-    // RA-BE-185: from 21:00 to 09:00 in Aden the push waits for the
-    // morning (the inbox row and the live badge above do not).
-    const notBefore = pushNotBefore(notification.type, new Date());
+    await this.enqueuePush(client, notification, push);
+  }
+
+  /**
+   * What the push of a notice about to be written does: null for a type
+   * that never reaches a phone. RA-BE-185: from 21:00 to 09:00 in Aden the
+   * push waits for the morning (the inbox row and the live badge do not),
+   * unless the one quiet-hours rule lets it through (`bypassesQuietHours`:
+   * someone writing now, the wedding week's urgent news, the wedding day).
+   * The guests' replies push as a digest: at most once in its window per
+   * recipient and plan (`REMINDER_SCHEDULE.guestRepliesDigest`); a reply
+   * inside the window is folded into the push already asked for.
+   * `mergedIntoId`: the notice is merged into this existing row; null back
+   * means that row's own recent push covers it and its state stays.
+   */
+  private async pushRequest(
+    client: NotificationCreateClient,
+    notification: Pick<
+      CreateNotificationInput,
+      "userId" | "type" | "data" | "weddingPlanId"
+    >,
+    now: Date,
+    options: { mergedIntoId?: string; weddingDate?: Date | null } = {},
+  ): Promise<PushRequest | null> {
+    if (!isPushNotificationType(notification.type, notification.data)) return null;
+    const weddingPlanId = notification.weddingPlanId ?? null;
+    if (notification.type === NotificationType.GUEST_RESPONDED && weddingPlanId) {
+      const since = new Date(
+        now.getTime() -
+          REMINDER_SCHEDULE.guestRepliesDigest.atMostEveryHours * 60 * 60 * 1000,
+      );
+      const recent = await this.repository.recentPushRequest(
+        client,
+        notification.userId,
+        weddingPlanId,
+        notification.type,
+        since,
+      );
+      if (recent) {
+        if (recent.id === options.mergedIntoId) return null;
+        return { state: PushDeliveryState.SKIPPED_DIGEST, enqueue: false, heldUntil: null, throughNight: false };
+      }
+    }
+    const weddingDate =
+      options.weddingDate !== undefined
+        ? options.weddingDate
+        : weddingPlanId
+          ? ((await this.plans.getPlan(client, weddingPlanId))?.weddingDate ?? null)
+          : null;
+    const context = { weddingPlanId, weddingDate, data: notification.data };
+    const heldUntil = pushNotBefore(notification.type, now, context);
+    return {
+      state: heldUntil ? PushDeliveryState.HELD : PushDeliveryState.QUEUED,
+      enqueue: true,
+      heldUntil,
+      throughNight: bypassesQuietHours(notification.type, now, context),
+    };
+  }
+
+  private async enqueuePush(
+    client: NotificationCreateClient,
+    notification: Pick<Notification, "id">,
+    push: PushRequest | null,
+  ): Promise<void> {
+    if (!push?.enqueue) return;
     await this.outbox.enqueue(client, {
       type: OutboxEventTypes.pushNotificationRequested,
       aggregateType: "notification",
@@ -1168,11 +1364,9 @@ export class NotificationsService implements NotificationsPort {
       payload: {
         notificationId: notification.id,
         // A retry that would land in quiet hours waits for 09:00 too.
-        ...(isQuietHoursExempt(notification.type)
-          ? {}
-          : { heldThroughQuietHours: true }),
+        ...(push.throughNight ? {} : { heldThroughQuietHours: true }),
       },
-      ...(notBefore ? { nextAttemptAt: notBefore } : {}),
+      ...(push.heldUntil ? { nextAttemptAt: push.heldUntil } : {}),
     });
   }
 
@@ -2090,10 +2284,50 @@ export class NotificationsService implements NotificationsPort {
       data: notification.data,
       readAt: notification.readAt,
       archivedAt: notification.archivedAt,
+      openedAt: notification.openedAt ?? null,
+      pushState: notification.pushState ?? null,
       createdAt: notification.createdAt,
       updatedAt: notification.updatedAt,
     };
   }
+}
+
+/**
+ * [input] for [userId]: every notice's key starts with its recipient's id
+ * (`<userId>:...`), so the same notice for another reader takes his.
+ */
+export function noticeForRecipient(
+  input: CreateNotificationInput,
+  userId: string,
+): CreateNotificationInput {
+  if (userId === input.userId) return input;
+  const prefix = `${input.userId}:`;
+  const dedupeKey = input.dedupeKey
+    ? `${userId}:${input.dedupeKey.startsWith(prefix) ? input.dedupeKey.slice(prefix.length) : input.dedupeKey}`
+    : undefined;
+  return { ...input, userId, ...(dedupeKey ? { dedupeKey } : {}) };
+}
+
+/** What a notice's push does, decided before its row is written. */
+interface PushRequest {
+  state: PushDeliveryState;
+  /** False when nothing goes to the outbox (folded into a digest). */
+  enqueue: boolean;
+  /** The 09:00 a held push waits for. */
+  heldUntil: Date | null;
+  /** Let through the quiet hours (a retry at night does not wait either). */
+  throughNight: boolean;
+}
+
+function pushRequestFields(push: PushRequest, now: Date): NotificationPushFields {
+  return {
+    pushState: push.state,
+    pushStateAt: now,
+    pushHeldUntil: push.heldUntil,
+    pushAcceptedDevices: null,
+    pushLastError: null,
+    ...(push.enqueue ? { pushRequestedAt: now } : {}),
+  };
 }
 
 function isCustomerBookingReminder(data: Prisma.InputJsonValue | undefined): boolean {

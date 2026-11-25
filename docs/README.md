@@ -17,6 +17,8 @@
 | المجال | الوثائق |
 |---|---|
 | المنتج | [رحلة العروسة والعريس](project/JOURNEY_PROFILE.md)، [رحلة المزود](project/PROVIDER_JOURNEY.md)، `project/research/` |
+| اللغة | [لغة اعّرست](project/LANGUAGE.md): النبرة، والقاموس، والقوالب، وما يُمنع، ودليل المراجعة. لكل نص يقرؤه المستخدم |
+| المزودون | [ترتيب المزودين وحالة يوم العرس](project/PROVIDER_RANKING.md) |
 | المال | [مصطلحات المال](project/MONEY_TERMS.md): معنى كل رقم ومصدره ومعادلته، والحكم والشريط |
 | المرجع التنافسي | [تطبيقات الأعراس العشرة](project/research/competitive/README.md): المصفوفة، وسجل الممارسات بحالاتها، والفرص المؤجلة. يُرجع إليه قبل تطوير أي قسم |
 | الخادم | [العقد](backend/API_CONTRACT.md)، [قاعدة البيانات](backend/DATABASE.md)، [التشغيل](backend/README.md)، [الأوامر](SCRIPTS.md) |

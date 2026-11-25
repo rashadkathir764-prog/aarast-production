@@ -138,6 +138,20 @@ export function validateRuntimeEnvironment(
       "FIREBASE_PROJECT_ID is required when push notifications are enabled",
     );
   }
+  // The production project is pinned as Staging's is below: the release
+  // reads the project from whatever key SSM holds, so a key of another
+  // project (a test one) would otherwise start production pushing into it.
+  // The host's env file names the project it expects.
+  const expectedFirebaseProject = environment.FIREBASE_EXPECTED_PROJECT_ID?.trim();
+  if (
+    expectedFirebaseProject &&
+    pushNotificationsEnabled === "true" &&
+    environment.FIREBASE_PROJECT_ID?.trim() !== expectedFirebaseProject
+  ) {
+    throw new Error(
+      "FIREBASE_PROJECT_ID is not the Firebase project this server expects (FIREBASE_EXPECTED_PROJECT_ID)",
+    );
+  }
 
   if (deploymentTier === "staging") {
     if (pushNotificationsEnabled === "true") {

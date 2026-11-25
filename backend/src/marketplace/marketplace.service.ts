@@ -1,8 +1,6 @@
 import * as core from "../modules/marketplace/infrastructure/marketplace-core.repository";
-import {
-  hasCompletedBookingWith,
-  listProvidersUnavailableOn,
-} from "../modules/marketplace/infrastructure/marketplace-booking.repository";
+import { hasCompletedBookingWith } from "../modules/marketplace/infrastructure/marketplace-booking.repository";
+import { countProvidersByCategory, readProviderDirectoryPage } from "./provider-directory";
 import { bookingToday } from "./booking-policy";
 import { applicationDisplayName } from "../shared-kernel/privacy/application-user-identity";
 import { toReviewIdentity } from "../shared-kernel/privacy/review-identity";
@@ -174,23 +172,9 @@ export class MarketplaceService {
   }
 
   async findProviders(query: ListProvidersQueryDto) {
-    const now = new Date();
-    const { pagination, where, searchKey, availabilityDay } = MarketplaceQuery.providerSearch(query, now);
-    // One snapshot for the search and the ranked page (B-43, RA-BE-151).
-    // RA-BE-09: the text is matched folded, as on the phone. RA-BE-181: the
-    // total is the ranked candidates' count; there is no second count query.
-    const [total, providerRows, unavailable] = await this.prisma.$transaction(
-      async (tx) => {
-        if (searchKey) where.AND.push({ id: { in: await core.findProviderIdsMatchingSearch(tx, searchKey) } });
-        const { total, rows } = await core.searchActiveProviders(tx, where, pagination, now);
-        // RA-BE-150 (Q-36): who takes the asked day, for the rows of this page.
-        const unavailable = availabilityDay
-          ? await listProvidersUnavailableOn(tx, rows.map((row) => row.id), availabilityDay)
-          : null;
-        return [total, rows, unavailable] as const;
-      },
-      { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
-    );
+    // D131: the ranked page and the day's status (provider-directory.ts).
+    const { total, rows: providerRows, dayStatus, pagination } =
+      await readProviderDirectoryPage(this.prisma, query, new Date());
     // Catalog's city and category rows are attached after the own-table read.
     const providers = await this.relations.attachProviderListCatalog(
       this.prisma,
@@ -199,12 +183,22 @@ export class MarketplaceService {
     return MarketplaceQuery.paginate(
       providers.map((provider) => ({
         ...MarketplacePresenter.toProviderListResponse(provider),
-        // RA-BE-150: null with no day asked; otherwise whether he takes it.
-        availableOnEventDate: unavailable ? !unavailable.has(provider.id) : null,
+        // D131: what is known of the asked day: CLOSED (he closed it) or
+        // FULL (Aarast's bookings filled it); null with no day asked or
+        // nothing known. Nothing here says he is free.
+        dayStatus: dayStatus?.get(provider.id) ?? null,
+        // RA-BE-150, kept for phones before D131: false when he is known to
+        // be busy, null otherwise, so no phone says «فاضي» without proof.
+        availableOnEventDate: dayStatus?.has(provider.id) ? false : null,
       })),
       total,
       pagination,
     );
+  }
+
+  /** D131 (F8): how many providers each category chip opens (provider-directory.ts). */
+  countProvidersByCategory(query: ListProvidersQueryDto) {
+    return countProvidersByCategory(this.prisma, query, new Date());
   }
 
   /** A customer opened the provider's page: counted in a daily total, who viewed is not kept (V1 4.19). */

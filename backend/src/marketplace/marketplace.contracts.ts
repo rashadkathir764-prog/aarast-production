@@ -27,7 +27,7 @@ export interface ProviderSearchWhere {
     | { cityId: string }
     | { userId: { not: null } } | { featuredPeriods: { some: ActiveFeaturedPeriodWhere } } | { OR: Array<{ userId: null } | { featuredPeriods: { none: ActiveFeaturedPeriodWhere } }> }
     | { OR: Array<{ primaryCategoryId: { in: string[] } } | { services: { some: { categoryId: { in: string[] }; isActive: boolean } } }> }
-    | { id: { in: string[] } }
+    | { id: { in: string[] } } | { id: { notIn: string[] } }
   >;
 }
 export interface ServiceSearchWhere {

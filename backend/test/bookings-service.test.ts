@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Prisma } from "@prisma/client";
 import { BookingsService } from "../src/marketplace/bookings.service";
+import { withProviderUpdateFanOut } from "./support/owner-ports";
 import { textFor } from "../src/shared-kernel/voice/address-form";
 
 // Bookings without payment (V1 checklist 4.6), end to end through the
@@ -258,7 +259,7 @@ function service(
   return new BookingsService(
     db.prisma,
     permissions,
-    notifications,
+    withProviderUpdateFanOut(notifications),
     db.finance,
     undefined,
     undefined,
@@ -398,7 +399,7 @@ test("RA-BE-47: the provider cannot confirm a booking on a plan that was archive
     }),
     canManageProviders: () => true,
   };
-  const notifications: any = { createNotificationInTransaction: async () => null };
+  const notifications: any = withProviderUpdateFanOut({ createNotificationInTransaction: async () => null });
   const bookings = new BookingsService(
     db.prisma,
     permissions,
@@ -582,7 +583,7 @@ test("the provider reads agreed, paid and left on his booking, and the month's t
   const bookings = new BookingsService(
     db.prisma,
     { assertPlanReadableInTransaction: async () => ({ plan: { id: "plan-1", status: "PLANNING" }, isOwner: true, sharedMember: null }), canManageProviders: () => true, canManageMoney: () => true } as any,
-    { createNotificationInTransaction: async () => null } as any,
+    withProviderUpdateFanOut({ createNotificationInTransaction: async () => null }) as any,
     finance,
     undefined,
     undefined,
@@ -657,7 +658,7 @@ test("a confirmed booking reminds both sides a week and a day before, once each"
       canManageProviders: () => true,
       canManageMoney: () => true,
     } as any,
-    {
+    withProviderUpdateFanOut({
       // The real notifications row is unique on its dedupe key.
       createNotificationInTransaction: async (_tx: unknown, input: any) => {
         if (sent.has(input.dedupeKey)) {
@@ -670,7 +671,7 @@ test("a confirmed booking reminds both sides a week and a day before, once each"
         db.notifications.push(input);
         return { id: input.dedupeKey };
       },
-    } as any,
+    }) as any,
     db.finance,
     undefined,
     undefined,
@@ -728,7 +729,7 @@ test("a booking whose plan is pending deletion is not reminded, and is again onc
     },
   };
   const bookings = new BookingsService(
-    db.prisma, permissions, notifications, noAgreements, undefined, undefined, plans,
+    db.prisma, permissions, withProviderUpdateFanOut(notifications), noAgreements, undefined, undefined, plans,
   );
 
   const week = await bookings.sendDueReminders(new Date("2027-02-11T09:00:00Z"));
@@ -787,7 +788,7 @@ test("RA-BE-138: a provider's decline keeps the item, marks it and says so; aski
   const bookings = new BookingsService(
     db.prisma,
     permissions,
-    notifications,
+    withProviderUpdateFanOut(notifications),
     finance,
     undefined,
     undefined,

@@ -1037,15 +1037,15 @@ export class AdminService {
             tx,
             id,
             reviewedAt,
-            (weddingPlanId, requesterId) =>
-              this.notifications.resolveProviderUpdateRecipientInTransaction(
-                tx,
-                weddingPlanId,
-                requesterId,
-              ),
+            // Each notice is written for its requester and told below to
+            // everyone who manages the plan's providers.
+            async (_weddingPlanId, requesterId) => requesterId,
           );
         for (const notice of notices) {
-          await this.notifications.createNotificationInTransaction(tx, notice);
+          await this.notifications.createProviderUpdateNotificationsInTransaction(
+            tx,
+            notice,
+          );
         }
       }
 

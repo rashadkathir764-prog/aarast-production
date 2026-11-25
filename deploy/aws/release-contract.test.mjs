@@ -144,6 +144,78 @@ test('release.ps1 ships the CI run it is given and never the source to build fro
   assert.match(live, /release\.ps1'\) -Run \$Run/);
 });
 
+/**
+ * Runs release_push_env against a fake `aws` that prints [key] (or fails
+ * when it is null) and a fake `chown`, on a temporary env file and
+ * Firebase folder; [env] adds to the shell's environment.
+ */
+function pushEnv({ key, envFile = 'AWS_REGION=eu-central-1\n', env = {} }) {
+  const dir = mkdtempSync(join(tmpdir(), 'aarast-push-'));
+  try {
+    mkdirSync(join(dir, 'bin'));
+    pythonShim(join(dir, 'bin'));
+    writeFileSync(join(dir, '.env'), envFile);
+    if (key !== null) writeFileSync(join(dir, 'key.json'), JSON.stringify(key));
+    writeFileSync(join(dir, 'bin', 'aws'), key === null
+      ? '#!/bin/bash\necho "ParameterNotFound" >&2\nexit 254\n'
+      : `#!/bin/bash\ncat "${join(dir, 'key.json').replace(/\\/g, '/')}"\n`);
+    writeFileSync(join(dir, 'bin', 'chown'), '#!/bin/bash\nexit 0\n');
+    chmodSync(join(dir, 'bin', 'aws'), 0o755);
+    chmodSync(join(dir, 'bin', 'chown'), 0o755);
+    const lib = join(root, 'deploy/aws/host/release-lib.sh');
+    const run = spawnSync('bash', ['-c', `set -euo pipefail
+. "${lib}"
+env_file="${join(dir, '.env').replace(/\\/g, '/')}"
+firebase_dir="${join(dir, 'firebase').replace(/\\/g, '/')}"
+release_push_env
+echo "PUSH=$PUSH_NOTIFICATIONS_ENABLED PROJECT=\${FIREBASE_PROJECT_ID:-}"`], {
+      encoding: 'utf8',
+      env: { ...process.env, ...env, PATH: `${join(dir, 'bin')}${process.platform === 'win32' ? ';' : ':'}${process.env.PATH}` },
+    });
+    return { status: run.status, output: run.stdout + run.stderr };
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+}
+
+test('a release with no FCM key in SSM stops instead of starting with push silently off', () => {
+  const run = pushEnv({ key: null });
+  assert.notEqual(run.status, 0, run.output);
+  assert.match(run.output, /FAIL: no FCM key could be read from SSM \/aarast\/firebase-service-account/);
+  assert.match(run.output, /AARAST_ALLOW_PUSH_DISABLED=1/);
+  assert.doesNotMatch(run.output, /PUSH=/, 'nothing after the refusal runs');
+});
+
+test('starting without push takes an explicit opt-out, from the environment or the host env file', () => {
+  for (const run of [
+    pushEnv({ key: null, env: { AARAST_ALLOW_PUSH_DISABLED: '1' } }),
+    pushEnv({ key: null, envFile: 'AWS_REGION=eu-central-1\nAARAST_ALLOW_PUSH_DISABLED=1\n' }),
+  ]) {
+    assert.equal(run.status, 0, run.output);
+    assert.match(run.output, /push notifications disabled on purpose/);
+    assert.match(run.output, /PUSH=false/);
+  }
+  // Anything but 1 is no opt-out.
+  assert.notEqual(pushEnv({ key: null, env: { AARAST_ALLOW_PUSH_DISABLED: 'yes' } }).status, 0);
+});
+
+test('a key in SSM turns push on for its project, and a key of another project than the expected one stops', () => {
+  const key = { type: 'service_account', project_id: 'aarast-prod' };
+  const on = pushEnv({ key });
+  assert.equal(on.status, 0, on.output);
+  assert.match(on.output, /PUSH=true PROJECT=aarast-prod/);
+  const pinned = pushEnv({ key, envFile: 'AWS_REGION=eu-central-1\nFIREBASE_EXPECTED_PROJECT_ID=aarast-prod\n' });
+  assert.equal(pinned.status, 0, pinned.output);
+  const other = pushEnv({ key: { ...key, project_id: 'aarast-staging-qa' }, envFile: 'AWS_REGION=eu-central-1\nFIREBASE_EXPECTED_PROJECT_ID=aarast-prod\n' });
+  assert.notEqual(other.status, 0, other.output);
+  assert.match(other.output, /FCM key in SSM is for Firebase project aarast-staging-qa, not aarast-prod/);
+  // The secret itself is never printed.
+  assert.doesNotMatch(on.output + other.output, /service_account/);
+});
+
+test('the backend gets the expected Firebase project from the host env file', () => {
+  const compose = read('deploy/aws/compose.yml');
+  assert.match(compose, /FIREBASE_EXPECTED_PROJECT_ID: \$\{FIREBASE_EXPECTED_PROJECT_ID:-\}/);
+});
+
 test('the AWS PowerShell scripts parse', () => {
   const probe = spawnSync('pwsh', ['-NoProfile', '-Command', '$PSVersionTable.PSVersion.Major'], { encoding: 'utf8' });
   if (probe.error) return; // no pwsh on this machine

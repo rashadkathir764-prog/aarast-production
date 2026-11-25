@@ -1052,24 +1052,30 @@ export class SharingService {
         acceptedInviteRow,
       );
 
-      await this.notifications.createNotificationInTransaction(tx, {
-        userId: invite.inviterUserId,
-        weddingPlanId: invite.weddingPlanId,
-        type: NotificationType.SHARING_INVITE_ACCEPTED,
-        priority: NotificationPriority.HIGH,
-        title: "الدعوة انقبلت",
-        // RA-BE-41: named as the app shows the account (an admin's app name).
-        body: `${this.actorVoice(currentUser).name} معك في الخطة الحين.`,
-        entityType: "plan_invite",
-        entityId: invite.id,
-        routeTarget: noticeRoutes.sharing(invite.weddingPlanId),
-        data: {
-          inviteId: invite.id,
-          sharedMemberId: member.id,
+      // The inviter hears it, and the plan's owner too when someone else
+      // invited (it is his plan the newcomer joins); never the newcomer.
+      for (const recipientId of [
+        ...new Set([invite.inviterUserId, plan.ownerUserId]),
+      ].filter((userId) => userId !== currentUser.id)) {
+        await this.notifications.createNotificationInTransaction(tx, {
+          userId: recipientId,
           weddingPlanId: invite.weddingPlanId,
-        },
-        dedupeKey: `${invite.inviterUserId}:plan-invite:${invite.id}:accepted`,
-      });
+          type: NotificationType.SHARING_INVITE_ACCEPTED,
+          priority: NotificationPriority.HIGH,
+          title: "الدعوة انقبلت",
+          // RA-BE-41: named as the app shows the account (an admin's app name).
+          body: `${this.actorVoice(currentUser).name} معك في الخطة الحين.`,
+          entityType: "plan_invite",
+          entityId: invite.id,
+          routeTarget: noticeRoutes.sharing(invite.weddingPlanId),
+          data: {
+            inviteId: invite.id,
+            sharedMemberId: member.id,
+            weddingPlanId: invite.weddingPlanId,
+          },
+          dedupeKey: `${recipientId}:plan-invite:${invite.id}:accepted`,
+        });
+      }
 
       return { member, acceptedInvite };
     });

@@ -120,6 +120,7 @@ GET /api/v1/governorates
 GET /api/v1/governorates/:id/districts
 GET /api/v1/provider-categories
 GET /api/v1/providers
+GET /api/v1/providers/category-counts
 GET /api/v1/providers/:id
 GET /api/v1/providers/:id/packages
 GET /api/v1/providers/:id/reviews

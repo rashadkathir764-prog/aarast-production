@@ -96,6 +96,57 @@ export function providerRankScore(signals: RankSignals, now: Date): number {
 }
 
 /**
+ * The order the customer picks (D131, docs/project/PROVIDER_RANKING.md):
+ * «الأنسب» is [rankProviders]; «الأعلى تقييمًا» and «الأقل سعرًا» answer
+ * exactly what they say, with no featured lift. A listing nobody claimed
+ * takes no request (D41), so it comes after the claimed ones in every order.
+ */
+export type ProviderSort = "best" | "rating" | "price";
+
+export const PROVIDER_SORTS: readonly ProviderSort[] = ["best", "rating", "price"];
+
+export interface SortSignals extends RankSignals {
+  /**
+   * His lowest active service price in Yemeni rials, null when he priced
+   * none in rials: a price in another currency is not compared with these.
+   */
+  lowestPriceYer: number | null;
+}
+
+export function orderProviders<T extends SortSignals>(
+  rows: readonly T[],
+  sort: ProviderSort,
+  now: Date,
+): T[] {
+  const ranked = rankProviders(rows, now);
+  if (sort === "best") return ranked;
+  // Ties keep «الأنسب»'s order, so the list is a total order and a page
+  // never skips or repeats a provider.
+  const place = new Map(ranked.map((row, index) => [row.id, index]));
+  const unclaimedLast = (row: T) => (row.claimed ? 0 : 1);
+  const byPlace = (a: T, b: T) => place.get(a.id)! - place.get(b.id)!;
+  if (sort === "rating") {
+    // The smoothed average (RA-BE-151): one five-star review does not pass
+    // sixty-three reviews averaging 4.8.
+    const rating = (row: T) => smoothedRating(row.ratingAverage, row.ratingCount);
+    return [...ranked].sort(
+      (a, b) =>
+        unclaimedLast(a) - unclaimedLast(b) ||
+        rating(b) - rating(a) ||
+        byPlace(a, b),
+    );
+  }
+  const unpriced = (row: T) => (row.lowestPriceYer === null ? 1 : 0);
+  return [...ranked].sort(
+    (a, b) =>
+      unclaimedLast(a) - unclaimedLast(b) ||
+      unpriced(a) - unpriced(b) ||
+      (a.lowestPriceYer ?? 0) - (b.lowestPriceYer ?? 0) ||
+      byPlace(a, b),
+  );
+}
+
+/**
  * Verified providers before unverified ones (Q-73 (أ), D127); inside each
  * band featured first, then claimed listings, then unclaimed ones; inside
  * each group by score, then the newer, then the id (a total order).

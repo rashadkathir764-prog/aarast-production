@@ -7,6 +7,7 @@ import {
 import { type AddressedText, gendered, textFor } from "../shared-kernel/voice/address-form";
 import { noticeRoutes } from "../shared-kernel/routes/notification-routes";
 import { customerNameForProvider } from "../shared-kernel/privacy/provider-customer-name";
+import { REMINDER_SCHEDULE } from "../shared-kernel/time/reminder-schedule";
 import {
   daysBetween,
   weekdayDayMonthWords,
@@ -282,8 +283,11 @@ export function customerClosedProviderNotification(
 
 // ── Reminders before a confirmed booking (V1 checklist 4.17) ───────────
 
-/** A confirmed booking reminds both sides once a week before and once the day before. */
-export const BOOKING_REMINDER_MILESTONES = [7, 1] as const;
+/**
+ * A confirmed booking reminds both sides once a week before and once the day
+ * before: the server's one reminder table (`REMINDER_SCHEDULE`).
+ */
+export const BOOKING_REMINDER_MILESTONES = REMINDER_SCHEDULE.bookings.daysBefore;
 
 /** The reminder window a booking `daysUntil` away is in, or null outside every window. */
 export function bookingReminderMilestone(daysUntil: number): number | null {

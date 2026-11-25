@@ -13,6 +13,11 @@ export interface PushDeliveryPort {
     alreadyDeliveredInstallationIds?: readonly string[],
   ): Promise<void>;
   /**
+   * The push's retries ran out: the notice's push state becomes FAILED
+   * with [lastError], the last refusal's short code.
+   */
+  recordPushFailed(notificationId: string, lastError: string): Promise<void>;
+  /**
    * D112 (Q-11): lets go of the push registrations [userId] made before
    * [revokedAt], the moment its sessions were ended, except [keepFid], the
    * phone that ended the others (RA-BE-133).

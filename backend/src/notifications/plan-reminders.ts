@@ -9,6 +9,7 @@ import {
 } from "../modules/finance/public/finance.port";
 import type { DueNotificationRow } from "../modules/notifications/infrastructure/notifications.repository";
 import { startOfRiyadhDay } from "../shared-kernel/time/business-day";
+import { REMINDER_SCHEDULE } from "../shared-kernel/time/reminder-schedule";
 import { noticeRoutes } from "../shared-kernel/routes/notification-routes";
 import {
   type AddressedText,
@@ -63,13 +64,15 @@ export function addressDueNotice(
  * the wedding day itself (RA-BE-190: day 0 is its own step, so the day
  * before's notice does not keep «ألف مبروك» from going out).
  */
-export const WEDDING_COUNTDOWN_MILESTONES = [30, 7, 1, 0] as const;
+export const WEDDING_COUNTDOWN_MILESTONES =
+  REMINDER_SCHEDULE.weddingCountdown.daysBefore;
 
 /**
  * RA-BE-189: a task is reminded this many days before its due day and on it
- * (a late task is told once, see `isTaskDueReminderDay`).
+ * (a late task is told once, see `isTaskDueReminderDay`). Both numbers are
+ * the server's one reminder table's (`REMINDER_SCHEDULE`).
  */
-export const TASK_DUE_REMINDER_DAYS = [7, 1, 0] as const;
+export const TASK_DUE_REMINDER_DAYS = REMINDER_SCHEDULE.tasks.daysBefore;
 
 /** Whether a task `days` from its due day (negative once late) is reminded today. */
 export function isTaskDueReminderDay(days: number): boolean {

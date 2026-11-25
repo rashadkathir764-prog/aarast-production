@@ -194,6 +194,9 @@ services:
       # deploy.sh turns push on when the FCM key exists in SSM.
       PUSH_NOTIFICATIONS_ENABLED: ${PUSH_NOTIFICATIONS_ENABLED:-false}
       FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-}
+      # The production Firebase project, from the host env file: a key of
+      # another project in SSM fails the boot instead of pushing into it.
+      FIREBASE_EXPECTED_PROJECT_ID: ${FIREBASE_EXPECTED_PROJECT_ID:-}
       GOOGLE_APPLICATION_CREDENTIALS: /run/aarast-firebase/service-account.json
       # S3 through the host role (instance metadata, hop limit 2): no keys.
       AARAST_MEDIA_ENDPOINT: https://s3.${AWS_REGION:?AWS_REGION is required}.amazonaws.com

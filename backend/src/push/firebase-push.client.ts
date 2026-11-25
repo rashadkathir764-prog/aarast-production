@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger, type OnApplicationBootstrap } from "@nestjs/common";
 import {
   App,
   applicationDefault,
@@ -11,16 +11,40 @@ import {
   getMessaging,
 } from "firebase-admin/messaging";
 import type { PushCapabilityPort } from "../modules/notifications/public/push-capability.port";
+import {
+  FIREBASE_PROJECT_ID_ENV,
+  PUSH_NOTIFICATIONS_ENABLED_ENV,
+  pushStatus,
+} from "../platform/config/push-status";
 
-export const PUSH_NOTIFICATIONS_ENABLED_ENV = "PUSH_NOTIFICATIONS_ENABLED";
-export const FIREBASE_PROJECT_ID_ENV = "FIREBASE_PROJECT_ID";
+export { FIREBASE_PROJECT_ID_ENV, PUSH_NOTIFICATIONS_ENABLED_ENV };
+
+let bootStatusLogged = false;
 
 @Injectable()
-export class FirebasePushClient implements PushCapabilityPort {
+export class FirebasePushClient implements PushCapabilityPort, OnApplicationBootstrap {
+  private readonly logger = new Logger("PushNotifications");
   private app: App | null = null;
 
   get enabled(): boolean {
-    return process.env[PUSH_NOTIFICATIONS_ENABLED_ENV]?.trim() === "true";
+    return pushStatus().enabled;
+  }
+
+  /**
+   * Said once at boot, so a server that would record every push as
+   * DISABLED says it before the first notice does.
+   */
+  onApplicationBootstrap(): void {
+    if (bootStatusLogged) return;
+    bootStatusLogged = true;
+    const status = pushStatus();
+    if (status.enabled) {
+      this.logger.log(`Push notifications enabled for Firebase project ${status.projectId}`);
+    } else {
+      this.logger.warn(
+        "Push notifications disabled on this server: every push is recorded as DISABLED",
+      );
+    }
   }
 
   async sendEachForMulticast(

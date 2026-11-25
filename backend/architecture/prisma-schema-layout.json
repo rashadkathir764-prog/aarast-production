@@ -61,7 +61,7 @@
       "owner": "notifications",
       "file": "notifications.prisma",
       "models": ["NotificationPreference", "PushInstallation", "Notification"],
-      "enums": ["NotificationType", "NotificationPriority", "PushPlatform"]
+      "enums": ["NotificationType", "NotificationPriority", "PushPlatform", "PushDeliveryState"]
     },
     {
       "owner": "planning",

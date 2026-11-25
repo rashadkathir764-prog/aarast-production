@@ -4,6 +4,7 @@ import Redis from 'ioredis';
 import { PrismaService } from '../database/prisma.service';
 import { loadOpenWaOtpConfig } from '../otp-transport/openwa-otp-config';
 import { readBoundedJson } from '../http/bounded-json-response';
+import { pushStatus } from '../config/push-status';
 import {
   MEDIA_READINESS_PORT,
   MediaReadinessPort,
@@ -41,6 +42,18 @@ export interface DiskReadiness {
   status: 'up' | 'low' | 'disabled';
 }
 
+/**
+ * Whether this server sends pushes, and to which Firebase project
+ * (`pushStatus`): a server left without its Firebase key records every push
+ * as DISABLED, and the operator sees it here. It never fails /ready, and
+ * only the operator's token reads it.
+ */
+export interface PushReadiness {
+  status: 'up' | 'disabled';
+  enabled: boolean;
+  projectId: string | null;
+}
+
 /** What `fs.promises.statfs` answers, as far as the disk check reads it. */
 export type ReadinessStatfs = (
   path: string,
@@ -60,20 +73,22 @@ export interface ReadinessReport {
     openwa: DependencyReadiness;
     otpCapacity: OtpCapacityReadiness;
     disk: DiskReadiness;
+    /** Operator only; absent from a report built before it existed. */
+    push?: PushReadiness;
   };
 }
 
 export interface CoreReadinessReport {
   status: ReadinessReport['status'];
   service: ReadinessReport['service'];
-  checks: Omit<ReadinessReport['checks'], 'openwa' | 'otpCapacity' | 'disk'>;
+  checks: Omit<ReadinessReport['checks'], 'openwa' | 'otpCapacity' | 'disk' | 'push'>;
 }
 
-/** What anyone may read of /ready (RA-BE-149): no code quota, no disk. */
+/** What anyone may read of /ready (RA-BE-149): no code quota, no disk, no push setup. */
 export interface PublicReadinessReport {
   status: ReadinessReport['status'];
   service: ReadinessReport['service'];
-  checks: Omit<ReadinessReport['checks'], 'otpCapacity' | 'disk'>;
+  checks: Omit<ReadinessReport['checks'], 'otpCapacity' | 'disk' | 'push'>;
 }
 
 /**
@@ -81,8 +96,18 @@ export interface PublicReadinessReport {
  * spent code quota is not told by a 503 either.
  */
 export function publicReadiness(report: ReadinessReport): PublicReadinessReport {
-  const { otpCapacity: _otpCapacity, disk: _disk, ...checks } = report.checks;
+  const {
+    otpCapacity: _otpCapacity,
+    disk: _disk,
+    push: _push,
+    ...checks
+  } = report.checks;
   return { status: readinessOf(checks), service: report.service, checks };
+}
+
+function checkPush(): PushReadiness {
+  const status = pushStatus();
+  return { status: status.enabled ? 'up' : 'disabled', ...status };
 }
 
 const dependencyTimeoutMs = 2_500;
@@ -120,7 +145,7 @@ export class ReadinessService {
       this.checkOtpCapacity(),
       this.checkDisk(),
     ]);
-    const checks = { ...core.checks, openwa, otpCapacity, disk };
+    const checks = { ...core.checks, openwa, otpCapacity, disk, push: checkPush() };
     return {
       status: readinessOf(checks),
       service: 'aarast-backend',

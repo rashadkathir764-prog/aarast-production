@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { PrismaModule } from '../../../platform/database/prisma.module';
 import { FirebasePushClient } from '../../../push/firebase-push.client';
 import { PushDeliveryService } from '../infrastructure/push-delivery.service';
+import { CollaborationPermissionPublicModule } from '../../collaboration/public/collaboration-permission-public.module';
+import { PlanReadPublicModule } from '../../planning/public/plan-read-public.module';
 
 export const PUSH_DELIVERY_IMPLEMENTATION = Symbol(
   'PUSH_DELIVERY_IMPLEMENTATION',
@@ -11,7 +13,9 @@ export const PUSH_CAPABILITY_IMPLEMENTATION = Symbol(
 );
 
 @Module({
-  imports: [PrismaModule],
+  // A push is re-checked against the recipient's plan rights when it goes
+  // out (planning's plan and collaboration's membership, by their ports).
+  imports: [PrismaModule, CollaborationPermissionPublicModule, PlanReadPublicModule],
   providers: [
     FirebasePushClient,
     PushDeliveryService,

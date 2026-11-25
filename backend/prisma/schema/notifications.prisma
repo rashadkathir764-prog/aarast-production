@@ -63,6 +63,37 @@ enum PushPlatform {
   IOS
 }
 
+// What became of a notification's push, said honestly: Firebase only says
+// it accepted a message for a device, never that the phone showed it, so no
+// state claims delivery. Null for a type that never reaches a phone.
+enum PushDeliveryState {
+  // Waiting for the delivery worker.
+  QUEUED
+  // Held through the quiet hours until `pushHeldUntil`.
+  HELD
+  // Push is not configured on this server (no Firebase credentials).
+  DISABLED
+  // The recipient turned push off.
+  PREFERENCE_OFF
+  // The recipient has no registered phone.
+  NO_DEVICE
+  // Read in the app before the push went out.
+  SKIPPED_READ
+  // The recipient lost the plan right this notice needs before it went out.
+  SKIPPED_NO_ACCESS
+  // Folded into a digest pushed within its window (guest replies).
+  SKIPPED_DIGEST
+  // Firebase refused for a reason worth retrying, and no phone took it yet.
+  RETRYING
+  // Firebase accepted it for some phones; the others are retried.
+  PARTIAL
+  // Firebase accepted it for every phone still registered.
+  ACCEPTED
+  // A permanent refusal (the server's Firebase configuration) or the
+  // retries ran out; `pushLastError` says which.
+  FAILED
+}
+
 model NotificationPreference {
   id                      String   @id @default(uuid())
   userId                  String   @unique
@@ -119,6 +150,19 @@ model Notification {
   dedupeKey     String?              @unique
   readAt        DateTime?
   archivedAt    DateTime?
+  // The person opened the notice from the phone (its push or its row).
+  openedAt      DateTime?
+  // The push's honest state (`PushDeliveryState`), when it was set, until
+  // when a held push waits, how many phones Firebase accepted it for, and
+  // the short code of the last refusal.
+  pushState           PushDeliveryState?
+  pushStateAt         DateTime?
+  pushHeldUntil       DateTime?
+  pushAcceptedDevices Int?
+  pushLastError       String?            @db.VarChar(120)
+  // When a push of this notice was last requested: a digest (the guests'
+  // replies) pushes at most once in its window.
+  pushRequestedAt     DateTime?
   createdAt     DateTime             @default(now())
   updatedAt     DateTime             @updatedAt
   user          User                 @relation(fields: [userId], references: [id], onDelete: Cascade)

@@ -1388,22 +1388,19 @@ export class ProviderDashboardService {
           }
         }
         blockedDay = dayBlocked;
-        const recipientId =
-          await this.notifications.resolveProviderUpdateRecipientInTransaction(
-            tx,
-            existing.weddingPlanId,
-            existing.userId,
-          );
-        await this.notifications.createNotificationInTransaction(
+        // Everyone who manages the plan's providers hears it, not the
+        // requester alone.
+        await this.notifications.createProviderUpdateNotificationsInTransaction(
           tx,
           providerRejectedRequestNotification({
-            requesterId: recipientId,
+            requesterId: existing.userId,
             weddingPlanId: existing.weddingPlanId,
             quoteRequestId: existing.id,
             providerId: provider.id,
             providerName: provider.businessName,
             declineReason,
           }),
+          [currentUser.id],
         );
       }
       return updated;
@@ -1508,22 +1505,17 @@ export class ProviderDashboardService {
         data: { status: QuoteOfferStatus.PENDING },
       });
 
-      const recipientId =
-        await this.notifications.resolveProviderUpdateRecipientInTransaction(
-          tx,
-          quote.weddingPlanId,
-          quote.userId,
-        );
-      await this.notifications.createNotificationInTransaction(
+      await this.notifications.createProviderUpdateNotificationsInTransaction(
         tx,
         quoteOfferReceivedNotification({
-          requesterId: recipientId,
+          requesterId: quote.userId,
           weddingPlanId: quote.weddingPlanId,
           quoteRequestId,
           quoteOfferId: created.id,
           providerId: provider.id,
           providerName: provider.businessName,
         }),
+        [currentUser.id],
       );
 
       return created;
@@ -1660,16 +1652,10 @@ export class ProviderDashboardService {
       // his offer several times in a row tells the customer once; the
       // timeline keeps each version.
       if (tellCustomer) {
-        const recipientId =
-          await this.notifications.resolveProviderUpdateRecipientInTransaction(
-            tx,
-            existing.quoteRequest.weddingPlanId,
-            existing.quoteRequest.userId,
-          );
-        await this.notifications.createNotificationInTransaction(
+        await this.notifications.createProviderUpdateNotificationsInTransaction(
           tx,
           quoteOfferRevisedNotification({
-            requesterId: recipientId,
+            requesterId: existing.quoteRequest.userId,
             weddingPlanId: existing.quoteRequest.weddingPlanId,
             quoteRequestId: existing.quoteRequestId,
             quoteOfferId: id,
@@ -1677,6 +1663,7 @@ export class ProviderDashboardService {
             providerId: provider.id,
             providerName: provider.businessName,
           }),
+          [currentUser.id],
         );
       }
       return dashboardStore.requireQuoteOffer(tx, id);
@@ -1758,22 +1745,17 @@ export class ProviderDashboardService {
           dedupeKey: `quote-offer:${id}:withdrawn`,
           data: { status: QuoteOfferStatus.WITHDRAWN, ...(reason ? { reason } : {}) },
         });
-        const recipientId =
-          await this.notifications.resolveProviderUpdateRecipientInTransaction(
-            tx,
-            existing.quoteRequest.weddingPlanId,
-            existing.quoteRequest.userId,
-          );
-        await this.notifications.createNotificationInTransaction(
+        await this.notifications.createProviderUpdateNotificationsInTransaction(
           tx,
           quoteOfferWithdrawnNotification({
-            requesterId: recipientId,
+            requesterId: existing.quoteRequest.userId,
             weddingPlanId: existing.quoteRequest.weddingPlanId,
             quoteRequestId: existing.quoteRequestId,
             quoteOfferId: id,
             providerId: provider.id,
             providerName: provider.businessName,
           }),
+          [currentUser.id],
         );
       }
       const [updated] = await this.relations.attachDashboardQuoteRelations(tx, [

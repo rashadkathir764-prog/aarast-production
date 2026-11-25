@@ -49,6 +49,13 @@ function createHarness() {
         dedupeKey: (data.dedupeKey as string | null) ?? null,
         readAt: null,
         archivedAt: null,
+        openedAt: null,
+        pushState: (data.pushState as Notification["pushState"]) ?? null,
+        pushStateAt: (data.pushStateAt as Date | null) ?? null,
+        pushHeldUntil: (data.pushHeldUntil as Date | null) ?? null,
+        pushAcceptedDevices: null,
+        pushLastError: null,
+        pushRequestedAt: (data.pushRequestedAt as Date | null) ?? null,
         createdAt: now,
         updatedAt: now,
       };
@@ -229,7 +236,9 @@ test("transaction-scoped notification creation reuses the caller transaction", a
 
   assert.ok(created);
   assert.equal(created.id, "notification-invite");
-  assert.equal(outboxRows, 1);
+  // The live badge and, since an accepted invitation reaches the inviter's
+  // phone, its push: both on the caller's transaction.
+  assert.equal(outboxRows, 2);
 });
 
 // Chat used to read the provider-message preference rows itself before
@@ -688,7 +697,22 @@ test("RA-BE-174: a merged notice rewrites the one under its key, unread, without
         Object.assign(row, data, { updatedAt: new Date() });
         return row;
       },
+      // The guests' replies push as a digest: the latest push asked for in
+      // the window.
+      findFirst: async ({ where }: any) =>
+        rows
+          .filter(
+            (row) =>
+              row.userId === where.userId &&
+              row.weddingPlanId === where.weddingPlanId &&
+              row.type === where.type &&
+              row.pushRequestedAt instanceof Date &&
+              row.pushRequestedAt >= where.pushRequestedAt.gte,
+          )
+          .map((row) => ({ id: row.id }))
+          .pop() ?? null,
     },
+    weddingPlan: { findUnique: async () => null, findFirst: async () => null },
     outboxEvent: {
       create: async ({ data }: any) => {
         outbox.push(data);

@@ -120,7 +120,8 @@ test("the wedding day is its own step with its own key", () => {
 /** The scan over one plan: an owner, an assignee, the plan's bride and a contributor. */
 async function scan(
   tasks: Array<Record<string, unknown>>,
-  options?: { dayReminders?: boolean },
+  options?: { dayReminders?: boolean; onlyTaskReminderTimes?: boolean },
+  locks: string[] = [],
 ) {
   const captured: Array<Record<string, any>> = [];
   const plan = {
@@ -138,7 +139,10 @@ async function scan(
   const tx = {
     $queryRaw: async (query: any) => {
       const sql = Array.isArray(query?.strings) ? query.strings.join(" ") : String(query);
-      if (sql.includes("pg_try_advisory_xact_lock")) return [{ locked: true }];
+      if (sql.includes("pg_try_advisory_xact_lock")) {
+        locks.push(sql.replace(/\s+/g, " ").trim());
+        return [{ locked: true }];
+      }
       if (sql.includes('FROM "User"')) {
         return ["owner-1", "assignee-1", "bride-1", "contributor-1"].map((id) => ({
           id,
@@ -236,6 +240,26 @@ test("a scan in quiet hours leaves the day reminders and keeps a «ذكّرني�
     morning.map((row) => `${row.userId}:${row.entityId}`).sort(),
     ["assignee-1:task-due", "owner-1:task-due", "owner-1:task-ping"],
   );
+});
+
+test("the five-minute scan makes only a task's own reminder time, under its own lock and the hourly scan's key", async () => {
+  const reminderAt = new Date(Date.now() - 2 * 60 * 1000);
+  const tasks = [
+    scanTask("task-due", 1, { assigneeUserId: "assignee-1" }),
+    scanTask("task-ping", 20, { reminderAt }),
+  ];
+  const fiveMinuteLocks: string[] = [];
+  const fast = await scan(tasks, { onlyTaskReminderTimes: true }, fiveMinuteLocks);
+  assert.deepEqual(fast.map((row) => `${row.userId}:${row.entityId}`), ["owner-1:task-ping"]);
+  assert.match(fiveMinuteLocks.join(" "), /pg_try_advisory_xact_lock\(20260711, 8\)/);
+  // Even in the day the five-minute scan makes no day reminder.
+  const hourlyLocks: string[] = [];
+  const hourly = await scan(tasks, { dayReminders: true }, hourlyLocks);
+  assert.match(hourlyLocks.join(" "), /pg_try_advisory_xact_lock\(20260711, 3\)/);
+  // The same reminder under the same key: the second scan to write it is a
+  // duplicate the table skips, never a second notice.
+  const ping = hourly.find((row) => row.entityId === "task-ping")!;
+  assert.equal(fast[0]!.dedupeKey, ping.dedupeKey);
 });
 
 /** `notifyTaskDue` over one plan: who was written to. */

@@ -965,6 +965,10 @@ void main() {
         await tester.tap(find.byKey(const ValueKey('requests-choose-q-light')));
         await tester.pump(const Duration(milliseconds: 500));
         await tester.pump(const Duration(milliseconds: 500));
+        // Choosing asks first; the booking sheet follows the yes.
+        await tester.tap(find.byKey(const ValueKey('requests-choose-confirm')));
+        await tester.pump(const Duration(milliseconds: 500));
+        await tester.pump(const Duration(milliseconds: 500));
       },
     );
   });
@@ -1128,9 +1132,15 @@ void main() {
     );
   });
 
-  // «قارن الملفين»: the first two saved providers side by side.
+  // «قارن بينهم»: the first two saved providers of the same service side by
+  // side; the band saved first is not set beside a photographer.
   testWidgets('favorites compare', (tester) async {
-    final m = _Market(favs: favs);
+    final m = _Market(
+      favs: [
+        ...favs,
+        const FavoriteProvider(id: 'f3', providerId: 'p-hara', provider: _hara),
+      ],
+    );
     await _shot(
       tester,
       'favorites_compare',

@@ -76,6 +76,28 @@ MarketplaceProvider _photographer() {
   );
 }
 
+MarketplaceProvider _secondVenue() {
+  return const MarketplaceProvider(
+    id: 'fav-3',
+    businessName: 'قاعة النخيل',
+    ownerName: 'إدارة القاعة',
+    ratingAverage: 4.5,
+    ratingCount: 40,
+    city: MarketplaceCity(id: 'city-sanaa', nameAr: 'صنعاء'),
+    services: [
+      MarketplaceService(
+        id: 's4',
+        providerId: 'fav-3',
+        title: 'قاعة متوسطة',
+        isActive: true,
+        category: ProviderCategory(id: 'c1', nameAr: 'صالات'),
+        basePrice: '900000',
+        currency: 'YER',
+      ),
+    ],
+  );
+}
+
 List<FavoriteProvider> _favorites(List<MarketplaceProvider> providers) =>
     List<FavoriteProvider>.generate(
       providers.length,
@@ -136,16 +158,21 @@ class _PreviewMarketplaceProvider extends ProviderMarketplaceProvider {
 void main() {
   setUpAll(loadPreviewAppFonts);
 
-  testWidgets('favorites — «قارن الملفين» of two saved providers (430)', (
+  // UX critique: the first two of the same service, so the photographer
+  // saved between the two halls is not set beside one of them.
+  testWidgets('favorites — «قارن بينهم» of two saved providers (430)', (
     tester,
   ) async {
     await _pumpFavorites(
       tester,
       size: const Size(430, 1040),
-      favorites: _favorites([_venue(), _photographer()]),
+      favorites: _favorites([_venue(), _photographer(), _secondVenue()]),
     );
 
-    expect(find.text('قارن الملفين'), findsOneWidget);
+    expect(find.text('قارن بينهم'), findsOneWidget);
+    expect(find.text('قصر الماسة للاحتفالات'), findsOneWidget);
+    expect(find.text('قاعة النخيل'), findsOneWidget);
+    expect(find.text('عدسة الريم للتصوير'), findsNothing);
     expect(tester.takeException(), isNull);
     await expectLater(
       find.byType(FavoriteProvidersScreen),

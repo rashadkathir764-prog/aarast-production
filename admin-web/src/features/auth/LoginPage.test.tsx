@@ -211,10 +211,10 @@ describe('admin password recovery', () => {
     expect(mocks.verifyReset).toHaveBeenCalledWith('a'.repeat(64), '123456');
     expect(screen.queryByLabelText('رمز الاستعادة')).not.toBeInTheDocument();
 
-    choosePassword('123456');
+    choosePassword('12345678');
 
     await waitFor(() =>
-      expect(mocks.confirmReset).toHaveBeenCalledWith('a'.repeat(64), '123456'),
+      expect(mocks.confirmReset).toHaveBeenCalledWith('a'.repeat(64), '12345678'),
     );
     expect(
       await screen.findByText(
@@ -246,31 +246,32 @@ describe('admin password recovery', () => {
     expect(screen.queryByText(/تم تسليم رمز الاستعادة/)).not.toBeInTheDocument();
   });
 
-  it('accepts digits-only or letters-only passwords of 6 or more', async () => {
+  // RA-BE-149: a new password is 8 or more (NIST); signing in checks no length.
+  it('accepts digits-only or letters-only passwords of 8 or more', async () => {
     renderPage();
     await openRecoveryPassword();
     expect(
-      screen.getByText('6 خانات على الأقل: أرقام أو حروف أو الاثنان معًا.'),
+      screen.getByText('8 خانات على الأقل: أرقام أو حروف أو الاثنان معًا.'),
     ).toBeInTheDocument();
 
-    choosePassword('12345');
+    choosePassword('1234567');
     expect(
-      await screen.findByText('كلمة المرور يجب أن تكون 6 خانات على الأقل.'),
+      await screen.findByText('كلمة المرور يجب أن تكون 8 خانات على الأقل.'),
     ).toBeInTheDocument();
     expect(mocks.confirmReset).not.toHaveBeenCalled();
 
-    choosePassword('abcdef', 'abcdeg');
+    choosePassword('abcdefgh', 'abcdefgi');
     expect(await screen.findByText('تأكيد كلمة المرور غير مطابق.')).toBeInTheDocument();
     expect(mocks.confirmReset).not.toHaveBeenCalled();
 
-    choosePassword('abcdef');
+    choosePassword('abcdefgh');
     await waitFor(() =>
-      expect(mocks.confirmReset).toHaveBeenCalledWith('a'.repeat(64), 'abcdef'),
+      expect(mocks.confirmReset).toHaveBeenCalledWith('a'.repeat(64), 'abcdefgh'),
     );
   });
 
   // RA-AD-16: the server stops a password at 72 bytes; a longer one was
-  // refused here with «6 خانات على الأقل», which it already had.
+  // refused here with «6 خانات على الأقل» (now 8), which it already had.
   it('says a password past the server limit is too long, not too short', async () => {
     renderPage();
     await openRecoveryPassword();

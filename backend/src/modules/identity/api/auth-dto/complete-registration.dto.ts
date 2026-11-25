@@ -5,10 +5,10 @@ import {
   Length,
   Matches,
   MaxLength,
-  MinLength,
 } from 'class-validator';
 import { MaxCharacters } from '../../../../shared-kernel/text/text-length';
 import { MaxUtf8Bytes } from '../../public/max-utf8-bytes.decorator';
+import { NewPasswordLength } from '../../../../shared-kernel/text/new-password';
 
 // Email is intentionally absent. A phone OTP proves phone ownership only and
 // must never be used to probe, claim, or replace an unverified email address.
@@ -26,7 +26,7 @@ export class CompleteRegistrationDto {
   // Sign-up is phone + code; a password can be added later (POST /auth/password).
   @IsOptional()
   @IsString()
-  @MinLength(6)
+  @NewPasswordLength()
   @MaxUtf8Bytes(72)
   password?: string;
 

@@ -402,20 +402,20 @@ test("an admin session cannot set the application password", async () => {
 test("the set-password body enforces the password policy", async () => {
   const pipe = new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true });
   const metadata = { type: "body" as const, metatype: SetPasswordDto };
-  await assert.rejects(() => pipe.transform({ newPassword: "12345" }, metadata));
+  await assert.rejects(() => pipe.transform({ newPassword: "1234567" }, metadata));
   await assert.rejects(() => pipe.transform({ newPassword: "ب".repeat(37) }, metadata));
-  await assert.rejects(() => pipe.transform({ newPassword: "secret1", currentPassword: "" }, metadata));
-  const ok = await pipe.transform({ newPassword: "secret1", currentPassword: "old-pass" }, metadata);
-  assert.equal(ok.newPassword, "secret1");
+  await assert.rejects(() => pipe.transform({ newPassword: "secret12", currentPassword: "" }, metadata));
+  const ok = await pipe.transform({ newPassword: "secret12", currentPassword: "old-pass" }, metadata);
+  assert.equal(ok.newPassword, "secret12");
   // RA-BE-133: the phone's push registration, as the push route takes it.
   for (const pushInstallationId of ["short", "has space-in-it", "x".repeat(201)]) {
     await assert.rejects(
-      () => pipe.transform({ newPassword: "secret1", pushInstallationId }, metadata),
+      () => pipe.transform({ newPassword: "secret12", pushInstallationId }, metadata),
       pushInstallationId,
     );
   }
   const withPhone = await pipe.transform(
-    { newPassword: "secret1", pushInstallationId: "fid_ABC-123456" },
+    { newPassword: "secret12", pushInstallationId: "fid_ABC-123456" },
     metadata,
   );
   assert.equal(withPhone.pushInstallationId, "fid_ABC-123456");

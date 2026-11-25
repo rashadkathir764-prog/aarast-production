@@ -4,9 +4,9 @@ import {
   IsString,
   Length,
   Matches,
-  MinLength,
 } from 'class-validator';
 import { MaxUtf8Bytes } from '../../public/max-utf8-bytes.decorator';
+import { NewPasswordLength } from '../../../../shared-kernel/text/new-password';
 
 /**
  * `POST /auth/password`: add the app password, or change it. Changing needs
@@ -15,7 +15,7 @@ import { MaxUtf8Bytes } from '../../public/max-utf8-bytes.decorator';
  */
 export class SetPasswordDto {
   @IsString()
-  @MinLength(6)
+  @NewPasswordLength()
   @MaxUtf8Bytes(72)
   newPassword!: string;
 

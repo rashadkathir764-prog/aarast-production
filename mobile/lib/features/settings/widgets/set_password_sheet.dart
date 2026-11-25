@@ -84,7 +84,8 @@ class _SetPasswordSheetState extends State<_SetPasswordSheet> {
   String? get _nextError {
     if (!_attempted) return null;
     final value = _next.text;
-    if (value.length < 6) return '6 أحرف أو أكثر';
+    // RA-BE-149: the server takes 8 or more.
+    if (value.length < 8) return '8 أحرف أو أكثر';
     if (!isApplicationPasswordWithinByteLimit(value)) {
       return context.say('طويلة، خلّها أقصر', 'طويلة، خلّيها أقصر');
     }
@@ -169,7 +170,7 @@ class _SetPasswordSheetState extends State<_SetPasswordSheet> {
           controller: _next,
           obscureText: true,
           autofillHints: const [AutofillHints.newPassword],
-          helper: '6 أحرف أو أكثر',
+          helper: '8 أحرف أو أكثر',
           helperColor: AarastV3Color.textMuted,
           errorText: _nextError,
           onChanged: (_) => setState(() {}),

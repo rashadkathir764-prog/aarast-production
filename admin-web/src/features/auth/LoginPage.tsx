@@ -33,11 +33,12 @@ function neutralRecoveryNotice(deliveryStatus: OtpDeliveryStatus): string {
     : 'تم قبول طلب الاستعادة، لكن لم نتأكد من وصول الرمز إلى واتساب بعد.';
 }
 
-// The application rule: any letters or digits, 6 or more. Admin sign-in
-// always asks for a WhatsApp code as well.
+// The application rule (RA-BE-149): any letters or digits, 8 or more; only a
+// new password is checked, a password set before still signs in. Admin
+// sign-in always asks for a WhatsApp code as well.
 // The server's limit is 72 bytes (MaxUtf8Bytes): an Arabic letter takes two.
 function passwordProblem(value: string): string | null {
-  if (value.length < 6) return 'كلمة المرور يجب أن تكون 6 خانات على الأقل.';
+  if (value.length < 8) return 'كلمة المرور يجب أن تكون 8 خانات على الأقل.';
   if (new TextEncoder().encode(value).length > 72) {
     return 'كلمة المرور طويلة: 72 حرفًا إنجليزيًا أو 36 عربيًا بالكثير.';
   }
@@ -346,7 +347,7 @@ export function LoginPage() {
                 value={newPassword}
                 onChange={(event) => setNewPassword(event.target.value)}
                 autoComplete="new-password"
-                minLength={6}
+                minLength={8}
                 maxLength={72}
                 required
                 autoFocus
@@ -359,11 +360,11 @@ export function LoginPage() {
                   setNewPasswordConfirmation(event.target.value)
                 }
                 autoComplete="new-password"
-                minLength={6}
+                minLength={8}
                 maxLength={72}
                 required
               />
-              <DeskNote>6 خانات على الأقل: أرقام أو حروف أو الاثنان معًا.</DeskNote>
+              <DeskNote>8 خانات على الأقل: أرقام أو حروف أو الاثنان معًا.</DeskNote>
             </>
           ) : (
             <>

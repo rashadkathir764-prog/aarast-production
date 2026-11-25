@@ -246,7 +246,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   }
 
   List<Widget> _passwordStep() {
-    final longEnough = _passwordController.text.length >= 6;
+    final longEnough = _passwordController.text.length >= 8;
     return [
       AuthHeading(
         title: context.say('اختر كلمة مرور جديدة', 'اختاري كلمة مرور جديدة'),
@@ -277,10 +277,11 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                     'اكتبي كلمة المرور الجديدة',
                   );
                 }
-                if (value.length < 6) {
+                // RA-BE-149: the server takes 8 or more.
+                if (value.length < 8) {
                   return context.say(
-                    'قصيرة. خلّها 6 أحرف أو أكثر',
-                    'قصيرة. خلّيها 6 أحرف أو أكثر',
+                    'قصيرة. خلّها 8 أحرف أو أكثر',
+                    'قصيرة. خلّيها 8 أحرف أو أكثر',
                   );
                 }
                 if (!isApplicationPasswordWithinByteLimit(value)) {
@@ -677,7 +678,7 @@ class _ResetSteps extends StatelessWidget {
   }
 }
 
-/// «6 أحرف أو أكثر», green once the new password is long enough.
+/// «8 أحرف أو أكثر», green once the new password is long enough.
 class _PasswordRule extends StatelessWidget {
   const _PasswordRule({required this.met});
 
@@ -696,7 +697,7 @@ class _PasswordRule extends StatelessWidget {
         ),
         const SizedBox(width: AarastV3Space.x1),
         Text(
-          '6 أحرف أو أكثر',
+          '8 أحرف أو أكثر',
           style: JourneyType.of(
             JourneyType.small,
             weight: JourneyType.bold,

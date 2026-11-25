@@ -312,7 +312,7 @@ Requires JWT. Returns the safe current user object without `passwordHash`.
   `/api/v1/auth/otp/request`. The response never reveals whether the phone belongs
   to an account.
 - `POST /api/v1/auth/password-reset/confirm` — body `{ phone, code, newPassword }`.
-  Consumes the OTP, sets the new password (min 6 chars, max 72 UTF-8 bytes),
+  Consumes the OTP, sets the new password (min 8 chars (RA-BE-149), max 72 UTF-8 bytes),
   and revokes every application refresh token so app sessions die with the old
   password without logging out the independent administrator realm.
   Before valid phone proof, unknown phones and wrong codes are indistinguishable.
@@ -2083,7 +2083,7 @@ After the token and phone match, the request response includes
 `accountSetupRequired`. This boolean is mandatory. It is `true` only when the
 invited phone still needs an application credential, including the bounded
 historical recovery above. The client then collects the contributor name, a
-6-to-72-byte password, and matching password confirmation before calling
+password of 8 characters to 72 bytes (RA-BE-149), and matching password confirmation before calling
 `POST /api/v1/invites/:token/verify-otp` with `{ phone, code, name, password }`.
 That verification is bound again to the exact live token and phone. It consumes
 the same invite-bound `INVITE_ACCESS` OTP, creates or claims the application

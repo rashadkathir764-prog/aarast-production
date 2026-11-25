@@ -60,11 +60,21 @@ void main() {
     await tester.pumpAndSettle();
     expect(saved, isEmpty);
     expect(codeRequests, 0);
-    expect(find.text('6 أحرف أو أكثر'), findsWidgets);
+    expect(find.text('8 أحرف أو أكثر'), findsWidgets);
+
+    // RA-BE-149: the server takes 8 or more, so 7 are refused here first.
+    await tester.enterText(
+      find.byKey(const ValueKey('set-password-new')),
+      'abcdefg',
+    );
+    await tester.tap(find.byKey(const ValueKey('set-password-save')));
+    await tester.pumpAndSettle();
+    expect(saved, isEmpty);
+    expect(codeRequests, 0);
 
     await tester.enterText(
       find.byKey(const ValueKey('set-password-new')),
-      'abcdef',
+      'abcdefgh',
     );
     expect(find.text('أرسل رمز لرقمك'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('set-password-save')));
@@ -83,7 +93,7 @@ void main() {
     );
     await tester.tap(find.byKey(const ValueKey('set-password-save')));
     await tester.pumpAndSettle();
-    expect(saved, [('abcdef', null, '123456')]);
+    expect(saved, [('abcdefgh', null, '123456')]);
     expect(codeRequests, 1);
     expect(find.text('إضافة كلمة مرور'), findsNothing);
   });
@@ -99,7 +109,7 @@ void main() {
     expect(find.text('تغيير كلمة المرور'), findsOneWidget);
     await tester.enterText(
       find.byKey(const ValueKey('set-password-new')),
-      'abcdef',
+      'abcdefgh',
     );
     await tester.tap(find.byKey(const ValueKey('set-password-save')));
     await tester.pumpAndSettle();
@@ -111,7 +121,7 @@ void main() {
     );
     await tester.tap(find.byKey(const ValueKey('set-password-save')));
     await tester.pumpAndSettle();
-    expect(saved, [('abcdef', 'old-one', null)]);
+    expect(saved, [('abcdefgh', 'old-one', null)]);
     expect(find.text('كلمة المرور الحالية غلط.'), findsOneWidget);
   });
 }

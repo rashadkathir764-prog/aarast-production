@@ -190,7 +190,7 @@ void main() {
 
     await _typeCode(tester, '123456');
     expect(find.text('اختر كلمة مرور جديدة'), findsOneWidget);
-    expect(find.text('6 أحرف أو أكثر'), findsOneWidget);
+    expect(find.text('8 أحرف أو أكثر'), findsOneWidget);
     expect(find.textContaining('بنطلعك من كل الأجهزة'), findsOneWidget);
 
     await _savePassword(tester, 'new-secret');
@@ -213,6 +213,21 @@ void main() {
     await _savePassword(tester, 'new-secret', again: 'different');
 
     expect(find.text('ما تطابقت مع الكلمة الجديدة'), findsOneWidget);
+    expect(repository.lastConfirmPassword, isNull);
+  });
+
+  // RA-BE-149: the server takes 8 or more, so 7 are refused here first.
+  testWidgets('reset flow refuses a new password under 8 characters', (
+    tester,
+  ) async {
+    final repository = await _fakeRepository();
+    await _pumpResetScreen(tester, repository);
+
+    await _sendCode(tester);
+    await _typeCode(tester, '123456');
+    await _savePassword(tester, 'secret7');
+
+    expect(find.text('قصيرة. خلّها 8 أحرف أو أكثر'), findsOneWidget);
     expect(repository.lastConfirmPassword, isNull);
   });
 

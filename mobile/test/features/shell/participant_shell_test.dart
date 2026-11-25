@@ -253,7 +253,10 @@ void main() {
       await harness.pump(tester);
 
       // x06 without its controls: the plan's next step and who does it.
-      expect(find.text('أهلًا الوالد'), findsOneWidget);
+      // RA-MO-335: «الوالد» is a place in the family, not a name; the
+      // greeting says «أهلًا فيك», as it does with no name at all.
+      expect(find.text('أهلًا فيك'), findsOneWidget);
+      expect(find.text('أهلًا الوالد'), findsNothing);
       expect(find.text('أنت تتابع بس'), findsOneWidget);
       expect(find.text('أنت يشوف بس'), findsNothing);
       expect(find.textContaining('الخطوة الجاية'), findsOneWidget);

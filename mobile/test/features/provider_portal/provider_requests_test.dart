@@ -329,7 +329,9 @@ void main() {
       expect(find.textContaining('وصل أمس'), findsOneWidget);
       expect(find.text('محمد الحمدي'), findsOneWidget);
       expect(find.textContaining('الخميس 21 يناير'), findsOneWidget);
-      expect(find.textContaining('أمانة العاصمة'), findsOneWidget);
+      // RA-MO-335: the capital and its city are one place, said once.
+      expect(find.text('صنعاء'), findsOneWidget);
+      expect(find.textContaining('أمانة العاصمة'), findsNothing);
       expect(find.text('124 تقريبًا'), findsOneWidget);
       expect(find.text('صور وفيديو'), findsOneWidget);
       expect(find.text('«نشتي تصوير الزفة من دخول العريس»'), findsOneWidget);

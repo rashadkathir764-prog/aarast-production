@@ -39,15 +39,42 @@ String guestEventLabel(PlanEvent event, JourneyProfile profile) {
 }
 
 /// Where the server's word for an event's kind differs from the app's own
-/// (the bride's «النسمة» is spelt alike on both since D116). The server
-/// names the groom's night and afternoon by their kind in any plan, so the
-/// preview of what a guest gets says what he gets (the app names them in
-/// the bride's words in her plan, D55).
-const _serverEventWords = {
-  PlanEventType.custom: 'مناسبة',
+/// (the bride's «النسمة» is spelt alike on both since D116).
+const _serverEventWords = {PlanEventType.custom: 'مناسبة'};
+
+/// D55: the kinds a bride's plan names in her words (`PlanEventType.label`),
+/// and the kind's own word kept where hers is already another occasion's.
+const _brideWordKinds = {
   PlanEventType.samra: 'السمرة',
   PlanEventType.maqeel: 'المقيل',
 };
+
+/// An occasion's name as the server tells it to a guest
+/// (`planEventLabel`): the couple's title, else its kind's word, in a
+/// bride's plan hers; a word another occasion of [planEvents] is already
+/// called by is not given twice.
+String _guestWord(
+  PlanEvent event,
+  JourneyProfile profile,
+  List<PlanEvent> planEvents,
+) {
+  final title = event.title?.trim() ?? '';
+  if (title.isNotEmpty) return title;
+  final kindWord = _brideWordKinds[event.type];
+  if (kindWord != null && profile.isBride) {
+    final hers = event.type.label(profile);
+    final taken = {
+      for (final other in planEvents)
+        if ((other.title?.trim() ?? '').isNotEmpty ||
+            !_brideWordKinds.containsKey(other.type))
+          (other.title?.trim() ?? '').isNotEmpty
+              ? other.title!.trim()
+              : _serverEventWords[other.type] ?? other.type.label(profile),
+    };
+    return taken.contains(hers) ? kindWord : hers;
+  }
+  return _serverEventWords[event.type] ?? event.type.label(profile);
+}
 
 /// D116: the plan's occasions as the guests tab reads them: the wedding
 /// first, the others by day (an undated one last). A plan whose wedding row
@@ -210,18 +237,17 @@ String? planPlaceLabel(Map<String, dynamic>? location, String? city) {
   return null;
 }
 
-/// D116: the occasion as the server's text names it.
+/// D116: the occasion as the server's text names it, among the plan's
+/// occasions [planEvents].
 InvitationOccasionText occasionText(
   PlanEvent event,
   JourneyProfile profile, {
+  required List<PlanEvent> planEvents,
   DateTime? weddingDate,
   String? fallbackPlace,
 }) {
-  final title = event.title?.trim() ?? '';
   return InvitationOccasionText(
-    label: title.isNotEmpty
-        ? title
-        : _serverEventWords[event.type] ?? event.type.label(profile),
+    label: _guestWord(event, profile, planEvents),
     isWedding: event.isMain,
     date: event.isMain ? weddingDate : event.date,
     timeSlot: event.slot?.wire,

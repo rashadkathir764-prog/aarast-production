@@ -61,12 +61,55 @@ export const PLAN_EVENT_TIME_SLOT_LABELS: Record<PlanEventTimeSlot, string> = {
   EXACT: '',
 };
 
-export function planEventLabel(event: {
-  type: PlanEventType;
-  title: string | null;
-}): string {
+/**
+ * D55: in a bride's plan the groom's night and afternoon are hers, named in
+ * her words as the phone names them (`PlanEventType.label`).
+ */
+const BRIDE_EVENT_WORDS: Partial<Record<PlanEventType, string>> = {
+  SAMRA: PLAN_EVENT_LABELS.HAFLA,
+  MAQEEL: PLAN_EVENT_LABELS.NASHMA,
+};
+
+/** What an occasion's name depends on beyond itself: its plan. */
+export interface PlanEventNaming {
+  bride: boolean;
+  /** The names the plan's other occasions are already called by. */
+  taken: ReadonlySet<string>;
+}
+
+type NamedEvent = { type: PlanEventType; title: string | null };
+
+function ownName(event: NamedEvent): string {
+  return event.title?.trim() || PLAN_EVENT_LABELS[event.type];
+}
+
+/** The plan's naming, from its persona and all its occasions. */
+export function planEventNaming(
+  persona: string | null | undefined,
+  events: readonly NamedEvent[],
+): PlanEventNaming {
+  return {
+    bride: persona === 'BRIDE',
+    taken: new Set(
+      events
+        .filter((event) => event.title?.trim() || !BRIDE_EVENT_WORDS[event.type])
+        .map(ownName),
+    ),
+  };
+}
+
+/**
+ * The guests' name for an occasion: the couple's title, else its kind's
+ * word, in a bride's plan hers (D55). A word another occasion of her plan is
+ * already called by (her own «الحفلة», or one titled so) is not given twice:
+ * the groom's night keeps «السمرة» there, as its afternoon «المقيل» (a date
+ * cannot tell them apart: an occasion may have none, or the same day).
+ */
+export function planEventLabel(event: NamedEvent, naming: PlanEventNaming): string {
   const title = event.title?.trim() ?? '';
-  return title || PLAN_EVENT_LABELS[event.type];
+  if (title) return title;
+  const hers = naming.bride ? BRIDE_EVENT_WORDS[event.type] : undefined;
+  return hers && !naming.taken.has(hers) ? hers : PLAN_EVENT_LABELS[event.type];
 }
 
 /** «الساعة 8:30» or the slot's name; nothing when neither was set. */

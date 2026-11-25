@@ -462,6 +462,7 @@ class _GuestSendScreenState extends State<GuestSendScreen> {
                       occasionText(
                         entry.event,
                         profile,
+                        planEvents: occasions,
                         weddingDate: weddingDate,
                         fallbackPlace: place,
                       ),
@@ -550,6 +551,7 @@ String _previewText(
         occasionText(
           entry.event,
           profile,
+          planEvents: occasions,
           weddingDate: weddingDate,
           fallbackPlace: place,
         ),

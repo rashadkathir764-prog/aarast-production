@@ -253,6 +253,7 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
         occasionText(
           entry,
           profile,
+          planEvents: occasions,
           weddingDate: plan?.weddingDate,
           fallbackPlace: planPlaceLabel(plan?.location, plan?.city),
         ),

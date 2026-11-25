@@ -58,6 +58,7 @@ import {
   isAcceptableMapUrl,
   mergeInvitationCard,
   planEventLabel,
+  planEventNaming,
   planEventTimeLabel,
 } from "../modules/guests/domain/invitation-card";
 import {
@@ -981,7 +982,9 @@ export class GuestRsvpService {
         confirmed: answer.confirmed,
         companions: answer.companions,
         respondedAt: answer.respondedAt,
-        eventLabel: event ? planEventLabel(event) : "المناسبة",
+        eventLabel: event
+          ? planEventLabel(event, planEventNaming(plan.persona, context.events))
+          : "المناسبة",
         planEventId,
       });
     }
@@ -1064,10 +1067,11 @@ export class GuestRsvpService {
     context: InvitationContext,
   ): GuestOccasion[] {
     const wedding = this.weddingRow(context.events);
+    const naming = planEventNaming(plan.persona, context.events);
     const weddingOccasion: GuestOccasion = {
       id: wedding?.id ?? `wedding_${plan.id}`,
       isWedding: true,
-      label: planEventLabel({ type: "WEDDING", title: wedding?.title ?? null }),
+      label: planEventLabel({ type: "WEDDING", title: wedding?.title ?? null }, naming),
       date: plan.weddingDate,
       timeSlot: wedding?.timeSlot ?? null,
       exactTime: wedding?.exactTime ?? null,
@@ -1088,7 +1092,7 @@ export class GuestRsvpService {
         return {
           id: event.id,
           isWedding: false,
-          label: planEventLabel(event),
+          label: planEventLabel(event, naming),
           date: event.date,
           timeSlot: event.timeSlot,
           exactTime: event.exactTime,

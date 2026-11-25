@@ -60,6 +60,7 @@ import {
 import {
   invitableEvents,
   planEventLabel,
+  planEventNaming,
 } from "../modules/guests/domain/invitation-card";
 import { PLAN_GUESTS_MAX } from "../modules/guests/public/guest-text-limits";
 import {
@@ -847,7 +848,7 @@ export class GuestsService {
             ? []
             : await this.eventCounters(
                 tx,
-                weddingPlanId,
+                context.plan,
                 guests.map((guest) => guest.id),
               );
 
@@ -983,13 +984,14 @@ export class GuestsService {
   /** D83: the summary's figures per event, in the plan's order. */
   private async eventCounters(
     tx: Prisma.TransactionClient,
-    weddingPlanId: string,
+    plan: { id: string; persona: string | null },
     guestIds: readonly string[],
   ): Promise<GuestEventCounters[]> {
     const [events, invites] = await Promise.all([
-      this.plans.listPlanEvents(tx, weddingPlanId),
+      this.plans.listPlanEvents(tx, plan.id),
       listGuestEventInvites(tx, guestIds),
     ]);
+    const naming = planEventNaming(plan.persona, events);
     return invitableEvents(events).flatMap((event) => {
       const rows = invites.filter((row) => row.planEventId === event.id);
       if (rows.length === 0) return [];
@@ -998,7 +1000,7 @@ export class GuestsService {
       return [
         {
           planEventId: event.id,
-          label: planEventLabel(event),
+          label: planEventLabel(event, naming),
           invited: rows.length,
           confirmed: count(GuestAttendanceStatus.CONFIRMED),
           declined: count(GuestAttendanceStatus.DECLINED),

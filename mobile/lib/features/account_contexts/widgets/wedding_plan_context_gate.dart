@@ -127,6 +127,11 @@ class WeddingPlanContextGate extends StatelessWidget {
     final removed = samePlan
         ? null
         : controller.removedPlanPath(weddingPlanId)?.planOwnerRemovedYou;
+    if (removed != null) {
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => controller.removedPlanPathShown(weddingPlanId),
+      );
+    }
     return _MismatchedPlanContext(
       title: samePlan ? 'هذا القسم مش مفتوح لك' : 'هذي الخطة ما عادت لك',
       message: samePlan

@@ -49,7 +49,9 @@ class AccountContextController extends ChangeNotifier {
        _readActiveWeddingPlanId = readActiveWeddingPlanId,
        _resetContextStateCallback = resetContextState,
        _beforeRefresh = beforeRefresh,
-       _afterRefresh = afterRefresh;
+       _afterRefresh = afterRefresh {
+    _restoreRemovedPlanPaths();
+  }
 
   static const _contextChangedNotice =
       'تغيّر اللي مفتوح لك، وحدّثناه عشان نحمي بياناتك.';
@@ -82,9 +84,41 @@ class AccountContextController extends ChangeNotifier {
 
   /// RA-MO-339: the path last known of a plan the participant was taken off
   /// (its owner's word, its persona), so the gate that shuts it says whose
-  /// plan it was; null for a plan never held, or held again.
+  /// plan it was; null for a plan never held, or held again. Kept on the
+  /// phone until the gate has said it (an app closed before then says it on
+  /// its next run), and for this run after that; gone with the account.
   final Map<String, AccountContext> _removedPlanPaths = {};
+  final Set<String> _removalsShown = {};
   AccountContext? removedPlanPath(String planId) => _removedPlanPaths[planId];
+
+  /// The gate said whose plan [planId] was: the phone stops keeping it.
+  void removedPlanPathShown(String planId) {
+    if (!_removedPlanPaths.containsKey(planId)) return;
+    if (!_removalsShown.add(planId)) return;
+    unawaited(_persistRemovedPlanPaths());
+  }
+
+  void _restoreRemovedPlanPaths() {
+    for (final MapEntry(:key, :value)
+        in _authStorage.readRemovedPlanPaths().entries) {
+      try {
+        _removedPlanPaths[key] = AccountContext.fromJson(value);
+      } on FormatException catch (error) {
+        appDebugNote('Removed plan $key not restored: $error');
+      }
+    }
+  }
+
+  Future<void> _persistRemovedPlanPaths() async {
+    try {
+      await _authStorage.saveRemovedPlanPaths({
+        for (final MapEntry(:key, :value) in _removedPlanPaths.entries)
+          if (!_removalsShown.contains(key)) key: value.toJson(),
+      });
+    } on Object catch (error) {
+      appDebugNote('Removed plans not kept: $error');
+    }
+  }
 
   List<AccountContext> _contexts = const [];
   AccountContext? _selectedContext;
@@ -288,9 +322,12 @@ class AccountContextController extends ChangeNotifier {
         ...blockedPlanIds,
       };
       _removedPlanPaths.removeWhere((planId, _) => stillHeld.contains(planId));
+      _removalsShown.removeWhere(stillHeld.contains);
       for (final planId in heldAsParticipant.difference(stillHeld)) {
         _removedPlanPaths[planId] = heldPaths[planId]!;
+        _removalsShown.remove(planId);
       }
+      await _persistRemovedPlanPaths();
       await _forgetRemovedPlans(heldAsParticipant, stillHeld: stillHeld);
       if (!_sameContext(previousContext, selected)) {
         appLogEvent(
@@ -567,6 +604,7 @@ class AccountContextController extends ChangeNotifier {
     ++_generation;
     _contexts = const [];
     _removedPlanPaths.clear();
+    _removalsShown.clear();
     _selectedContext = null;
     _permissionChange = null;
     _hasLoadedContexts = false;
@@ -585,6 +623,7 @@ class AccountContextController extends ChangeNotifier {
       await _resetContextState(previousContext, null);
       await _authStorage.clearAccountContextKey();
       await _authStorage.clearActivePlanId();
+      await _persistRemovedPlanPaths();
       return true;
     });
   }

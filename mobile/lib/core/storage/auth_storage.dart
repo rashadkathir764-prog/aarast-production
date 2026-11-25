@@ -20,6 +20,7 @@ class AuthStorage {
   static const _activePlanIdKey = 'aarast_active_plan_id';
   static const _accountContextKey = 'aarast_account_context_key';
   static const _codeRequestKey = 'aarast_code_request';
+  static const _removedPlanPathsKey = 'aarast_removed_plan_paths';
 
   final SharedPreferences _preferences;
 
@@ -65,6 +66,7 @@ class AuthStorage {
   final SensitiveValueVault? _sensitiveValueVault;
   SafeUser? _cachedUser;
   String? _cachedAccountContextKey;
+  String? _cachedRemovedPlanPaths;
   int _sessionEpoch = 0;
   Future<void> _sessionMutationTail = Future<void>.value();
 
@@ -120,6 +122,7 @@ class AuthStorage {
         _cachedAccountContextKey = migrated;
       }
     }
+    _cachedRemovedPlanPaths = await vault.read(_removedPlanPathsKey);
   }
 
   Future<String?> readAccessToken() async {
@@ -364,6 +367,55 @@ class AuthStorage {
     });
   }
 
+  /// RA-MO-339: the path last known of each plan the signed-in user was
+  /// taken off, by plan, as the server's wire shape, until the gate has said
+  /// whose plan it was. Only the signed-in user's own; in the secure vault
+  /// where there is one, as the kept context is.
+  Map<String, Map<String, dynamic>> readRemovedPlanPaths() {
+    final raw = _sensitiveValueVault != null
+        ? _cachedRemovedPlanPaths
+        : _preferences.getString(_removedPlanPathsKey);
+    final currentUserId = readUser()?.id;
+    if (raw == null || raw.isEmpty || currentUserId == null) return const {};
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map<String, dynamic> ||
+          decoded['userId'] != currentUserId ||
+          decoded['plans'] is! Map<String, dynamic>) {
+        return const {};
+      }
+      return {
+        for (final entry in (decoded['plans'] as Map<String, dynamic>).entries)
+          if (entry.value is Map<String, dynamic>)
+            entry.key: entry.value as Map<String, dynamic>,
+      };
+    } on FormatException {
+      return const {};
+    }
+  }
+
+  Future<void> saveRemovedPlanPaths(
+    Map<String, Map<String, dynamic>> paths,
+  ) async {
+    final epoch = _sessionEpoch;
+    await _enqueueSessionMutation(() async {
+      if (!isSessionEpochCurrent(epoch)) return;
+      final userId = readUser()?.id;
+      if (paths.isEmpty || userId == null) {
+        await _clearRemovedPlanPaths();
+        return;
+      }
+      final stored = jsonEncode({'userId': userId, 'plans': paths});
+      final vault = _sensitiveValueVault;
+      if (vault == null) {
+        await _preferences.setString(_removedPlanPathsKey, stored);
+        return;
+      }
+      await vault.write(_removedPlanPathsKey, stored);
+      if (isSessionEpochCurrent(epoch)) _cachedRemovedPlanPaths = stored;
+    });
+  }
+
   Future<void> clear() async {
     final epoch = ++_sessionEpoch;
     await _enqueueSessionMutation(() async {
@@ -409,6 +461,13 @@ class AuthStorage {
     _cachedUser = null;
     await _preferences.remove(_activePlanIdKey);
     await _clearAccountContextKey();
+    await _clearRemovedPlanPaths();
+  }
+
+  Future<void> _clearRemovedPlanPaths() async {
+    await _sensitiveValueVault?.delete(_removedPlanPathsKey);
+    await _preferences.remove(_removedPlanPathsKey);
+    _cachedRemovedPlanPaths = null;
   }
 
   Future<void> _clearAccountContextKey() async {

@@ -16,6 +16,7 @@ import {
 import { AuthService } from "../src/modules/identity/internal/auth/auth.service";
 import { AuthSessionRepository } from "../src/modules/identity/infrastructure/auth-session.repository";
 import { authService } from "./support/owner-ports";
+import { identityJwtModuleOptions } from "../src/modules/identity/internal/auth/jwt-keys";
 
 test("refresh token policy creates opaque hashed expiring tokens", () => {
   const applicationToken = createRefreshTokenValue();
@@ -255,7 +256,22 @@ test("refresh token schema and authenticated lifecycle stay wired", () => {
   assert.match(sessionRepository, /refreshToken\.create/);
   assert.match(sessionRepository, /refreshToken\.update/);
   assert.match(sessionRepository, /refreshToken\.updateMany/);
-  assert.match(identityAuthInternalModule, /JWT_ACCESS_EXPIRES_IN/);
+  // RA-BE-149: the module registers the JWT options of jwt-keys, which keep
+  // the access lifetime from JWT_ACCESS_EXPIRES_IN (15 minutes by default).
+  assert.match(
+    identityAuthInternalModule,
+    /JwtModule\.registerAsync\(\{\s*useFactory: \(\) => identityJwtModuleOptions\(\),/,
+  );
+  const environment = {
+    JWT_SECRET: "k3Jq9vX2mP7rT4wZ8nB5cL1dF6hG0sYaQe",
+    NODE_ENV: "test",
+  } as NodeJS.ProcessEnv;
+  assert.equal(identityJwtModuleOptions(environment).signOptions?.expiresIn, "15m");
+  assert.equal(
+    identityJwtModuleOptions({ ...environment, JWT_ACCESS_EXPIRES_IN: "7m" }).signOptions
+      ?.expiresIn,
+    "7m",
+  );
 });
 
 test("disabling an account revokes all active refresh sessions", () => {

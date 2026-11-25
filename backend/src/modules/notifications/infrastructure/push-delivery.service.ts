@@ -211,13 +211,23 @@ export class PushDeliveryService implements PushDeliveryPort {
       notificationId: notification.id,
       type: notification.type,
     };
+    // RA-BE-190: the messages of one conversation are one alert on the
+    // phone (Android: one collapse key and tag; iOS: one thread); every
+    // other notification is its own.
+    const thread =
+      notification.type === NotificationType.CHAT_MESSAGE_RECEIVED &&
+      notification.entityType === "conversation" &&
+      notification.entityId
+        ? `aarast_chat_${notification.entityId}`
+        : null;
+    const alertKey = thread ?? `aarast_${notification.id}`;
     return {
       notification: copy,
       data,
       android: {
         priority: "high" as const,
         ttl: PUSH_TTL_MS,
-        collapseKey: `aarast_${notification.id}`,
+        collapseKey: alertKey,
         notification: {
           channelId: "aarast_updates",
           icon: "ic_stat_aarast",
@@ -225,9 +235,10 @@ export class PushDeliveryService implements PushDeliveryPort {
           defaultSound: true,
           priority: "high" as const,
           visibility: "private" as const,
-          tag: `aarast_${notification.id}`,
+          tag: alertKey,
         },
       },
+      ...(thread ? { apns: { payload: { aps: { threadId: thread } } } } : {}),
     };
   }
 }

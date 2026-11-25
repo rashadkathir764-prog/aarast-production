@@ -665,3 +665,54 @@ test("a retry sends only to the installations the first try did not reach", asyn
   ]);
   assert.equal(sentTo.length, 3, "every phone was reached: nothing more goes out");
 });
+
+// RA-BE-190: a chat made one alert per message. The messages of one
+// conversation share an Android collapse key and tag, and an iOS thread id,
+// so the phone shows one grouped alert; every other type keeps its own.
+test("chat pushes of one conversation share a collapse key and a thread; other pushes keep their own", async () => {
+  const sent: any[] = [];
+  const notifications: Record<string, any> = {
+    "chat-1": { id: "chat-1", type: NotificationType.CHAT_MESSAGE_RECEIVED, entityType: "conversation", entityId: "conversation-9" },
+    "chat-2": { id: "chat-2", type: NotificationType.CHAT_MESSAGE_RECEIVED, entityType: "conversation", entityId: "conversation-9" },
+    "chat-3": { id: "chat-3", type: NotificationType.CHAT_MESSAGE_RECEIVED, entityType: "conversation", entityId: "conversation-8" },
+    "task-1": { id: "task-1", type: NotificationType.TASK_ASSIGNED, entityType: "task", entityId: "task-3" },
+  };
+  const service = new PushDeliveryService(
+    {
+      notification: {
+        findUnique: async ({ where }: any) => ({
+          userId: "user-1",
+          data: null,
+          readAt: null,
+          ...notifications[where.id],
+        }),
+      },
+      notificationPreference: { findUnique: async () => ({ pushEnabled: true }) },
+      pushInstallation: {
+        findMany: async () => [{ id: "installation-a", fid: "fid-a", updatedAt: new Date() }],
+      },
+    } as never,
+    {
+      enabled: true,
+      sendEachForMulticast: async (message: any) => {
+        sent.push(message);
+        return { successCount: 1, failureCount: 0, responses: [{ success: true }] };
+      },
+    } as never,
+  );
+  for (const id of ["chat-1", "chat-2", "chat-3", "task-1"]) {
+    await service.dispatchNotification(id);
+  }
+  const [first, second, other, task] = sent;
+  assert.equal(first.android.collapseKey, "aarast_chat_conversation-9");
+  assert.equal(first.android.notification.tag, "aarast_chat_conversation-9");
+  assert.equal(second.android.collapseKey, first.android.collapseKey);
+  assert.equal(first.apns.payload.aps.threadId, "aarast_chat_conversation-9");
+  assert.equal(second.apns.payload.aps.threadId, first.apns.payload.aps.threadId);
+  assert.notEqual(other.android.collapseKey, first.android.collapseKey);
+  assert.equal(other.apns.payload.aps.threadId, "aarast_chat_conversation-8");
+  // The lock screen still carries no conversation name or text.
+  assert.equal(first.data.conversationId, undefined);
+  assert.equal(task.android.collapseKey, "aarast_task-1");
+  assert.equal(task.apns, undefined);
+});

@@ -2,12 +2,9 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-import '../../support/library_source.dart';
+import '../../support/app_route_table.dart';
 
 void main() {
-  // The router's route trees live in per-area part files of the router
-  // library (spec M6); the contract reads the whole library.
-  final router = readLibrarySource('lib/core/routing/app_router.dart');
   final main = File('lib/main.dart').readAsStringSync();
   final mainShell = File(
     'lib/features/shell/main_shell.dart',
@@ -41,6 +38,9 @@ void main() {
     },
   );
 
+  // RA-TS-24: this read the router's source for `path: '...'` lines. The
+  // route table of `AppRouter.create` is read instead, so a path built any
+  // other way, or a renamed parameter, is judged by what the router serves.
   test('router registers the real canonical money screens only', () {
     for (final path in <String>[
       '/wedding-plans/:id/money',
@@ -51,7 +51,7 @@ void main() {
       '/wedding-plans/:id/money/costs/create',
       '/wedding-plans/:id/money/costs/:costId/edit',
     ]) {
-      expect(router, contains("path: '$path'"), reason: path);
+      expect(isAppRoute(path), isTrue, reason: path);
     }
 
     for (final removedPath in <String>[
@@ -60,11 +60,11 @@ void main() {
       '/wedding-plans/:id/financial-commitments',
       '/wedding-plans/:id/payments/record',
       // The groom cleanup: «البنود» (c02) and «الدفعات» (c03) replace them.
-      "'/wedding-plans/:id/money/costs'",
-      "'/wedding-plans/:id/money/schedules'",
-      "'/wedding-plans/:id/money/costs/:costId/schedules/create'",
+      '/wedding-plans/:id/money/costs',
+      '/wedding-plans/:id/money/schedules',
+      '/wedding-plans/:id/money/costs/:costId/schedules/create',
     ]) {
-      expect(router, isNot(contains(removedPath)), reason: removedPath);
+      expect(isAppRoute(removedPath), isFalse, reason: removedPath);
     }
   });
 

@@ -12,6 +12,10 @@ import { GlobalExceptionFilter } from './platform/http/global-exception.filter';
 import { largeJsonBody } from './platform/http/large-json-body';
 import { StripNulPipe } from './platform/http/strip-nul.pipe';
 import { requestObservability } from './platform/observability/request-observability.middleware';
+import {
+  scrubSentryBreadcrumb,
+  scrubSentryEvent,
+} from './platform/observability/sentry-scrub';
 import { RedisIoAdapter } from './platform/redis/redis-io.adapter';
 import { getJwtSecret } from './modules/identity/internal/auth/jwt-secret';
 import {
@@ -42,6 +46,11 @@ async function bootstrap() {
       dsn: sentryDsn,
       environment: process.env.NODE_ENV ?? 'development',
       tracesSampleRate: 0.1,
+      // RA-BE-149: no phone, token, name or amount leaves for Sentry.
+      sendDefaultPii: false,
+      beforeSend: scrubSentryEvent,
+      beforeSendTransaction: scrubSentryEvent,
+      beforeBreadcrumb: scrubSentryBreadcrumb,
     });
   }
 

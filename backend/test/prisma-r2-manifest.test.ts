@@ -35,7 +35,7 @@ const expectedOwners: ManifestOwner[] = [
   { owner: 'media', file: 'media.prisma', models: ['MediaUploadTicket'], enums: ['MediaUploadStatus'] },
   { owner: 'messaging', file: 'messaging.prisma', models: ['Conversation', 'ConversationParticipant', 'ConversationEvent', 'ChatMessage', 'ChatAttachment', 'ConversationReport'], enums: ['ConversationScope', 'ConversationEventType', 'ConversationReportStatus'] },
   { owner: 'notifications', file: 'notifications.prisma', models: ['NotificationPreference', 'PushInstallation', 'Notification'], enums: ['NotificationType', 'NotificationPriority', 'PushPlatform'] },
-  { owner: 'planning', file: 'planning.prisma', models: ['WeddingPlan', 'PlanEvent'], enums: ['OnboardingPath', 'WeddingPersona', 'WeddingPlanStatus', 'PlanEventType', 'PlanEventTimeSlot'] },
+  { owner: 'planning', file: 'planning.prisma', models: ['WeddingPlan', 'PlanEvent', 'ErasedPlan'], enums: ['OnboardingPath', 'WeddingPersona', 'WeddingPlanStatus', 'PlanEventType', 'PlanEventTimeSlot'] },
   { owner: 'platform', file: 'platform.prisma', models: ['IdempotencyKey', 'OutboxEvent'], enums: [] },
   { owner: 'tasks', file: 'tasks.prisma', models: ['WeddingTask', 'WeddingTaskChecklistItem'], enums: ['WeddingTaskStatus', 'WeddingTaskPriority'] },
 ];
@@ -100,13 +100,14 @@ test('R2 Prisma manifest is exact plain data with immutable provenance and deter
   // RA-AD-26: + AdminTrustedDevice (remembered admin browsers, kept by the server).
   // RA-OP-32: + ErasedAccount (the re-deletion list a restore re-applies).
   // RA-BE-152: + ProviderProfileChange and its status (Q-39 (أ)).
-  assert.equal(manifest.modelOrder.length, 76);
-  assert.equal(manifest.owners.flatMap((entry) => entry.models).length, 76);
+  // RA-OP-32: + ErasedPlan (the plans a restore erases again).
+  assert.equal(manifest.modelOrder.length, 77);
+  assert.equal(manifest.owners.flatMap((entry) => entry.models).length, 77);
   // B5: + BudgetCategoryKind (the groom's mahr item, C1).
   // Home guidance: + BudgetItemSuggestion («ما أحتاجها» / «بعدين»).
   // D105: + EstimateCover. D107: + CostEntryKind.
   assert.equal(manifest.owners.flatMap((entry) => entry.enums).length, 63);
-  assert.equal(new Set(manifest.owners.flatMap((entry) => entry.models)).size, 76);
+  assert.equal(new Set(manifest.owners.flatMap((entry) => entry.models)).size, 77);
   assert.equal(new Set(manifest.owners.flatMap((entry) => entry.enums)).size, 63);
 });
 
@@ -128,7 +129,7 @@ test('R2 Prisma manifest equals the current registry and ordered live single-sch
   assert.deepEqual(registryOwnerModels(manifest.owners, registry), expectedRegistryOwners);
   assert.deepEqual(manifest.modelOrder, readLivePrismaModelOrder());
   assert.deepEqual(manifest.owners.flatMap((entry) => entry.enums).sort(), orderedDeclarations('enum').sort());
-  assert.equal(manifest.modelOrder.length, 76);
+  assert.equal(manifest.modelOrder.length, 77);
   assert.equal(orderedDeclarations('enum').length, 63);
 });
 

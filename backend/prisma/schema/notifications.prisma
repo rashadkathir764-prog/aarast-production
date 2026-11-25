@@ -71,6 +71,10 @@ model NotificationPreference {
   taskRemindersEnabled    Boolean  @default(true)
   paymentRemindersEnabled Boolean  @default(true)
   providerMessagesEnabled Boolean  @default(true)
+  // The booking reminders (a week and a day before the day) are their own
+  // switch, «الحجوزات»; the other booking notices stay with the offers and
+  // chats switch.
+  bookingRemindersEnabled Boolean  @default(true)
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
   user                    User     @relation(fields: [userId], references: [id], onDelete: Cascade)

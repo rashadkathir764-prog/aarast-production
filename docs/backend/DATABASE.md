@@ -552,6 +552,7 @@ rewrite as permission to restore a removed live model.
 | `AssistantAnswerReport` | 10 | `id`, `answerId`, `reporterUserId`, `resolvedAt`, `createdAt` |
 | `WeddingPlan` | 38 | `id`, `ownerUserId`, `onboardingCompletedAt`, `importMigrationId`, `deletionRequestedAt`, `createdAt`, `updatedAt` |
 | `PlanEvent` | 18 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
+| `ErasedPlan` | 2 | `weddingPlanId`, `erasedAt` |
 | `BudgetCategory` | 14 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
 | `WeddingCost` | 30 | `id`, `weddingPlanId`, `budgetCategoryId`, `providerId`, `quoteOfferId`, `privateToUserId`, `bookingFellThroughAt`, `createdAt` |
 | `CostPayment` | 17 | `id`, `weddingCostId`, `paidAt`, `paymentScheduleId`, `lowersScheduleId`, `reversalOfId`, `createdAt` |
@@ -567,7 +568,7 @@ rewrite as permission to restore a removed live model.
 | `ContributionEvent` | 20 | `id`, `historyScopeId`, `contributorTenureId`, `entityId`, `occurredAt`, `capturedAt` |
 | `PlanInvite` | 30 | `id`, `weddingPlanId`, `inviterUserId`, `inviteeUserId`, `expiresAt`, `acceptedAt`, `declinedAt`, `revokedAt` |
 | `OtpCode` | 14 | `id`, `expiresAt`, `consumedAt`, `createdAt`, `updatedAt`, `planInviteId` |
-| `NotificationPreference` | 12 | `id`, `userId`, `createdAt`, `updatedAt` |
+| `NotificationPreference` | 13 | `id`, `userId`, `createdAt`, `updatedAt` |
 | `PushInstallation` | 10 | `id`, `userId`, `lastSeenAt`, `sessionId`, `createdAt`, `updatedAt` |
 | `Notification` | 18 | `id`, `userId`, `weddingPlanId`, `entityId`, `readAt`, `archivedAt`, `createdAt`, `updatedAt` |
 | `OutboxEvent` | 14 | `id`, `aggregateId`, `nextAttemptAt`, `lockedAt`, `processedAt`, `createdAt`, `updatedAt` |
@@ -605,12 +606,12 @@ rewrite as permission to restore a removed live model.
 | `PortfolioItem` | 15 | `id`, `providerId`, `reviewedAt`, `reviewedById`, `createdAt`, `updatedAt` |
 | `ReviewReport` | 9 | `id`, `reviewId`, `reporterUserId`, `resolvedAt`, `createdAt`, `updatedAt` |
 | `ProviderProfileChange` | 14 | `id`, `providerId`, `cityId`, `primaryCategoryId`, `decidedAt`, `decidedById`, `createdAt`, `updatedAt` |
-| `Conversation` | 23 | `id`, `weddingPlanId`, `accountRequesterUserId`, `providerId`, `createdByUserId`, `lastActivityAt`, `closedAt`, `customerSideBlockedAt` |
+| `Conversation` | 24 | `id`, `weddingPlanId`, `accountRequesterUserId`, `providerId`, `createdByUserId`, `lastActivityAt`, `closedAt`, `pushStopsAt` |
 | `ConversationParticipant` | 11 | `id`, `conversationId`, `userId`, `joinedAt`, `revokedAt`, `lastReadAt`, `mutedAt`, `createdAt` |
 | `ConversationEvent` | 14 | `id`, `conversationId`, `quoteRequestId`, `quoteOfferId`, `actorUserId`, `occurredAt`, `createdAt` |
 | `ChatMessage` | 11 | `id`, `conversationId`, `senderUserId`, `editedAt`, `deletedAt`, `createdAt`, `updatedAt` |
 | `ChatAttachment` | 7 | `id`, `messageId`, `createdAt` |
 | `ConversationReport` | 9 | `id`, `conversationId`, `reporterUserId`, `createdAt`, `updatedAt` |
 
-Total models: 76
+Total models: 77
 <!-- DOCS-SYNC:END -->

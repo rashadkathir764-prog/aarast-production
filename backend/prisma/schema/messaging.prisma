@@ -31,6 +31,11 @@ model Conversation {
   createdByUserId         String?
   lastActivityAt          DateTime                  @default(now())
   closedAt                DateTime?
+  // Q-42 (أ): the conversation stays open to writing after a request is
+  // declined, cancelled or expired, or a booking ends; from this instant no
+  // notice or phone alert is made for its messages. Cleared by any new
+  // activity in the request (a new request, an offer).
+  pushStopsAt             DateTime?
   customerSideBlockedAt   DateTime?
   customerSideBlockedById String?
   providerSideBlockedAt   DateTime?

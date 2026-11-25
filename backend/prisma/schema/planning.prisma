@@ -119,3 +119,15 @@ model PlanEvent {
 
   @@index([weddingPlanId, date])
 }
+
+// RA-OP-32: the plans erased in the last 120 days, by id only, so that a
+// backup taken before an erasure and restored after it does not bring the
+// plan back: the restore script (deploy/aws/host/restore.sh) puts the list
+// back and marks those plans due, and the hourly purge erases them again.
+// Kept 120 days, past the oldest backup (90 days), then removed.
+model ErasedPlan {
+  weddingPlanId String   @id
+  erasedAt      DateTime
+
+  @@index([erasedAt])
+}

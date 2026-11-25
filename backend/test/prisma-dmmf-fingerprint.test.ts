@@ -300,12 +300,13 @@ test('writes an atomic fingerprint only under the real OS temp directory and acc
   // RA-ST-05: + ReviewReport. RA-ST-04: + AssistantAnswerReport.
   // D116: + GuestInvitationSend. RA-AD-26: + AdminTrustedDevice.
   // RA-OP-32: + ErasedAccount. RA-BE-152: + ProviderProfileChange and its status.
-  assert.equal(saved.modelCount, 76);
+  // RA-OP-32: + ErasedPlan.
+  assert.equal(saved.modelCount, 77);
   // B5: + BudgetCategoryKind (the groom's mahr item, C1). D72: + BudgetItemSuggestion.
   // D105: + EstimateCover. D107: + CostEntryKind. D116: + the card's photo
   // kind, and the send's kind, status and channel.
   assert.equal(saved.enumCount, 63);
-  assert.equal(saved.dmmf.models.length, 76);
+  assert.equal(saved.dmmf.models.length, 77);
   assert.equal(saved.dmmf.enums.length, 63);
 });
 

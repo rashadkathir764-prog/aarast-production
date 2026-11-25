@@ -12,7 +12,10 @@ import { Prisma } from "@prisma/client";
 // references now (SET NULL).
 
 const root = join(__dirname, "..");
-const read = (path: string) => readFileSync(join(root, path), "utf8");
+// Git's text=auto checks out CRLF on Windows and LF in CI; the checks read
+// the text Git stores, as published-migrations.cjs does.
+const read = (path: string) =>
+  readFileSync(join(root, path), "utf8").replace(/\r\n/g, "\n");
 const eraser = read("prisma/migrations/20261125150000_ledger_erasure_function/migration.sql");
 const references = read("prisma/migrations/20261125151000_people_references/migration.sql");
 

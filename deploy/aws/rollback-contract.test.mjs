@@ -17,22 +17,34 @@ const migrations = join(root, 'backend/prisma/migrations');
 
 const adds = `ALTER TABLE "User" ADD COLUMN "nickname" TEXT;\nCREATE TABLE "Note" ("id" TEXT NOT NULL, CONSTRAINT "Note_pkey" PRIMARY KEY ("id"));\nCREATE INDEX "Note_id_idx" ON "Note"("id");\n`;
 
+// The host has python3. A Windows checkout's python3 can be the Store's
+// placeholder, so there the fake bin and the direct run use the real python.
+const python = process.platform === 'win32' ? 'python' : 'python3';
+// An image tag holds a colon, which a Windows folder name cannot: the fake
+// docker keeps each image under its tag with the colon written as «_».
+const imageDir = (image) => image.replace(/:/g, '_');
+
 function check({ target, current, applied }) {
   const dir = mkdtempSync(join(tmpdir(), 'aarast-rollback-'));
   try {
     mkdirSync(join(dir, 'bin'));
+    if (process.platform === 'win32') {
+      // Windows python ends its lines with CRLF; the host's python3 does not.
+      writeFileSync(join(dir, 'bin', 'python3'), '#!/bin/bash\npython "$@" | tr -d \'\\r\'\nexit "${PIPESTATUS[0]}"\n');
+      chmodSync(join(dir, 'bin', 'python3'), 0o755);
+    }
     for (const [image, files] of Object.entries({ 'aarast-backend:old': target, 'aarast-backend:new': current })) {
       for (const [name, sql] of Object.entries(files)) {
-        const path = join(dir, 'images', image, 'prisma/migrations', name, 'migration.sql');
+        const path = join(dir, 'images', imageDir(image), 'prisma/migrations', name, 'migration.sql');
         mkdirSync(dirname(path), { recursive: true });
         writeFileSync(path, sql);
       }
-      mkdirSync(join(dir, 'images', image, 'prisma/migrations'), { recursive: true });
+      mkdirSync(join(dir, 'images', imageDir(image), 'prisma/migrations'), { recursive: true });
     }
     writeFileSync(join(dir, 'bin', 'docker'), `#!/bin/bash
 # docker run --rm --entrypoint <cmd> <image> <args...>
 [ "$1" = run ] || exit 2
-cd "${dir}/images/$5" 2>/dev/null || { echo "no image $5" >&2; exit 125; }
+cd "${dir}/images/\${5//:/_}" 2>/dev/null || { echo "no image $5" >&2; exit 125; }
 exec "$4" "\${@:6}"
 `);
     chmodSync(join(dir, 'bin', 'docker'), 0o755);
@@ -88,7 +100,7 @@ test('a migration the current image cannot show is not guessed at', () => {
 test('the real migrations of this repository are classified, not waved through', () => {
   const passwordless = '20261102120000_passwordless_app_sign_up';
   const sql = readFileSync(join(migrations, passwordless, 'migration.sql'), 'utf8');
-  const run = spawnSync('python3', [join(root, 'deploy/aws/host/migration-breaks-older-code.py'),
+  const run = spawnSync(python, [join(root, 'deploy/aws/host/migration-breaks-older-code.py'),
     `${passwordless}=${join(migrations, passwordless, 'migration.sql')}`], { encoding: 'utf8' });
   assert.ok(sql.length > 0);
   assert.equal(run.status, 1, 'the one-way migration OPERATIONS.md names is refused: ' + run.stdout);

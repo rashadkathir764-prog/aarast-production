@@ -52,24 +52,31 @@ test('the host ships the WAL every few minutes and a base backup every week', ()
   }
 });
 
+// The host's paths are POSIX. On a Windows checkout GNU tar reads «C:» as a
+// remote host, so the paths handed to the shell are written the bash way.
+const shellPath = (path) => process.platform === 'win32'
+  ? path.replace(/\\/g, '/').replace(/^([A-Za-z]):\//, (_, drive) => `/${drive.toLowerCase()}/`)
+  : path;
+
 /** Runs pitr-restore.sh with a fake aws (the bucket) and docker; returns what it did. */
 function pitr(target, { bases = ['20261110T030000Z', '20261117T030000Z', '20261124T030000Z'] } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'aarast-pitr-'));
+  const sh = shellPath(dir);
   try {
     mkdirSync(join(dir, 'bin'));
     mkdirSync(join(dir, 'seed/data'), { recursive: true });
     writeFileSync(join(dir, 'seed/data/PG_VERSION'), '16\n');
-    spawnSync('tar', ['-czf', join(dir, 'base.tar.gz'), '-C', join(dir, 'seed/data'), '.']);
+    spawnSync('tar', ['-czf', 'base.tar.gz', '-C', 'seed/data', '.'], { cwd: dir });
     writeFileSync(join(dir, 'bin/aws'), `#!/bin/bash
-echo "aws $*" >>"${dir}/calls"
+echo "aws $*" >>"${sh}/calls"
 case "$2" in
   ls) ${bases.map((b) => `echo "2026-11-17 03:00:00   1000 ${b}.tar.gz"`).join('; ') || ':'} ;;
-  cp) cp "${dir}/base.tar.gz" "\${@: -2:1}" 2>/dev/null || cp "${dir}/base.tar.gz" "$4" ;;
+  cp) cp "${sh}/base.tar.gz" "\${@: -2:1}" 2>/dev/null || cp "${sh}/base.tar.gz" "$4" ;;
   sync) mkdir -p "$4"; echo wal >"$4/000000010000000000000001" ;;
 esac
 `);
     writeFileSync(join(dir, 'bin/docker'), `#!/bin/bash
-echo "docker $*" >>"${dir}/calls"
+echo "docker $*" >>"${sh}/calls"
 case "$1" in
   exec) case "$*" in *pg_is_in_recovery*) echo f ;; esac ;;
 esac
@@ -77,7 +84,7 @@ esac
     for (const name of ['aws', 'docker']) chmodSync(join(dir, 'bin', name), 0o755);
     const run = spawnSync('bash', [join(root, 'deploy/aws/host/pitr-restore.sh'), 'ops-bucket', target], {
       encoding: 'utf8',
-      env: { ...process.env, PATH: `${join(dir, 'bin')}:${process.env.PATH}`, PITR_ROOT: join(dir, 'pitr'), PITR_NO_CHOWN: '1' },
+      env: { ...process.env, PATH: `${join(dir, 'bin')}:${process.env.PATH}`, PITR_ROOT: shellPath(join(dir, 'pitr')), PITR_NO_CHOWN: '1' },
     });
     const calls = existsSync(join(dir, 'calls')) ? readFileSync(join(dir, 'calls'), 'utf8') : '';
     const data = join(dir, 'pitr', '20261117T030000Z', 'data');

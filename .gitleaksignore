@@ -50,3 +50,23 @@ f42804e297b0304cac88652bd60d74676b370a89:backend/architecture/published-migratio
 f42804e297b0304cac88652bd60d74676b370a89:backend/architecture/published-migrations.json:generic-api-key:66
 f42804e297b0304cac88652bd60d74676b370a89:backend/architecture/published-migrations.json:generic-api-key:71
 f42804e297b0304cac88652bd60d74676b370a89:backend/architecture/published-migrations.json:generic-api-key:73
+
+# Reviewed 2026-11-25 (RA-TS-29): test-only fixtures from the cloud batches of
+# 2026-11-23..25. Each value is in backend/test only and in no deploy, env or
+# source file (git grep). JWT_SECRET, CONTRIBUTION_ACTOR_REF_SECRET and
+# AUTH_LOGIN_THROTTLE_PEPPER values that the environment checks need at their
+# exact lengths, the e2e harness's signing secret, and a fake JWT whose
+# signature is the text «signature-value-here».
+7fd14bcdfed86bc06ee574d30218b0111e25467c:backend/test/sentry-scrub.test.ts:jwt:16
+821b1bac07aab626ea22663d6f4b6dd4d850f755:backend/test/support/http-app.ts:generic-api-key:24
+a08a51131017fa7468979c344c25eaa429dd25ea:backend/test/auth-otp-mode.test.ts:generic-api-key:1009
+a08a51131017fa7468979c344c25eaa429dd25ea:backend/test/auth-otp-mode.test.ts:generic-api-key:1033
+a08a51131017fa7468979c344c25eaa429dd25ea:backend/test/auth-otp-mode.test.ts:generic-api-key:985
+a08a51131017fa7468979c344c25eaa429dd25ea:backend/test/contribution-actor-reference.test.ts:generic-api-key:68
+b9f1234ebdc325b0be6e368e5691614e6a715fae:backend/test/jwt-signing-keys.test.ts:generic-api-key:25
+c69888e5538dbc911d9dea89ba2d4ba5a9f4f746:backend/test/auth-otp-mode.test.ts:generic-api-key:1007
+c69888e5538dbc911d9dea89ba2d4ba5a9f4f746:backend/test/auth-otp-mode.test.ts:generic-api-key:1031
+c69888e5538dbc911d9dea89ba2d4ba5a9f4f746:backend/test/auth-otp-mode.test.ts:generic-api-key:983
+c69888e5538dbc911d9dea89ba2d4ba5a9f4f746:backend/test/contribution-actor-reference.test.ts:generic-api-key:63
+c69888e5538dbc911d9dea89ba2d4ba5a9f4f746:backend/test/contribution-actor-reference.test.ts:generic-api-key:67
+da99a5045a606a6e79388572ebf9df7775cc3f9e:backend/test/auth-refresh-wiring.test.ts:generic-api-key:266

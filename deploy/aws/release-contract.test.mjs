@@ -14,6 +14,14 @@ const read = (path) => readFileSync(join(root, path), 'utf8');
 const sha = 'a'.repeat(40);
 const names = ['aarast-backend', 'aarast-admin-web', 'aarast-public-site', 'aarast-openwa-link'];
 const idOf = (name) => `sha256:${Buffer.from(name).toString('hex').padEnd(64, '0').slice(0, 64)}`;
+// The host has python3. A Windows checkout's python3 can be the Store's
+// placeholder, so there the fake bin answers python3 with the real python.
+const pythonShim = (bin) => {
+  if (process.platform !== 'win32') return;
+  // Windows python ends its lines with CRLF; the host's python3 does not.
+  writeFileSync(join(bin, 'python3'), '#!/bin/bash\npython "$@" | tr -d \'\\r\'\nexit "${PIPESTATUS[0]}"\n');
+  chmodSync(join(bin, 'python3'), 0o755);
+};
 
 test('every host script is valid bash', () => {
   for (const script of ['deploy', 'rollback', 'restore', 'restore-drill', 'release-lib', 'prepare-env']) {
@@ -37,6 +45,7 @@ function load({ ids, manifest, files = names.map((n) => `${n}.tar`) }) {
   const dir = mkdtempSync(join(tmpdir(), 'aarast-load-'));
   try {
     mkdirSync(join(dir, 'bin'));
+    pythonShim(join(dir, 'bin'));
     mkdirSync(join(dir, 'images'));
     writeFileSync(join(dir, 'images', 'release-images.json'), JSON.stringify(manifest));
     for (const file of files) writeFileSync(join(dir, 'images', file), 'tar');

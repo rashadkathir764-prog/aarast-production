@@ -30,7 +30,9 @@ echo "base backup: $base"
 
 work=$root/$base
 rm -rf "$work"
-install -d -m 0700 "$work/data" "$work/wal"
+# Owner-only from creation (umask), as install -m would, and also where
+# install cannot set a mode (the contract test on a Windows checkout).
+(umask 077 && mkdir -p "$work/data" "$work/wal")
 aws s3 cp "s3://$ops_bucket/backups/base/$base.tar.gz" "$work/base.tar.gz" --only-show-errors
 gzip -t "$work/base.tar.gz" || { echo "FAIL: the base backup is damaged" >&2; exit 1; }
 tar -xzf "$work/base.tar.gz" -C "$work/data"

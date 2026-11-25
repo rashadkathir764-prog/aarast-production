@@ -18,7 +18,10 @@ import { readLivePrismaSchema } from "./support/live-prisma-schema";
 const root = process.cwd();
 const constraints = "20261125120000_data_integrity_constraints";
 const indexes = "20261125130000_search_and_invite_indexes";
-const read = (path: string) => readFileSync(join(root, path), "utf8");
+// Git's text=auto checks out CRLF on Windows and LF in CI; read the text Git
+// stores, as published-migrations.cjs does, so the pins mean the same bytes.
+const read = (path: string) =>
+  readFileSync(join(root, path), "utf8").replace(/\r\n/g, "\n");
 const migration = (name: string) =>
   read(`prisma/migrations/${name}/migration.sql`);
 const model = (schema: string, name: string) =>

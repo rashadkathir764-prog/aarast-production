@@ -818,9 +818,24 @@ async function run() {
     body: `Blocked provider message ${marker}`,
   }, providerUser.token);
   check('Blocked conversation rejects provider message', blockedSend.status === 409, `HTTP ${blockedSend.status}`);
+  // RA-BE-139: the owner's block is the plan's with the provider, so it
+  // reaches the helper's thread too, and lifts from it with the owner's.
+  const blockedHelperThreadSend = await request('POST', `/api/v1/conversations/${helperConversationId}/messages`, {
+    body: `Blocked provider message in the helper thread ${marker}`,
+  }, providerUser.token);
+  check(
+    'The owner\'s block reaches the helper\'s thread',
+    blockedHelperThreadSend.status === 409 && responseCode(blockedHelperThreadSend) === 'CONVERSATION_BLOCKED',
+    `HTTP ${blockedHelperThreadSend.status}; ${responseCode(blockedHelperThreadSend)}`,
+  );
   await expectStatus('Customer unblocks conversation side', await request(
     'PATCH', `/api/v1/conversations/${planConversationId}/block`, { enabled: false }, owner.token,
   ), 200);
+  const helperThreadBlock = await prisma.conversation.findUnique({
+    where: { id: helperConversationId },
+    select: { customerSideBlockedAt: true },
+  });
+  check('The owner\'s unblock lifts the helper\'s thread too', helperThreadBlock?.customerSideBlockedAt === null);
 
   const secondPlanQuote = await request('POST', `/api/v1/wedding-plans/${planTwoBody.id}/quote-requests`, {
     providerId,

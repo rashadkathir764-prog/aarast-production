@@ -3553,7 +3553,13 @@ partners (the groom and the bride members) share one thread with the
 provider, and each other member who asks (a helper, family) has his own. So a
 provider can hold several conversations with one plan, each showing its own
 requester as `latestQuoteRequest.user`, and the owner's inbox lists one row per
-thread. An `ACCOUNT` conversation is unique by requester account and
+thread. A helper's thread carries `throughHelper: { name }` for its customer-side
+readers other than him (`name` as the plan reads the member, `null` once his
+account is erased, shown «عضو سابق»); it is `null` for the shared thread, for the
+helper himself and for the provider. A block is the plan's with the provider:
+`PATCH /conversations/:id/block` by the provider, the owner or a partner applies
+to every thread of that plan and provider, a helper's own block to his thread
+only, and a helper's new thread starts with the plan's block. An `ACCOUNT` conversation is unique by requester account and
 Provider. Creating a QuoteRequest creates or reuses that context inside the
 same transaction, so opening chat never mutates server state.
 

@@ -69,6 +69,11 @@ void main() {
     final marketplace = _Marketplace(kind: 'فنانين وفرق');
     await _pump(tester, marketplace);
 
+    // f07 (D15): the send button is pinned under the plan's facts, not in
+    // the older action bar.
+    expect(find.byKey(const ValueKey('quote-send')), findsOneWidget);
+    expect(find.byType(AarastV3FormActionBar), findsNothing);
+
     // The request arrived without the budget and the phone, which every
     // provider then asked for in the chat: both are on until switched off.
     for (final key in const ['quote-share-budget', 'quote-share-contact']) {

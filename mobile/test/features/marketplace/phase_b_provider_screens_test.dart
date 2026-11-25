@@ -19,13 +19,15 @@ import 'package:aarast_mobile/features/marketplace/screens/provider_details_scre
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../../support/library_source.dart';
+import 'package:aarast_mobile/features/marketplace/screens/provider_marketplace_screen.dart';
+import 'package:aarast_mobile/features/marketplace/widgets/provider_details_view.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../account_contexts/account_context_test_data.dart';
 import '../../support/app_route_table.dart';
+import '../../support/app_router_harness.dart';
 import '../../support/app_text_scale.dart';
 
 void main() {
@@ -44,49 +46,31 @@ void main() {
       }
     });
 
-    test('provider details stay visual while quote form uses focus mode', () {
-      final quoteSource = _readSource(
-        'lib/features/marketplace/screens/quote_request_screen.dart',
-      );
-      final detailsSource = _readSource(
-        'lib/features/marketplace/screens/provider_details_screen.dart',
-      );
-      final detailsViewSource = _readSource(
-        'lib/features/marketplace/widgets/provider_details_view.dart',
-      );
-      final favoritesSource = _readSource(
-        'lib/features/marketplace/screens/favorite_providers_screen.dart',
+    // RA-TS-24: this read four screens' source for private class names. What
+    // they stood for is asserted on the pumped screens: f09's two columns
+    // below («f09 compare ...»), f03's view and f07's pinned send button (in
+    // `quote_request_screen_test.dart`).
+
+    // RA-TS-24: this read app_router.dart between the route's path and its
+    // closing bracket. The route's own builder is called with the link.
+    testWidgets('plan providers route forwards a quote deep-link context', (
+      tester,
+    ) async {
+      final screen = await routeScreenAt(
+        tester,
+        '/wedding-plans/plan-1/providers?quoteId=quote-9',
       );
 
-      // f07 (D15): the plan's facts with a pencil each and the send button
-      // pinned under them, not the older prompt, summary and action bar.
-      expect(quoteSource, contains('class _PlanRow'));
-      expect(quoteSource, contains("ValueKey('quote-send')"));
-      expect(quoteSource, isNot(contains('AarastV3FormActionBar')));
-      expect(quoteSource, isNot(contains('_QuoteRequestHero')));
-      expect(detailsSource, contains('ProviderDetailsView'));
-      expect(detailsViewSource, contains('class _ProviderHero'));
-      // f09 «قارن الملفين» lays two columns out as f04 does (D14).
-      expect(favoritesSource, contains('class _CompareColumn'));
-    });
+      expect(screen, isA<ProviderMarketplaceScreen>());
+      final providers = screen as ProviderMarketplaceScreen;
+      expect(providers.initialQuoteId, 'quote-9');
+      expect(providers.weddingPlanId, 'plan-1');
+      expect(providers.embedded, isTrue);
 
-    test('plan providers route forwards a quote deep-link context', () {
-      // The router's route trees live in per-area part files of the router
-      // library (spec M6); the contract reads the whole library.
-      final routerSource = readLibrarySource(
-        '${_findMobileRoot()}lib/core/routing/app_router.dart',
-      );
-      final routeStart = routerSource.indexOf(
-        "path: '/wedding-plans/:id/providers'",
-      );
-      expect(routeStart, greaterThanOrEqualTo(0));
-      final routeEnd = routerSource.indexOf('),', routeStart);
-      final routeSource = routerSource.substring(routeStart, routeEnd);
-
-      expect(
-        routeSource,
-        contains("initialQuoteId: state.uri.queryParameters['quoteId']"),
-      );
+      final plain =
+          (await routeScreenAt(tester, '/wedding-plans/plan-1/providers'))
+              as ProviderMarketplaceScreen;
+      expect(plain.initialQuoteId, isNull);
     });
   });
 
@@ -106,6 +90,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('قاعة السلام'), findsOneWidget);
+      // f03: the screen is the visual provider view, not a form.
+      expect(find.byType(ProviderDetailsView), findsOneWidget);
       // f03: the price box, then the packages, each in its own currency.
       expect(find.text('1,200\u00a0ر.س'), findsOneWidget);
       expect(find.text('3,500\u00a0ر.ي'), findsOneWidget);
@@ -536,6 +522,15 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      // f09 lays two columns out as f04 does (D14), one for each provider.
+      expect(
+        find.byKey(const ValueKey('compare-provider-$_providerId')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('compare-provider-provider-2')),
+        findsOneWidget,
+      );
       expect(find.text('قارن الملفين'), findsOneWidget);
       expect(find.text('قاعة السلام'), findsOneWidget);
       expect(find.text('قاعة الأمل'), findsOneWidget);

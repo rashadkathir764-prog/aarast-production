@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/routing/app_router.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
@@ -23,7 +21,7 @@ import 'package:aarast_mobile/features/wedding_plans/providers/wedding_plans_pro
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../../support/library_source.dart';
+import 'package:aarast_mobile/features/chat/widgets/conversation_list_view.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -31,6 +29,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../support/preview_fonts.dart';
 import '../account_contexts/account_context_test_data.dart';
 import '../../support/app_route_table.dart';
+import '../../support/app_router_harness.dart';
+import '../../support/app_text_scale.dart';
 
 void main() {
   setUpAll(loadPreviewAppFonts);
@@ -44,7 +44,9 @@ void main() {
     ) async {
       tester.view.devicePixelRatio = 1;
       tester.view.physicalSize = const Size(360, 2400);
-      tester.platformDispatcher.textScaleFactorTestValue = scale;
+      tester.platformDispatcher.textScaleFactorTestValue = appTextScaler(
+        scale,
+      ).scale(1);
       addTearDown(tester.view.reset);
       addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
       MarketplaceProvider hall(String id) => MarketplaceProvider(
@@ -123,22 +125,17 @@ void main() {
     expect(provider.serviceSummary?.maxPrice, '400000');
   });
 
-  test(
-    'user conversation inbox route stays authenticated and quote scoped',
-    () {
-      // The router's route trees live in per-area part files of the router
-      // library (spec M6); the contract reads the whole library.
-      final source = readLibrarySource('lib/core/routing/app_router.dart');
+  // RA-TS-24: this read app_router.dart for the route's lines. The real
+  // router, signed out, is asked for the inbox.
+  testWidgets('user conversation inbox route stays authenticated', (
+    tester,
+  ) async {
+    final router = await openSignedOutAt(tester, AppRouter.conversations);
 
-      expect(
-        source,
-        contains("static const conversations = '/conversations';"),
-      );
-      expect(source, contains('path: AppRouter.conversations'));
-      expect(source, contains('const ConversationListView()'));
-      expect(source, contains('ProviderAuthGate('));
-    },
-  );
+    expect(router.state.uri.path, AppRouter.conversations);
+    expect(find.byKey(const Key('provider-auth-gate')), findsOneWidget);
+    expect(find.byType(ConversationListView), findsNothing);
+  });
 
   testWidgets('a board row opens its service page once per launch', (
     tester,
@@ -334,7 +331,9 @@ void main() {
   testWidgets('the keyboard keeps the search box and the list', (tester) async {
     tester.view.physicalSize = const Size(1440, 3120);
     tester.view.devicePixelRatio = 3.5;
-    tester.platformDispatcher.textScaleFactorTestValue = 1.3;
+    tester.platformDispatcher.textScaleFactorTestValue = appTextScaler(
+      1.3,
+    ).scale(1);
     addTearDown(() {
       tester.view.reset();
       tester.platformDispatcher.clearTextScaleFactorTestValue();
@@ -612,7 +611,9 @@ void main() {
     (tester) async {
       tester.view.devicePixelRatio = 1;
       tester.view.physicalSize = const Size(320, 760);
-      tester.platformDispatcher.textScaleFactorTestValue = 1.3;
+      tester.platformDispatcher.textScaleFactorTestValue = appTextScaler(
+        1.3,
+      ).scale(1);
       addTearDown(() {
         tester.view.resetDevicePixelRatio();
         tester.view.resetPhysicalSize();
@@ -857,7 +858,9 @@ void main() {
   testWidgets('an item filter stays safe at 320px text scale', (tester) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(320, 900);
-    tester.platformDispatcher.textScaleFactorTestValue = 1.3;
+    tester.platformDispatcher.textScaleFactorTestValue = appTextScaler(
+      1.3,
+    ).scale(1);
     addTearDown(() {
       tester.view.resetDevicePixelRatio();
       tester.view.resetPhysicalSize();
@@ -904,11 +907,15 @@ void main() {
       expect(find.text('قاعة السلام'), findsOneWidget);
       expect(find.byType(AarastInlineSpinner), findsOneWidget);
       expect(find.byType(AarastSkeleton), findsNothing);
+      // RA-TS-24: said of the pumped screen, not of its source: the one
+      // progress circle on it is the shared spinner's own.
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
       expect(
-        File(
-          'lib/features/marketplace/screens/provider_marketplace_screen.dart',
-        ).readAsStringSync(),
-        isNot(contains('CircularProgressIndicator')),
+        find.descendant(
+          of: find.byType(AarastInlineSpinner),
+          matching: find.byType(CircularProgressIndicator),
+        ),
+        findsOneWidget,
       );
       expect(tester.takeException(), isNull);
     },

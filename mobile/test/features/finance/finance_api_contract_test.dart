@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/features/finance/data/finance_api.dart';
 import 'package:aarast_mobile/features/finance/models/budget_category.dart';
@@ -159,35 +161,86 @@ void main() {
     expect(client.body?['paidAt'], '2026-07-14');
   });
 
-  test('all FinanceApi HTTP paths match the live money controllers', () {
-    // FinanceApi spans same-library resource parts (spec M6).
-    final source = readLibrarySource(
-      'lib/features/finance/data/finance_api.dart',
-    );
+  // RA-TS-24: this only looked for each path in FinanceApi's text, which
+  // proves nothing about the server. Each path the phone calls is now looked
+  // for among the routes the backend's controllers declare (this repo's
+  // `backend/src`, read as source because no server runs here): a path the
+  // server does not serve, or serves under another verb-less shape, fails.
+  test(
+    'all FinanceApi HTTP paths are routes of the live money controllers',
+    () {
+      final backendRoutes = _backendRoutes();
+      expect(
+        backendRoutes.length,
+        greaterThan(60),
+        reason: 'the scan found the controllers',
+      );
+      // FinanceApi spans same-library resource parts (spec M6).
+      final source = readLibrarySource(
+        'lib/features/finance/data/finance_api.dart',
+      );
 
-    for (final route in <String>[
-      '/api/v1/wedding-plans/\$planId/money-summary',
-      '/api/v1/wedding-plans/\$planId/money-budget',
-      '/api/v1/wedding-plans/\$planId/budget-categories',
-      '/api/v1/budget-categories/\${category.id}',
-      '/api/v1/wedding-plans/\$planId/costs',
-      '/api/v1/costs/\$costId',
-      '/api/v1/costs/\${cost.id}',
-      '/api/v1/costs/\${cost.id}/cancel',
-      '/api/v1/costs/\${cost.id}/payments',
-      '/api/v1/cost-payments/\$paymentId',
-      '/api/v1/cost-payments/\${payment.id}/reverse',
-      '/api/v1/wedding-plans/\$planId/cost-payments',
-      '/api/v1/wedding-plans/\$planId/payment-schedules/due',
-      '/api/v1/costs/\$costId/payment-schedules',
-      '/api/v1/costs/\${cost.id}/payment-schedules',
-      '/api/v1/payment-schedules/\${schedule.id}',
-      '/api/v1/payment-schedules/\${schedule.id}/cancel',
-      '/api/v1/payment-schedules/\${schedule.id}/pay',
-    ]) {
-      expect(source, contains(route), reason: route);
+      for (final route in <String>[
+        '/api/v1/wedding-plans/\$planId/money-summary',
+        '/api/v1/wedding-plans/\$planId/money-budget',
+        '/api/v1/wedding-plans/\$planId/budget-categories',
+        '/api/v1/budget-categories/\${category.id}',
+        '/api/v1/wedding-plans/\$planId/costs',
+        '/api/v1/costs/\$costId',
+        '/api/v1/costs/\${cost.id}',
+        '/api/v1/costs/\${cost.id}/cancel',
+        '/api/v1/costs/\${cost.id}/payments',
+        '/api/v1/cost-payments/\$paymentId',
+        '/api/v1/cost-payments/\${payment.id}/reverse',
+        '/api/v1/wedding-plans/\$planId/cost-payments',
+        '/api/v1/wedding-plans/\$planId/payment-schedules/due',
+        '/api/v1/costs/\$costId/payment-schedules',
+        '/api/v1/costs/\${cost.id}/payment-schedules',
+        '/api/v1/payment-schedules/\${schedule.id}',
+        '/api/v1/payment-schedules/\${schedule.id}/cancel',
+        '/api/v1/payment-schedules/\${schedule.id}/pay',
+      ]) {
+        expect(source, contains(route), reason: 'FinanceApi calls $route');
+        final shape = _routeShape(route.replaceAll(r'\$', r'$'));
+        expect(
+          backendRoutes,
+          contains(shape),
+          reason: '$route is no route of any backend controller',
+        );
+      }
+    },
+  );
+}
+
+/// `/api/v1/costs/${cost.id}/pay` -> `/api/v1/costs/:/pay`.
+String _routeShape(String path) => path
+    .replaceAll(RegExp(r'\$\{[^}]*\}'), ':')
+    .replaceAll(RegExp(r'\$[A-Za-z]+'), ':')
+    .replaceAll(RegExp(r':[A-Za-z]+'), ':');
+
+/// Every route the backend's controllers declare, with parameter names dropped.
+Set<String> _backendRoutes() {
+  final found = <String>{};
+  final method = RegExp(
+    r'''^\s*@(Get|Post|Put|Patch|Delete)\((?:['"]([^'"]*)['"])?\)''',
+  );
+  final controller = RegExp(r'''^@Controller\(['"]([^'"]*)['"]\)''');
+  final root = Directory('${Directory.current.parent.path}/backend/src');
+  for (final file in root.listSync(recursive: true)) {
+    if (file is! File || !file.path.endsWith('.controller.ts')) continue;
+    var prefix = '';
+    for (final line in file.readAsLinesSync()) {
+      final c = controller.firstMatch(line);
+      if (c != null) prefix = c.group(1)!;
+      final m = method.firstMatch(line);
+      if (m == null) continue;
+      final path = '/$prefix/${m.group(2) ?? ''}'
+          .replaceAll(RegExp(r'/+'), '/')
+          .replaceAll(RegExp(r'/$'), '');
+      found.add(_routeShape(path));
     }
-  });
+  }
+  return found;
 }
 
 final _dueDate = DateTime(2026, 8, 1);

@@ -1,9 +1,6 @@
 import 'dart:io';
 
 import 'package:aarast_mobile/core/network/api_client.dart';
-import 'package:aarast_mobile/core/routing/app_router.dart';
-import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
-import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
 import 'package:aarast_mobile/features/chat/screens/chat_screen.dart';
 import 'package:aarast_mobile/features/chat/screens/quote_conversation_entry_screen.dart';
 import 'package:aarast_mobile/core/diagnostics/app_logger.dart';
@@ -24,6 +21,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:provider/provider.dart';
+import '../../support/app_router_harness.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -125,29 +123,7 @@ void main() {
     testWidgets('$path asks a signed-out visitor to sign in first', (
       tester,
     ) async {
-      SharedPreferences.setMockInitialValues({});
-      final preferences = await SharedPreferences.getInstance();
-      final storage = AuthStorage(preferences);
-      final apiClient = ApiClient(tokenProvider: storage.readAccessToken);
-      final auth = AuthController(AuthRepository(apiClient, storage))
-        ..restoreSession();
-      final router = AppRouter.create();
-      addTearDown(auth.dispose);
-      addTearDown(router.dispose);
-
-      await tester.pumpWidget(
-        ChangeNotifierProvider<AuthController>.value(
-          value: auth,
-          child: MaterialApp.router(
-            theme: AppTheme.light(),
-            routerConfig: router,
-          ),
-        ),
-      );
-      await tester.runAsync(() => Future<void>.delayed(Duration.zero));
-      router.go(path);
-      await tester.pump();
-      await tester.pump();
+      final router = await openSignedOutAt(tester, path);
 
       expect(router.state.uri.path, path);
       expect(find.byKey(const Key('provider-auth-gate')), findsOneWidget);

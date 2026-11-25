@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
@@ -11,6 +9,8 @@ import 'package:aarast_mobile/features/chat/providers/chat_provider.dart';
 import 'package:aarast_mobile/features/marketplace/data/marketplace_api.dart';
 import 'package:aarast_mobile/features/marketplace/models/marketplace_models.dart';
 import 'package:aarast_mobile/features/provider_portal/providers/provider_dashboard_provider.dart';
+import 'package:aarast_mobile/features/provider_portal/screens/edit_provider_profile_screen.dart';
+import 'package:aarast_mobile/features/marketplace/providers/marketplace_provider.dart';
 import 'package:aarast_mobile/features/provider_portal/screens/provider_portal_screen.dart';
 import 'package:aarast_mobile/features/provider_portal/screens/provider_offer_screen.dart';
 import 'package:aarast_mobile/features/provider_portal/screens/provider_portal_tabs.dart';
@@ -499,18 +499,52 @@ void main() {
       );
     });
 
-    test('no line promises a review path the server does not have', () {
-      final edit = File(
-        'lib/features/provider_portal/screens/edit_provider_profile_screen.dart',
-      ).readAsStringSync();
-      final home = File(
-        'lib/features/provider_portal/screens/provider_home_tab.dart',
-      ).readAsStringSync();
-      expect(edit, isNot(contains('مسار مراجعة منفصل')));
-      expect(edit, contains("'NEEDS_CHANGES' => 'يحتاج تعديل'"));
-      expect(home, isNot(contains('ليُراجع من جديد')));
-      expect(home, isNot(contains('قبل تحديث الملف')));
-    });
+    // RA-TS-24: this read two source files for four phrases. The two screens
+    // are pumped for a provider who was asked for changes and for one under
+    // review, and what they say is read.
+    for (final (status, label) in [
+      ('NEEDS_CHANGES', 'يحتاج تعديل'),
+      ('PENDING', 'قيد المراجعة'),
+      ('REJECTED', 'مرفوض'),
+      ('SUSPENDED', 'موقوف'),
+    ]) {
+      testWidgets('no line promises a review path the server does not have '
+          '($status)', (tester) async {
+        final api = _PortalApi(status: status);
+        await _pumpPortalTab(tester, api, ProviderHomeTab(onOpenTab: (_) {}));
+        for (final promise in ['ليُراجع من جديد', 'قبل تحديث الملف']) {
+          expect(find.textContaining(promise), findsNothing, reason: promise);
+        }
+        expect(tester.takeException(), isNull);
+
+        SharedPreferences.setMockInitialValues({});
+        final dashboard = ProviderDashboardProvider(api);
+        await dashboard.loadDashboard();
+        await tester.pumpWidget(
+          MultiProvider(
+            providers: [
+              ChangeNotifierProvider<ProviderDashboardProvider>.value(
+                value: dashboard,
+              ),
+              ChangeNotifierProvider<ProviderMarketplaceProvider>(
+                create: (_) => ProviderMarketplaceProvider(
+                  MarketplaceApi(ApiClient(tokenProvider: () async => null)),
+                ),
+              ),
+            ],
+            child: MaterialApp(
+              theme: AppTheme.light(),
+              home: const EditProviderProfileScreen(),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(find.textContaining('مسار مراجعة منفصل'), findsNothing);
+        // The status is said in its own word (the screen's `_providerStatusLabel`).
+        expect(find.textContaining(label), findsWidgets, reason: status);
+        expect(tester.takeException(), isNull);
+      });
+    }
   });
 }
 

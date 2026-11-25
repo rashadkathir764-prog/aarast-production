@@ -22,7 +22,7 @@
 | `POSTGRES_OWNER_USER` / `POSTGRES_OWNER_PASSWORD` | مالك قاعدة البيانات | يُولَّد على الخادم |
 | `AARAST_DB_MIGRATOR_USER` / `AARAST_DB_MIGRATOR_PASSWORD` / `AARAST_DB_MIGRATOR_DATABASE_URL` | حساب تطبيق التحديثات | يُولَّد على الخادم |
 | `AARAST_DB_RUNTIME_USER` / `AARAST_DB_RUNTIME_PASSWORD` / `AARAST_DB_RUNTIME_DATABASE_URL` | حساب التشغيل اليومي (صلاحيات أقل) | يُولَّد على الخادم |
-| `JWT_ACCESS_SECRET` | توقيع جلسات الدخول؛ تغييره يُخرج الجميع | يُولَّد على الخادم |
+| `JWT_ACCESS_SECRET` | منه تُشتق مفاتيح التوقيع لكل غرض (RA-BE-149)؛ تغييره يُخرج الجميع | يُولَّد على الخادم |
 | `AUTH_LOGIN_THROTTLE_PEPPER` | حماية عدّاد محاولات الدخول | يُولَّد على الخادم |
 | `CONTRIBUTION_ACTOR_REF_SECRET` | مفتاح مرجع المشارك في سجل المساهمات (RA-BE-176)؛ الخادم لا يقلع بدونه ولا بقيمة أقصر من 32 حرفًا أو فيها `replace-with` أو `change-me` أو `example`، وتغييره يفصل ما سجّله الشخص قبله عمّا بعده | يُولَّد على الخادم |
 | `METRICS_TOKEN` | رمز قراءة `/metrics` | يُولَّد على الخادم |

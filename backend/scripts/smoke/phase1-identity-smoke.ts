@@ -11,6 +11,7 @@ import {
   UserStatus,
 } from '@prisma/client';
 import { JwtService } from '@nestjs/jwt';
+import { identityJwtModuleOptions, jwtSigningKey } from '../../src/modules/identity/internal/auth/jwt-keys';
 import * as bcryptjs from 'bcryptjs';
 import { AuthService } from '../../src/modules/identity/internal/auth/auth.service';
 import { LoginThrottleService } from '../../src/modules/identity/internal/auth/login-throttle.service';
@@ -51,7 +52,7 @@ const service = adminService(prisma as any, realtime as any, {
   createNotificationInTransaction: async () => null,
 } as any);
 const loginThrottle = new LoginThrottleService(prisma as any);
-const jwtService = new JwtService({ secret: process.env.JWT_SECRET });
+const jwtService = new JwtService(identityJwtModuleOptions());
 const authService = new AuthService(
   prisma as any,
   jwtService,
@@ -208,9 +209,8 @@ async function assertSignedAccessRealmsStaySeparated(): Promise<void> {
   await withFixture(
     (environment) => createSuperAdminPairFixture(prisma, environment),
     async (fixture) => {
-      const secret = process.env.JWT_SECRET;
-      assert.ok(secret);
-      const jwt = new JwtService({ secret });
+      // RA-BE-149: signed as the identity module signs (jwt-keys.ts).
+      const jwt = new JwtService({ secret: jwtSigningKey('access') });
       await prisma.user.update({
         where: { id: fixture.actingAdmin.id },
         data: {

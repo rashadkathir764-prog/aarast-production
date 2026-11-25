@@ -7,7 +7,7 @@ import { resolveJwtSessionScope } from '../../public/access-token-scope';
 import { AuthenticatedUser } from '../../public/identity-session.types';
 import { JwtPayload } from '../../public/jwt-payload.interface';
 import { toAuthenticatedUser } from '../../public/safe-user';
-import { getJwtSecret } from './jwt-secret';
+import { jwtVerificationKey } from './jwt-keys';
 import { findJwtSessionRows } from '../../infrastructure/jwt-session.repository';
 
 @Injectable()
@@ -16,7 +16,18 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: getJwtSecret(),
+      // RA-BE-149: the access key derived from JWT_SECRET (jwt-keys.ts).
+      secretOrKeyProvider: (
+        _request: unknown,
+        rawJwtToken: string,
+        done: (error: Error | null, key?: string | Buffer) => void,
+      ) => {
+        try {
+          done(null, jwtVerificationKey(rawJwtToken, 'access'));
+        } catch (error) {
+          done(error instanceof Error ? error : new Error('JWT key unavailable'));
+        }
+      },
     });
   }
 

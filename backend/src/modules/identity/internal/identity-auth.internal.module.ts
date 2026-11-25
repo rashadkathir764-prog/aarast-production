@@ -3,7 +3,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { AuthChallengeCleanupScheduler } from './auth/auth-challenge-cleanup.scheduler';
 import { AuthService } from './auth/auth.service';
-import { getJwtSecret } from './auth/jwt-secret';
+import { identityJwtModuleOptions } from './auth/jwt-keys';
 import { JwtStrategy } from './auth/jwt.strategy';
 import { LoginThrottleCleanupScheduler } from './auth/login-throttle-cleanup.scheduler';
 import { LoginThrottleService } from './auth/login-throttle.service';
@@ -27,13 +27,9 @@ export const OTP_CAPACITY_IMPLEMENTATION = Symbol('OTP_CAPACITY_IMPLEMENTATION')
     MessagingRealtimePublicModule,
     CollaborationPermissionPublicModule,
     PassportModule,
+    // RA-BE-149: each purpose signs with its own key derived from JWT_SECRET.
     JwtModule.registerAsync({
-      useFactory: () => ({
-        secret: getJwtSecret(),
-        signOptions: {
-          expiresIn: (process.env.JWT_ACCESS_EXPIRES_IN || '15m') as '15m',
-        },
-      }),
+      useFactory: () => identityJwtModuleOptions(),
     }),
   ],
   providers: [

@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { ValidationPipe } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
+import { identityJwtModuleOptions, jwtSigningKey } from "../src/modules/identity/internal/auth/jwt-keys";
 import { OtpPurpose } from "@prisma/client";
 import * as bcryptjs from "bcryptjs";
 import { AuthErrorCode } from "../src/modules/identity/public/auth-error";
@@ -27,9 +28,9 @@ process.env.NODE_ENV = "test";
 
 const PHONE = "+967777123456";
 
-/** Signs like the identity JwtModule: same secret, 15-minute default expiry. */
+/** Signs like the identity JwtModule: its options, each purpose its own key (RA-BE-149). */
 function moduleJwt() {
-  return new JwtService({ secret: JWT_SECRET, signOptions: { expiresIn: "15m" } });
+  return new JwtService(identityJwtModuleOptions(process.env));
 }
 
 function createHarness() {
@@ -505,7 +506,8 @@ test("a phone proof keeps the disabled and admin answers of a REGISTER code", as
 test("register/complete rejects a proof for another phone, expired, of another type, or an access token", async () => {
   const h = createHarness();
   const { phoneProof } = await loginNotFoundProof(h, "+967777999888");
-  const raw = new JwtService({ secret: JWT_SECRET });
+  // Signed with the phone proof's own key, so each is refused for its claims.
+  const raw = new JwtService({ secret: jwtSigningKey("phone-proof") });
   const expired = raw.sign(
     { typ: PHONE_PROOF_TYPE, phone: PHONE, exp: Math.floor(Date.now() / 1000) - 5 },
     { audience: PHONE_PROOF_AUDIENCE },

@@ -28,6 +28,7 @@ import {
   WeddingPlanStatus,
 } from "@prisma/client";
 import { JwtService } from "@nestjs/jwt";
+import { jwtSigningKey } from "../../src/modules/identity/internal/auth/jwt-keys";
 import { ContextsService } from "../../src/modules/identity/internal/profile/contexts.service";
 import { ProviderDashboardService } from "../../src/provider-dashboard/provider-dashboard.service";
 import { PermissionService } from "../../src/modules/collaboration/internal/permission.service";
@@ -403,7 +404,7 @@ async function main(): Promise<void> {
       expiresAt: new Date(Date.now() + 60_000),
     },
   });
-  const jwt = new JwtService({ secret: process.env.JWT_SECRET }).sign({
+  const jwt = new JwtService({ secret: jwtSigningKey("access") }).sign({
     sub: account.id,
     scope: "application",
     sid: refresh.id,

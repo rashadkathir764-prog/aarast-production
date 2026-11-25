@@ -3,6 +3,7 @@ import "reflect-metadata";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { JwtService } from "@nestjs/jwt";
+import { jwtSigningKey } from "../../src/modules/identity/internal/auth/jwt-keys";
 import {
   AuthSessionScope,
   ConversationEventType,
@@ -41,7 +42,7 @@ const weddingDay = futureDay(58, smokeNow);
 const runId = process.env.AARAST_SMOKE_RUN_ID!;
 const baseUrl = process.env.SMOKE_BASE_URL!;
 const prisma = new PrismaClient();
-const jwt = new JwtService({ secret: process.env.JWT_SECRET });
+const jwt = new JwtService({ secret: jwtSigningKey("access") });
 const label = `Offers ${runId}`;
 const DAY_MS = 24 * 60 * 60 * 1000;
 let checks = 0;

@@ -51,6 +51,13 @@ Health endpoints have distinct orchestration semantics:
 - Production refuses to start with a missing, placeholder, short, repetitive,
   or low-entropy `JWT_SECRET`. The secret is validated without logging or
   returning its value.
+- RA-BE-149: no token is signed with `JWT_SECRET` itself. Access tokens and
+  phone proofs are each signed (HS256) with a key derived from it for their
+  purpose (HKDF-SHA-256, `aarast-jwt-access-v1`, `aarast-jwt-phone-proof-v1`),
+  so one cannot pass as the other. A token the secret itself signed before
+  the running process started is still accepted until it expires (one access
+  token lifetime, 15 minutes), so a deploy signs nobody out; nothing signs
+  with the secret any more.
 - Private resources use ownership and sharing checks.
 - Some unauthorized private-resource access is intentionally returned as not found style behavior.
 - `passwordHash` is never returned.

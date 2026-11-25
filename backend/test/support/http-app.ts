@@ -4,6 +4,7 @@ import type { Server } from 'node:http';
 import { type Provider, type Type, Module, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
+import { jwtSigningKey } from '../../src/modules/identity/internal/auth/jwt-keys';
 import { PassportModule } from '@nestjs/passport';
 import { JwtStrategy } from '../../src/modules/identity/internal/auth/jwt.strategy';
 import { GlobalExceptionFilter } from '../../src/platform/http/global-exception.filter';
@@ -87,7 +88,10 @@ export async function startHttpApp(
   const address = server.address();
   if (!address || typeof address === 'string') throw new Error('no port');
   const url = `http://127.0.0.1:${address.port}`;
-  const jwt = new JwtService({ secret: E2E_JWT_SECRET });
+  // RA-BE-149: signed as the identity module signs, with the derived access key.
+  const jwt = new JwtService({
+    secret: jwtSigningKey('access', { JWT_SECRET: E2E_JWT_SECRET } as NodeJS.ProcessEnv),
+  });
 
   return {
     url,

@@ -28,6 +28,25 @@ void main() {
     expect(client.sent.single, {'providerMessagesEnabled': false});
   });
 
+  // RA-BE-190: «الحجوزات» is its own switch; turning it off sends it alone.
+  test('the bookings switch saves alone', () async {
+    SharedPreferences.setMockInitialValues({});
+    final client = _Client();
+    final offline = OfflineSyncService(
+      database: JsonLocalDatabase(await SharedPreferences.getInstance()),
+      apiClient: client,
+    );
+    await offline.ensureCacheOwner('user-1');
+    final api = SettingsApi(client, offline: offline);
+
+    final read = await api.getSettings();
+    expect(read.bookingRemindersEnabled, isTrue);
+
+    await api.updateSettings(read.copyWith(bookingRemindersEnabled: false));
+
+    expect(client.sent.single, {'bookingRemindersEnabled': false});
+  });
+
   test('a save that changed nothing asks the server for nothing', () async {
     SharedPreferences.setMockInitialValues({});
     final client = _Client();
@@ -57,6 +76,7 @@ class _Client extends ApiClient {
     'taskRemindersEnabled': true,
     'paymentRemindersEnabled': true,
     'providerMessagesEnabled': true,
+    'bookingRemindersEnabled': true,
   };
 
   @override

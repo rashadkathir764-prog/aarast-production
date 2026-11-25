@@ -715,6 +715,7 @@ class _SettingsApi extends SettingsApi {
     taskRemindersEnabled: true,
     paymentRemindersEnabled: true,
     providerMessagesEnabled: true,
+    bookingRemindersEnabled: true,
     createdAt: DateTime(2026, 9, 1),
     updatedAt: DateTime(2026, 10, 12),
   );

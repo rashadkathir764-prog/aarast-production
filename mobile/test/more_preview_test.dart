@@ -251,6 +251,7 @@ class _FakeSettingsApi extends SettingsApi {
       taskRemindersEnabled: true,
       paymentRemindersEnabled: true,
       providerMessagesEnabled: true,
+      bookingRemindersEnabled: true,
       createdAt: DateTime(2026, 7, 1),
       updatedAt: DateTime(2026, 7, 10),
     );

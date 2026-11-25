@@ -53,13 +53,17 @@ void main() {
 
       await _pumpSignedInSettings(tester, fakeApi, devicePushAvailable: true);
 
-      expect(find.byType(JourneyToggle), findsNWidgets(3));
+      expect(find.byType(JourneyToggle), findsNWidgets(4));
       expect(
         find.byKey(const Key('settings-task-reminders-switch')),
         findsOneWidget,
       );
       expect(
         find.byKey(const Key('settings-payment-reminders-switch')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('settings-booking-reminders-switch')),
         findsOneWidget,
       );
       expect(
@@ -75,6 +79,9 @@ void main() {
       expect(find.text('المهام'), findsOneWidget);
       expect(find.text('الدفعات'), findsOneWidget);
       expect(find.text('قبل موعدها بأسبوع'), findsOneWidget);
+      // RA-BE-190: the booking reminders are their own switch.
+      expect(find.text('الحجوزات'), findsOneWidget);
+      expect(find.text('قبل موعدها بأسبوع وبيوم'), findsOneWidget);
       expect(find.text('العروض والمحادثات'), findsOneWidget);
       expect(
         find.text('على شاشة القفل ما تطلع أسماء ولا مبالغ.'),
@@ -85,6 +92,7 @@ void main() {
       for (final key in const [
         Key('settings-task-reminders-switch'),
         Key('settings-payment-reminders-switch'),
+        Key('settings-booking-reminders-switch'),
         Key('settings-provider-messages-switch'),
       ]) {
         await tester.ensureVisible(find.byKey(key));
@@ -99,11 +107,12 @@ void main() {
 
       // Each switch saves the moment it is switched; no save button.
       expect(find.text('حفظ الإعدادات'), findsNothing);
-      expect(fakeApi.updateSettingsCalls, 3);
+      expect(fakeApi.updateSettingsCalls, 4);
       expect(fakeApi.lastUpdatePayload, {
         'taskRemindersEnabled': false,
         'paymentRemindersEnabled': false,
         'providerMessagesEnabled': false,
+        'bookingRemindersEnabled': false,
       });
       expect(fakeApi.lastUpdatePayload, isNot(contains('pushEnabled')));
       expect(fakeApi.lastUpdatePayload, isNot(contains('smsEnabled')));
@@ -214,6 +223,7 @@ class _FakeSettingsApi extends SettingsApi {
       taskRemindersEnabled: true,
       paymentRemindersEnabled: true,
       providerMessagesEnabled: true,
+      bookingRemindersEnabled: true,
       channelCapabilities: const NotificationChannelCapabilities(
         inApp: NotificationChannelCapability(
           supported: true,

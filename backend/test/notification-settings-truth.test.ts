@@ -23,6 +23,7 @@ function preference(overrides: Record<string, unknown> = {}) {
     taskRemindersEnabled: true,
     paymentRemindersEnabled: true,
     providerMessagesEnabled: true,
+    bookingRemindersEnabled: true,
     createdAt: now,
     updatedAt: now,
     ...overrides,
@@ -180,4 +181,20 @@ test("supported content preferences remain writable while device-managed push is
     paymentRemindersEnabled: false,
     providerMessagesEnabled: false,
   });
+});
+
+// RA-BE-190: the booking reminders are the «الحجوزات» switch, its own
+// column, read and written like the other three.
+test("the booking reminders switch is read, written and defaults on", async () => {
+  const { service, lastUpsert } = harness();
+  assert.equal((await service.getSettings(currentUser)).bookingRemindersEnabled, true);
+
+  const settings = await service.updateSettings(currentUser, {
+    bookingRemindersEnabled: false,
+  });
+  assert.equal(settings.bookingRemindersEnabled, false);
+  assert.equal(lastUpsert().update.bookingRemindersEnabled, false);
+  // The other three are untouched by it.
+  assert.equal(settings.providerMessagesEnabled, true);
+  assert.equal("taskRemindersEnabled" in lastUpsert().update, false);
 });

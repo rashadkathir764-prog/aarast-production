@@ -141,7 +141,10 @@ export interface NotificationPageResponse {
 
 type NotificationContentPreference = Pick<
   NotificationPreference,
-  "taskRemindersEnabled" | "paymentRemindersEnabled" | "providerMessagesEnabled"
+  | "taskRemindersEnabled"
+  | "paymentRemindersEnabled"
+  | "providerMessagesEnabled"
+  | "bookingRemindersEnabled"
 >;
 
 type OwnedProviderLifecycle = {
@@ -375,7 +378,7 @@ export class NotificationsService implements NotificationsPort {
     if ((await listDeletionPendingUserIds(client, [input.userId])).size > 0) {
       return null;
     }
-    const preferenceKey = this.preferenceKeyForType(input.type);
+    const preferenceKey = this.preferenceKeyForType(input.type, input.data);
     if (preferenceKey) {
       // The recipient's lifecycle row is identity's: locked for share there.
       const recipient = await lockUserLifecycleRowsInTransaction(client, [
@@ -1094,6 +1097,7 @@ export class NotificationsService implements NotificationsPort {
 
   private preferenceKeyForType(
     type: NotificationType,
+    data?: Prisma.InputJsonValue,
   ): keyof NotificationContentPreference | null {
     switch (type) {
       case NotificationType.TASK_DUE_SOON:
@@ -1115,11 +1119,17 @@ export class NotificationsService implements NotificationsPort {
       case NotificationType.QUOTE_ACCEPTED:
       case NotificationType.QUOTE_REJECTED:
       case NotificationType.CHAT_MESSAGE_RECEIVED:
-      case NotificationType.BOOKING_UPDATED:
       case NotificationType.BOOKING_REQUESTED:
       case NotificationType.REVIEW_RECEIVED:
       case NotificationType.REVIEW_REPLIED:
         return "providerMessagesEnabled";
+      // RA-BE-190: a customer's booking reminders are the «الحجوزات» switch;
+      // every other booking notice, and the provider's own reminders (his one
+      // switch says «الحجوزات» too), stay with the offers and chats.
+      case NotificationType.BOOKING_UPDATED:
+        return isCustomerBookingReminder(data)
+          ? "bookingRemindersEnabled"
+          : "providerMessagesEnabled";
       default:
         return null;
     }
@@ -2082,4 +2092,10 @@ export class NotificationsService implements NotificationsPort {
       updatedAt: notification.updatedAt,
     };
   }
+}
+
+function isCustomerBookingReminder(data: Prisma.InputJsonValue | undefined): boolean {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return false;
+  const fields = data as Record<string, unknown>;
+  return fields.reminder === true && fields.recipientAudience === "CUSTOMER";
 }

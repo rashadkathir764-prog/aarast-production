@@ -333,6 +333,8 @@ export function bookingReminderNotifications(
     quoteRequestId: args.quoteRequestId,
     providerId: args.providerId,
     daysUntil,
+    // RA-BE-190: the notifications' bookings switch finds the reminders by this.
+    reminder: true,
   };
   const key = (userId: string) =>
     `${userId}:booking:${args.bookingId}:REMINDER:${milestone}:${isoDay}`;

@@ -106,7 +106,12 @@ export class NotificationsRepository {
   notificationPreference(client: Prisma.TransactionClient, userId: string) {
     return client.notificationPreference.findUnique({
       where: { userId },
-      select: { taskRemindersEnabled: true, paymentRemindersEnabled: true, providerMessagesEnabled: true },
+      select: {
+        taskRemindersEnabled: true,
+        paymentRemindersEnabled: true,
+        providerMessagesEnabled: true,
+        bookingRemindersEnabled: true,
+      },
     });
   }
 
@@ -187,6 +192,7 @@ export class NotificationsRepository {
         taskRemindersEnabled: true,
         paymentRemindersEnabled: true,
         providerMessagesEnabled: true,
+        bookingRemindersEnabled: true,
       },
     });
   }

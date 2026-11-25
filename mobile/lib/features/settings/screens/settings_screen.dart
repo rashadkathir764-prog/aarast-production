@@ -120,6 +120,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
               _Toggle(
+                key: const Key('settings-booking-reminders-switch'),
+                title: 'الحجوزات',
+                subtitle: 'قبل موعدها بأسبوع وبيوم',
+                value: draft.bookingRemindersEnabled,
+                onChanged: (value) => _save(
+                  provider,
+                  draft.copyWith(bookingRemindersEnabled: value),
+                ),
+              ),
+              _Toggle(
                 key: const Key('settings-provider-messages-switch'),
                 title: 'العروض والمحادثات',
                 subtitle: 'أول ما توصل',

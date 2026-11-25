@@ -120,6 +120,7 @@ export interface NotificationPreferenceResponse {
   taskRemindersEnabled: boolean;
   paymentRemindersEnabled: boolean;
   providerMessagesEnabled: boolean;
+  bookingRemindersEnabled: boolean;
   channelCapabilities: NotificationChannelCapabilitiesResponse;
   createdAt: Date;
   updatedAt: Date;
@@ -737,6 +738,9 @@ export class UsersService {
       ...(dto.providerMessagesEnabled !== undefined
         ? { providerMessagesEnabled: dto.providerMessagesEnabled }
         : {}),
+      ...(dto.bookingRemindersEnabled !== undefined
+        ? { bookingRemindersEnabled: dto.bookingRemindersEnabled }
+        : {}),
     };
     const settings = await runRetryableTransaction(this.prisma, async (tx) => {
       await this.lockNotificationSettingsUser(tx, currentUser.id);
@@ -790,6 +794,7 @@ export class UsersService {
       taskRemindersEnabled: settings.taskRemindersEnabled,
       paymentRemindersEnabled: settings.paymentRemindersEnabled,
       providerMessagesEnabled: settings.providerMessagesEnabled,
+      bookingRemindersEnabled: settings.bookingRemindersEnabled,
       channelCapabilities: {
         ...NOTIFICATION_CHANNEL_CAPABILITIES,
         push: {

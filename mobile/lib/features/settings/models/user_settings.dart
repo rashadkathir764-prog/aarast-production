@@ -11,6 +11,7 @@ class UserSettings {
     required this.taskRemindersEnabled,
     required this.paymentRemindersEnabled,
     required this.providerMessagesEnabled,
+    required this.bookingRemindersEnabled,
     this.channelCapabilities = NotificationChannelCapabilities.defaults,
     required this.createdAt,
     required this.updatedAt,
@@ -27,6 +28,7 @@ class UserSettings {
       taskRemindersEnabled: json['taskRemindersEnabled'] == true,
       paymentRemindersEnabled: json['paymentRemindersEnabled'] == true,
       providerMessagesEnabled: json['providerMessagesEnabled'] == true,
+      bookingRemindersEnabled: json['bookingRemindersEnabled'] == true,
       channelCapabilities: NotificationChannelCapabilities.fromJson(
         json['channelCapabilities'],
       ),
@@ -44,6 +46,7 @@ class UserSettings {
   final bool taskRemindersEnabled;
   final bool paymentRemindersEnabled;
   final bool providerMessagesEnabled;
+  final bool bookingRemindersEnabled;
   final NotificationChannelCapabilities channelCapabilities;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -53,6 +56,7 @@ class UserSettings {
       'taskRemindersEnabled': taskRemindersEnabled,
       'paymentRemindersEnabled': paymentRemindersEnabled,
       'providerMessagesEnabled': providerMessagesEnabled,
+      'bookingRemindersEnabled': bookingRemindersEnabled,
     };
   }
 
@@ -64,6 +68,7 @@ class UserSettings {
     bool? taskRemindersEnabled,
     bool? paymentRemindersEnabled,
     bool? providerMessagesEnabled,
+    bool? bookingRemindersEnabled,
     NotificationChannelCapabilities? channelCapabilities,
   }) {
     return UserSettings(
@@ -78,6 +83,8 @@ class UserSettings {
           paymentRemindersEnabled ?? this.paymentRemindersEnabled,
       providerMessagesEnabled:
           providerMessagesEnabled ?? this.providerMessagesEnabled,
+      bookingRemindersEnabled:
+          bookingRemindersEnabled ?? this.bookingRemindersEnabled,
       channelCapabilities: channelCapabilities ?? this.channelCapabilities,
       createdAt: createdAt,
       updatedAt: updatedAt,
@@ -87,7 +94,8 @@ class UserSettings {
   bool sameValues(UserSettings other) {
     return taskRemindersEnabled == other.taskRemindersEnabled &&
         paymentRemindersEnabled == other.paymentRemindersEnabled &&
-        providerMessagesEnabled == other.providerMessagesEnabled;
+        providerMessagesEnabled == other.providerMessagesEnabled &&
+        bookingRemindersEnabled == other.bookingRemindersEnabled;
   }
 
   static DateTime? _dateTimeOrNull(Object? value) {

@@ -28,4 +28,8 @@ export class UpdateSettingsDto {
   @IsBoolean()
   @IsOptional()
   providerMessagesEnabled?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  bookingRemindersEnabled?: boolean;
 }

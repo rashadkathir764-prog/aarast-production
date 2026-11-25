@@ -42,6 +42,7 @@ void main() {
         'taskRemindersEnabled': true,
         'paymentRemindersEnabled': false,
         'providerMessagesEnabled': true,
+        'bookingRemindersEnabled': true,
       });
       expect(settings.toUpdateJson(), isNot(contains('pushEnabled')));
       expect(settings.toUpdateJson(), isNot(contains('smsEnabled')));
@@ -122,6 +123,7 @@ UserSettings _settings() {
     taskRemindersEnabled: true,
     paymentRemindersEnabled: false,
     providerMessagesEnabled: true,
+    bookingRemindersEnabled: true,
     createdAt: DateTime.utc(2026, 7, 26),
     updatedAt: DateTime.utc(2026, 7, 26),
   );

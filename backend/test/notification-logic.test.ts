@@ -1,4 +1,5 @@
 import "reflect-metadata";
+import { bookingReminderNotifications } from "../src/marketplace/booking-notifications";
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
@@ -723,5 +724,84 @@ test("RA-BE-174: a merged notice rewrites the one under its key, unread, without
   await assert.rejects(
     service.createNotificationInTransaction(tx as any, { ...notice("x"), mergeIntoExisting: undefined }),
     (error: any) => error?.code === "P2002",
+  );
+});
+
+// RA-BE-190: a customer's booking reminder (a week and a day before) is the
+// «الحجوزات» switch, not the offers-and-chats one; the booking steps and the
+// provider's own reminders keep the switch they had.
+test("the booking reminder follows the bookings switch; steps and the provider's reminder do not", async () => {
+  const created: any[] = [];
+  const clientFor = (preference: Record<string, boolean>) => ({
+    $queryRaw: async () => [{ id: user.id }],
+    user: noDeletionPending,
+    notificationPreference: {
+      findUnique: async () => ({
+        taskRemindersEnabled: true,
+        paymentRemindersEnabled: true,
+        providerMessagesEnabled: true,
+        bookingRemindersEnabled: true,
+        ...preference,
+      }),
+    },
+    notification: {
+      create: async ({ data }: any) => {
+        created.push(data);
+        return { id: `n-${created.length}`, ...data, createdAt: new Date(), updatedAt: new Date() };
+      },
+    },
+    outboxEvent: { create: async () => ({}) },
+  });
+  const service = notificationsService({} as PrismaService, {} as PermissionService, new OutboxService());
+  const notice = (data: Prisma.InputJsonObject) => ({
+    userId: user.id,
+    type: NotificationType.BOOKING_UPDATED,
+    title: "حجزك بعد أسبوع",
+    body: "تأكد من التفاصيل.",
+    data,
+  });
+  const customerReminder = notice({ reminder: true, recipientAudience: "CUSTOMER" });
+  const providerReminder = notice({ reminder: true, recipientAudience: "PROVIDER" });
+  const step = notice({ recipientAudience: "CUSTOMER" });
+
+  // The bookings switch off: the customer's reminder is not written.
+  const bookingsOff = clientFor({ bookingRemindersEnabled: false });
+  assert.equal(await service.createNotificationInTransaction(bookingsOff as any, customerReminder), null);
+  assert.equal(created.length, 0);
+  // ...but the booking step and the provider's reminder are, as before.
+  assert.ok(await service.createNotificationInTransaction(bookingsOff as any, step));
+  assert.ok(await service.createNotificationInTransaction(bookingsOff as any, providerReminder));
+  assert.equal(created.length, 2);
+
+  // The offers-and-chats switch off no longer hides the customer's reminder.
+  const messagesOff = clientFor({ providerMessagesEnabled: false });
+  assert.ok(await service.createNotificationInTransaction(messagesOff as any, customerReminder));
+  assert.equal(await service.createNotificationInTransaction(messagesOff as any, step), null);
+  assert.equal(await service.createNotificationInTransaction(messagesOff as any, providerReminder), null);
+});
+
+test("the booking reminders say they are reminders, so the bookings switch can find them", () => {
+  const today = new Date("2026-11-25T00:00:00.000Z");
+  const reminders = bookingReminderNotifications(
+    {
+      bookingId: "booking-1",
+      quoteRequestId: "request-1",
+      providerId: "provider-1",
+      eventDate: new Date("2026-12-01T00:00:00.000Z"),
+      customerUserId: "customer-1",
+      weddingPlanId: "plan-1",
+      customerName: "محمد الحمدي",
+      providerUserId: "provider-user-1",
+      providerName: "قاعة سبأ",
+    },
+    today,
+  );
+  assert.equal(reminders.length, 2);
+  for (const reminder of reminders) {
+    assert.equal((reminder.data as any).reminder, true);
+  }
+  assert.deepEqual(
+    reminders.map((reminder) => (reminder.data as any).recipientAudience),
+    ["CUSTOMER", "PROVIDER"],
   );
 });

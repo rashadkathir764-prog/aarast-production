@@ -442,6 +442,7 @@ additive `channelCapabilities` object:
   "taskRemindersEnabled": true,
   "paymentRemindersEnabled": true,
   "providerMessagesEnabled": true,
+  "bookingRemindersEnabled": true,
   "channelCapabilities": {
     "inApp": { "supported": true, "configurable": false, "enabled": true },
     "push": { "supported": true, "configurable": false, "enabled": true },
@@ -467,7 +468,7 @@ their booleans return `false`, and attempts to enable them return
 `NOTIFICATION_CHANNEL_UNSUPPORTED`. OTP transport is a separate authentication
 concern and does not make WhatsApp a general notification channel.
 
-The three writable content preferences have direct effects:
+The four writable content preferences have direct effects:
 
 - `taskRemindersEnabled` controls immediate and scheduled task reminders and
   the `WEDDING_COUNTDOWN` reminder.
@@ -475,7 +476,13 @@ The three writable content preferences have direct effects:
   `BUDGET_CATEGORY_EXCEEDED`, `LOAN_REPAYMENT_DUE_SOON` /
   `LOAN_REPAYMENT_OVERDUE`, and `FUNDING_EXPECTED`.
 - `providerMessagesEnabled` controls quote-request, quote-offer, quote-decision,
-  and conversation-message notifications.
+  and conversation-message notifications, and every booking notice except a
+  customer's booking reminder.
+- `bookingRemindersEnabled` (RA-BE-190, the «الحجوزات» switch, on by default)
+  controls the customer's booking reminders, a week and a day before the day
+  (`BOOKING_UPDATED` with `data.reminder` true and `recipientAudience`
+  `CUSTOMER`). The provider's own reminders stay with
+  `providerMessagesEnabled`, whose one switch in his settings says bookings.
 
 The hourly reminder scan (V1 checklist 4.8, 4.17) also creates plan-level
 reminders, each idempotent through its dedupe key:

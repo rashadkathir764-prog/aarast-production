@@ -16,6 +16,7 @@ export interface NotificationPreferenceUpdate {
   taskRemindersEnabled?: boolean;
   paymentRemindersEnabled?: boolean;
   providerMessagesEnabled?: boolean;
+  bookingRemindersEnabled?: boolean;
 }
 
 // Notifications owns `Notification`, `NotificationPreference` and

@@ -111,10 +111,13 @@ class _AarastPushLifecycleBridgeState extends State<AarastPushLifecycleBridge>
     // RA-MO-360: the phone's question is not asked with the account, before
     // the person has a reason to say yes. A reminder set or the first plan
     // made says what the alerts are for, and only «اسمح» asks the phone.
-    final explanationPending = context.select<PushNotificationsController, bool>(
-      (push) => push.hasPendingPermissionExplanation,
-    );
-    if (explanationPending && effectiveUserId != null && !_explanationScheduled) {
+    final explanationPending = context
+        .select<PushNotificationsController, bool>(
+          (push) => push.hasPendingPermissionExplanation,
+        );
+    if (explanationPending &&
+        effectiveUserId != null &&
+        !_explanationScheduled) {
       _explanationScheduled = true;
       WidgetsBinding.instance.addPostFrameCallback((_) => _explainPermission());
     }

@@ -12,6 +12,7 @@ import {
 import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
 import { CurrentUser } from "../modules/identity/public/current-user.decorator";
 import { JwtAuthGuard } from "../modules/identity/public/jwt-auth.guard";
+import { ExpectedReadDto } from "../shared-kernel/versioning/expected-read.dto";
 import { CreateCostPaymentDto } from "./dto/create-cost-payment.dto";
 import { CreatePaymentScheduleDto } from "./dto/create-payment-schedule.dto";
 import { CreateWeddingCostDto } from "./dto/create-wedding-cost.dto";
@@ -67,8 +68,12 @@ export class CostsController {
   }
 
   @Delete(":id")
-  remove(@CurrentUser() user: AuthenticatedUser, @Param("id") id: string) {
-    return this.service.deleteCost(user, id);
+  remove(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("id") id: string,
+    @Body() dto: ExpectedReadDto,
+  ) {
+    return this.service.deleteCost(user, id, dto.expected);
   }
 
   @Post(":id/cancel")
@@ -175,8 +180,12 @@ export class PaymentSchedulesController {
   }
 
   @Delete(":id")
-  remove(@CurrentUser() user: AuthenticatedUser, @Param("id") id: string) {
-    return this.service.deleteSchedule(user, id);
+  remove(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("id") id: string,
+    @Body() dto: ExpectedReadDto,
+  ) {
+    return this.service.deleteSchedule(user, id, dto.expected);
   }
 
   @Post(":id/cancel")

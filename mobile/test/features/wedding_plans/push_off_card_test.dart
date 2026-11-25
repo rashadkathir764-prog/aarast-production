@@ -74,10 +74,7 @@ void main() {
 
     expect(find.byKey(const ValueKey('push-off-card')), findsOneWidget);
     expect(find.text('تنبيهات الجوال ما تشتغل هنا'), findsOneWidget);
-    expect(
-      find.textContaining('جوالك ما يدعم تنبيهات الجوال'),
-      findsOneWidget,
-    );
+    expect(find.textContaining('جوالك ما يدعم تنبيهات الجوال'), findsOneWidget);
     expect(find.textContaining('داخل اعّرست'), findsOneWidget);
     expect(find.byKey(const ValueKey('push-off-open')), findsNothing);
     expect(find.text('التنبيهات مقفلة'), findsNothing);

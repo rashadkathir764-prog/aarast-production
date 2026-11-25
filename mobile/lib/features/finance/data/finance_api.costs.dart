@@ -1,5 +1,23 @@
 part of 'finance_api.dart';
 
+/// RA-MO-344: the cost's fields the server checks an edit or a delete against
+/// (the server's list, `COST_CHECKABLE_FIELDS`).
+const _checkableCostFields = {
+  'budgetCategoryId',
+  'title',
+  'totalAmount',
+  'providerId',
+  'quoteOfferId',
+  'partyName',
+  'partyPhone',
+  'agreementDate',
+  'payer',
+  'payerName',
+  'note',
+  'estimateCover',
+  'estimatePart',
+};
+
 // Wedding costs.
 mixin _FinanceCostsApi on _FinanceApiCore {
   /// D85: the phone's copy of the costs alone, as the first page.
@@ -264,23 +282,7 @@ mixin _FinanceCostsApi on _FinanceApiCore {
         entityType: 'cost',
         table: OfflineTables.cachedCosts,
         id: cost.id,
-        fields: changes.keys.where(
-          const {
-            'budgetCategoryId',
-            'title',
-            'totalAmount',
-            'providerId',
-            'quoteOfferId',
-            'partyName',
-            'partyPhone',
-            'agreementDate',
-            'payer',
-            'payerName',
-            'note',
-            'estimateCover',
-            'estimatePart',
-          }.contains,
-        ),
+        fields: changes.keys.where(_checkableCostFields.contains),
       );
       if (read != null) changes['expected'] = read;
     }
@@ -323,7 +325,21 @@ mixin _FinanceCostsApi on _FinanceApiCore {
         'اتفاق عليه دفعات ما ينحذف. ألغِه عشان يبقى السجل صحيح.',
       );
     }
-    final mutation = _mutation('DELETE', '/api/v1/costs/${cost.id}', const {});
+    // RA-MO-344: what the delete was made from, as an edit's (a cost the
+    // server has not named, or one whose change still waits, reads nothing).
+    final read =
+        cost.id.startsWith('local-') ||
+            FinanceLocalDataSource.isLocalGuestPlanId(cost.weddingPlanId)
+        ? null
+        : await OfflineWrites(_apiClient, _offline).lastRead(
+            entityType: 'cost',
+            table: OfflineTables.cachedCosts,
+            id: cost.id,
+            fields: _checkableCostFields,
+          );
+    final mutation = _mutation('DELETE', '/api/v1/costs/${cost.id}', {
+      'expected': ?read,
+    });
     if (FinanceLocalDataSource.isLocalGuestPlanId(cost.weddingPlanId)) {
       await _local.markDeleted(table: OfflineTables.cachedCosts, id: cost.id);
       return;

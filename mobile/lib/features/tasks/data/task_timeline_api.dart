@@ -513,12 +513,21 @@ class TaskTimelineApi {
       await offline?.syncPendingChanges();
       return;
     }
+    // RA-MO-344: what the delete was made from, as an edit's.
+    final read = await _writes.lastRead(
+      entityType: 'task',
+      table: OfflineTables.cachedTasks,
+      id: id,
+      fields: _checkableTaskFields,
+      replacingWaiting: true,
+    );
+    final payload = <String, dynamic>{'expected': ?read};
     // RA-MO-341: the shared route's try, one request id to the resend.
     final requestId = ApiClient.newClientRequestId();
     final sent = await _writes.send(
       method: 'DELETE',
       endpoint: '/api/v1/tasks/$id',
-      payload: const {},
+      payload: payload,
       requestId: requestId,
     );
     if (sent != null) {
@@ -536,7 +545,7 @@ class TaskTimelineApi {
       operation: 'delete',
       endpoint: '/api/v1/tasks/$id',
       method: 'DELETE',
-      payload: const {},
+      payload: payload,
       planId: _taskPlanId(cached),
       localEntityId: id,
       replaceAllPendingForEntity: true,

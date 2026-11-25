@@ -67,10 +67,9 @@ class _PushOffCardState extends State<PushOffCard> {
     final preferences = context.watch<DevicePreferences?>();
     final now = widget.now ?? appNow();
     final hiddenUntil = preferences?.pushCardHiddenUntil;
-    final unavailable = context
-        .select<PushNotificationsController?, bool>(
-          (push) => push?.unavailableOnThisPhone ?? false,
-        );
+    final unavailable = context.select<PushNotificationsController?, bool>(
+      (push) => push?.unavailableOnThisPhone ?? false,
+    );
     if (!(_off || unavailable) ||
         (hiddenUntil != null && now.isBefore(hiddenUntil))) {
       return const SizedBox.shrink();
@@ -94,7 +93,9 @@ class _PushOffCardState extends State<PushOffCard> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  unavailable ? 'تنبيهات الجوال ما تشتغل هنا' : 'التنبيهات مقفلة',
+                  unavailable
+                      ? 'تنبيهات الجوال ما تشتغل هنا'
+                      : 'التنبيهات مقفلة',
                   style: JourneyType.of(
                     JourneyType.lead,
                     weight: JourneyType.bold,
@@ -120,10 +121,7 @@ class _PushOffCardState extends State<PushOffCard> {
                     if (!unavailable)
                       JourneyButton(
                         key: const ValueKey('push-off-open'),
-                        label: context.say(
-                          'افتح الإعدادات',
-                          'افتحي الإعدادات',
-                        ),
+                        label: context.say('افتح الإعدادات', 'افتحي الإعدادات'),
                         background: AarastV3Color.brandAccentStrong,
                         onPressed: _open,
                       ),

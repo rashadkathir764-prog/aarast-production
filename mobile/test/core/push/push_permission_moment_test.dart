@@ -40,37 +40,43 @@ void main() {
   }
 
   group('the moment', () {
-    test('an account just made is not asked: only the moment explains', () async {
-      final (push, gateway) = await controller();
+    test(
+      'an account just made is not asked: only the moment explains',
+      () async {
+        final (push, gateway) = await controller();
 
-      expect(push.hasPendingPermissionExplanation, isFalse);
-      expect(gateway.permissionRequests, 0);
+        expect(push.hasPendingPermissionExplanation, isFalse);
+        expect(gateway.permissionRequests, 0);
 
-      await push.permissionMomentReached();
+        await push.permissionMomentReached();
 
-      expect(push.hasPendingPermissionExplanation, isTrue);
-      expect(
-        gateway.permissionRequests,
-        0,
-        reason: 'the phone asks only after the explanation is accepted',
-      );
-    });
+        expect(push.hasPendingPermissionExplanation, isTrue);
+        expect(
+          gateway.permissionRequests,
+          0,
+          reason: 'the phone asks only after the explanation is accepted',
+        );
+      },
+    );
 
-    test('the explanation is claimed once, and offered once a session', () async {
-      final (push, _) = await controller();
-      await push.permissionMomentReached();
+    test(
+      'the explanation is claimed once, and offered once a session',
+      () async {
+        final (push, _) = await controller();
+        await push.permissionMomentReached();
 
-      expect(push.claimPermissionExplanation(), isTrue);
-      expect(push.claimPermissionExplanation(), isFalse);
-      expect(push.hasPendingPermissionExplanation, isFalse);
+        expect(push.claimPermissionExplanation(), isTrue);
+        expect(push.claimPermissionExplanation(), isFalse);
+        expect(push.hasPendingPermissionExplanation, isFalse);
 
-      await push.permissionMomentReached();
-      expect(
-        push.hasPendingPermissionExplanation,
-        isFalse,
-        reason: 'a second reminder does not nag in the same session',
-      );
-    });
+        await push.permissionMomentReached();
+        expect(
+          push.hasPendingPermissionExplanation,
+          isFalse,
+          reason: 'a second reminder does not nag in the same session',
+        );
+      },
+    );
 
     test('a person who said yes already is not asked again', () async {
       final (push, _) = await controller(alreadyAsked: true);
@@ -78,16 +84,23 @@ void main() {
       expect(push.hasPendingPermissionExplanation, isFalse);
     });
 
-    test('notifications already on or turned off need no explanation', () async {
-      for (final status in [
-        PushAuthorizationStatus.authorized,
-        PushAuthorizationStatus.denied,
-      ]) {
-        final (push, _) = await controller(status: status);
-        await push.permissionMomentReached();
-        expect(push.hasPendingPermissionExplanation, isFalse, reason: '$status');
-      }
-    });
+    test(
+      'notifications already on or turned off need no explanation',
+      () async {
+        for (final status in [
+          PushAuthorizationStatus.authorized,
+          PushAuthorizationStatus.denied,
+        ]) {
+          final (push, _) = await controller(status: status);
+          await push.permissionMomentReached();
+          expect(
+            push.hasPendingPermissionExplanation,
+            isFalse,
+            reason: '$status',
+          );
+        }
+      },
+    );
 
     test('with no account there is nothing to ask for', () async {
       final (push, _) = await controller();
@@ -146,26 +159,36 @@ void main() {
       return (push, gateway);
     }
 
-    testWidgets('one line says what the alerts are for; «اسمح» asks the phone', (
-      tester,
-    ) async {
-      final (push, gateway) = await pump(tester);
-      expect(find.byKey(const ValueKey('push-permission-sheet')), findsNothing);
-      expect(gateway.permissionRequests, 0);
+    testWidgets(
+      'one line says what the alerts are for; «اسمح» asks the phone',
+      (tester) async {
+        final (push, gateway) = await pump(tester);
+        expect(
+          find.byKey(const ValueKey('push-permission-sheet')),
+          findsNothing,
+        );
+        expect(gateway.permissionRequests, 0);
 
-      await tester.runAsync(push.permissionMomentReached);
-      await tester.pumpAndSettle();
+        await tester.runAsync(push.permissionMomentReached);
+        await tester.pumpAndSettle();
 
-      expect(find.byKey(const ValueKey('push-permission-sheet')), findsOneWidget);
-      expect(find.textContaining('مواعيد الدفعات'), findsOneWidget);
-      expect(gateway.permissionRequests, 0);
+        expect(
+          find.byKey(const ValueKey('push-permission-sheet')),
+          findsOneWidget,
+        );
+        expect(find.textContaining('مواعيد الدفعات'), findsOneWidget);
+        expect(gateway.permissionRequests, 0);
 
-      await tester.tap(find.byKey(const ValueKey('push-permission-allow')));
-      await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('push-permission-allow')));
+        await tester.pumpAndSettle();
 
-      expect(gateway.permissionRequests, 1);
-      expect(find.byKey(const ValueKey('push-permission-sheet')), findsNothing);
-    });
+        expect(gateway.permissionRequests, 1);
+        expect(
+          find.byKey(const ValueKey('push-permission-sheet')),
+          findsNothing,
+        );
+      },
+    );
 
     testWidgets('«لاحقًا» asks nothing of the phone', (tester) async {
       final (push, gateway) = await pump(tester);
@@ -179,15 +202,19 @@ void main() {
       expect(find.byKey(const ValueKey('push-permission-sheet')), findsNothing);
     });
 
-    testWidgets('signing in alone asks nothing, no sheet and no phone question', (
-      tester,
-    ) async {
-      final (_, gateway) = await pump(tester);
-      await tester.pumpAndSettle();
+    testWidgets(
+      'signing in alone asks nothing, no sheet and no phone question',
+      (tester) async {
+        final (_, gateway) = await pump(tester);
+        await tester.pumpAndSettle();
 
-      expect(find.byKey(const ValueKey('push-permission-sheet')), findsNothing);
-      expect(gateway.permissionRequests, 0);
-    });
+        expect(
+          find.byKey(const ValueKey('push-permission-sheet')),
+          findsNothing,
+        );
+        expect(gateway.permissionRequests, 0);
+      },
+    );
   });
 }
 

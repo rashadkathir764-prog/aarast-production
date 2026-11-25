@@ -622,7 +622,9 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
       await _refreshTaskData(weddingPlanId);
       return true;
     } on ApiException catch (error) {
-      _errorMessage = error.message;
+      // RA-MO-344: changed on another phone since this one read it: the task
+      // stays, read again, and the delete is the person's to repeat.
+      _errorMessage = await _saveFailure(weddingPlanId, error, deleting: true);
       return false;
     } catch (_) {
       _errorMessage = 'ما انحذفت المهمة الحين.';
@@ -737,13 +739,20 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
   /// RA-MO-344, as the budget (D112, Q-4): the task changed on another
   /// phone since this one read it, and the server kept that. It is read
   /// again, so the screen shows it and the next edit is made from it.
-  Future<String> _saveFailure(String weddingPlanId, ApiException error) async {
+  Future<String> _saveFailure(
+    String weddingPlanId,
+    ApiException error, {
+    bool deleting = false,
+  }) async {
     if (!error.isChangedElsewhere) return error.message;
     await load(weddingPlanId);
     return _loadErrorMessage == null
         // Said to either reader, with no verb to a man or a woman.
-        ? 'المهمة تغيّرت من جهاز ثاني قبل تعديلك، فما انحفظ. '
-              'اللي قدامك الحين هو الجديد.'
+        ? deleting
+              ? 'المهمة تغيّرت من جهاز ثاني قبل الحذف، فما انحذفت. '
+                    'اللي قدامك الحين هو الجديد.'
+              : 'المهمة تغيّرت من جهاز ثاني قبل تعديلك، فما انحفظ. '
+                    'اللي قدامك الحين هو الجديد.'
         : error.message;
   }
 

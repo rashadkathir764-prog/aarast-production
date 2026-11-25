@@ -311,13 +311,17 @@ class GuestsProvider extends ChangeNotifier with SessionScopedNotifier {
   /// edit is made from it.
   Future<String> _rereadAfterConflict(
     String weddingPlanId,
-    ApiException error,
-  ) async {
+    ApiException error, {
+    bool deleting = false,
+  }) async {
     await loadGuests(weddingPlanId);
     return _loadErrorMessage == null
         // Said to either reader, with no verb to a man or a woman.
-        ? 'الضيف تغيّر من جهاز ثاني قبل تعديلك، فما انحفظ. '
-              'اللي قدامك الحين هو الجديد.'
+        ? deleting
+              ? 'الضيف تغيّر من جهاز ثاني قبل الحذف، فما انحذف. '
+                    'اللي قدامك الحين هو الجديد.'
+              : 'الضيف تغيّر من جهاز ثاني قبل تعديلك، فما انحفظ. '
+                    'اللي قدامك الحين هو الجديد.'
         : error.message;
   }
 
@@ -343,7 +347,15 @@ class GuestsProvider extends ChangeNotifier with SessionScopedNotifier {
         _refreshSummary(guest.weddingPlanId);
         return true;
       }
-      _errorMessage = _guestErrorMessage(error);
+      // RA-MO-344: changed on another phone since this one read it: the
+      // guest stays, read again, and the delete is the person's to repeat.
+      _errorMessage = error.isChangedElsewhere
+          ? await _rereadAfterConflict(
+              guest.weddingPlanId,
+              error,
+              deleting: true,
+            )
+          : _guestErrorMessage(error);
       return false;
     } catch (_) {
       _errorMessage = 'ما قدرنا نحذف الضيف.';

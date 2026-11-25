@@ -96,22 +96,25 @@ void main() {
     localEntityId: 'local-task-1',
   );
 
-  test('a failed send tries again by itself, waiting longer each time', () async {
-    final sync = await service();
-    await queueTask();
+  test(
+    'a failed send tries again by itself, waiting longer each time',
+    () async {
+      final sync = await service();
+      await queueTask();
 
-    await sync.syncPendingChanges();
-    expect(server.requests, 1);
-    expect(sync.state, SyncState.offline);
+      await sync.syncPendingChanges();
+      expect(server.requests, 1);
+      expect(sync.state, SyncState.offline);
 
-    // First wait 40ms, then 80ms, then 160ms: three more tries in 300ms, not
-    // a try every few milliseconds.
-    await _pause(const Duration(milliseconds: 300));
+      // First wait 40ms, then 80ms, then 160ms: three more tries in 300ms, not
+      // a try every few milliseconds.
+      await _pause(const Duration(milliseconds: 300));
 
-    expect(server.requests, inInclusiveRange(3, 4));
-    expect(asked.take(3), [0, 1, 2]);
-    expect(await database.pendingSyncCount(), 1);
-  });
+      expect(server.requests, inInclusiveRange(3, 4));
+      expect(asked.take(3), [0, 1, 2]);
+      expect(await database.pendingSyncCount(), 1);
+    },
+  );
 
   test('the queue is sent as soon as the server answers, and then stops '
       'trying', () async {
@@ -129,17 +132,20 @@ void main() {
     expect(server.requests, requests, reason: 'nothing left to retry');
   });
 
-  test('a change kept on the phone without a try starts the retries too', () async {
-    final sync = await service();
-    await queueTask();
+  test(
+    'a change kept on the phone without a try starts the retries too',
+    () async {
+      final sync = await service();
+      await queueTask();
 
-    // What a write does when the phone knows it is offline: it keeps the
-    // change and tells the service, with no sync pass of its own.
-    await sync.noteNetworkFailure('no network');
-    await _pause(_tick);
+      // What a write does when the phone knows it is offline: it keeps the
+      // change and tells the service, with no sync pass of its own.
+      await sync.noteNetworkFailure('no network');
+      await _pause(_tick);
 
-    expect(server.requests, greaterThanOrEqualTo(1));
-  });
+      expect(server.requests, greaterThanOrEqualTo(1));
+    },
+  );
 
   test('an app resume tries at once and starts the waits over', () async {
     final sync = await service();
@@ -198,8 +204,10 @@ void main() {
 
   test('the app waits 10 seconds, doubling, to a ceiling of 5 minutes', () {
     expect(
-      [for (var attempt = 0; attempt < 7; attempt++)
-        OfflineSyncService.standardRetryDelay(attempt).inSeconds],
+      [
+        for (var attempt = 0; attempt < 7; attempt++)
+          OfflineSyncService.standardRetryDelay(attempt).inSeconds,
+      ],
       [10, 20, 40, 80, 160, 300, 300],
     );
     expect(OfflineSyncService.standardRetryDelay(500).inMinutes, 5);

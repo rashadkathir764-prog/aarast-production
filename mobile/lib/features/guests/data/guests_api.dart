@@ -310,12 +310,19 @@ class GuestsApi {
     }
     final cached =
         await _reads.cachedItem(OfflineTables.cachedGuests, id) ?? {'id': id};
+    // RA-MO-344: what the delete was made from, as an edit's.
+    final read = await _writes.lastRead(
+      entityType: 'guest',
+      table: OfflineTables.cachedGuests,
+      id: id,
+      fields: _checkableGuestFields,
+    );
     await _writes.queued(
       entityType: 'guest',
       operation: 'delete',
       method: 'DELETE',
       endpoint: '/api/v1/guests/$id',
-      payload: const {},
+      payload: {'expected': ?read},
       table: OfflineTables.cachedGuests,
       localJson: cached,
       planId: cached['weddingPlanId']?.toString(),

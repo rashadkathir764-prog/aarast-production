@@ -762,6 +762,7 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
       cost.weddingPlanId,
       () => _api.deleteCost(cost),
       refresh: () => _reloadData(cost.weddingPlanId),
+      deleting: true,
     );
   }
 
@@ -889,6 +890,7 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
       cost.weddingPlanId,
       () => _api.deleteSchedule(schedule),
       refresh: () => _reloadCost(cost),
+      deleting: true,
     );
   }
 
@@ -1016,6 +1018,7 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
     Future<void> Function() write, {
     Future<void> Function()? refresh,
     bool settlement = false,
+    bool deleting = false,
   }) async {
     // RA-MO-306: the memory's owner was shown the settle actions (D112 Q-21)
     // and the server takes them (G15), but this gate refused every one.
@@ -1061,6 +1064,9 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
                       'هذي هي الحين، عدّلي عليها.',
                 )
               // Said to either reader, with no verb to a man or a woman.
+              : deleting
+              ? 'فيه تعديل من جهاز ثاني سبق الحذف، فما انحذف. '
+                    'اللي قدامك الحين هو الجديد.'
               : 'فيه تعديل من جهاز ثاني سبق تعديلك، فما انحفظ. '
                     'اللي قدامك الحين هو الجديد.';
           return false;

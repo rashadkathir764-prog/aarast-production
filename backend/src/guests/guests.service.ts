@@ -112,6 +112,24 @@ const NAME_REQUIRED = {
   GUEST_GROUP_NAME_REQUIRED: "اسم المجموعة ما ينفع يكون فاضي.",
 } as const;
 
+/**
+ * RA-MO-344: the guest's fields an edit or a delete may say it read: the
+ * ones a person writes, never what only the server writes (the guest's own
+ * link, their answer's time).
+ */
+export const GUEST_CHECKABLE_FIELDS = [
+  "name",
+  "phone",
+  "groupId",
+  "side",
+  "status",
+  "invitationStatus",
+  "attendanceStatus",
+  "seatsCount",
+  "companionsCount",
+  "notes",
+] as const;
+
 /** D83: the guest's reply to one event of the plan beyond the wedding. */
 export interface GuestEventReply {
   planEventId: string;
@@ -461,18 +479,7 @@ export class GuestsService {
         // RA-MO-344: an edit made from an older read of the guest.
         assertFieldsUnchangedSince(
           dto.expected,
-          checkableFields(current, [
-            "name",
-            "phone",
-            "groupId",
-            "side",
-            "status",
-            "invitationStatus",
-            "attendanceStatus",
-            "seatsCount",
-            "companionsCount",
-            "notes",
-          ]),
+          checkableFields(current, GUEST_CHECKABLE_FIELDS),
           "الضيف تغيّر من جهاز ثاني. حدّث الشاشة وعدّل من جديد.",
         );
         const name =
@@ -601,6 +608,7 @@ export class GuestsService {
   async remove(
     currentUser: AuthenticatedUser,
     id: string,
+    expected?: Record<string, unknown>,
   ): Promise<{ id: string; deleted: true }> {
     const existing = await this.findGuestOrThrow(id);
     await runSerializableTransaction(this.prisma, async (tx) => {
@@ -619,6 +627,12 @@ export class GuestsService {
         context,
         currentUser.id,
         current,
+      );
+      // RA-MO-344: a delete made from an older read of the guest.
+      assertFieldsUnchangedSince(
+        expected,
+        checkableFields(current, GUEST_CHECKABLE_FIELDS),
+        "الضيف تغيّر من جهاز ثاني قبل الحذف، فما انحذف.",
       );
       await this.recordGuestContribution(
         tx,

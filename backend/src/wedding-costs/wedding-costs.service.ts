@@ -140,6 +140,34 @@ import {
   checkableFields,
 } from "../shared-kernel/versioning/changed-elsewhere";
 
+/**
+ * RA-MO-344: the cost's fields an edit or a delete may say it read: the ones
+ * a person writes, never what only the server writes (what is paid on it).
+ */
+export const COST_CHECKABLE_FIELDS = [
+  "budgetCategoryId",
+  "title",
+  "totalAmount",
+  "providerId",
+  "quoteOfferId",
+  "partyName",
+  "partyPhone",
+  "agreementDate",
+  "payer",
+  "payerName",
+  "note",
+  "estimateCover",
+  "estimatePart",
+] as const;
+
+/** RA-MO-344: the same for a payment date. */
+export const SCHEDULE_CHECKABLE_FIELDS = [
+  "amount",
+  "dueDate",
+  "note",
+  "remindAt",
+] as const;
+
 const paymentInclude = Prisma.validator<Prisma.CostPaymentInclude>()({
   weddingCost: {
     include: {
@@ -519,21 +547,7 @@ export class WeddingCostsService {
         // RA-MO-344: an edit made from an older read of the cost.
         assertFieldsUnchangedSince(
           dto.expected,
-          checkableFields(snapshot, [
-            "budgetCategoryId",
-            "title",
-            "totalAmount",
-            "providerId",
-            "quoteOfferId",
-            "partyName",
-            "partyPhone",
-            "agreementDate",
-            "payer",
-            "payerName",
-            "note",
-            "estimateCover",
-            "estimatePart",
-          ]),
+          checkableFields(snapshot, COST_CHECKABLE_FIELDS),
           "التكلفة تغيّرت من جهاز ثاني. حدّث الشاشة وعدّل من جديد.",
         );
         // V1 checklist 4.10: privacy is chosen when the cost is recorded; a
@@ -719,6 +733,7 @@ export class WeddingCostsService {
   async deleteCost(
     currentUser: AuthenticatedUser,
     id: string,
+    expected?: Record<string, unknown>,
   ): Promise<{ deleted: true }> {
     const current = await this.costOrThrow(id);
     await runSerializableTransaction(this.prisma, async (tx) => {
@@ -729,6 +744,12 @@ export class WeddingCostsService {
       );
       await this.assertScopedCostInTransaction(tx, context, id);
       const locked = await this.lockCost(tx, id);
+      // RA-MO-344: a delete made from an older read of the cost.
+      assertFieldsUnchangedSince(
+        expected,
+        checkableFields(locked, COST_CHECKABLE_FIELDS),
+        "التكلفة تغيّرت من جهاز ثاني قبل الحذف، فما انحذفت.",
+      );
       const paymentsCount = await countCostPayments(tx, {
         where: { weddingCostId: id },
       });
@@ -1333,7 +1354,7 @@ export class WeddingCostsService {
       // RA-MO-344: an edit made from an older read of the payment date.
       assertFieldsUnchangedSince(
         dto.expected,
-        checkableFields(schedule, ["amount", "dueDate", "note", "remindAt"]),
+        checkableFields(schedule, SCHEDULE_CHECKABLE_FIELDS),
         "موعد الدفع تغيّر من جهاز ثاني. حدّث الشاشة وعدّل من جديد.",
       );
       if (schedule.status !== PaymentScheduleStatus.PENDING) {
@@ -1419,6 +1440,7 @@ export class WeddingCostsService {
   async deleteSchedule(
     currentUser: AuthenticatedUser,
     id: string,
+    expected?: Record<string, unknown>,
   ): Promise<{ deleted: true }> {
     const current = await this.scheduleOrThrow(id);
     await runSerializableTransaction(this.prisma, async (tx) => {
@@ -1437,6 +1459,12 @@ export class WeddingCostsService {
       const schedule = await requirePaymentSchedule(tx, {
         where: { id },
       });
+      // RA-MO-344: a delete made from an older read of the payment date.
+      assertFieldsUnchangedSince(
+        expected,
+        checkableFields(schedule, SCHEDULE_CHECKABLE_FIELDS),
+        "موعد الدفع تغيّر من جهاز ثاني قبل الحذف، فما انحذف.",
+      );
       if (schedule.status !== PaymentScheduleStatus.PENDING) {
         throw financeConflict("Only pending payment schedules can be deleted");
       }

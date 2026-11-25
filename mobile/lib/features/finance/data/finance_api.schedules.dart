@@ -1,5 +1,9 @@
 part of 'finance_api.dart';
 
+/// RA-MO-344: the payment date's fields the server checks an edit or a delete
+/// against (the server's list, `SCHEDULE_CHECKABLE_FIELDS`).
+const _checkableScheduleFields = {'amount', 'dueDate', 'note', 'remindAt'};
+
 // Payment schedules.
 mixin _FinanceSchedulesApi on _FinanceApiCore {
   /// D85: the phone's copy of the due schedules alone.
@@ -158,9 +162,7 @@ mixin _FinanceSchedulesApi on _FinanceApiCore {
         entityType: 'payment_schedule',
         table: OfflineTables.cachedPaymentSchedules,
         id: schedule.id,
-        fields: changes.keys.where(
-          const {'amount', 'dueDate', 'note', 'remindAt'}.contains,
-        ),
+        fields: changes.keys.where(_checkableScheduleFields.contains),
       );
       if (read != null) changes['expected'] = read;
     }
@@ -218,10 +220,22 @@ mixin _FinanceSchedulesApi on _FinanceApiCore {
     if (!schedule.isPending) {
       throw const ApiException('الموعد المدفوع أو الملغي ما ينحذف.');
     }
+    // RA-MO-344: what the delete was made from, as an edit's (a date the
+    // server has not named, or one whose change still waits, reads nothing).
+    final read =
+        schedule.id.startsWith('local-') ||
+            FinanceLocalDataSource.isLocalGuestPlanId(schedule.weddingPlanId)
+        ? null
+        : await OfflineWrites(_apiClient, _offline).lastRead(
+            entityType: 'payment_schedule',
+            table: OfflineTables.cachedPaymentSchedules,
+            id: schedule.id,
+            fields: _checkableScheduleFields,
+          );
     final mutation = _mutation(
       'DELETE',
       '/api/v1/payment-schedules/${schedule.id}',
-      const {},
+      {'expected': ?read},
     );
     if (FinanceLocalDataSource.isLocalGuestPlanId(schedule.weddingPlanId)) {
       await _local.markDeleted(

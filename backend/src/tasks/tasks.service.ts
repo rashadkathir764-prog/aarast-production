@@ -90,6 +90,25 @@ import {
   checkableFields,
 } from "../shared-kernel/versioning/changed-elsewhere";
 
+/**
+ * RA-MO-344: the task's fields an edit or a delete may say it read: the ones
+ * a person writes, never what only the server writes (a task closing itself).
+ */
+export const TASK_CHECKABLE_FIELDS = [
+  "title",
+  "description",
+  "dueDate",
+  "taskCategory",
+  "responsibleName",
+  "responsiblePhone",
+  "responsibleSource",
+  "reminderAt",
+  "status",
+  "priority",
+  "linkedBudgetCategoryId",
+  "linkedScheduleId",
+] as const;
+
 export interface TaskResponse {
   id: string;
   weddingPlanId: string;
@@ -384,20 +403,7 @@ export class TasksService {
       // RA-MO-344: an edit made from an older read of the task.
       assertFieldsUnchangedSince(
         dto.expected,
-        checkableFields(current, [
-          "title",
-          "description",
-          "dueDate",
-          "taskCategory",
-          "responsibleName",
-          "responsiblePhone",
-          "responsibleSource",
-          "reminderAt",
-          "status",
-          "priority",
-          "linkedBudgetCategoryId",
-          "linkedScheduleId",
-        ]),
+        checkableFields(current, TASK_CHECKABLE_FIELDS),
         "المهمة تغيّرت من جهاز ثاني. حدّث الشاشة وعدّل من جديد.",
       );
       // V1 checklist 4.10: privacy is chosen when the task is created; a
@@ -830,6 +836,7 @@ export class TasksService {
   async remove(
     currentUser: AuthenticatedUser,
     id: string,
+    expected?: Record<string, unknown>,
   ): Promise<{ id: string; deleted: true }> {
     const existing = await this.findTaskOrThrow(id);
     await runSerializableTransaction(this.prisma, async (tx) => {
@@ -844,6 +851,12 @@ export class TasksService {
         existing.weddingPlanId,
       );
       await this.assertTaskInMutationScope(tx, context, currentUser.id, current);
+      // RA-MO-344: a delete made from an older read of the task.
+      assertFieldsUnchangedSince(
+        expected,
+        checkableFields(current, TASK_CHECKABLE_FIELDS),
+        "المهمة تغيّرت من جهاز ثاني قبل الحذف، فما انحذفت.",
+      );
       await this.recordTaskContribution(tx, context, current, {
         action: ContributionAction.DELETED,
         dedupeKey: `task:${current.id}:deleted:${current.updatedAt.toISOString()}`,

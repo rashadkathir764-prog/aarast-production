@@ -14,6 +14,7 @@ import { AuthenticatedUser } from "../modules/identity/public/identity-session.t
 import { CurrentUser } from "../modules/identity/public/current-user.decorator";
 import { JwtAuthGuard } from "../modules/identity/public/jwt-auth.guard";
 import { ListQueryDto } from "../platform/http/list-query.dto";
+import { ExpectedReadDto } from "../shared-kernel/versioning/expected-read.dto";
 import { BulkGuestsDto } from "./dto/bulk-guests.dto";
 import { CreateGuestGroupDto } from "./dto/create-guest-group.dto";
 import { CreateGuestWithEventsDto } from "./dto/create-guest-with-events.dto";
@@ -134,8 +135,9 @@ export class GuestsController {
   remove(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param("id") id: string,
+    @Body() dto: ExpectedReadDto,
   ) {
-    return this.guestsService.remove(currentUser, id);
+    return this.guestsService.remove(currentUser, id, dto.expected);
   }
 }
 

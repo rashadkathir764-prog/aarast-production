@@ -61,28 +61,34 @@ void main() {
     expect(push.unavailableOnThisPhone, isFalse);
   });
 
-  test('a server that refuses the registration is not «no push here»', () async {
-    final (push, _) = await controller(registry: _Registry()..refuses = true);
-    await push.initialize();
-    // The phone registered with Google; only the server said no.
-    await push.bindAuthenticatedUser('user-1');
-    expect(push.unavailableOnThisPhone, isFalse);
-  });
+  test(
+    'a server that refuses the registration is not «no push here»',
+    () async {
+      final (push, _) = await controller(registry: _Registry()..refuses = true);
+      await push.initialize();
+      // The phone registered with Google; only the server said no.
+      await push.bindAuthenticatedUser('user-1');
+      expect(push.unavailableOnThisPhone, isFalse);
+    },
+  );
 
-  test('the Google services check asks the phone and takes its answer', () async {
-    const channel = MethodChannel('aarast/push_support');
-    final messenger =
-        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
-    addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+  test(
+    'the Google services check asks the phone and takes its answer',
+    () async {
+      const channel = MethodChannel('aarast/push_support');
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
 
-    for (final present in [true, false]) {
-      messenger.setMockMethodCallHandler(channel, (call) async {
-        expect(call.method, 'googleServicesAvailable');
-        return present;
-      });
-      expect(await PlayServicesCheck.available(), present);
-    }
-  });
+      for (final present in [true, false]) {
+        messenger.setMockMethodCallHandler(channel, (call) async {
+          expect(call.method, 'googleServicesAvailable');
+          return present;
+        });
+        expect(await PlayServicesCheck.available(), present);
+      }
+    },
+  );
 }
 
 class _Gateway implements PushMessagingGateway {

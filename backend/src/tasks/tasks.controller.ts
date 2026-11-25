@@ -14,6 +14,7 @@ import { AuthenticatedUser } from "../modules/identity/public/identity-session.t
 import { CurrentUser } from "../modules/identity/public/current-user.decorator";
 import { JwtAuthGuard } from "../modules/identity/public/jwt-auth.guard";
 import { ListQueryDto } from "../platform/http/list-query.dto";
+import { ExpectedReadDto } from "../shared-kernel/versioning/expected-read.dto";
 import { AssignTaskDto } from "./dto/assign-task.dto";
 import { CreateChecklistItemDto } from "./dto/create-checklist-item.dto";
 import { CreatePlanTaskDto } from "./dto/create-plan-task.dto";
@@ -128,7 +129,8 @@ export class TasksController {
   remove(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param("id") id: string,
+    @Body() dto: ExpectedReadDto,
   ) {
-    return this.tasksService.remove(currentUser, id);
+    return this.tasksService.remove(currentUser, id, dto.expected);
   }
 }

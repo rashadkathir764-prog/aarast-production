@@ -209,17 +209,27 @@ test(
   () => {
     const source = (file: string) =>
       readFileSync(join(__dirname, "../src", file), "utf8");
+    // The edits and the deletes read the same list of fields (RA-MO-344), so
+    // each list is declared once, per entity.
     const checks = [
-      ["guests/guests.service.ts", "current"],
-      ["tasks/tasks.service.ts", "current"],
-      ["wedding-costs/wedding-costs.service.ts", "snapshot"],
-      ["wedding-costs/wedding-costs.service.ts", "schedule"],
+      ["guests/guests.service.ts", "current", "GUEST_CHECKABLE_FIELDS"],
+      ["tasks/tasks.service.ts", "current", "TASK_CHECKABLE_FIELDS"],
+      ["wedding-costs/wedding-costs.service.ts", "snapshot", "COST_CHECKABLE_FIELDS"],
+      ["wedding-costs/wedding-costs.service.ts", "schedule", "SCHEDULE_CHECKABLE_FIELDS"],
     ] as const;
-    for (const [file, row] of checks) {
-      const match = new RegExp(
-        `assertFieldsUnchangedSince\\(\\s*dto\\.expected,\\s*checkableFields\\(${row}, \\[([^\\]]*)\\]`,
-      ).exec(source(file));
-      assert.ok(match, `${file}: ${row}`);
+    for (const [file, row, list] of checks) {
+      const text = source(file);
+      assert.match(
+        text,
+        new RegExp(
+          `assertFieldsUnchangedSince\\(\\s*dto\\.expected,\\s*checkableFields\\(${row}, ${list}\\)`,
+        ),
+        `${file}: ${row}`,
+      );
+      const declared = new RegExp(
+        `export const ${list} = \\[([^\\]]*)\\] as const`,
+      ).exec(text);
+      assert.ok(declared, `${file}: ${list}`);
       for (const serverOnly of [
         "updatedAt",
         "linkOpenedAt",
@@ -230,7 +240,7 @@ test(
         "paidAmount",
         "paidAt",
       ]) {
-        assert.doesNotMatch(match[1], new RegExp(`"${serverOnly}"`), file);
+        assert.doesNotMatch(declared[1], new RegExp(`"${serverOnly}"`), file);
       }
     }
   },

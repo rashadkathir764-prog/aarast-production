@@ -469,11 +469,16 @@ class OfflineWrites {
   /// the read it was made from is still the phone's last read of the row:
   /// a new edit carries that change's `expected`, so it is refused too
   /// instead of going over what changed elsewhere.
+  ///
+  /// A delete that REPLACES the row's waiting changes ([replacingWaiting]: a
+  /// guest's or a task's) is made from the read the oldest of them was made
+  /// from, so it carries that change's `expected`, or none when it had none.
   Future<Map<String, Object?>?> lastRead({
     required String entityType,
     required String table,
     required String id,
     required Iterable<String> fields,
+    bool replacingWaiting = false,
   }) async {
     final database = _offline?.database;
     if (database == null || isLocalId(id) || id.startsWith('local-')) {
@@ -489,10 +494,20 @@ class OfflineWrites {
       final expected = change.payload['expected'];
       if (expected is Map) return Map<String, Object?>.from(expected);
     }
-    for (final change in [...await database.pendingSyncItems(), ...blocked]) {
-      if (change.entityType == entityType && change.localEntityId == id) {
-        return null;
+    final pending = await database.pendingSyncItems();
+    for (final change in [...pending, ...blocked]) {
+      if (change.entityType != entityType || change.localEntityId != id) {
+        continue;
       }
+      if (!replacingWaiting) return null;
+      for (final waiting in pending) {
+        if (waiting.entityType != entityType || waiting.localEntityId != id) {
+          continue;
+        }
+        final expected = waiting.payload['expected'];
+        return expected is Map ? Map<String, Object?>.from(expected) : null;
+      }
+      return null;
     }
     final row = await database.readCachedItem(table: table, id: id);
     if (row == null) return null;

@@ -13,16 +13,10 @@ import {
 } from "../../../marketplace/provider-responsiveness";
 import { profileCompleteness, rankProviders } from "../../../marketplace/provider-ranking";
 import { activeFeaturedPeriodInclude } from "../public/featured-placement";
+import { likePatternContaining } from "../../../shared-kernel/text/arabic-search";
 
 type Client = Prisma.TransactionClient;
 
-/**
- * RA-BE-181: the LIKE pattern that holds [key] anywhere, with the key's own
- * `%`, `_` and `\` matched as themselves (LIKE's escape character is `\`).
- */
-export function likePatternContaining(key: string): string {
-  return `%${key.replace(/[\\%_]/g, "\\$&")}%`;
-}
 
 /**
  * RA-BE-09, RA-BE-181: the providers whose name, owner, description or

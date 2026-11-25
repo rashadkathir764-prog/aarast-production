@@ -15,9 +15,8 @@ import { groupPrices, type PriceGroup } from '../public/market-prices';
 import { featuredNowProviderWhere } from '../public/featured-placement';
 import { listPricedServices } from './market-prices.repository';
 import {
-  ARABIC_FOLD_FROM,
-  ARABIC_FOLD_TO,
   arabicSearchKey,
+  likePatternContaining,
 } from '../../../shared-kernel/text/arabic-search';
 
 @Injectable()
@@ -61,11 +60,13 @@ export class ProviderReadService implements ProviderReadPort {
   ): Promise<string[]> {
     const key = arabicSearchKey(search);
     if (providerIds.length === 0 || key.length === 0) return [];
-    // RA-BE-09: the name is matched folded, as the phone matches it.
+    // RA-BE-09: the name is matched folded, as the phone matches it
+    // (RA-BE-181: with LIKE, as every search).
+    const pattern = likePatternContaining(key);
     const providers = await client.$queryRaw<Array<{ id: string }>>(Prisma.sql`
       SELECT p."id" FROM "Provider" p
       WHERE p."id" IN (${Prisma.join([...providerIds])})
-        AND strpos(translate(lower(p."businessName"), ${ARABIC_FOLD_FROM}, ${ARABIC_FOLD_TO}), ${key}) > 0`);
+        AND "aarast_search_fold"(p."businessName") LIKE ${pattern}`);
     return providers.map((provider) => provider.id);
   }
 

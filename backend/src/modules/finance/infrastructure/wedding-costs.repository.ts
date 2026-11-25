@@ -2,7 +2,7 @@ import { NotFoundException } from '@nestjs/common';
 import { CostPaymentType, PaymentScheduleStatus, Prisma, WeddingCostStatus, type CostEntryKind, type CostPayer, type EstimateCover, type WeddingCost } from '@prisma/client';
 import type { PrismaService } from '../../../platform/database/prisma.service';
 import { weddingCostResponseInclude } from '../public/wedding-cost.presenter';
-import { ARABIC_FOLD_FROM, ARABIC_FOLD_TO } from '../../../shared-kernel/text/arabic-search';
+import { likePatternContaining } from '../../../shared-kernel/text/arabic-search';
 
 type Client = Prisma.TransactionClient | PrismaService;
 
@@ -267,13 +267,15 @@ export async function findWeddingCostIdsMatchingSearch(
   key: string,
   providerIds: readonly string[],
 ): Promise<string[]> {
+  // RA-BE-181: a LIKE on the folded text, as every search; the plan's own
+  // index narrows the rows to its agreements first.
+  const pattern = likePatternContaining(key);
   const rows = await tx.$queryRaw<Array<{ id: string }>>(
     Prisma.sql`
       SELECT c."id" FROM "WeddingCost" c
       JOIN "BudgetCategory" b ON b."id" = c."budgetCategoryId"
       WHERE c."weddingPlanId" = ${weddingPlanId}
-        AND (strpos(translate(lower(concat_ws(chr(1), c."title", c."partyName", b."name")),
-               ${ARABIC_FOLD_FROM}, ${ARABIC_FOLD_TO}), ${key}) > 0
+        AND ("aarast_search_fold"(concat_ws(chr(1), c."title", c."partyName", b."name")) LIKE ${pattern}
           OR c."providerId" = ANY(${[...providerIds]}::text[]))
     `,
   );

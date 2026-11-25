@@ -6,10 +6,12 @@ import { Prisma } from "@prisma/client";
 import {
   findProviderIdsMatchingSearch,
   findServiceIdsMatchingSearch,
-  likePatternContaining,
   searchActiveProviders,
 } from "../src/modules/marketplace/infrastructure/marketplace-core.repository";
-import { arabicSearchKey } from "../src/shared-kernel/text/arabic-search";
+import {
+  arabicSearchKey,
+  likePatternContaining,
+} from "../src/shared-kernel/text/arabic-search";
 
 // RA-BE-181: the marketplace search matched `strpos(translate(lower(...)))`
 // on every row, which no index can serve, and the page's total was a second

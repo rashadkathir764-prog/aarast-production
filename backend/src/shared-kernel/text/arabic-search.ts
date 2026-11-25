@@ -6,18 +6,20 @@
  * «قاعة», «احمد» finds «أحمد» and «عبدالله» finds «عبد الله». Without it
  * the phone's copy found a name and the server's answer then lost it.
  *
- * The same two strings drive the key here and the columns in SQL, where a
- * search reads (written out in each query, so the ownership scan can read
- * which tables it touches):
+ * The same two strings fold the key here and, in SQL, the
+ * `aarast_search_fold` function (migration 20261125130000, its `translate`
+ * built from these strings; a test keeps them equal). RA-BE-181: a search
+ * reads (written out in each query, so the ownership scan can read which
+ * tables it touches):
  *
- *     strpos(translate(lower(concat_ws(chr(1), a."x", a."y")),
- *       ${ARABIC_FOLD_FROM}, ${ARABIC_FOLD_TO}), ${key}) > 0
+ *     "aarast_search_fold"(a."x") LIKE ${likePatternContaining(key)}
  *
- * `translate` drops every character of FROM past the length of TO, so the
- * two sides cannot fold differently; `concat_ws` skips a missing field, and
- * its chr(1) keeps a key from matching across two fields. Code points are
- * written out because the letters are hard to read in a mixed-direction
- * line.
+ * which a trigram GIN index on the folded column serves; several fields are
+ * one `concat_ws(chr(1), ...)` (it skips a missing field, and its chr(1)
+ * keeps a key from matching across two fields) or one LIKE each. `translate`
+ * drops every character of FROM past the length of TO, so the two sides
+ * cannot fold differently. Code points are written out because the letters
+ * are hard to read in a mixed-direction line.
  */
 const FOLDED =
   'آأإٱ' + // آ أ إ ٱ
@@ -43,4 +45,12 @@ export function arabicSearchKey(value: string): string {
     else if (index < ARABIC_FOLD_TO.length) key += ARABIC_FOLD_TO[index];
   }
   return key;
+}
+
+/**
+ * RA-BE-181: the LIKE pattern that holds [key] anywhere, with the key's own
+ * `%`, `_` and `\` matched as themselves (LIKE's escape character is `\`).
+ */
+export function likePatternContaining(key: string): string {
+  return `%${key.replace(/[\\%_]/g, '\\$&')}%`;
 }

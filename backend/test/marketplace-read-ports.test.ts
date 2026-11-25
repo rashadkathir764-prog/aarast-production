@@ -51,9 +51,10 @@ test('the provider read port runs the owner queries and locks on the client it i
     ['findUnique', { where: { userId: 'user-1' } }],
     ['findMany', { where: { id: { in: ['provider-1', 'provider-2'] } } }],
   ]);
-  // RA-BE-09: the name is matched folded, as the phone matches it.
+  // RA-BE-09: the name is matched folded, as the phone matches it;
+  // RA-BE-181: with LIKE on the folded name, which its trigram index serves.
   assert.deepEqual(statements, [
-    'SELECT p."id" FROM "Provider" p WHERE p."id" IN (?) AND strpos(translate(lower(p."businessName"), ?, ?), ?) > 0',
+    'SELECT p."id" FROM "Provider" p WHERE p."id" IN (?) AND "aarast_search_fold"(p."businessName") LIKE ?',
     'SELECT "id" FROM "Provider" WHERE "id" IN (?,?) ORDER BY "id" ASC FOR SHARE',
   ]);
 });

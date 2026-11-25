@@ -141,8 +141,9 @@ test('identity lists accounts without credentials and searches the requested fie
   await service.listAccounts(client, 'سارة', { skip: 20, take: 10 });
   // RA-BE-09: the name is matched folded (by id); phone and email as typed.
   const [, nameQuery] = calls[0] as [string, { sql: string; values: unknown[] }];
-  assert.match(nameQuery.sql, /FROM "User" u\s+WHERE strpos\(translate\(lower\(u\."name"\)/);
-  assert.equal(nameQuery.values[nameQuery.values.length - 1], 'ساره');
+  // RA-BE-181: a LIKE on the folded name, which its trigram index serves.
+  assert.match(nameQuery.sql, /FROM "User" u\s+WHERE "aarast_search_fold"\(u\."name"\) LIKE/);
+  assert.equal(nameQuery.values[nameQuery.values.length - 1], '%ساره%');
   const text = { contains: 'سارة', mode: 'insensitive' };
   const where = { OR: [{ id: { in: ['named-1'] } }, { phone: text }, { email: text }] };
   assert.deepEqual(calls[1], ['user.count', { where }]);

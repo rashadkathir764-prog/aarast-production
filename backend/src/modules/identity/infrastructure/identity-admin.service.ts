@@ -18,9 +18,8 @@ import type {
   IdentityAdminPort,
 } from '../public/identity-admin.port';
 import {
-  ARABIC_FOLD_FROM,
-  ARABIC_FOLD_TO,
   arabicSearchKey,
+  likePatternContaining,
 } from '../../../shared-kernel/text/arabic-search';
 
 const adminAccountSelect = {
@@ -257,16 +256,21 @@ const assistantAnswerReportSelect = {
   createdAt: true,
 } as const;
 
-/** RA-BE-09: the accounts whose name holds the search folded as the phone folds it. */
+/**
+ * RA-BE-09: the accounts whose name holds the search folded as the phone
+ * folds it. RA-BE-181: a LIKE on the folded name, which its trigram index
+ * serves (migration 20261125160000).
+ */
 async function namedAccountIds(
   client: Prisma.TransactionClient,
   search: string,
 ): Promise<string[]> {
   const key = arabicSearchKey(search);
   if (key.length === 0) return [];
+  const pattern = likePatternContaining(key);
   const rows = await client.$queryRaw<Array<{ id: string }>>(Prisma.sql`
     SELECT u."id" FROM "User" u
-    WHERE strpos(translate(lower(u."name"), ${ARABIC_FOLD_FROM}, ${ARABIC_FOLD_TO}), ${key}) > 0`);
+    WHERE "aarast_search_fold"(u."name") LIKE ${pattern}`);
   return rows.map((row) => row.id);
 }
 

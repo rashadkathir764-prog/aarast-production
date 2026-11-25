@@ -75,9 +75,8 @@ import {
 } from './service-price-stamp';
 import { findServiceIdsMatchingSearch } from './marketplace-core.repository';
 import {
-  ARABIC_FOLD_FROM,
-  ARABIC_FOLD_TO,
   arabicSearchKey,
+  likePatternContaining,
 } from '../../../shared-kernel/text/arabic-search';
 
 interface TextMatch {
@@ -278,11 +277,12 @@ export class MarketplaceAdminRepository implements MarketplaceAdminPort {
     }
     if (filter.search) {
       const text = textMatch(filter.search.text);
-      const key = arabicSearchKey(filter.search.text);
+      // RA-BE-181: the name or the owner, each on its trigram index.
+      const pattern = likePatternContaining(arabicSearchKey(filter.search.text));
       const named = await client.$queryRaw<Array<{ id: string }>>(Prisma.sql`
         SELECT p."id" FROM "Provider" p
-        WHERE strpos(translate(lower(concat_ws(chr(1), p."businessName", p."ownerName")),
-                ${ARABIC_FOLD_FROM}, ${ARABIC_FOLD_TO}), ${key}) > 0`);
+        WHERE "aarast_search_fold"(p."businessName") LIKE ${pattern}
+          OR "aarast_search_fold"(p."ownerName") LIKE ${pattern}`);
       and.push({
         OR: [
           { id: { in: named.map((row) => row.id) } },
@@ -786,12 +786,16 @@ export class MarketplaceAdminRepository implements MarketplaceAdminPort {
     if (filter.status) and.push({ status: filter.status });
     if (filter.providerId) and.push({ providerId: filter.providerId });
     if (filter.search) {
-      const key = arabicSearchKey(filter.search.text);
+      // RA-BE-181: the review's words or its provider's name, each on its
+      // trigram index.
+      const pattern = likePatternContaining(arabicSearchKey(filter.search.text));
       const matched = await client.$queryRaw<Array<{ id: string }>>(Prisma.sql`
         SELECT r."id" FROM "ProviderReview" r
+        WHERE "aarast_search_fold"(r."comment") LIKE ${pattern}
+        UNION
+        SELECT r."id" FROM "ProviderReview" r
         JOIN "Provider" p ON p."id" = r."providerId"
-        WHERE strpos(translate(lower(concat_ws(chr(1), r."comment", p."businessName")),
-                ${ARABIC_FOLD_FROM}, ${ARABIC_FOLD_TO}), ${key}) > 0`);
+        WHERE "aarast_search_fold"(p."businessName") LIKE ${pattern}`);
       and.push({
         OR: [
           { id: { in: matched.map((row) => row.id) } },

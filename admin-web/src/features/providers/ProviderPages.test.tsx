@@ -315,7 +315,8 @@ describe('a04 مراجعة طلب', () => {
 
     expect(await screen.findByRole('heading', { name: 'استوديو ضوء صنعاء' })).toBeVisible();
     expect(screen.getByText('التصوير · صنعاء · قدّم 18 أكتوبر')).toBeVisible();
-    expect(screen.getByText('3 صور')).toBeVisible();
+    // Q-59: «صور الشغل» are the application's photos, not the service's images.
+    expect(screen.getByText('ما فيه صور')).toBeVisible();
     expect(screen.getByText('550,000 ر.ي · مصوّرين، 300 صورة')).toBeVisible();
     expect(screen.getByText('صنعاء · كل صنعاء')).toBeVisible();
     expect(screen.getByText('قدّم الطلب')).toBeVisible();
@@ -506,6 +507,91 @@ describe('a04 مراجعة طلب', () => {
           { field: 'CITY', note: 'حدد الأحياء' },
         ],
       }),
+    );
+  });
+
+  it('shows the work photos the application came with, each with its review (Q-59)', async () => {
+    const photo = (id: string, status: 'PENDING' | 'APPROVED' | 'REJECTED', extra = {}) => ({
+      id,
+      imageUrl: status === 'REJECTED' ? null : `https://media.test/${id}.webp`,
+      album: null,
+      forWomen: false,
+      noFaces: false,
+      status,
+      rejectionReason: null,
+      reviewedAt: null,
+      createdAt: ago(30),
+      ...extra,
+    });
+    vi.mocked(getProviderApplication).mockResolvedValue(
+      provider({
+        id: 'p7',
+        businessName: 'كوافيرة الريم',
+        status: 'PENDING',
+        portfolio: [
+          photo('w1', 'APPROVED'),
+          photo('w2', 'PENDING', { album: 'حفلات النساء', forWomen: true, noFaces: true }),
+          photo('w3', 'REJECTED', { rejectionReason: 'الصورة مو من شغلك' }),
+        ],
+      }),
+    );
+    renderAt('/r/p7', '/r/:id', <ProviderApplicationDetailsPage />);
+
+    expect(await screen.findByText('3 صور · وحدة تنتظر المراجعة · وحدة انشالت')).toBeVisible();
+    const photos = within(screen.getByRole('list', { name: 'صور الشغل' })).getAllByRole('listitem');
+    expect(photos).toHaveLength(3);
+    expect(within(photos[0]).getByRole('img', { name: 'صورة من شغل كوافيرة الريم' })).toHaveAttribute(
+      'src',
+      'https://media.test/w1.webp',
+    );
+    expect(photos[0]).toHaveTextContent('سليمة');
+    expect(photos[1]).toHaveTextContent('تنتظر المراجعة · للعرائس بس');
+    // A refused photo's image is deleted: its place and its reason stay.
+    expect(within(photos[2]).queryByRole('img')).not.toBeInTheDocument();
+    expect(photos[2]).toHaveTextContent('انشالت: الصورة مو من شغلك');
+    // Two not refused: too few to approve.
+    expect(screen.getByText('ما تكفي للاعتماد: لازم 3 صور ما انشالت.')).toBeVisible();
+    expect(screen.getByRole('link', { name: 'راجعها في «صور تحتاج مراجعة»' })).toHaveAttribute('href', '/photos');
+  });
+
+  it('says nothing is missing once three photos stand (Q-59)', async () => {
+    vi.mocked(getProviderApplication).mockResolvedValue(
+      provider({
+        id: 'p8',
+        businessName: 'فرقة الأمجاد',
+        status: 'PENDING',
+        portfolio: ['a', 'b', 'c'].map((id) => ({
+          id,
+          imageUrl: `https://media.test/${id}.webp`,
+          album: null,
+          forWomen: false,
+          noFaces: false,
+          status: 'APPROVED' as const,
+          rejectionReason: null,
+          reviewedAt: ago(2),
+          createdAt: ago(30),
+        })),
+      }),
+    );
+    renderAt('/r/p8', '/r/:id', <ProviderApplicationDetailsPage />);
+    expect(await screen.findByText('3 صور')).toBeVisible();
+    expect(screen.queryByText('ما تكفي للاعتماد: لازم 3 صور ما انشالت.')).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'راجعها في «صور تحتاج مراجعة»' })).not.toBeInTheDocument();
+  });
+
+  it('tells the reviewer why an approval was refused for the photos (Q-59)', async () => {
+    vi.mocked(getProviderApplication).mockResolvedValue(
+      provider({ id: 'p9', businessName: 'استوديو الضحى', status: 'PENDING' }),
+    );
+    vi.mocked(approveProvider).mockRejectedValue(
+      new ApiError('تعذّر الحفظ', 422, 'PROVIDER_PHOTOS_REQUIRED'),
+    );
+    renderAt('/r/p9', '/r/:id', <ProviderApplicationDetailsPage />);
+    fireEvent.click(await screen.findByRole('button', { name: 'اعتماد' }));
+    const dialog = screen.getByRole('dialog', { name: 'اعتماد استوديو الضحى' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'اعتمد' }));
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      'ما عنده 3 صور من شغله ما انشالت. اطلب منه تعديل يضيف صور، وبعدها اعتمده.',
     );
   });
 

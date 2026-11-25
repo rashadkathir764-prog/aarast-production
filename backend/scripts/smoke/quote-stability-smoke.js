@@ -4,6 +4,7 @@
 const http = require('http');
 const { randomUUID } = require('crypto');
 const { registerVerified } = require('./verified-registration');
+const { uploadApplicationPhotos } = require('./verified-media-upload');
 const { eraseFixtureAccount } = require('./account-grace');
 const { configureSmokeDatabaseUrl } = require('./smoke-utils');
 
@@ -155,6 +156,7 @@ async function run() {
         categoryIds: [category.id],
         description: marker,
         services: [{ title: `${marker}-service`, basePrice: '100000' }],
+        portfolio: await uploadApplicationPhotos({ request, token: providerAccount.token }),
       },
       providerAccount.token,
     );
@@ -412,8 +414,20 @@ async function run() {
       randomUUID(),
     );
     check('valid offer is accepted', accepted.status === 200 && accepted.body?.offer?.status === 'ACCEPTED');
-    check('accept response declares automatic cost creation', accepted.body?.automaticCostCreated === true);
-    check('accept response returns the wedding cost and cost id', accepted.body?.weddingCost?.id === accepted.body?.costSuggestion?.costId);
+    // Q-55 (أ), D127: choosing the offer writes nothing in the money.
+    check('accept response declares no automatic cost', accepted.body?.automaticCostCreated === false);
+    check('accept response returns no wedding cost and no cost id', accepted.body?.weddingCost === null && accepted.body?.costSuggestion?.costId === null);
+    check('accept writes no agreement for the offer', (await prisma.weddingCost.count({ where: { quoteOfferId: validOfferId } })) === 0);
+
+    // The booking request (on the request's own day) writes the agreement.
+    const booking = await request(
+      'POST',
+      `/api/v1/me/quote-requests/${acceptedQuoteId}/booking`,
+      {},
+      requester.token,
+      randomUUID(),
+    );
+    check('the booking is requested on the request\'s day', booking.status === 201);
 
     const [acceptedQuote, acceptedOffer, link, costs, payments, schedules, tasks] = await Promise.all([
       prisma.quoteRequest.findUnique({ where: { id: acceptedQuoteId } }),
@@ -427,10 +441,10 @@ async function run() {
     check('accepted request and offer are persisted as ACCEPTED', acceptedQuote?.status === 'ACCEPTED' && acceptedOffer?.status === 'ACCEPTED');
     check('accepted offer creates its plan-provider link', link?.weddingPlanId === planId && link.providerId === providerId);
     check(
-      'accepted offer creates exactly one zero-paid wedding cost',
+      'the booking request creates exactly one zero-paid wedding cost',
       costs.length === 1 && costs[0].totalAmount.toString() === '350000' && costs[0].paidAmount.toString() === '0',
     );
-    check('accept creates no payment, schedule, or task', payments === 0 && schedules === 0 && tasks === 0);
+    check('accept and booking request create no payment, schedule, or task', payments === 0 && schedules === 0 && tasks === 0);
 
     evidence.providerId = providerId;
     evidence.planId = planId;

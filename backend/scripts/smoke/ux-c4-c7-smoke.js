@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 'use strict';
 
-const { configureSmokeDatabaseUrl } = require('./smoke-utils');
+const { configureSmokeDatabaseUrl, futureDay } = require('./smoke-utils');
 
 configureSmokeDatabaseUrl();
 
 const { registerVerified } = require('./verified-registration');
+const { uploadApplicationPhotos } = require('./verified-media-upload');
 
 const http = require('http');
 const {
@@ -118,6 +119,7 @@ async function run() {
       cityId: city.id,
       categoryIds: [category.id],
       services: [{ title: 'C4-C7 service', basePrice: '100000' }],
+      portfolio: await uploadApplicationPhotos({ request, token: providerUser.token }),
     },
     providerUser.token,
   );
@@ -214,22 +216,37 @@ async function run() {
     'accepted quote creates plan provider link',
     acceptResponse.body?.planProviderLink?.providerId === providerId,
   );
+  // Q-55 (أ), D127: choosing the offer writes nothing in the money; the
+  // booking request writes its agreement.
   check(
-    'accepted quote response declares automatic cost',
-    acceptResponse.body?.automaticCostCreated === true,
+    'accepted quote response declares no automatic cost',
+    acceptResponse.body?.automaticCostCreated === false &&
+      acceptResponse.body?.weddingCost === null,
   );
   check(
-    'accepted quote response includes next actions',
+    'accepted quote response offers the booking request next',
     Array.isArray(acceptResponse.body?.nextActions) &&
-      acceptResponse.body.nextActions.includes('viewCost') &&
+      acceptResponse.body.nextActions.includes('requestBooking') &&
       acceptResponse.body.nextActions.includes('viewAcceptedProvider'),
   );
   check(
-    'accepted quote response exposes the linked cost',
-    acceptResponse.body?.costSuggestion?.suggestedAction === 'VIEW_COST',
+    'accepted quote response has no cost to view',
+    acceptResponse.body?.costSuggestion?.suggestedAction === 'NONE',
   );
   check(
-    'accept creates one automatic cost',
+    'accept creates no cost',
+    (await prisma.weddingCost.count({ where: { weddingPlanId: planId } })) ===
+      costsBefore,
+  );
+  const bookingResponse = await request(
+    'POST',
+    `/api/v1/me/quote-requests/${quoteId}/booking`,
+    { eventDate: futureDay(50) },
+    owner.token,
+  );
+  check('booking of the accepted offer requested', bookingResponse.status === 201);
+  check(
+    'the booking request creates one cost',
     (await prisma.weddingCost.count({ where: { weddingPlanId: planId } })) ===
       costsBefore + 1,
   );

@@ -22,6 +22,12 @@ import {
 const { assertManagedSmokeEnvironment } = require("./smoke-utils.js") as {
   assertManagedSmokeEnvironment: (environment: NodeJS.ProcessEnv) => unknown;
 };
+const { uploadApplicationPhotos } = require("./verified-media-upload.js") as {
+  uploadApplicationPhotos: (input: {
+    request: (method: string, path: string, body: unknown, token: string) => Promise<Reply>;
+    token: string;
+  }) => Promise<Array<{ key: string }>>;
+};
 
 assertManagedSmokeEnvironment(process.env);
 const runId = process.env.AARAST_SMOKE_RUN_ID!;
@@ -151,17 +157,36 @@ async function main(): Promise<void> {
   const claimantToken = await session(claimant, "application");
   const customerToken = await session(customer, "application");
 
-  const application = (phone: string | null, services?: unknown) => ({
+  // Q-59 (D127): each application goes to review with three work photos.
+  const photosOf = (token: string) =>
+    uploadApplicationPhotos({
+      request: (method, path, body, bearer) => call(method, path, bearer, body),
+      token,
+    });
+  const joinerPhotos = await photosOf(joinerToken);
+  const refusedPhotos = await photosOf(refusedToken);
+
+  const application = (
+    phone: string | null,
+    services: unknown,
+    portfolio: Array<{ key: string }> | undefined,
+  ) => ({
     businessName: `${label} نشاط`,
     phone,
     cityId: city.id,
     categoryIds: [category.id],
     ...(services === undefined ? {} : { services }),
+    ...(portfolio === undefined ? {} : { portfolio }),
   });
 
   // ---------------------------------------------------------------- B-10
   expect(
-    await call("POST", "/api/v1/provider/apply", joinerToken, application(joiner.phone)),
+    await call(
+      "POST",
+      "/api/v1/provider/apply",
+      joinerToken,
+      application(joiner.phone, undefined, joinerPhotos),
+    ),
     422,
     "apply without a service",
     "PROVIDER_SERVICE_REQUIRED",
@@ -171,7 +196,7 @@ async function main(): Promise<void> {
       "POST",
       "/api/v1/provider/apply",
       joinerToken,
-      application(joiner.phone, [{ title: "زفة", basePrice: "0" }]),
+      application(joiner.phone, [{ title: "زفة", basePrice: "0" }], joinerPhotos),
     ),
     422,
     "apply with an unpriced service",
@@ -182,7 +207,7 @@ async function main(): Promise<void> {
       "POST",
       "/api/v1/provider/apply",
       joinerToken,
-      application(joiner.phone, [{ title: "زفة", basePrice: "500", currency: "USD" }]),
+      application(joiner.phone, [{ title: "زفة", basePrice: "500", currency: "USD" }], joinerPhotos),
     ),
     422,
     "apply with a service priced in dollars",
@@ -191,19 +216,59 @@ async function main(): Promise<void> {
   assert.equal(await prisma.provider.count({ where: { userId: joiner.id } }), 0);
   pass("joining without a priced service, or priced in another currency than YER, is refused with 422 and writes nothing");
 
+  const pricedService = [
+    { title: "مزمار الليلة", basePrice: "150000", description: "مزمار وطبلين" },
+  ];
+  for (const [photos, what] of [
+    [undefined, "no photos"],
+    [joinerPhotos.slice(0, 2), "two photos"],
+  ] as const) {
+    expect(
+      await call(
+        "POST",
+        "/api/v1/provider/apply",
+        joinerToken,
+        application(joiner.phone, pricedService, photos as Array<{ key: string }> | undefined),
+      ),
+      422,
+      `apply with ${what}`,
+      "PROVIDER_PHOTOS_REQUIRED",
+    );
+  }
+  // One photo listed three times is one photo, refused as a malformed list.
+  expect(
+    await call(
+      "POST",
+      "/api/v1/provider/apply",
+      joinerToken,
+      application(joiner.phone, pricedService, [joinerPhotos[0], joinerPhotos[0], joinerPhotos[0]]),
+    ),
+    400,
+    "apply with one photo three times",
+  );
+  assert.equal(await prisma.provider.count({ where: { userId: joiner.id } }), 0);
+  pass("joining with fewer than three work photos is refused with 422 and writes nothing (Q-59)");
+
   const applied = expect(
     await call(
       "POST",
       "/api/v1/provider/apply",
       joinerToken,
-      application(joiner.phone, [
-        { title: "مزمار الليلة", basePrice: "150000", description: "مزمار وطبلين" },
-      ]),
+      application(joiner.phone, pricedService, joinerPhotos),
     ),
     201,
-    "apply with a priced service",
+    "apply with a priced service and three photos",
   );
   assert.equal(applied.status, "PENDING");
+  const joinerPortfolio = await prisma.portfolioItem.findMany({
+    where: { providerId: applied.id },
+    orderBy: { sortOrder: "asc" },
+  });
+  assert.deepEqual(
+    joinerPortfolio.map((item) => [item.mediaKey, item.status]),
+    joinerPhotos.map((photo) => [photo.key, "PENDING"]),
+  );
+  pass("the application's three photos join his portfolio, waiting for the team (Q-59)");
   const joinerServices = expect(
     await call("GET", "/api/v1/provider/me/services", joinerToken),
     200,
@@ -483,6 +548,26 @@ async function main(): Promise<void> {
   assert.equal(legacyAfter.status, "PENDING");
   pass("a profile without an active priced service is not approved");
 
+  // Q-59 (D127): with its service priced, it still needs three work photos.
+  await prisma.providerService.create({
+    data: {
+      providerId: legacyProfile.id,
+      categoryId: category.id,
+      title: `${label} خدمة قديمة`,
+      basePrice: "90000",
+      isActive: true,
+    },
+  });
+  expect(
+    await call("PATCH", `/admin/providers/${legacyProfile.id}/approve`, adminToken),
+    422,
+    "approve a profile without work photos",
+    "PROVIDER_PHOTOS_REQUIRED",
+  );
+  const legacyStill = await prisma.provider.findUniqueOrThrow({ where: { id: legacyProfile.id } });
+  assert.equal(legacyStill.status, "PENDING");
+  pass("a profile without three work photos the team did not refuse is not approved (Q-59)");
+
   const approved = expect(
     await call("PATCH", `/admin/providers/${applied.id}/approve`, adminToken),
     200,
@@ -497,7 +582,7 @@ async function main(): Promise<void> {
       "POST",
       "/api/v1/provider/apply",
       refusedToken,
-      application(refused.phone, [{ title: "تسريحة عروس", basePrice: "60000" }]),
+      application(refused.phone, [{ title: "تسريحة عروس", basePrice: "60000" }], refusedPhotos),
     ),
     201,
     "second application",

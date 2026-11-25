@@ -14,13 +14,16 @@ import {
 /**
  * OPERATIONAL: an approved provider. PROFILE: a provider whose profile is
  * writable. JOINING_SERVICE: an approved provider, or one waiting for
- * approval editing the service he joined with (B-10). LIFECYCLE: any
- * status; the caller checks the transition (resubmit, reopen).
+ * approval editing the service he joined with (B-10). PORTFOLIO: an
+ * approved provider, or one waiting for approval keeping the photos his
+ * application needs (Q-59, D127). LIFECYCLE: any status; the caller checks
+ * the transition (resubmit, reopen).
  */
 export type ProviderMutationAccess =
   | "OPERATIONAL"
   | "PROFILE"
   | "JOINING_SERVICE"
+  | "PORTFOLIO"
   | "LIFECYCLE";
 export type ProviderMutationLockMode = "SHARE" | "UPDATE";
 
@@ -63,7 +66,7 @@ export async function lockOwnedProviderAfterUsersInTransaction(
   }
   if (access === "PROFILE") {
     assertProviderProfileWritable(provider);
-  } else if (access === "JOINING_SERVICE") {
+  } else if (access === "JOINING_SERVICE" || access === "PORTFOLIO") {
     if (!isProviderAwaitingApproval(provider)) assertProviderOperational(provider);
   } else if (access === "OPERATIONAL") {
     assertProviderOperational(provider);

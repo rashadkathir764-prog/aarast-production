@@ -131,6 +131,7 @@ import {
   isProviderAwaitingApproval,
   JOINING_SERVICE_CURRENCY,
   joiningCurrencyRequired,
+  providerPhotosRequired,
   providerServiceRequired,
   toProviderLatestDecision,
   type ProviderReviewDecisionView,
@@ -249,6 +250,15 @@ function assertPlanWritableForProvider(plan: WeddingPlan): void {
   assertWeddingPlanWritable(plan);
 }
 
+/** V1 4.18: a listing waits under his phone; he claims it, not a second one. */
+function listingClaimable(): ConflictException {
+  return new ConflictException({
+    statusCode: 409,
+    code: 'PROVIDER_LISTING_CLAIMABLE',
+    message: 'A provider listing already exists for this phone; claim it',
+  });
+}
+
 @Injectable()
 export class ProviderDashboardService {
   constructor(
@@ -290,6 +300,23 @@ export class ProviderDashboardService {
     const phone = PhoneNormalizer.normalizeRequired(dto.phone);
     const description = this.optionalText(dto.description);
     const services = this.joiningServices(dto.services);
+    // A listing that waits under his phone is his to claim (V1 4.18): said
+    // before his photos are asked for, not after. The transaction checks it
+    // again under its locks.
+    if (
+      currentUser.phone &&
+      (await dashboardStore.findUnclaimedListing(
+        this.prisma,
+        PhoneNormalizer.lookupVariants(currentUser.phone),
+      ))
+    ) {
+      throw listingClaimable();
+    }
+    // Q-59 (أ, D127): three work photos go to review with the profile.
+    const photoUrls = await this.portfolio.verifyApplicationPhotos(
+      currentUser,
+      dto.portfolio,
+    );
 
     const provider = await runSerializableTransaction(this.prisma, async (tx) => {
       // The applicant's lifecycle row is identity's: locked for update there.
@@ -315,11 +342,7 @@ export class ProviderDashboardService {
           PhoneNormalizer.lookupVariants(currentUser.phone),
         ))
       ) {
-        throw new ConflictException({
-          statusCode: 409,
-          code: 'PROVIDER_LISTING_CLAIMABLE',
-          message: 'A provider listing already exists for this phone; claim it',
-        });
+        throw listingClaimable();
       }
 
       await this.lockActiveCategoriesInTransaction(tx, categoryIds);
@@ -346,6 +369,13 @@ export class ProviderDashboardService {
           description,
           services,
       });
+      await this.portfolio.attachToApplication(
+        tx,
+        currentUser,
+        created,
+        dto.portfolio!,
+        photoUrls,
+      );
 
       return this.withProviderCatalog(tx, created);
     });
@@ -513,6 +543,10 @@ export class ProviderDashboardService {
       }
       if (!(await hasJoiningService(tx, provider.id))) {
         throw providerServiceRequired();
+      }
+      // Q-59 (D127): the profile goes back with three photos not refused.
+      if (!(await this.portfolio.hasApplicationPhotos(tx, provider.id))) {
+        throw providerPhotosRequired();
       }
       const at = new Date();
       const resubmitted = await dashboardStore.markProviderResubmitted(

@@ -271,6 +271,7 @@ export class AdminOwners {
         city: service.cityId ? required(cities, service.cityId, 'City') : null,
       })),
       packages: row.packages,
+      portfolioItems: row.portfolioItems,
     };
   }
 

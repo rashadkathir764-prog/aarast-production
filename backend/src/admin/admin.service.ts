@@ -20,6 +20,7 @@ import {
   UserStatus,
 } from '@prisma/client';
 import {
+  providerPhotosRequired,
   providerServiceRequired,
   type ProviderFieldNote,
 } from '../modules/marketplace/public/provider-review';
@@ -992,13 +993,13 @@ export class AdminService {
         throw new NotFoundException('Provider application not found');
       }
       assertProviderAdminAction(action, currentProvider.status);
-      // D41 (B-10): a profile is approved only with an active priced
-      // service, the same rule resubmitting reads.
-      if (
-        action === 'APPROVE' &&
-        !(await this.owners.marketplace.hasJoiningService(tx, id))
-      ) {
-        throw providerServiceRequired();
+      // D41 (B-10), Q-59 (D127): a profile is approved only with an active
+      // priced service and three work photos the team has not refused, the
+      // same rules resubmitting reads.
+      if (action === 'APPROVE') {
+        const market = this.owners.marketplace;
+        if (!(await market.hasJoiningService(tx, id))) throw providerServiceRequired();
+        if (!(await market.hasApplicationPhotos(tx, id))) throw providerPhotosRequired();
       }
       const reviewedAt = new Date();
 

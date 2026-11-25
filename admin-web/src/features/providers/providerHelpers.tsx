@@ -38,6 +38,9 @@ const PROVIDER_ERROR_MESSAGES: Record<string, string> = {
   // D41 (B-10): approval needs an active service with its price.
   PROVIDER_SERVICE_REQUIRED:
     'ما عنده خدمة نشطة بسعرها. اطلب منه تعديل يضيف خدمته وسعرها، وبعدها اعتمده.',
+  // Q-59 (D127): and three work photos the team has not refused.
+  PROVIDER_PHOTOS_REQUIRED:
+    'ما عنده 3 صور من شغله ما انشالت. اطلب منه تعديل يضيف صور، وبعدها اعتمده.',
   // B-43: what a featured placement may cover.
   FEATURED_PROVIDER_UNCLAIMED: 'هذا الملف ما استلمه صاحبه، فما يستقبل طلبات. ما نميّزه لين يستلمه.',
   FEATURED_PROVIDER_NOT_ACTIVE: 'المزود مو نشط الحين. ما نميّز إلا مزود نشط.',

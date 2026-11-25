@@ -5,6 +5,7 @@ import { test } from 'node:test';
 import { HttpException } from '@nestjs/common';
 import {
   AdminRole,
+  PortfolioItemStatus,
   Prisma,
   ProviderClaimStatus,
   ProviderReviewEventKind,
@@ -169,8 +170,29 @@ function dashboardFor(
     services?: unknown[];
     onCreate?: (data: any) => void;
     onResubmit?: () => void;
+    /** His portfolio photos by their review state (Q-59); none by default. */
+    photos?: PortfolioItemStatus[];
+    /** Every portfolio row write: created, updated and deleted. */
+    portfolioWrites?: Array<[string, any]>;
   } = {},
 ) {
+  const photos = (options.photos ?? []).map((photoStatus, index) => ({
+    id: `photo-${index}`,
+    providerId,
+    mediaKey: `provider-portfolio/${providerUserId}/photo-${index}.jpg`,
+    imageUrl: `https://media.test/photo-${index}.jpg`,
+    album: null,
+    forWomen: false,
+    noFaces: false,
+    status: photoStatus,
+    rejectionReason: photoStatus === PortfolioItemStatus.REJECTED ? 'مش من شغلك' : null,
+    reviewedAt: null,
+    reviewedById: null,
+    sortOrder: index,
+    createdAt: now,
+    updatedAt: now,
+  }));
+  const portfolioWrites = options.portfolioWrites ?? [];
   const provider = {
     id: providerId,
     userId: providerUserId,
@@ -238,7 +260,21 @@ function dashboardFor(
     },
     // No featured placement on record (B-43).
     providerFeaturedPeriod: { findMany: async () => [] },
-    portfolioItem: { findMany: async () => [] },
+    portfolioItem: {
+      findMany: async () => photos,
+      create: async ({ data }: any) => {
+        portfolioWrites.push(['create', data]);
+        return { id: `created-${portfolioWrites.length}` };
+      },
+      update: async (args: any) => {
+        portfolioWrites.push(['update', args]);
+        return {};
+      },
+      deleteMany: async (args: any) => {
+        portfolioWrites.push(['deleteMany', args]);
+        return { count: args.where.id.in.length };
+      },
+    },
     // Nor a profile change waiting for the team (RA-BE-152).
     providerProfileChange: { findFirst: async () => null },
     providerService: {
@@ -257,7 +293,18 @@ function dashboardFor(
   return providerDashboardService(
     prisma,
     { createNotificationInTransaction: async () => null },
-    { verifyPublicMediaUrl: async (_user: unknown, url: string) => url },
+    {
+      verifyPublicMediaUrl: async (_user: unknown, url: string) => url,
+      verifyUpload: async (_user: unknown, key: string) => ({
+        publicUrl: `https://media.test/${key}`,
+      }),
+      consumeUpload: async (_user: unknown, key: string, _purpose: string, target: any) => {
+        portfolioWrites.push(['consume', { key, target }]);
+      },
+      scheduleTargetDeletion: async (target: any) => {
+        portfolioWrites.push(['scheduleDeletion', target]);
+      },
+    },
     {},
   );
 }
@@ -371,9 +418,11 @@ test('«أرسلت التعديل» names the decision the provider read; a newe
   );
   assert.equal(resubmitted, 0);
 
+  // Q-59 (D127): the profile goes back with its three photos.
   const current = dashboardFor(ProviderStatus.NEEDS_CHANGES, {
     latestDecisionId: 'decision-read',
     onResubmit: () => (resubmitted += 1),
+    photos: [PortfolioItemStatus.PENDING, PortfolioItemStatus.PENDING, PortfolioItemStatus.APPROVED],
   });
   const profile = await current.resubmitApplication(providerUser, {
     latestDecisionId: 'decision-read',
@@ -391,6 +440,236 @@ test('«أرسلت التعديل» names the decision the provider read; a newe
     422,
     'PROVIDER_SERVICE_REQUIRED',
   );
+});
+
+// ------------------------------------------------------------ Q-59 (D127)
+
+const photoKey = (name: string) => `provider-portfolio/${providerUserId}/${name}.jpg`;
+
+/** A brand-new application on a fake client: no profile yet under this account. */
+function applicationFor(writes: Array<[string, any]>) {
+  const tx: any = {
+    $queryRaw: async (query: { strings?: readonly string[] }) => {
+      const sql = query.strings?.join('') ?? '';
+      if (sql.includes('FROM "User"')) {
+        return [{ id: providerUserId, role: UserRole.USER, status: UserStatus.ACTIVE }];
+      }
+      if (sql.includes('FROM "Provider"')) return [];
+      if (sql.includes('FROM "City"')) return [{ id: city.id }];
+      if (sql.includes('FROM "ProviderCategory"')) return [{ id: categoryId }];
+      throw new Error(`Unexpected lock: ${sql}`);
+    },
+    user: { updateMany: async () => ({ count: 1 }) },
+    provider: {
+      findFirst: async () => null,
+      create: async ({ data }: any) => {
+        writes.push(['provider', data]);
+        const { services: _services, ...fields } = data;
+        return {
+          id: providerId,
+          ...fields,
+          ownerName: null,
+          whatsapp: null,
+          email: null,
+          address: null,
+          latitude: null,
+          longitude: null,
+          logoUrl: null,
+          coverUrl: null,
+          socialLinks: null,
+          resubmittedAt: null,
+          resubmitCount: 0,
+          reopenedAt: null,
+          reviewedAt: null,
+          reviewedById: null,
+          ratingAverage: 0,
+          ratingCount: 0,
+          createdAt: now,
+          updatedAt: now,
+          city,
+          primaryCategory: null,
+        };
+      },
+      update: async ({ data }: any) => {
+        writes.push(['providerUpdate', data]);
+        return {};
+      },
+    },
+    city: { findFirst: async () => city },
+    providerCategory: { count: async () => 1, findMany: async () => [category] },
+    providerService: { findMany: async () => [] },
+    providerReviewEvent: { findFirst: async () => null },
+    providerFeaturedPeriod: { findMany: async () => [] },
+    portfolioItem: {
+      findMany: async () =>
+        writes
+          .filter(([kind]) => kind === 'photo')
+          .map(([, data]) => ({ ...data, status: PortfolioItemStatus.PENDING })),
+      create: async ({ data }: any) => {
+        writes.push(['photo', data]);
+        return { id: `photo-row-${writes.length}` };
+      },
+    },
+    providerProfileChange: { findFirst: async () => null },
+  };
+  const prisma = {
+    provider: { findUnique: async () => null },
+    $transaction: async (operation: any) => operation(tx),
+  };
+  return providerDashboardService(
+    prisma,
+    { createNotificationInTransaction: async () => null },
+    {
+      verifyUpload: async (_user: unknown, key: string, purpose: string) => {
+        writes.push(['verify', { key, purpose }]);
+        return { publicUrl: `https://media.test/${key}` };
+      },
+      consumeUpload: async (_user: unknown, key: string, purpose: string, target: any) => {
+        writes.push(['consume', { key, purpose, target }]);
+      },
+    },
+    {},
+  );
+}
+
+const application = {
+  businessName: 'استوديو ضوء صنعاء',
+  phone: '+967700000002',
+  cityId: city.id,
+  categoryIds: [categoryId],
+  services: [{ title: 'تصوير الليلة', basePrice: '150000' }],
+};
+
+test('Q-59: an application with fewer than three work photos is refused before anything is read or written', async () => {
+  for (const portfolio of [undefined, [], [{ key: photoKey('a') }, { key: photoKey('b') }]]) {
+    const writes: Array<[string, any]> = [];
+    await rejectsWith(
+      () => applicationFor(writes).apply(providerUser, { ...application, portfolio } as any),
+      422,
+      'PROVIDER_PHOTOS_REQUIRED',
+    );
+    assert.deepEqual(writes, [], `${portfolio?.length ?? 'no'} photos`);
+  }
+  // One photo listed three times is one photo.
+  const writes: Array<[string, any]> = [];
+  await assert.rejects(() =>
+    applicationFor(writes).apply(providerUser, {
+      ...application,
+      portfolio: [{ key: photoKey('a') }, { key: photoKey('a') }, { key: photoKey('a') }],
+    } as any),
+  );
+  assert.deepEqual(writes, []);
+});
+
+test('Q-59: the application\'s photos join his portfolio with the profile, waiting for the team', async () => {
+  const writes: Array<[string, any]> = [];
+  const keys = [photoKey('a'), photoKey('b'), photoKey('c')];
+  const profile = await applicationFor(writes).apply(providerUser, {
+    ...application,
+    portfolio: keys.map((key) => ({ key })),
+  } as any);
+
+  assert.deepEqual(
+    writes.filter(([kind]) => kind === 'verify').map(([, data]) => data),
+    keys.map((key) => ({ key, purpose: 'provider-portfolio' })),
+  );
+  const photos = writes.filter(([kind]) => kind === 'photo').map(([, data]) => data);
+  assert.deepEqual(
+    photos.map((photo) => [photo.providerId, photo.mediaKey, photo.imageUrl, photo.album, photo.sortOrder]),
+    keys.map((key, index) => [providerId, key, `https://media.test/${key}`, null, index]),
+  );
+  // Each upload is consumed by its photo, in the application's transaction.
+  assert.deepEqual(
+    writes.filter(([kind]) => kind === 'consume').map(([, data]) => data.target.type),
+    ['PORTFOLIO_ITEM', 'PORTFOLIO_ITEM', 'PORTFOLIO_ITEM'],
+  );
+  // The profile is written before its photos.
+  assert.ok(
+    writes.findIndex(([kind]) => kind === 'provider') <
+      writes.findIndex(([kind]) => kind === 'photo'),
+  );
+  assert.equal(profile.status, ProviderStatus.PENDING);
+  assert.equal(profile.portfolio.photos, 3);
+  assert.equal(profile.portfolio.pending, 3);
+});
+
+test('Q-59: «أرسل للمراجعة» needs three photos that were not refused', async () => {
+  let resubmitted = 0;
+  const short = dashboardFor(ProviderStatus.NEEDS_CHANGES, {
+    latestDecisionId: 'decision-read',
+    onResubmit: () => (resubmitted += 1),
+    photos: [PortfolioItemStatus.APPROVED, PortfolioItemStatus.PENDING, PortfolioItemStatus.REJECTED],
+  });
+  await rejectsWith(
+    () => short.resubmitApplication(providerUser, { latestDecisionId: 'decision-read' }),
+    422,
+    'PROVIDER_PHOTOS_REQUIRED',
+  );
+  assert.equal(resubmitted, 0);
+});
+
+test('Q-59: a profile waiting for approval adds its photos, and keeps three while it waits', async () => {
+  // A profile from before the rule adds one photo at a time.
+  const legacyWrites: Array<[string, any]> = [];
+  await dashboardFor(ProviderStatus.NEEDS_CHANGES, {
+    photos: [PortfolioItemStatus.REJECTED],
+    portfolioWrites: legacyWrites,
+  }).updatePortfolio(providerUser, {
+    items: [{ key: `provider-portfolio/${providerUserId}/photo-0.jpg` }, { key: photoKey('new') }],
+    knownKeys: [`provider-portfolio/${providerUserId}/photo-0.jpg`],
+  });
+  assert.equal(legacyWrites.filter(([kind]) => kind === 'create').length, 1);
+
+  // A refused photo goes; the three others stay.
+  const tidyWrites: Array<[string, any]> = [];
+  const four = [
+    PortfolioItemStatus.PENDING,
+    PortfolioItemStatus.PENDING,
+    PortfolioItemStatus.APPROVED,
+    PortfolioItemStatus.REJECTED,
+  ];
+  const stored = four.map((_, index) => `provider-portfolio/${providerUserId}/photo-${index}.jpg`);
+  await dashboardFor(ProviderStatus.PENDING, { photos: four, portfolioWrites: tidyWrites }).updatePortfolio(
+    providerUser,
+    { items: stored.slice(0, 3).map((key) => ({ key })), knownKeys: stored },
+  );
+  assert.equal(tidyWrites.filter(([kind]) => kind === 'deleteMany').length, 1);
+
+  // Taking one of the three away while the team reviews them is refused.
+  for (const status of [ProviderStatus.PENDING, ProviderStatus.NEEDS_CHANGES]) {
+    const writes: Array<[string, any]> = [];
+    await rejectsWith(
+      () =>
+        dashboardFor(status, { photos: four, portfolioWrites: writes }).updatePortfolio(providerUser, {
+          items: [stored[0], stored[1], stored[3]].map((key) => ({ key })),
+          knownKeys: stored,
+        }),
+      422,
+      'PROVIDER_PHOTOS_REQUIRED',
+    );
+    assert.deepEqual(writes, [], status);
+  }
+
+  // Once approved, the portfolio is his to shape.
+  const activeWrites: Array<[string, any]> = [];
+  await dashboardFor(ProviderStatus.ACTIVE, { photos: four, portfolioWrites: activeWrites }).updatePortfolio(
+    providerUser,
+    { items: [{ key: stored[0] }], knownKeys: stored },
+  );
+  assert.equal(activeWrites.filter(([kind]) => kind === 'deleteMany').length, 1);
+
+  // A stopped or refused profile writes no photo.
+  for (const status of [ProviderStatus.SUSPENDED, ProviderStatus.REJECTED]) {
+    await rejectsWith(
+      () =>
+        dashboardFor(status, { photos: four }).updatePortfolio(providerUser, {
+          items: [...stored, photoKey('new')].map((key) => ({ key })),
+          knownKeys: stored,
+        }),
+      403,
+      'PROVIDER_NOT_ACTIVE',
+    );
+  }
 });
 
 test('the profile names the latest decision it shows (finding 7)', async () => {
@@ -561,6 +840,70 @@ test('a profile without an active priced service is not approved (finding 9)', a
     'PROVIDER_SERVICE_REQUIRED',
   );
   assert.equal(decided, 0);
+});
+
+test('Q-59: a profile is approved only with three work photos the team did not refuse', async () => {
+  const approving = (photos: PortfolioItemStatus[]) => {
+    const decisions: string[] = [];
+    const prisma: any = {
+      $queryRaw: async (query: { strings?: readonly string[] }) => {
+        const sql = query.strings?.join('') ?? '';
+        if (sql.includes('FROM "User"')) {
+          return [
+            { id: adminId, role: UserRole.ADMIN, adminRole: AdminRole.OPERATIONS, status: UserStatus.ACTIVE },
+            { id: providerUserId, role: UserRole.PROVIDER, adminRole: null, status: UserStatus.ACTIVE },
+          ].sort((left, right) => left.id.localeCompare(right.id));
+        }
+        if (sql.includes('FROM "Provider"')) return [{ id: providerId }];
+        throw new Error(`Unexpected statement: ${sql}`);
+      },
+      provider: {
+        findUnique: async () => ({
+          userId: providerUserId,
+          status: ProviderStatus.PENDING,
+          phone: '+967700000003',
+        }),
+        update: async () => {
+          decisions.push('provider.update');
+          throw new Error('the decision was reached');
+        },
+      },
+      providerService: { count: async () => 1 },
+      portfolioItem: { findMany: async () => photos.map((status) => ({ status })) },
+      providerReviewEvent: {
+        create: async () => {
+          decisions.push('providerReviewEvent.create');
+          throw new Error('the decision was reached');
+        },
+      },
+    };
+    prisma.$transaction = async (operation: (client: any) => Promise<unknown>) => operation(prisma);
+    const service = adminService(prisma, {}, { createNotificationInTransaction: async () => null });
+    return { approve: () => service.approveProvider(reviewer, providerId), decisions };
+  };
+
+  // A refused photo is not counted: two remain.
+  const short = approving([
+    PortfolioItemStatus.APPROVED,
+    PortfolioItemStatus.PENDING,
+    PortfolioItemStatus.REJECTED,
+  ]);
+  await rejectsWith(short.approve, 422, 'PROVIDER_PHOTOS_REQUIRED');
+  assert.deepEqual(short.decisions, []);
+
+  const none = approving([]);
+  await rejectsWith(none.approve, 422, 'PROVIDER_PHOTOS_REQUIRED');
+  assert.deepEqual(none.decisions, []);
+
+  // Three waiting or approved: the decision is written.
+  const enough = approving([
+    PortfolioItemStatus.PENDING,
+    PortfolioItemStatus.PENDING,
+    PortfolioItemStatus.APPROVED,
+    PortfolioItemStatus.REJECTED,
+  ]);
+  await assert.rejects(enough.approve, /the decision was reached/);
+  assert.equal(enough.decisions.length, 1);
 });
 
 // ------------------------------------------------------------ finding 11

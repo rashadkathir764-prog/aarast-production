@@ -1,3 +1,6 @@
+import 'dart:typed_data';
+
+import 'package:aarast_mobile/core/media/media_upload_api.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
@@ -8,6 +11,7 @@ import 'package:aarast_mobile/features/chat/models/chat_models.dart';
 import 'package:aarast_mobile/features/chat/providers/chat_provider.dart';
 import 'package:aarast_mobile/features/marketplace/data/marketplace_api.dart';
 import 'package:aarast_mobile/features/marketplace/models/marketplace_models.dart';
+import 'package:aarast_mobile/features/marketplace/models/provider_portfolio.dart';
 import 'package:aarast_mobile/features/marketplace/providers/marketplace_provider.dart';
 import 'package:aarast_mobile/features/provider_portal/data/provider_approval_ledger.dart';
 import 'package:aarast_mobile/features/provider_portal/providers/provider_dashboard_provider.dart';
@@ -18,10 +22,12 @@ import 'package:aarast_mobile/features/provider_portal/screens/provider_portal_s
 import 'package:aarast_mobile/features/provider_portal/screens/provider_rejected_screen.dart';
 import 'package:aarast_mobile/features/provider_portal/screens/provider_suspended_screen.dart';
 import 'package:aarast_mobile/features/provider_portal/widgets/provider_join_parts.dart';
+import 'package:aarast_mobile/features/provider_portal/widgets/provider_photo_upload.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../support/app_route_table.dart';
@@ -407,6 +413,56 @@ void main() {
       expect(api.categoryMoves, ['cat-mizmar']);
     });
 
+    testWidgets('p09 counts his work photos and adds the ones the review '
+        'needs, and a refused send for them says so (Q-59)', (tester) async {
+      final api = _Api(
+        status: 'NEEDS_CHANGES',
+        service: _joiningService(),
+        photoKeys: ['provider-portfolio/u/old.jpg'],
+        refuseResubmitForPhotos: true,
+      );
+      var uploads = 0;
+      await _pumpPortal(
+        tester,
+        api,
+        pickPhotos: () async => [
+          XFile.fromData(Uint8List(3), name: 'a.jpg'),
+          XFile.fromData(Uint8List(3), name: 'b.jpg'),
+        ],
+        uploadPhoto: (file) async => MediaUploadTicket(
+          // XFile.fromData keeps no name off the web: a, then b.
+          key: 'provider-portfolio/u/${(uploads++) == 0 ? 'a' : 'b'}.jpg',
+          attachmentRef: '',
+          uploadUrl: '',
+          publicUrl: '',
+          contentType: 'image/jpeg',
+          byteSize: 3,
+        ),
+      );
+
+      expect(find.text('صور من شغلك'), findsOneWidget);
+      expect(find.text('1 من 3'), findsOneWidget);
+      expect(find.text('المراجعة تحتاج 3 صور على الأقل.'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('provider-changes-resubmit')));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('المراجعة تحتاج 3 صور من شغلك على الأقل. أضفها وبعدها أرسل.'),
+        findsOneWidget,
+      );
+      expect(find.byType(ProviderChangesScreen), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('provider-changes-photos')));
+      await tester.pumpAndSettle();
+      expect(api.savedPortfolios.single.map((item) => item['key']), [
+        'provider-portfolio/u/old.jpg',
+        'provider-portfolio/u/a.jpg',
+        'provider-portfolio/u/b.jpg',
+      ]);
+      expect(find.text('3 من 3'), findsOneWidget);
+      expect(find.text('المراجعة تحتاج 3 صور على الأقل.'), findsNothing);
+    });
+
     testWidgets('«أرسل للمراجعة» names the notes he read; notes rewritten '
         'meanwhile show with the reason it did not go (finding 7)', (
       tester,
@@ -752,6 +808,8 @@ Future<void> _pumpPortal(
   _Api api, {
   String? seen,
   Map<String, Object> stored = const {},
+  ProviderPhotoPicker? pickPhotos,
+  ProviderPhotoUploader? uploadPhoto,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = const Size(390, 900);
@@ -766,7 +824,13 @@ Future<void> _pumpPortal(
   final router = GoRouter(
     initialLocation: '/portal',
     routes: [
-      GoRoute(path: '/portal', builder: (_, _) => const ProviderPortalScreen()),
+      GoRoute(
+        path: '/portal',
+        builder: (_, _) => ProviderPortalScreen(
+          pickPhotos: pickPhotos,
+          uploadPhoto: uploadPhoto,
+        ),
+      ),
       GoRoute(
         path: appRoute('/support'),
         builder: (_, _) => const Scaffold(body: Text('صفحة الدعم')),
@@ -879,7 +943,40 @@ class _Api extends ProviderDashboardApi {
     this.latestDecisionId,
     this.rewriteBeforeSend,
     this.failServiceSave = false,
-  }) : super(ApiClient(tokenProvider: () async => null));
+    List<String> photoKeys = const [],
+    this.refuseResubmitForPhotos = false,
+  }) : photoKeys = [...photoKeys],
+       super(ApiClient(tokenProvider: () async => null));
+
+  /// His portfolio photos, none refused (Q-59).
+  final List<String> photoKeys;
+
+  /// The server refuses «أرسل للمراجعة» while fewer than three photos stand.
+  final bool refuseResubmitForPhotos;
+  final savedPortfolios = <List<Map<String, Object?>>>[];
+
+  ProviderPortfolio _portfolio() => ProviderPortfolio.fromJson({
+    'items': [
+      for (final (index, key) in photoKeys.indexed)
+        {'id': 'photo-$index', 'key': key, 'status': 'PENDING'},
+    ],
+  });
+
+  @override
+  Future<ProviderPortfolio> getPortfolio() async => _portfolio();
+
+  @override
+  Future<ProviderPortfolio> savePortfolio({
+    required List<Map<String, Object?>> items,
+    required List<String> knownKeys,
+    Map<String, String>? socialLinks,
+  }) async {
+    savedPortfolios.add(items);
+    photoKeys
+      ..clear()
+      ..addAll([for (final item in items) item['key']! as String]);
+    return _portfolio();
+  }
 
   String status;
   final String? description;
@@ -940,6 +1037,7 @@ class _Api extends ProviderDashboardApi {
     'reviewedAt': reviewedAt?.toIso8601String(),
     'resubmittedAt': resubmittedAt?.toIso8601String(),
     'createdAt': createdAt?.toIso8601String(),
+    'portfolio': {'photos': photoKeys.length, 'pending': photoKeys.length},
   });
 
   @override
@@ -972,6 +1070,13 @@ class _Api extends ProviderDashboardApi {
             },
           ),
         ),
+      );
+    }
+    if (refuseResubmitForPhotos && photoKeys.length < 3) {
+      throw const ApiException(
+        'At least 3 work photos are required before review',
+        statusCode: 422,
+        serverCode: 'PROVIDER_PHOTOS_REQUIRED',
       );
     }
     if (failResubmit) {

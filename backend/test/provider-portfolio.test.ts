@@ -149,3 +149,26 @@ test('B-16: the provider reads the decision and the reason, in the portal\'s voi
     { title: 'ما قبلنا صورة من معرضك', body: 'صورتك في معرض الشغل ما تظهر. السبب: فيها وجه واضح' },
   );
 });
+
+// Q-59 (أ, D127): the photos come with the application, so one can be
+// approved before the profile is; it shows only once the profile is.
+test('Q-59: a photo approved before the profile is says it shows once the profile is approved', () => {
+  const base = {
+    id: 'p1',
+    album: null,
+    forWomen: false,
+    rejectionReason: null,
+    status: PortfolioItemStatus.APPROVED,
+    provider: { id: 'v', businessName: 'استوديو', userId: 'u', status: 'PENDING' },
+  } as any;
+  for (const status of ['PENDING', 'NEEDS_CHANGES']) {
+    assert.deepEqual(
+      portfolioDecisionNotice({ ...base, provider: { ...base.provider, status } }),
+      {
+        title: 'انقبلت صورة من معرضك',
+        body: 'صورتك في معرض الشغل تظهر للعرسان لما نعتمد ملفك.',
+      },
+      status,
+    );
+  }
+});

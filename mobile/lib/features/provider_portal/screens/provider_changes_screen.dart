@@ -6,11 +6,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/diagnostics/app_logger.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/utils/arabic_count.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../marketplace/marketplace_api.dart'
     show MarketplaceService, ProviderDashboardProfile;
 import '../data/provider_changes_ledger.dart';
 import '../widgets/provider_join_parts.dart';
+import '../widgets/provider_photo_upload.dart'
+    show providerApplicationMinPhotos;
 import '../widgets/provider_request_parts.dart' show providerMoneyLabel;
 
 /// p09 «يحتاج تعديل بسيط»: the review team asked for changes (B-01).
@@ -18,9 +21,11 @@ import '../widgets/provider_request_parts.dart' show providerMoneyLabel;
 /// Each note sits under the field it is about, with the coral border the
 /// design draws; a note about the whole profile (and a reopened refusal's
 /// reason, B-02) shows above the fields. The fields are the ones he can fix
-/// before approval: the name, the category, the city, the bio and the
-/// service he joined with (B-10). The drawn photo and package fields wait
-/// for approval (D41). «أرسل للمراجعة» sends the profile back to review;
+/// before approval: the name, the category, the city, the bio, the
+/// service he joined with (B-10) and his work photos, which the review needs
+/// three of (Q-59, D127): the field counts them and adds more from the
+/// phone. The package fields wait for approval (D41). «أرسل للمراجعة»
+/// sends the profile back to review;
 /// a noted field he changed says «عدّلته», and sending with one he did not
 /// change asks first. The back arrow stays «حسابي» (D42): this state has
 /// nowhere to go back to. No gender is kept for a provider (D70), so the
@@ -36,11 +41,17 @@ class ProviderChangesScreen extends StatefulWidget {
     required this.onEditService,
     required this.onResubmit,
     required this.onAccount,
+    required this.onAddPhotos,
+    this.addingPhotos = false,
     this.errorMessage,
     super.key,
   });
 
   final ProviderDashboardProfile profile;
+
+  /// Opens the phone's photos and adds those chosen to his portfolio.
+  final VoidCallback onAddPhotos;
+  final bool addingPhotos;
 
   /// The service he joined with; null when the profile has none yet.
   final MarketplaceService? service;
@@ -344,6 +355,29 @@ class _ProviderChangesScreenState extends State<ProviderChangesScreen> {
                       note: notes['SERVICE'],
                       onTap: widget.onEditService,
                     ),
+                  ),
+                  const SizedBox(height: AarastV3Space.x2),
+                  JourneyPickerField(
+                    key: const Key('provider-changes-photos'),
+                    label: 'صور من شغلك',
+                    value: widget.addingPhotos
+                        ? 'نرفع الصور…'
+                        : profile.portfolioPhotos <=
+                              providerApplicationMinPhotos
+                        ? '${profile.portfolioPhotos} من $providerApplicationMinPhotos'
+                        : arabicCount(
+                            profile.portfolioPhotos,
+                            one: 'صورة وحدة',
+                            two: 'صورتين',
+                            few: 'صور',
+                            many: 'صورة',
+                          ),
+                    icon: LucideIcons.imagePlus,
+                    note:
+                        profile.portfolioPhotos < providerApplicationMinPhotos
+                        ? 'المراجعة تحتاج $providerApplicationMinPhotos صور على الأقل.'
+                        : null,
+                    onTap: widget.addingPhotos ? null : widget.onAddPhotos,
                   ),
                   if (note.isNotEmpty || notes.isNotEmpty) ...[
                     const SizedBox(height: AarastV3Space.x2),

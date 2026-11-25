@@ -209,9 +209,37 @@ test('admin provider mapper preserves nested shape and money serialization', () 
     'reviewsCount',
     'services',
     'packages',
+    'portfolio',
     'createdAt',
     'updatedAt',
   ]);
+  // Q-59 (D127): the work photos the application went to review with, in
+  // their order, each with its review; a refused one's image is deleted.
+  assert.deepEqual(response.portfolio, [
+    {
+      id: 'photo-1',
+      imageUrl: 'https://cdn.example.test/a.webp',
+      album: null,
+      forWomen: false,
+      noFaces: false,
+      status: 'PENDING',
+      rejectionReason: null,
+      reviewedAt: null,
+      createdAt,
+    },
+    {
+      id: 'photo-2',
+      imageUrl: null,
+      album: 'زفة',
+      forWomen: false,
+      noFaces: true,
+      status: 'REJECTED',
+      rejectionReason: 'الصورة مو واضحة',
+      reviewedAt: updatedAt,
+      createdAt,
+    },
+  ]);
+  assert.equal('mediaKey' in response.portfolio[0], false);
   assert.equal(response.ratingAverage, '4.75');
   // B-43: featured while a recorded placement covers now.
   assert.equal(response.isFeatured, true);
@@ -498,6 +526,40 @@ function providerFixture() {
         createdAt,
         updatedAt,
         service,
+      },
+    ],
+    portfolioItems: [
+      {
+        id: 'photo-1',
+        providerId: 'provider-1',
+        mediaKey: 'provider-portfolio/user-1/a.webp',
+        imageUrl: 'https://cdn.example.test/a.webp',
+        album: null,
+        forWomen: false,
+        noFaces: false,
+        sortOrder: 0,
+        status: 'PENDING',
+        rejectionReason: null,
+        reviewedAt: null,
+        reviewedById: null,
+        createdAt,
+        updatedAt,
+      },
+      {
+        id: 'photo-2',
+        providerId: 'provider-1',
+        mediaKey: 'provider-portfolio/user-1/b.webp',
+        imageUrl: 'https://cdn.example.test/b.webp',
+        album: 'زفة',
+        forWomen: false,
+        noFaces: true,
+        sortOrder: 1,
+        status: 'REJECTED',
+        rejectionReason: 'الصورة مو واضحة',
+        reviewedAt: updatedAt,
+        reviewedById: 'reviewer-1',
+        createdAt,
+        updatedAt,
       },
     ],
     _count: {

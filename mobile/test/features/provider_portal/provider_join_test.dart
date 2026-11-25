@@ -1,3 +1,6 @@
+import 'dart:typed_data';
+
+import 'package:aarast_mobile/core/media/media_upload_api.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/session/safe_user.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
@@ -17,6 +20,7 @@ import 'package:aarast_mobile/features/provider_portal/screens/provider_apply_sc
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -73,8 +77,18 @@ void main() {
     expect(find.text('تسافر لمحافظة ثانية؟'), findsNothing);
     await _where(tester, address: 'شارع الزبيري، جنب جولة كنتاكي');
 
+    // p05 (Q-59): three work photos go with the application.
+    expect(find.text('صور من شغلك'), findsOneWidget);
+    await _photos(tester);
+
     // p06 as D41 keeps it: one service with its price, no teams.
     expect(find.text('خدمتك وسعرها'), findsOneWidget);
+    expect(
+      find.text(
+        'خدمة وحدة بسعرها تكفي للمراجعة. الخدمات الثانية تضيفها بعد الموافقة.',
+      ),
+      findsOneWidget,
+    );
     expect(find.textContaining('فريق'), findsNothing);
     await _service(tester, about: '300 صورة معدّلة وفيلم 10 دقايق');
 
@@ -84,11 +98,10 @@ void main() {
     expect(find.text('من 550,000\u00a0ر.ي'), findsOneWidget);
     expect(find.text('نشاطك ومدينتك'), findsOneWidget);
     expect(find.text('مكان المحل'), findsOneWidget);
+    expect(find.text('3 صور من شغلك'), findsOneWidget);
     expect(find.text('صور وفيديو للزفاف'), findsOneWidget);
-    expect(
-      find.text('الصور والخدمات الثانية تضيفها بعد الموافقة'),
-      findsOneWidget,
-    );
+    expect(find.text('الخدمات الثانية تضيفها بعد الموافقة'), findsOneWidget);
+    expect(find.textContaining('الصور والخدمات الثانية'), findsNothing);
     expect(
       find.text('نراجع طلبك، ويوصلك تنبيه على جوالك لما نقرر.'),
       findsOneWidget,
@@ -109,10 +122,89 @@ void main() {
     expect(harness.api.services, [
       ('صور وفيديو للزفاف', '550000', '300 صورة معدّلة وفيلم 10 دقايق'),
     ]);
+    expect(harness.api.photos, [
+      [
+        'provider-portfolio/user-1/1.jpg',
+        'provider-portfolio/user-1/2.jpg',
+        'provider-portfolio/user-1/3.jpg',
+      ],
+    ]);
     expect(harness.api.addresses, ['شارع الزبيري، جنب جولة كنتاكي']);
     expect(harness.auth.refreshes, 1);
     expect(harness.contexts.selectedContext?.isProvider, isTrue);
     expect(find.text('بوابة المزود'), findsOneWidget);
+  });
+
+  testWidgets('p05 holds the next step until three photos are up, and a '
+      'photo can be taken back (Q-59)', (tester) async {
+    final harness = await _Harness.pump(tester);
+
+    await _business(tester);
+    await _where(tester);
+    expect(find.text('صور من شغلك'), findsOneWidget);
+    expect(find.text('0 من 3'), findsOneWidget);
+    // Nothing promised the server does not keep: no review duration.
+    expect(find.textContaining('يومين'), findsNothing);
+    expect(find.textContaining('ساعة'), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('provider-apply-next')));
+    await tester.pumpAndSettle();
+    expect(find.text('باقي 3 صور'), findsOneWidget);
+    expect(find.text('خدمتك وسعرها'), findsNothing);
+
+    harness.picks.add(2);
+    await tester.tap(find.byKey(const Key('provider-apply-photos-add')));
+    await tester.pumpAndSettle();
+    expect(find.text('2 من 3'), findsOneWidget);
+    expect(find.text('باقي صورة وحدة'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('provider-apply-next')));
+    await tester.pumpAndSettle();
+    expect(find.text('خدمتك وسعرها'), findsNothing);
+
+    harness.picks.add(2);
+    await tester.tap(find.byKey(const Key('provider-apply-photos-add')));
+    await tester.pumpAndSettle();
+    expect(find.text('4 صور'), findsOneWidget);
+    await tester.tap(
+      find.byKey(const Key('provider-apply-photo-remove-provider-portfolio/user-1/1.jpg')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('3 من 3'), findsOneWidget);
+    expect(find.textContaining('باقي'), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('provider-apply-next')));
+    await tester.pumpAndSettle();
+    expect(find.text('خدمتك وسعرها'), findsOneWidget);
+    await _service(tester);
+    await tester.tap(find.byKey(const ValueKey('provider-apply-send')));
+    await tester.pumpAndSettle();
+    expect(harness.api.photos, [
+      [
+        'provider-portfolio/user-1/2.jpg',
+        'provider-portfolio/user-1/3.jpg',
+        'provider-portfolio/user-1/4.jpg',
+      ],
+    ]);
+  });
+
+  testWidgets('a server that asks for the photos says so on p07 (Q-59)', (
+    tester,
+  ) async {
+    final harness = await _Harness.pump(tester);
+    harness.api.refusePhotos = true;
+
+    await _business(tester);
+    await _where(tester);
+    await _photos(tester);
+    await _service(tester);
+    await tester.tap(find.byKey(const ValueKey('provider-apply-send')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('المراجعة تحتاج 3 صور من شغلك على الأقل. أضفها وبعدها أرسل.'),
+      findsOneWidget,
+    );
+    expect(harness.contexts.selectedContext, isNull);
   });
 
   testWidgets(
@@ -122,6 +214,7 @@ void main() {
 
       await _business(tester);
       await _where(tester);
+      await _photos(tester);
       await tester.tap(find.byKey(const ValueKey('provider-apply-next')));
       await tester.pumpAndSettle();
       expect(find.text('اكتب اسم خدمتك'), findsOneWidget);
@@ -137,6 +230,7 @@ void main() {
 
     await _business(tester);
     await _where(tester);
+    await _photos(tester);
     await _service(tester);
     expect(find.text('مكان المحل'), findsNothing);
     await tester.tap(find.byKey(const ValueKey('provider-apply-send')));
@@ -153,6 +247,7 @@ void main() {
 
     await _business(tester);
     await _where(tester);
+    await _photos(tester);
     await _service(tester);
     await tester.tap(find.byKey(const ValueKey('provider-apply-send')));
     await tester.pumpAndSettle();
@@ -301,6 +396,7 @@ void main() {
 
     await _business(tester);
     await _where(tester);
+    await _photos(tester);
     await _service(tester);
     await tester.tap(find.byKey(const ValueKey('provider-apply-send')));
     await tester.pumpAndSettle();
@@ -322,6 +418,7 @@ void main() {
     await _Harness.pump(tester, width: 320, textScale: 1.3);
     await _business(tester);
     await _where(tester, address: 'شارع الزبيري');
+    await _photos(tester);
     await _service(tester, about: 'مصوّرين، 300 صورة معدّلة وفيلم 10 دقايق');
     expect(tester.takeException(), isNull);
   });
@@ -342,6 +439,16 @@ Future<void> _service(WidgetTester tester, {String? about}) async {
       about,
     );
   }
+  await tester.tap(find.byKey(const ValueKey('provider-apply-next')));
+  await tester.pumpAndSettle();
+}
+
+/// p05: three photos up in one pick, then the next step.
+Future<void> _photos(WidgetTester tester) async {
+  final harness = _Harness.current!;
+  harness.picks.add(3);
+  await tester.tap(find.byKey(const Key('provider-apply-photos-add')));
+  await tester.pumpAndSettle();
   await tester.tap(find.byKey(const ValueKey('provider-apply-next')));
   await tester.pumpAndSettle();
 }
@@ -381,11 +488,38 @@ Future<void> _where(WidgetTester tester, {String? address}) async {
 class _Harness {
   _Harness(this.api, this.auth, this.contexts, this.market, this.dashboard);
 
+  /// The harness the running test pumped.
+  static _Harness? current;
+
   final _JoinApi api;
   final _SignedIn auth;
   final AccountContextController contexts;
   final _Market market;
   final ProviderDashboardProvider dashboard;
+
+  /// How many photos each next pick chooses, in order.
+  final picks = <int>[];
+  int _uploaded = 0;
+
+  Future<List<XFile>> _pick() async {
+    final count = picks.isEmpty ? 0 : picks.removeAt(0);
+    return [
+      for (var index = 0; index < count; index += 1)
+        XFile.fromData(Uint8List(3), name: 'photo-$index.jpg'),
+    ];
+  }
+
+  Future<MediaUploadTicket> _upload(XFile file) async {
+    _uploaded += 1;
+    return MediaUploadTicket(
+      key: 'provider-portfolio/user-1/$_uploaded.jpg',
+      attachmentRef: '',
+      uploadUrl: '',
+      publicUrl: '',
+      contentType: 'image/jpeg',
+      byteSize: 3,
+    );
+  }
 
   static Future<_Harness> pump(
     WidgetTester tester, {
@@ -424,12 +558,18 @@ class _Harness {
     );
     final market = _Market(fails: referenceFails);
     final dashboard = ProviderDashboardProvider(api);
+    final harness = _Harness(api, auth, contexts, market, dashboard);
+    current = harness;
+    addTearDown(() => current = null);
     final router = GoRouter(
       initialLocation: '/provider/apply',
       routes: [
         GoRoute(
           path: appRoute('/provider/apply'),
-          builder: (_, _) => const ProviderApplyScreen(),
+          builder: (_, _) => ProviderApplyScreen(
+            pickImages: harness._pick,
+            uploadImage: harness._upload,
+          ),
         ),
         GoRoute(
           path: appRoute('/provider/dashboard'),
@@ -474,7 +614,7 @@ class _Harness {
       ),
     );
     await tester.pumpAndSettle();
-    return _Harness(api, auth, contexts, market, dashboard);
+    return harness;
   }
 }
 
@@ -573,6 +713,12 @@ class _JoinApi extends ProviderDashboardApi {
   final addresses = <String>[];
   final claims = <String>[];
 
+  /// The photos each application carried (Q-59).
+  final photos = <List<String>>[];
+
+  /// The server refuses the application for its photos.
+  bool refusePhotos = false;
+
   /// The account's latest claim (B-12): null, PENDING or REJECTED.
   String? claimStatus;
 
@@ -640,9 +786,17 @@ class _JoinApi extends ProviderDashboardApi {
     required List<String> categoryIds,
     required String serviceTitle,
     required String servicePrice,
+    required List<String> portfolioKeys,
     String? serviceDescription,
     String? description,
   }) async {
+    if (refusePhotos) {
+      throw const ApiException(
+        'At least 3 work photos are required before review',
+        statusCode: 422,
+        serverCode: 'PROVIDER_PHOTOS_REQUIRED',
+      );
+    }
     if (listingOnApply) {
       claimable = true;
       throw const ApiException(
@@ -653,6 +807,7 @@ class _JoinApi extends ProviderDashboardApi {
     }
     if (failApply) throw const ApiException('المدينة غير متاحة الحين.');
     applications.add((businessName, phone, cityId, categoryIds.join(',')));
+    photos.add(portfolioKeys);
     services.add((
       serviceTitle,
       servicePrice,

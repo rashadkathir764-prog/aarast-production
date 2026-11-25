@@ -33,6 +33,7 @@ import { ContextsService } from "../../src/modules/identity/internal/profile/con
 import { ProviderDashboardService } from "../../src/provider-dashboard/provider-dashboard.service";
 import { PermissionService } from "../../src/modules/collaboration/internal/permission.service";
 import { ownerPorts, providerDashboardService, adminService } from "./support/owner-ports";
+import { applicationPhotos, smokeMediaStorage } from "./support/application-photos";
 
 const { assertManagedSmokeEnvironment } = require("./smoke-utils.js") as {
   assertManagedSmokeEnvironment: (
@@ -53,10 +54,11 @@ const contexts = new ContextsService(
 const notifications = {
   createNotificationInTransaction: async () => ({ id: "phase3-notification" }),
 };
+const media = smokeMediaStorage(prisma);
 const providerDashboard = providerDashboardService(
   prisma,
   notifications,
-  {},
+  media,
   lifecycle,
 );
 const admin = adminService(prisma as any, {
@@ -290,6 +292,7 @@ async function main(): Promise<void> {
     cityId: city.id,
     categoryIds: [category.id],
     services: [{ title: `Phase 3 service ${runId}`, basePrice: "100000" }],
+    portfolio: await applicationPhotos(media, authenticated(account)),
   });
   await assertWeddingContextsPreserved(
     account.id,

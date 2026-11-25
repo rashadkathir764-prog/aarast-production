@@ -78,7 +78,7 @@ async function main(): Promise<void> {
       [
         ["provider", UserRole.PROVIDER, null, null],
         ["men-provider", UserRole.PROVIDER, null, null],
-        ["pending-provider", UserRole.PROVIDER, null, null],
+        ["suspended-provider", UserRole.PROVIDER, null, null],
         ["groom", UserRole.USER, null, WeddingPersona.GROOM],
         ["bride", UserRole.USER, null, WeddingPersona.BRIDE],
         ["moderator", UserRole.ADMIN, AdminRole.MODERATOR, null],
@@ -96,13 +96,15 @@ async function main(): Promise<void> {
       }),
     ),
   );
-  const [providerUser, menProviderUser, pendingUser, groom, bride, moderator] = users;
+  const [providerUser, menProviderUser, suspendedUser, groom, bride, moderator] = users;
   const [provider] = await Promise.all(
     (
       [
         [providerUser, forBoth, ProviderStatus.ACTIVE],
         [menProviderUser, menOnly, ProviderStatus.ACTIVE],
-        [pendingUser, forBoth, ProviderStatus.PENDING],
+        // Q-59 (D127): a profile waiting for approval keeps its application's
+        // photos; a suspended one writes none.
+        [suspendedUser, forBoth, ProviderStatus.SUSPENDED],
       ] as const
     ).map(([user, category, status], index) =>
       prisma.provider.create({
@@ -158,7 +160,7 @@ async function main(): Promise<void> {
     console.log("PASS - three portfolio uploads verified; the stored images carry no EXIF");
 
     await assert.rejects(
-      dashboard.updatePortfolio(asUser(pendingUser), { items: [] } as any),
+      dashboard.updatePortfolio(asUser(suspendedUser), { items: [] } as any),
       code("PROVIDER_NOT_ACTIVE"),
     );
     await assert.rejects(

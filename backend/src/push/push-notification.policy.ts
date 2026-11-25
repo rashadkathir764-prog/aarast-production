@@ -41,11 +41,16 @@ const PUSH_CHANNEL_BY_TYPE: ReadonlyMap<NotificationType, PushAndroidChannelId> 
     [NotificationType.LOAN_REPAYMENT_OVERDUE, MONEY],
     [NotificationType.BUDGET_CATEGORY_EXCEEDED, MONEY],
     [NotificationType.FUNDING_EXPECTED, MONEY],
-    // RA-BE-186 (Q-48 أ): the provider's account approved or refused. Reviews
-    // stay in the inbox; the steps that need a fix or a wait are in the inbox
-    // and the portal.
+    // RA-BE-186 (Q-48 أ), Q-60 (أ, D127): every decision the team takes on
+    // the provider's account, his claim of a listing and his photos waits on
+    // him to act or to know. Back in review is his own act, and reviews stay
+    // in the inbox.
     [NotificationType.PROVIDER_APPROVED, MESSAGES],
     [NotificationType.PROVIDER_REJECTED, MESSAGES],
+    [NotificationType.PROVIDER_NEEDS_CHANGES, MESSAGES],
+    [NotificationType.PROVIDER_SUSPENDED, MESSAGES],
+    [NotificationType.PROVIDER_CLAIM_DECIDED, MESSAGES],
+    [NotificationType.PORTFOLIO_REVIEWED, MESSAGES],
     // Q-50 (أ), D124: the reporter hears what came of his report; it waits
     // on no one, so it is held through the quiet hours.
     [NotificationType.CONVERSATION_REPORT_CLOSED, MESSAGES],
@@ -139,6 +144,15 @@ function taskDueDays(data: unknown): number | null {
   return typeof days === "number" && Number.isInteger(days) && days >= 0
     ? days
     : null;
+}
+
+/**
+ * A team decision that refused (a claim's `claimStatus`, a photo's
+ * `decision`); anything else reads as accepted.
+ */
+function isRefusalNotice(data: unknown, field: "claimStatus" | "decision"): boolean {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return false;
+  return (data as Record<string, unknown>)[field] === "REJECTED";
 }
 
 /** A FUNDING_EXPECTED notice for the expected day itself, not the day before. */
@@ -285,6 +299,29 @@ export function pushNotificationCopy(
         title: "ما اعتمدنا ملفك",
         body: "تفاصيله في اعّرست.",
       };
+    // Q-60: the team's note and reason stay in the app, never on the lock
+    // screen.
+    case NotificationType.PROVIDER_NEEDS_CHANGES:
+      return {
+        title: "ملاحظة على ملفك",
+        body: "ملفك يحتاج تعديل بسيط، والملاحظة تنتظرك في اعّرست.",
+      };
+    case NotificationType.PROVIDER_SUSPENDED:
+      return {
+        title: "وقّفنا ملفك",
+        body: "ملفك ما يظهر للعرسان الحين، والتفاصيل في اعّرست.",
+      };
+    case NotificationType.PROVIDER_CLAIM_DECIDED:
+      return isRefusalNotice(data, "claimStatus")
+        ? { title: "ما قبلنا الاستلام", body: "السبب في اعّرست." }
+        : {
+            title: "انقبل استلامك للملف",
+            body: "الملف صار لك، وتكمّله من اعّرست.",
+          };
+    case NotificationType.PORTFOLIO_REVIEWED:
+      return isRefusalNotice(data, "decision")
+        ? { title: "ما قبلنا صورة من معرضك", body: "السبب في اعّرست." }
+        : { title: "انقبلت صورة من معرضك", body: "تفاصيلها في اعّرست." };
     // Q-50: the team's reason stays in the app, never on the lock screen.
     case NotificationType.CONVERSATION_REPORT_CLOSED:
       return {

@@ -21,6 +21,7 @@ import '../providers/provider_dashboard_provider.dart';
 import '../widgets/provider_join_parts.dart'
     show providerDecisionNoticeLine, providerPickOption;
 import '../widgets/provider_joining_service_sheet.dart';
+import '../widgets/provider_photo_upload.dart';
 import '../widgets/provider_portal_bottom_nav.dart';
 import 'provider_approved_screen.dart';
 import 'provider_changes_screen.dart';
@@ -30,7 +31,17 @@ import 'provider_rejected_screen.dart';
 import 'provider_suspended_screen.dart';
 
 class ProviderPortalScreen extends StatefulWidget {
-  const ProviderPortalScreen({this.initialTab, super.key});
+  const ProviderPortalScreen({
+    this.initialTab,
+    this.pickPhotos,
+    this.uploadPhoto,
+    super.key,
+  });
+
+  /// p09's work photos (Q-59): the phone's own picker and upload unless a
+  /// test passes its own.
+  final ProviderPhotoPicker? pickPhotos;
+  final ProviderPhotoUploader? uploadPhoto;
 
   /// The tab a link opens on: `requests` for the requests tab
   /// ([AppRouter.providerRequestsTab]), `calendar` for the calendar,
@@ -181,6 +192,8 @@ class _ProviderPortalScreenState extends State<ProviderPortalScreen> {
             onEditService: () => _editJoiningService(profile.fieldNotes),
             onResubmit: _resubmit,
             onAccount: () => context.push(AppRouter.more),
+            onAddPhotos: _addPhotos,
+            addingPhotos: _addingPhotos,
           );
         case 'REJECTED':
           return ProviderRejectedScreen(
@@ -275,6 +288,41 @@ class _ProviderPortalScreenState extends State<ProviderPortalScreen> {
       context,
       'وصلنا تعديلك. $providerDecisionNoticeLine',
     );
+  }
+
+  bool _addingPhotos = false;
+
+  /// p09 «صور من شغلك» (Q-59): the photos he picks go up and join his
+  /// portfolio, waiting for the team; the count reads again with the
+  /// profile.
+  Future<void> _addPhotos() async {
+    if (_addingPhotos) return;
+    setState(() => _addingPhotos = true);
+    try {
+      final uploads = await pickAndUploadProviderPhotos(
+        context,
+        room: providerPhotosPerPick,
+        pick: widget.pickPhotos,
+        upload: widget.uploadPhoto,
+      );
+      if (uploads == null || !mounted) return;
+      final dashboard = context.read<ProviderDashboardProvider>();
+      final saved = await dashboard.addPortfolioPhotos([
+        for (final ticket in uploads.tickets) ticket.key,
+      ]);
+      if (!mounted) return;
+      if (saved) {
+        setState(() => _stepError = null);
+        AarastToast.showSuccess(context, 'وصلتنا الصور، ونراجعها مع ملفك.');
+      } else {
+        AarastToast.showError(
+          context,
+          dashboard.portfolioError ?? 'ما انحفظت الصور، ومرة ثانية غالبًا تمشي.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _addingPhotos = false);
+    }
   }
 
   /// p11 «تعديل الملف وإعادة التقديم» (B-02).

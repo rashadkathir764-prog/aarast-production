@@ -18,14 +18,17 @@ import { OutboxEventTypes } from "../src/platform/outbox/outbox.constants";
 import { OutboxService } from "../src/platform/outbox/outbox.service";
 import {
   isPushNotificationType,
+  isQuietHoursExempt,
+  pushAndroidChannelId,
   pushNotificationCopy,
 } from "../src/push/push-notification.policy";
 import { ProviderStatus } from "@prisma/client";
 import { notificationsService } from "./support/owner-ports";
 
 // RA-BE-186 (Q-48 أ): the provider's phone hears of a new request, an
-// accepted offer, a rejected offer and his account approved or refused.
-// Reviews stay in the inbox. The customer's own side of the same types
+// accepted offer, a rejected offer and his account approved or refused;
+// Q-60 (أ, D127) adds «يحتاج تعديل», the suspension, the claim's answer and
+// the photos' review. Reviews stay in the inbox. The customer's own side of the same types
 // (his request received, his offer accepted, the provider's apology) does
 // not push: it is the customer's own act or an answer in the inbox.
 
@@ -111,11 +114,28 @@ test("an offer accepted or rejected pushes to the provider, never the customer's
   }
 });
 
-test("the provider's account approved or refused pushes; reviews and the other steps stay in the inbox", () => {
-  const approved = switchProviderStatusNotification("قاعة سبأ", ProviderStatus.ACTIVE, null);
-  const refused = switchProviderStatusNotification("قاعة سبأ", ProviderStatus.REJECTED, null);
-  assert.equal(isPushNotificationType(approved.type), true);
-  assert.equal(isPushNotificationType(refused.type), true);
+// Q-60 (أ), D127 (amends Q-48): every decision the team takes on his
+// account reaches the phone: approved, to fix, refused and stopped. Back in
+// review is his own act, and reviews stay in the inbox.
+test("every team decision on the provider's account pushes; his own resubmission and reviews stay in the inbox", () => {
+  for (const status of [
+    ProviderStatus.ACTIVE,
+    ProviderStatus.NEEDS_CHANGES,
+    ProviderStatus.REJECTED,
+    ProviderStatus.SUSPENDED,
+  ]) {
+    assert.equal(
+      isPushNotificationType(switchProviderStatusNotification("قاعة سبأ", status, null).type),
+      true,
+      status,
+    );
+  }
+  assert.equal(
+    isPushNotificationType(
+      switchProviderStatusNotification("قاعة سبأ", ProviderStatus.PENDING, null).type,
+    ),
+    false,
+  );
   const review = reviewReceivedProviderNotification({
     providerUserId: "provider-user",
     providerId: "provider-1",
@@ -125,12 +145,86 @@ test("the provider's account approved or refused pushes; reviews and the other s
   });
   assert.equal(isPushNotificationType(review.type, review.data), false);
   assert.equal(isPushNotificationType(NotificationType.REVIEW_REPLIED), false);
-  for (const status of [ProviderStatus.NEEDS_CHANGES, ProviderStatus.SUSPENDED, ProviderStatus.PENDING]) {
+});
+
+test("Q-60: the team's answer to a claim and to his photos reaches the phone", () => {
+  for (const claimStatus of ["APPROVED", "REJECTED"]) {
     assert.equal(
-      isPushNotificationType(switchProviderStatusNotification("قاعة سبأ", status, null).type),
-      false,
-      status,
+      isPushNotificationType(NotificationType.PROVIDER_CLAIM_DECIDED, { claimStatus }),
+      true,
+      claimStatus,
     );
+  }
+  for (const decision of ["APPROVED", "REJECTED"]) {
+    assert.equal(
+      isPushNotificationType(NotificationType.PORTFOLIO_REVIEWED, {
+        decision,
+        recipientAudience: "PROVIDER",
+      }),
+      true,
+      decision,
+    );
+  }
+});
+
+test("Q-60: the lock screen says which decision came, never the name, the reason or a figure", () => {
+  const cases: Array<[NotificationType, unknown, string, string]> = [
+    [
+      NotificationType.PROVIDER_NEEDS_CHANGES,
+      { providerStatus: "NEEDS_CHANGES", reviewNote: "غيّر الاسم يا خالد" },
+      "ملاحظة على ملفك",
+      "ملفك يحتاج تعديل بسيط، والملاحظة تنتظرك في اعّرست.",
+    ],
+    [
+      NotificationType.PROVIDER_SUSPENDED,
+      { providerStatus: "SUSPENDED", reviewNote: "بلاغات من 3 عرسان" },
+      "وقّفنا ملفك",
+      "ملفك ما يظهر للعرسان الحين، والتفاصيل في اعّرست.",
+    ],
+    [
+      NotificationType.PROVIDER_CLAIM_DECIDED,
+      { claimStatus: "APPROVED" },
+      "انقبل استلامك للملف",
+      "الملف صار لك، وتكمّله من اعّرست.",
+    ],
+    [
+      NotificationType.PROVIDER_CLAIM_DECIDED,
+      { claimStatus: "REJECTED" },
+      "ما قبلنا الاستلام",
+      "السبب في اعّرست.",
+    ],
+    [
+      NotificationType.PORTFOLIO_REVIEWED,
+      { decision: "APPROVED" },
+      "انقبلت صورة من معرضك",
+      "تفاصيلها في اعّرست.",
+    ],
+    [
+      NotificationType.PORTFOLIO_REVIEWED,
+      { decision: "REJECTED" },
+      "ما قبلنا صورة من معرضك",
+      "السبب في اعّرست.",
+    ],
+  ];
+  for (const [type, data, title, body] of cases) {
+    const copy = pushNotificationCopy(type, data);
+    assert.equal(copy.title, title, type);
+    assert.equal(copy.body, body, type);
+    for (const words of [copy.title, copy.body]) {
+      assert.doesNotMatch(words, /\d|خالد|سبأ|بلاغات|الاسم/u, type);
+    }
+  }
+});
+
+test("Q-60: the new pushes go on the messages channel and wait out the quiet hours", () => {
+  for (const type of [
+    NotificationType.PROVIDER_NEEDS_CHANGES,
+    NotificationType.PROVIDER_SUSPENDED,
+    NotificationType.PROVIDER_CLAIM_DECIDED,
+    NotificationType.PORTFOLIO_REVIEWED,
+  ]) {
+    assert.equal(pushAndroidChannelId(type), "aarast_messages", type);
+    assert.equal(isQuietHoursExempt(type), false, type);
   }
 });
 
@@ -192,4 +286,20 @@ test("the service queues a phone push for the provider's notice and none for the
   assert.deepEqual(await write(customerNotices[0]!, "customer-1"), [
     OutboxEventTypes.notificationCreated,
   ]);
+  // Q-60: the team's «يحتاج تعديل» is written and queued for his phone.
+  const needsChanges = switchProviderStatusNotification(
+    "قاعة سبأ",
+    ProviderStatus.NEEDS_CHANGES,
+    "غيّر الاسم",
+  );
+  assert.deepEqual(
+    await write(
+      {
+        ...needsChanges,
+        data: { providerId: "provider-1", providerStatus: ProviderStatus.NEEDS_CHANGES },
+      } as any,
+      "provider-user",
+    ),
+    [OutboxEventTypes.notificationCreated, OutboxEventTypes.pushNotificationRequested],
+  );
 });

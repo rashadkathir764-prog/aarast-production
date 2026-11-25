@@ -21,6 +21,26 @@ export function providerServiceRequired(): UnprocessableEntityException {
   });
 }
 
+/** Q-59 (أ, D127): the work photos an application goes to review with. */
+export const APPLICATION_MIN_PHOTOS = 3;
+
+/**
+ * Q-59: the profile has fewer than {@link APPLICATION_MIN_PHOTOS} photos the
+ * team has not refused. Apply, resubmit, a save while it waits that would
+ * take it below them, and the approval itself refuse with this one error.
+ */
+export function providerPhotosRequired(): UnprocessableEntityException {
+  return new UnprocessableEntityException({
+    statusCode: 422,
+    code: 'PROVIDER_PHOTOS_REQUIRED',
+    min: APPLICATION_MIN_PHOTOS,
+    // An app from before Q-59 shows the server's words as they come and has
+    // no photos step: it is told, in Arabic, what to do. The admin desk
+    // reads the code and says its own words.
+    message: `نحتاج ${APPLICATION_MIN_PHOTOS} صور من شغلك مع الطلب. حدّث اعّرست من المتجر عشان تضيفها.`,
+  });
+}
+
 /** The joining service is priced in another currency than YER (D48). */
 export function joiningCurrencyRequired(): UnprocessableEntityException {
   return new UnprocessableEntityException({

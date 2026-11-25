@@ -10,7 +10,10 @@ import '../../../core/diagnostics/app_logger.dart' show appDebugNote;
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/forms/aarast_form_draft_binding.dart';
 import '../../../core/forms/aarast_form_draft_store.dart';
+import '../../../core/media/aarast_network_image.dart';
+import '../../../core/media/media_upload_api.dart' show MediaUploadTicket;
 import '../../../core/routing/app_router.dart';
+import '../../../core/utils/arabic_count.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../account_contexts/account_contexts_api.dart'
@@ -22,6 +25,7 @@ import '../data/provider_approval_ledger.dart';
 import '../data/provider_text_limits.dart';
 import '../providers/provider_dashboard_provider.dart';
 import '../widgets/provider_join_parts.dart';
+import '../widgets/provider_photo_upload.dart';
 import '../widgets/provider_request_parts.dart' show providerMoneyLabel;
 import 'provider_claim_screen.dart';
 import '../../../core/forms/latin_digits_formatter.dart';
@@ -30,22 +34,34 @@ part 'provider_apply_screen.steps.dart';
 
 /// The joining, after the account (p01): a listing under this phone is
 /// claimed through the review team (p02, then its waiting state, B-12);
-/// otherwise four steps, p03 «نشاطك», p04 «وين تشتغل؟», p06 «خدمتك
-/// وسعرها» and p07 «كذا بيشوفك العرسان».
+/// otherwise five steps, p03 «نشاطك», p04 «وين تشتغل؟», p05 «صور من
+/// شغلك», p06 «خدمتك وسعرها» and p07 «كذا بيشوفك العرسان».
 ///
 /// Apply creates the provider as PENDING at once (F1), so the steps are kept
 /// on the phone and sent together from p07 with the one priced service the
-/// review needs (B-10, D41). Photos and the way of working (p05, p05b) come
-/// after V1, and the other services after approval, so they are not asked.
+/// review needs (B-10, D41) and at least three work photos (Q-59, D127),
+/// uploaded as they are picked and sent by their keys; the photos are not
+/// kept in the draft, since an upload not sent is cleared. The way of
+/// working (p05b) comes after V1, and the other services after approval, so
+/// they are not asked.
 class ProviderApplyScreen extends StatefulWidget {
-  const ProviderApplyScreen({super.key});
+  const ProviderApplyScreen({this.pickImages, this.uploadImage, super.key});
+
+  /// p05's photos: the phone's own picker and upload unless a test passes
+  /// its own.
+  final ProviderPhotoPicker? pickImages;
+  final ProviderPhotoUploader? uploadImage;
 
   @override
   State<ProviderApplyScreen> createState() => _ProviderApplyScreenState();
 }
 
 class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
-  static const _steps = ['نشاطك', 'فين', 'خدمتك', 'أرسل'];
+  static const _steps = ['نشاطك', 'فين', 'صورك', 'خدمتك', 'أرسل'];
+
+  /// The photos one application takes; more go to «معرض الشغل» after
+  /// approval.
+  static const _photosMax = providerPhotosPerPick;
 
   final _nameController = TextEditingController();
   final _addressController = TextEditingController();
@@ -54,6 +70,10 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
   final _serviceAboutController = TextEditingController();
   String? _cityId;
   String? _categoryId;
+
+  /// p05: the photos uploaded so far, in his order.
+  final _photos = <MediaUploadTicket>[];
+  bool _uploading = false;
   int _step = 0;
   bool _attempted = false;
   bool _ready = false;
@@ -163,7 +183,8 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
     final children = switch (_step) {
       0 => _businessStep(marketplace),
       1 => _whereStep(marketplace),
-      2 => _serviceStep(),
+      2 => _photosStep(marketplace),
+      3 => _serviceStep(),
       _ => _sendStep(marketplace, dashboard),
     };
     return PopScope(
@@ -291,6 +312,109 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
     ];
   }
 
+  // ------------------------------------------------------------ p05
+
+  /// «صور من شغلك» (p05, Q-59): at least three photos go to review with the
+  /// application, each uploaded as it is picked. The team reviews them, and
+  /// no customer sees one before the profile is approved. A women's party
+  /// photo shows no face (D62): said to a provider whose section brides see.
+  List<Widget> _photosStep(ProviderMarketplaceProvider marketplace) {
+    final count = _photos.length;
+    final missing = providerApplicationMinPhotos - count;
+    final servesWomen = marketplace.categories
+        .where((category) => category.id == _categoryId)
+        .any((category) => category.showForBride);
+    return [
+      const _StepTitle(
+        'صور من شغلك',
+        sub:
+            'ثلاث صور على الأقل من أعراس اشتغلتها. نراجعها مع طلبك، وما يشوفها العرسان قبل ما نوافق.',
+      ),
+      const SizedBox(height: AarastV3Space.x3),
+      Text(
+        count <= providerApplicationMinPhotos
+            ? '$count من $providerApplicationMinPhotos'
+            : _photoCount(count),
+        key: const Key('provider-apply-photos-count'),
+        style: JourneyType.of(JourneyType.body, weight: JourneyType.bold),
+      ),
+      if (count > 0) ...[
+        const SizedBox(height: AarastV3Space.x2),
+        GridView.count(
+          crossAxisCount: 3,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: AarastV3Space.x2,
+          crossAxisSpacing: AarastV3Space.x2,
+          children: [
+            for (final photo in _photos)
+              _ApplyPhoto(
+                key: Key('provider-apply-photo-${photo.key}'),
+                photo: photo,
+                onRemove: _uploading ? null : () => _removePhoto(photo),
+              ),
+          ],
+        ),
+      ],
+      const SizedBox(height: AarastV3Space.x3),
+      if (count < _photosMax)
+        JourneyButton(
+          key: const Key('provider-apply-photos-add'),
+          label: _uploading ? 'نرفع الصور…' : 'أضف صور',
+          icon: LucideIcons.imagePlus,
+          background: AarastV3Color.primarySoft,
+          foreground: AarastV3Color.primary,
+          expand: true,
+          loading: _uploading,
+          onPressed: _addPhotos,
+        ),
+      if (_attempted && missing > 0)
+        _FieldError('باقي ${_photoCount(missing)}'),
+      if (servesWomen) ...[
+        const SizedBox(height: AarastV3Space.x3),
+        const JourneyNote(
+          icon: LucideIcons.eyeOff,
+          text: 'صور حفلات النساء تكون بدون وجوه.',
+        ),
+      ],
+    ];
+  }
+
+  static String _photoCount(int count) => arabicCount(
+    count,
+    one: 'صورة وحدة',
+    two: 'صورتين',
+    few: 'صور',
+    many: 'صورة',
+  );
+
+  Future<void> _addPhotos() async {
+    if (_uploading) return;
+    setState(() => _uploading = true);
+    try {
+      final uploads = await pickAndUploadProviderPhotos(
+        context,
+        room: _photosMax - _photos.length,
+        pick: widget.pickImages,
+        upload: widget.uploadImage,
+      );
+      if (uploads == null || !mounted) return;
+      setState(() => _photos.addAll(uploads.tickets));
+      if (!uploads.complete) {
+        AarastToast.showInfo(
+          context,
+          'رفعنا ${uploads.tickets.length} من ${uploads.asked} صور، وتقدر تضيف الباقي.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _uploading = false);
+    }
+  }
+
+  void _removePhoto(MediaUploadTicket photo) {
+    setState(() => _photos.remove(photo));
+  }
+
   // ------------------------------------------------------------ p06
 
   /// «خدمتك وسعرها» (p06 as D41 keeps it): the one service the review needs,
@@ -303,7 +427,7 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
       const _StepTitle(
         'خدمتك وسعرها',
         sub:
-            'خدمة وحدة بسعرها تكفي للمراجعة. الخدمات الثانية والصور تضيفها بعد الموافقة.',
+            'خدمة وحدة بسعرها تكفي للمراجعة. الخدمات الثانية تضيفها بعد الموافقة.',
       ),
       const SizedBox(height: AarastV3Space.x3),
       JourneyTextField(
@@ -391,12 +515,17 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
               ),
             ProviderFactRow(
               icon: LucideIcons.checkCircle2,
+              text: '${_photoCount(_photos.length)} من شغلك',
+              color: AarastV3Color.mint,
+            ),
+            ProviderFactRow(
+              icon: LucideIcons.checkCircle2,
               text: _serviceController.text.trim(),
               color: AarastV3Color.mint,
             ),
             const ProviderFactRow(
               icon: LucideIcons.circle,
-              text: 'الصور والخدمات الثانية تضيفها بعد الموافقة',
+              text: 'الخدمات الثانية تضيفها بعد الموافقة',
               color: AarastV3Color.textFaint,
             ),
           ],
@@ -501,7 +630,8 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
       _nameController.text.trim().length >= 2 &&
           _categoryName(marketplace) != null,
     1 => _cityName(marketplace) != null,
-    2 =>
+    2 => !_uploading && _photos.length >= providerApplicationMinPhotos,
+    3 =>
       _serviceController.text.trim().length >= 2 &&
           (int.tryParse(_priceController.text.trim()) ?? 0) > 0,
     _ => true,
@@ -561,6 +691,7 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
       categoryId: _categoryId!,
       serviceTitle: _serviceController.text.trim(),
       servicePrice: _priceController.text.trim(),
+      photoKeys: [for (final photo in _photos) photo.key],
       serviceDescription: _serviceAboutController.text,
       address: _addressController.text,
     );

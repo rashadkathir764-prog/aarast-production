@@ -1,5 +1,6 @@
 import type {
   City,
+  PortfolioItem,
   Provider,
   ProviderCategory,
   ProviderClaimRequest,
@@ -28,6 +29,7 @@ import { ownerReviewReply } from '../modules/marketplace/public/review-reply';
 import { providerCategoryBudgetItem } from '../modules/finance/public/provider-category-budget-item';
 import type { StarterBudgetItem } from '../modules/catalog/public/catalog-admin.port';
 import type { AdminAssistantAnswerReportRow } from '../modules/identity/public/identity-admin.port';
+import { PortfolioItemStatus } from '@prisma/client';
 
 export type SafeAdminUser = Pick<
   User,
@@ -67,6 +69,8 @@ export type AdminProviderRecord = Provider & {
   primaryCategory?: ProviderCategory | null;
   services?: AdminServiceRecord[];
   packages?: AdminPackageRecord[];
+  /** Q-59 (D127): his work photos, on the details read only. */
+  portfolioItems?: PortfolioItem[];
   /** The latest administrator decision with its notes (at most one). */
   reviewEvents?: Array<ProviderReviewEvent & { notes: ProviderReviewNote[] }>;
   _count?: {
@@ -409,6 +413,24 @@ export function toCategoryResponse(category: AdminCategoryRecord) {
   };
 }
 
+/**
+ * One portfolio photo as the desk reads it (n07, and Q-59's a04); a refused
+ * one's image is deleted.
+ */
+export function toAdminPortfolioPhoto(row: PortfolioItem) {
+  return {
+    id: row.id,
+    imageUrl: row.status === PortfolioItemStatus.REJECTED ? null : row.imageUrl,
+    album: row.album,
+    forWomen: row.forWomen,
+    noFaces: row.noFaces,
+    status: row.status,
+    rejectionReason: row.rejectionReason,
+    reviewedAt: row.reviewedAt,
+    createdAt: row.createdAt,
+  };
+}
+
 export function toProviderResponse(provider: AdminProviderRecord) {
   return {
     id: provider.id,
@@ -487,6 +509,8 @@ export function toProviderResponse(provider: AdminProviderRecord) {
       createdAt: providerPackage.createdAt,
       updatedAt: providerPackage.updatedAt,
     })),
+    // Q-59 (D127): the photos the reviewer judges the application by.
+    portfolio: provider.portfolioItems?.map(toAdminPortfolioPhoto),
     createdAt: provider.createdAt,
     updatedAt: provider.updatedAt,
   };

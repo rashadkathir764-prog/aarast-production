@@ -42,6 +42,9 @@ String portfolioErrorMessage(ApiException error) => switch (error.serverCode) {
     'ألبوم «حفلات النساء» لمن عنده قسم يخدم العرائس.',
   'PORTFOLIO_CHANGED' => 'معرضك تغيّر من جهاز ثاني، وبعد التحديث تمشي.',
   'PROVIDER_NOT_ACTIVE' => 'الصور تنضاف بعد ما ينقبل ملفك.',
+  // Q-59: while the team reviews his profile, three photos stay.
+  'PROVIDER_PHOTOS_REQUIRED' =>
+    'ملفك تحت المراجعة بـ3 صور على الأقل. أضف صورة قبل ما تحذف.',
   _ => marketplaceErrorMessage(error.message),
 };
 
@@ -264,6 +267,7 @@ class ProviderDashboardProvider extends ChangeNotifier
     } on ApiException catch (error) {
       final message = switch (error.serverCode) {
         'PROVIDER_SERVICE_REQUIRED' => 'أضف خدمة وحدة بسعرها قبل ما ترسل ملفك.',
+        'PROVIDER_PHOTOS_REQUIRED' => _photosRequired,
         _ => _said(error, 'ملفك يحتاج النت'),
       };
       // The state changed elsewhere (the team decided, or rewrote its
@@ -796,10 +800,14 @@ class ProviderDashboardProvider extends ChangeNotifier
     _portfolio = null;
   }
 
+  /// The server's `PROVIDER_PHOTOS_REQUIRED` (Q-59), in his words.
+  static const _photosRequired =
+      'المراجعة تحتاج 3 صور من شغلك على الأقل. أضفها وبعدها أرسل.';
+
   /// Sends the joining (p07) with the service he joins with and its price
-  /// (p06, B-10): the server creates the provider as PENDING at once (F1),
-  /// then the shop's place goes in a profile update, since apply takes no
-  /// address.
+  /// (p06, B-10) and his work photos, by their upload keys (p05, Q-59): the
+  /// server creates the provider as PENDING at once (F1), then the shop's
+  /// place goes in a profile update, since apply takes no address.
   Future<ProviderJoinResult> applyProvider({
     required String businessName,
     required String phone,
@@ -807,6 +815,7 @@ class ProviderDashboardProvider extends ChangeNotifier
     required String categoryId,
     required String serviceTitle,
     required String servicePrice,
+    required List<String> photoKeys,
     String? serviceDescription,
     String? address,
   }) async {
@@ -823,6 +832,7 @@ class ProviderDashboardProvider extends ChangeNotifier
         serviceTitle: serviceTitle,
         servicePrice: servicePrice,
         serviceDescription: serviceDescription,
+        portfolioKeys: photoKeys,
       );
       _hasProviderProfile = true;
       _clearOperationalData();
@@ -837,9 +847,11 @@ class ProviderDashboardProvider extends ChangeNotifier
         await loadDashboard();
         return ProviderJoinResult.alreadyApplied;
       }
-      _errorMessage = error.serverCode == 'PROVIDER_SERVICE_REQUIRED'
-          ? 'اكتب خدمتك وسعرها قبل ما ترسل.'
-          : _said(error, 'طلبك يحتاج النت');
+      _errorMessage = switch (error.serverCode) {
+        'PROVIDER_SERVICE_REQUIRED' => 'اكتب خدمتك وسعرها قبل ما ترسل.',
+        'PROVIDER_PHOTOS_REQUIRED' => _photosRequired,
+        _ => _said(error, 'طلبك يحتاج النت'),
+      };
       return ProviderJoinResult.failed;
     } catch (_) {
       _errorMessage = 'ما قدرنا نرسل طلبك. مرة ثانية غالبًا تمشي.';
@@ -1022,6 +1034,22 @@ class ProviderDashboardProvider extends ChangeNotifier
     } finally {
       notifyListeners();
     }
+  }
+
+  /// Adds uploaded photos, by their keys, at the end of his portfolio, in no
+  /// album (Q-59: p09 «صور من شغلك» before approval, where the gallery
+  /// does not open). The portfolio is read first when this phone has not.
+  Future<bool> addPortfolioPhotos(List<String> keys) async {
+    if (_portfolio == null) await loadPortfolio();
+    final held = _portfolio;
+    if (held == null) return false;
+    return savePortfolio(
+      items: [
+        for (final photo in held.items)
+          {'key': photo.key, 'album': photo.album, 'noFaces': photo.noFaces},
+        for (final key in keys) {'key': key, 'album': null, 'noFaces': false},
+      ],
+    );
   }
 
   Future<bool> createService({

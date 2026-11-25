@@ -64,6 +64,7 @@ import { featuredNowProviderWhere } from '../public/featured-placement';
 import * as featured from './featured-period.repository';
 import { listPricedServices } from './market-prices.repository';
 import {
+  hasApplicationPhotos,
   hasJoiningService,
   latestProviderDecisionInclude,
   listProviderReviewEvents,
@@ -175,6 +176,10 @@ const providerDetailInclude = {
   packages: {
     include: { service: true },
     orderBy: { createdAt: 'desc' },
+  },
+  // Q-59 (D127): the photos his application went to review with, as he ordered them.
+  portfolioItems: {
+    orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
   },
 } satisfies Prisma.ProviderInclude;
 
@@ -362,6 +367,13 @@ export class MarketplaceAdminRepository implements MarketplaceAdminPort {
     providerId: string,
   ): Promise<boolean> {
     return hasJoiningService(client, providerId);
+  }
+
+  async hasApplicationPhotos(
+    client: Prisma.TransactionClient,
+    providerId: string,
+  ): Promise<boolean> {
+    return hasApplicationPhotos(client, providerId);
   }
 
   async recordProviderReviewInTransaction(

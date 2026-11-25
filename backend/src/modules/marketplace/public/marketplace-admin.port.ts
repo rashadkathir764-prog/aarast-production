@@ -80,6 +80,8 @@ export type AdminProviderServiceRow = ProviderService & {
 export type AdminProviderDetailRow = AdminProviderRow & {
   services: AdminProviderServiceRow[];
   packages: Array<ProviderPackage & { service: ProviderService | null }>;
+  /** Q-59 (D127): his work photos in their order, each with its review. */
+  portfolioItems: PortfolioItem[];
 };
 
 export type AdminServiceRow = ProviderService & {
@@ -391,6 +393,11 @@ export interface MarketplaceAdminPort {
   ): Promise<{ userId: string | null; status: ProviderStatus; phone: string } | null>;
   /** The joining rule (B-10, D41): whether the provider has an active service priced above zero. */
   hasJoiningService(
+    client: Prisma.TransactionClient,
+    providerId: string,
+  ): Promise<boolean>;
+  /** Q-59 (D127): whether the provider has three work photos the team has not refused. */
+  hasApplicationPhotos(
     client: Prisma.TransactionClient,
     providerId: string,
   ): Promise<boolean>;

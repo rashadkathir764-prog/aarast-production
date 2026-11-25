@@ -83,13 +83,15 @@ List<RouteBase> _providerPortalRoutes() => [
       child: const ProviderServicesScreen(),
     ),
   ),
+  // Q-59 (D127): his photos go with the application, so the gallery opens
+  // while he waits, as his profile does; a photo-review notice lands here.
   GoRoute(
     path: AppRouter.providerGallery,
     builder: (context, state) => ProviderAuthGate(
       resumeLocation: state.uri.toString(),
       registerAsProvider: true,
       providerAccountRequired: true,
-      providerOperationsRequired: true,
+      providerProfileManageRequired: true,
       child: const ProviderGalleryScreen(),
     ),
   ),

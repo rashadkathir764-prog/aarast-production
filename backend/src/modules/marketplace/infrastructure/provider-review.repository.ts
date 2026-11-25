@@ -1,8 +1,10 @@
 import { Prisma, ProviderReviewEventKind } from '@prisma/client';
 import {
+  APPLICATION_MIN_PHOTOS,
   PROVIDER_REVIEW_DECISION_KINDS,
   type ProviderFieldNote,
 } from '../public/provider-review';
+import { countProviderPortfolio } from './portfolio.repository';
 
 type Client = Prisma.TransactionClient;
 
@@ -97,4 +99,18 @@ export async function hasJoiningService(
     where: { providerId, isActive: true, basePrice: { gt: 0 } },
   });
   return priced > 0;
+}
+
+/**
+ * Q-59 (أ, D127): a profile goes to review, and is approved, only with
+ * {@link APPLICATION_MIN_PHOTOS} work photos the team has not refused
+ * (waiting or approved). Resubmitting and approving read this one rule;
+ * apply writes the photos with the profile.
+ */
+export async function hasApplicationPhotos(
+  client: Client,
+  providerId: string,
+): Promise<boolean> {
+  const { photos } = await countProviderPortfolio(client, providerId);
+  return photos >= APPLICATION_MIN_PHOTOS;
 }

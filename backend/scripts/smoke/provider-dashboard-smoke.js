@@ -23,7 +23,7 @@ const {
   PrismaClient,
   ProviderStatus,
 } = require('@prisma/client');
-const { uploadVerifiedImage } = require('./verified-media-upload');
+const { uploadVerifiedImage, uploadApplicationPhotos } = require('./verified-media-upload');
 
 const prisma = new PrismaClient();
 const BASE_URL = process.env.SMOKE_BASE_URL ?? 'http://127.0.0.1:3115';
@@ -169,6 +169,7 @@ async function run() {
       categoryIds: [reference.category.id],
       description: 'طلب مزود لاختبار لوحة المزود.',
       services: [{ title: 'خدمة الانضمام', basePrice: '90000' }],
+      portfolio: await uploadApplicationPhotos({ request, token: providerToken }),
     }, providerToken);
     check('POST /api/v1/provider/apply - HTTP 201', res.status === 201);
     check('provider apply status is PENDING', res.body?.status === 'PENDING');

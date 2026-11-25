@@ -53,4 +53,30 @@ async function uploadVerifiedImage({
   return { presign, upload, verify };
 }
 
-module.exports = { uploadVerifiedImage };
+/**
+ * Q-59 (D127): the work photos a provider application goes to review with.
+ * Uploads and verifies [count] `provider-portfolio` images of the account and
+ * returns them as the application's `portfolio` items. A step that fails
+ * throws: the smoke stops at the cause, not at the 422 that would follow.
+ */
+async function uploadApplicationPhotos({ request, token, count = 3 }) {
+  const portfolio = [];
+  for (let index = 0; index < count; index += 1) {
+    const { presign, upload, verify } = await uploadVerifiedImage({
+      request,
+      token,
+      purpose: 'provider-portfolio',
+      fileName: `work-${index + 1}.png`,
+    });
+    if (presign.status !== 201 || !upload?.ok || verify?.status !== 201) {
+      throw new Error(
+        `Provider work photo ${index + 1} upload failed: presign ${presign.status}, ` +
+          `upload ${upload?.status ?? 'not sent'}, verify ${verify?.status ?? 'not sent'}`,
+      );
+    }
+    portfolio.push({ key: verify.body.key });
+  }
+  return portfolio;
+}
+
+module.exports = { createImage, uploadVerifiedImage, uploadApplicationPhotos };

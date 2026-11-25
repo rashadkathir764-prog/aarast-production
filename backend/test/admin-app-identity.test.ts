@@ -178,6 +178,8 @@ test("an administrator app session can create a provider profile without changin
           primaryCategory: null,
         };
       },
+      // The portfolio write sets his links (none on a new profile).
+      update: async () => ({}),
     },
     city: {
       findFirst: async () => ({
@@ -205,8 +207,12 @@ test("an administrator app session can create a provider profile without changin
     providerReviewEvent: { findFirst: async () => null },
     // Nor a featured placement (B-43).
     providerFeaturedPeriod: { findMany: async () => [] },
-    // Nor a portfolio photo (B-16).
-    portfolioItem: { findMany: async () => [] },
+    // The application's three work photos (Q-59) join «معرض الشغل».
+    portfolioItem: {
+      findMany: async () => [],
+      create: async () => ({ id: "photo-1" }),
+    },
+    providerService: { findMany: async () => [] },
     // Nor a profile change waiting for the team (RA-BE-152).
     providerProfileChange: { findFirst: async () => null },
   };
@@ -225,7 +231,13 @@ test("an administrator app session can create a provider profile without changin
   const service = providerDashboardService(
     prisma as any,
     {} as any,
-    {} as any, lifecycle,
+    {
+      verifyUpload: async (_user: unknown, key: string) => ({
+        publicUrl: `https://media.test/${key}`,
+      }),
+      consumeUpload: async () => undefined,
+    } as any,
+    lifecycle,
   );
 
   await service.apply(
@@ -236,6 +248,9 @@ test("an administrator app session can create a provider profile without changin
       cityId: "11111111-1111-4111-8111-111111111111",
       categoryIds: ["22222222-2222-4222-8222-222222222222"],
       services: [{ title: "Admin service", basePrice: "100000" }],
+      portfolio: ["a", "b", "c"].map((name) => ({
+        key: `provider-portfolio/admin-1/${name}.jpg`,
+      })),
     },
   );
   assert.equal(providerCreates, 1);

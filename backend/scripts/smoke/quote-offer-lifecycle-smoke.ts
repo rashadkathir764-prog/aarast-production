@@ -483,11 +483,20 @@ async function main(): Promise<void> {
     200,
     "accepting the version read",
   );
-  assert.equal(accepted.weddingCost.totalAmount, "480000");
+  // Q-55 (أ), D127: choosing the offer writes nothing in the money; asking
+  // for its booking writes the agreement.
+  assert.equal(accepted.weddingCost, null);
+  assert.equal(await prisma.weddingCost.count({ where: { quoteOfferId: second.id } }), 0);
+  expect(
+    await call("POST", `/api/v1/me/quote-requests/${privateQuote.id}/booking`, customerToken, {}),
+    201,
+    "asking for the booking of the accepted offer",
+  );
   const cost = await prisma.weddingCost.findUniqueOrThrow({
     where: { quoteOfferId: second.id },
     include: { budgetCategory: true },
   });
+  assert.equal(cost.totalAmount.toString(), "480000");
   assert.equal(cost.budgetCategory.name, "الوليمة والضيافة");
   expect(
     await call("PATCH", `/api/v1/provider/me/quote-offers/${second.id}`, providerToken, { amount: "1" }),
@@ -501,7 +510,7 @@ async function main(): Promise<void> {
     "withdrawing an accepted offer",
     "QUOTE_OFFER_NOT_WITHDRAWABLE",
   );
-  pass("a new offer after a withdrawal is accepted by its version; the «وجبات» cost lands in «الوليمة والضيافة», and the accepted offer is locked");
+  pass("a new offer after a withdrawal is accepted by its version, writing no cost; its booking request puts the «وجبات» cost in «الوليمة والضيافة», and the accepted offer is locked");
 
   // ---------------------------------------------------------------- B-04 job
   const permissions = new PermissionService(prisma as any, ownerPorts.plans);

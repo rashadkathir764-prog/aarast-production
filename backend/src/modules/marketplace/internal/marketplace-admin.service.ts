@@ -114,6 +114,13 @@ export class MarketplaceAdminService implements MarketplaceAdminPort {
     return this.repository.hasJoiningService(client, providerId);
   }
 
+  async hasApplicationPhotos(
+    client: Prisma.TransactionClient,
+    providerId: string,
+  ): Promise<boolean> {
+    return this.repository.hasApplicationPhotos(client, providerId);
+  }
+
   async settleBookingsOnSuspensionInTransaction(
     tx: Prisma.TransactionClient,
     providerId: string,

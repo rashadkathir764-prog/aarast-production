@@ -93,8 +93,10 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
             const SizedBox(height: AarastV3Space.x3),
             JourneyNote(
               icon: LucideIcons.smartphone,
+              // Q-60 (D127): the team's decisions on his profile, his claim
+              // and his photos come whatever this switch says.
               text: pushAvailable
-                  ? 'تنبيهات الجوال تشتغل من إذن التنبيهات في جوالك.'
+                  ? 'قرارات الفريق على ملفك وصورك توصلك دايمًا. وتنبيهات الجوال تشتغل من إذن التنبيهات في جوالك.'
                   : 'هذي النسخة ما توصلها تنبيهات الجوال، تلقاها داخل التطبيق.',
             ),
             const SizedBox(height: AarastV3Space.x3),

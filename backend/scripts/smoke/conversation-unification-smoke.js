@@ -5,8 +5,9 @@ const crypto = require('crypto');
 const http = require('http');
 const path = require('path');
 const { PrismaClient, ProviderStatus } = require('@prisma/client');
-const { configureSmokeDatabaseUrl } = require('./smoke-utils');
+const { configureSmokeDatabaseUrl, futureDay } = require('./smoke-utils');
 const { registerVerified } = require('./verified-registration');
+const { uploadApplicationPhotos } = require('./verified-media-upload');
 const { inviteAndAccept } = require('./invite-member');
 
 const socketIoRoot = path.resolve(path.dirname(require.resolve('socket.io')), '..');
@@ -232,7 +233,7 @@ async function cleanupFixture() {
   const quoteIds = [...new Set(fixture.quoteIds)];
   const conversationIds = [...new Set(fixture.conversationIds)];
 
-  const [notificationRows, messageRows, offerRows, costRows, linkRows] = await Promise.all([
+  const [notificationRows, messageRows, offerRows, costRows, linkRows, bookingRows] = await Promise.all([
     userIds.length || planIds.length
       ? prisma.notification.findMany({
           where: { OR: [{ userId: { in: userIds } }, { weddingPlanId: { in: planIds } }] },
@@ -254,6 +255,10 @@ async function cleanupFixture() {
           select: { id: true },
         })
       : [],
+    // Q-55: the accepted offer's booking request; it goes with its quote.
+    quoteIds.length
+      ? prisma.booking.findMany({ where: { quoteRequestId: { in: quoteIds } }, select: { id: true } })
+      : [],
   ]);
   const aggregateIds = [...new Set([
     ...userIds,
@@ -266,6 +271,7 @@ async function cleanupFixture() {
     ...offerRows.map((row) => row.id),
     ...costRows.map((row) => row.id),
     ...linkRows.map((row) => row.id),
+    ...bookingRows.map((row) => row.id),
   ])];
 
   await prisma.$transaction(async (tx) => {
@@ -399,6 +405,7 @@ async function run() {
     categoryIds: [category.id],
     description: 'Isolated conversation unification smoke provider.',
     services: [{ title: `Service ${marker}`, basePrice: '100000' }],
+    portfolio: await uploadApplicationPhotos({ request, token: providerUser.token }),
   }, providerUser.token);
   const providerBody = await expectStatus('Create provider profile', providerApply, 201);
   const providerId = providerBody?.id;
@@ -1012,16 +1019,25 @@ async function run() {
     'POST', `/api/v1/conversations/${catalogConversationBody.id}/messages`, { body: `Joined ${marker}` }, lateProviderUser.token,
   ), 201);
 
+  // Q-55 (أ), D127: choosing the offer writes nothing in the money; asking
+  // for the booking writes its agreement, once.
   const accept = await request('PATCH', `/api/v1/quote-offers/${offerBody.id}/accept`, null, owner.token);
   const acceptBody = await expectStatus('Accept quote offer', accept, 200);
-  check('Acceptance reports automatic cost creation', acceptBody?.automaticCostCreated === true);
-  check('Acceptance returns weddingCost and costSuggestion.costId', typeof acceptBody?.weddingCost?.id === 'string'
-    && acceptBody?.costSuggestion?.costId === acceptBody.weddingCost.id);
-  fixture.costIds.push(acceptBody.weddingCost.id);
+  check('Acceptance reports no automatic cost', acceptBody?.automaticCostCreated === false);
+  check('Acceptance returns no weddingCost and no costSuggestion.costId', acceptBody?.weddingCost === null
+    && acceptBody?.costSuggestion?.costId === null);
+  check('Acceptance writes no WeddingCost', (await prisma.weddingCost.count({ where: { quoteOfferId: offerBody.id } })) === 0);
+  const bookingAsked = await request('POST', `/api/v1/me/quote-requests/${fixture.quoteIds[0]}/booking`, {
+    eventDate: futureDay(45),
+  }, owner.token);
+  await expectStatus('Request the booking of the accepted offer', bookingAsked, 201);
+  const agreement = await prisma.weddingCost.findUnique({ where: { quoteOfferId: offerBody.id } });
+  check('The booking request writes the offer\'s WeddingCost', typeof agreement?.id === 'string');
+  if (agreement) fixture.costIds.push(agreement.id);
   const acceptAgain = await request('PATCH', `/api/v1/quote-offers/${offerBody.id}/accept`, null, owner.token);
   const acceptAgainBody = await expectStatus('Repeat offer acceptance idempotently', acceptAgain, 200);
-  check('Repeated acceptance returns the existing cost', acceptAgainBody?.weddingCost?.id === acceptBody.weddingCost.id
-    && acceptAgainBody?.costSuggestion?.costId === acceptBody.weddingCost.id);
+  check('Repeated acceptance returns the booking\'s cost', acceptAgainBody?.weddingCost?.id === agreement?.id
+    && acceptAgainBody?.costSuggestion?.costId === agreement?.id);
 
   const evidence = await prisma.$transaction(async (tx) => {
     const quote = await tx.quoteRequest.findUnique({ where: { id: fixture.quoteIds[0] } });
@@ -1106,7 +1122,7 @@ async function run() {
     helperConversationId,
     primaryQuoteIds: fixture.quoteIds.slice(0, 2),
     acceptedOfferId: offerBody.id,
-    weddingCostId: acceptBody.weddingCost.id,
+    weddingCostId: agreement?.id ?? null,
     secondPlanConversationId: secondPlanConversationBody.id,
     accountConversationId: accountConversationBody.id,
     lateLinkedConversationId: catalogConversationBody.id,

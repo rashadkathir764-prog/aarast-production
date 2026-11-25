@@ -5,6 +5,12 @@ import type { AuthenticatedUser } from '../modules/identity/public/identity-sess
 import type { CatalogReadPort } from '../modules/catalog/public/catalog-read.port';
 import type { MediaStoragePort } from '../modules/media/public/media-storage.port';
 import {
+  APPLICATION_MIN_PHOTOS,
+  isProviderAwaitingApproval,
+  providerPhotosRequired,
+} from '../modules/marketplace/public/provider-review';
+import { hasApplicationPhotos } from '../modules/marketplace/infrastructure/provider-review.repository';
+import {
   normalizePortfolioItems,
   normalizeSocialLinks,
   PORTFOLIO_MAX_ITEMS,
@@ -20,6 +26,11 @@ import type { UpdateProviderPortfolioDto } from './dto/update-provider-portfolio
 import { lockOwnedProviderForMutationInTransaction } from './provider-mutation-locks';
 
 const PURPOSE = 'provider-portfolio' as const;
+
+/** The photos an application counts: waiting or approved, never refused. */
+function countedPhotos(items: readonly Pick<PortfolioItem, 'status'>[]): number {
+  return items.filter((item) => item.status !== PortfolioItemStatus.REJECTED).length;
+}
 
 export interface ProviderPortfolioDependencies {
   prisma: PrismaService;
@@ -67,11 +78,14 @@ export function toOwnerPortfolioResponse(
 }
 
 /**
- * B-16 (D62): the provider's «معرض الشغل». Only an approved provider (D41:
- * photos after approval) writes it. A new photo is a verified
- * `provider-portfolio` upload of his, consumed by its item; it waits for
- * review. A kept photo keeps its decision unless its album or «بدون وجوه»
- * changed. A removed photo's image is deleted by the media cleanup.
+ * B-16 (D62): the provider's «معرض الشغل». An approved provider writes it,
+ * and so does one waiting for approval: his application goes to review with
+ * {@link APPLICATION_MIN_PHOTOS} photos (Q-59, D127), which he keeps while
+ * he waits. A new photo is a verified `provider-portfolio` upload of his,
+ * consumed by its item; it waits for review, and customers see it only once
+ * his profile is approved too. A kept photo keeps its decision unless its
+ * album or «بدون وجوه» changed. A removed photo's image is deleted by the
+ * media cleanup.
  */
 export class ProviderPortfolio {
   constructor(private readonly deps: ProviderPortfolioDependencies) {}
@@ -84,28 +98,75 @@ export class ProviderPortfolio {
     return toOwnerPortfolioResponse(items, provider.socialLinks, servesWomen);
   }
 
+  /**
+   * Q-59: the application's photos, checked and verified against storage
+   * before its transaction: fewer than {@link APPLICATION_MIN_PHOTOS} is
+   * refused before any upload is read. The women's album is checked again
+   * once the profile exists ({@link attachToApplication}).
+   */
+  async verifyApplicationPhotos(
+    currentUser: AuthenticatedUser,
+    items: UpdateProviderPortfolioDto['items'] | undefined,
+  ): Promise<Map<string, string>> {
+    const photos = normalizePortfolioItems(items ?? [], true);
+    if (photos.length < APPLICATION_MIN_PHOTOS) throw providerPhotosRequired();
+    return this.verifyNewUploads(currentUser, photos.map((photo) => photo.key), new Set());
+  }
+
+  /**
+   * Q-59: the application's photos join the profile it just created, in its
+   * transaction, each waiting for the team's review.
+   */
+  async attachToApplication(
+    tx: Prisma.TransactionClient,
+    currentUser: AuthenticatedUser,
+    provider: Pick<Provider, 'id' | 'primaryCategoryId'>,
+    items: UpdateProviderPortfolioDto['items'],
+    verifiedUrls: ReadonlyMap<string, string>,
+  ): Promise<void> {
+    const servesWomen = await providerServesWomen(tx, this.deps.catalog, provider);
+    const write: portfolioStore.PortfolioWrite = { create: [], update: [], removeIds: [] };
+    for (const item of normalizePortfolioItems(items, servesWomen)) {
+      write.create.push({
+        mediaKey: item.key,
+        imageUrl: verifiedUrls.get(item.key)!,
+        album: item.album,
+        forWomen: item.forWomen,
+        noFaces: item.noFaces,
+        sortOrder: item.sortOrder,
+      });
+    }
+    const createdIds = await portfolioStore.writeProviderPortfolio(
+      tx,
+      provider.id,
+      write,
+      Prisma.DbNull,
+    );
+    await this.consumeCreated(tx, currentUser, write, createdIds);
+  }
+
+  /** Q-59: whether the profile has the photos its review needs. */
+  hasApplicationPhotos(tx: Prisma.TransactionClient, providerId: string): Promise<boolean> {
+    return hasApplicationPhotos(tx, providerId);
+  }
+
   async replace(currentUser: AuthenticatedUser, dto: UpdateProviderPortfolioDto) {
     // The list's shape and the links are checked before anything is read.
     normalizePortfolioItems(dto.items, true);
     const socialLinks = dto.socialLinks === undefined ? undefined : normalizeSocialLinks(dto.socialLinks);
 
     // New photos are verified against storage outside the transaction.
-    const known = new Set(
-      await portfolioStore.listPortfolioKeysOfOwner(this.deps.prisma, currentUser.id),
+    const verifiedUrls = await this.verifyNewUploads(
+      currentUser,
+      dto.items.map((item) => item.key.trim()),
+      new Set(await portfolioStore.listPortfolioKeysOfOwner(this.deps.prisma, currentUser.id)),
     );
-    const verifiedUrls = new Map<string, string>();
-    for (const item of dto.items) {
-      const key = item.key.trim();
-      if (known.has(key) || verifiedUrls.has(key)) continue;
-      const verified = await this.deps.mediaStorage.verifyUpload(currentUser, key, PURPOSE);
-      verifiedUrls.set(key, verified.publicUrl!);
-    }
 
     return runSerializableTransaction(this.deps.prisma, async (tx) => {
       const provider = await lockOwnedProviderForMutationInTransaction(
         tx,
         currentUser.id,
-        'OPERATIONAL',
+        'PORTFOLIO',
         'UPDATE',
       );
       const servesWomen = await providerServesWomen(tx, this.deps.catalog, provider);
@@ -152,6 +213,19 @@ export class ProviderPortfolio {
         wanted,
         dto.knownKeys,
       );
+      // Q-59: while the team has his application, a photo it counts may go
+      // only when three stay; adding is always open, so a profile from
+      // before the rule reaches them one photo at a time.
+      if (isProviderAwaitingApproval(provider)) {
+        const removing = new Set(remove);
+        const before = countedPhotos(stored);
+        const after =
+          countedPhotos(stored.filter((item) => !removing.has(item.mediaKey))) +
+          write.create.length;
+        if (after < APPLICATION_MIN_PHOTOS && after < before) {
+          throw providerPhotosRequired();
+        }
+      }
       for (const key of remove) {
         const item = byKey.get(key)!;
         write.removeIds.push(item.id);
@@ -176,19 +250,44 @@ export class ProviderPortfolio {
             ? (socialLinks as Prisma.InputJsonValue)
             : Prisma.DbNull;
       const createdIds = await portfolioStore.writeProviderPortfolio(tx, provider.id, write, links);
-      for (const [index, id] of createdIds.entries()) {
-        await this.deps.mediaStorage.consumeUpload(
-          currentUser,
-          write.create[index].mediaKey,
-          PURPOSE,
-          { type: 'PORTFOLIO_ITEM', id },
-          tx,
-        );
-      }
+      await this.consumeCreated(tx, currentUser, write, createdIds);
 
       const after = await portfolioStore.listProviderPortfolio(tx, provider.id);
       const linksAfter = socialLinks === undefined ? provider.socialLinks : socialLinks;
       return toOwnerPortfolioResponse(after, linksAfter, servesWomen);
     });
+  }
+
+  /** Each new key verified as his `provider-portfolio` upload, once; [known] keys are his already. */
+  private async verifyNewUploads(
+    currentUser: AuthenticatedUser,
+    keys: readonly string[],
+    known: ReadonlySet<string>,
+  ): Promise<Map<string, string>> {
+    const verifiedUrls = new Map<string, string>();
+    for (const key of keys) {
+      if (known.has(key) || verifiedUrls.has(key)) continue;
+      const verified = await this.deps.mediaStorage.verifyUpload(currentUser, key, PURPOSE);
+      verifiedUrls.set(key, verified.publicUrl!);
+    }
+    return verifiedUrls;
+  }
+
+  /** Each created photo consumes its upload. */
+  private async consumeCreated(
+    tx: Prisma.TransactionClient,
+    currentUser: AuthenticatedUser,
+    write: portfolioStore.PortfolioWrite,
+    createdIds: readonly string[],
+  ): Promise<void> {
+    for (const [index, id] of createdIds.entries()) {
+      await this.deps.mediaStorage.consumeUpload(
+        currentUser,
+        write.create[index].mediaKey,
+        PURPOSE,
+        { type: 'PORTFOLIO_ITEM', id },
+        tx,
+      );
+    }
   }
 }

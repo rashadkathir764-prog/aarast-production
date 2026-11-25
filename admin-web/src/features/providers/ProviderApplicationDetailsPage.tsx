@@ -4,7 +4,7 @@
 // has no field; the teams left with D41; the quick checks need B-16, B-07
 // and A-07, so that panel is not drawn.
 import { type ReactNode, useCallback, useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import {
   getProviderApplication,
   getProviderReviewHistory,
@@ -19,6 +19,7 @@ import { ProviderDecisions, providerActionVisibility, providerStatusWord } from 
 import {
   DeskHeader,
   DeskNote,
+  DeskPhotoImage,
   DeskRetry,
   Panel,
   SoftAction,
@@ -39,6 +40,44 @@ function photoCount(count: number): string {
   if (count === 2) return 'صورتين';
   if (count <= 10) return `${count} صور`;
   return `${count} صورة`;
+}
+
+/** Q-59 (D127): approval needs this many work photos the team has not refused. */
+const APPLICATION_MIN_PHOTOS = 3;
+
+type WorkPhoto = NonNullable<ProviderApplication['portfolio']>[number];
+
+function howMany(count: number): string {
+  if (count === 1) return 'وحدة';
+  if (count === 2) return 'ثنتين';
+  return String(count);
+}
+
+/** «3 صور · وحدة تنتظر المراجعة · وحدة انشالت». */
+function photosLine(photos: readonly WorkPhoto[]): string {
+  const pending = photos.filter((photo) => photo.status === 'PENDING').length;
+  const refused = photos.filter((photo) => photo.status === 'REJECTED').length;
+  return [
+    photoCount(photos.length),
+    pending > 0 ? `${howMany(pending)} تنتظر المراجعة` : null,
+    refused > 0 ? `${howMany(refused)} انشالت` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+}
+
+const PHOTO_STATE: Record<WorkPhoto['status'], string> = {
+  PENDING: 'تنتظر المراجعة',
+  APPROVED: 'سليمة',
+  REJECTED: 'انشالت',
+};
+
+function photoState(photo: WorkPhoto): string {
+  const state =
+    photo.status === 'REJECTED' && photo.rejectionReason
+      ? `انشالت: ${photo.rejectionReason}`
+      : PHOTO_STATE[photo.status];
+  return photo.forWomen ? `${state} · للعرائس بس` : state;
 }
 
 function fieldCount(count: number): string {
@@ -212,7 +251,12 @@ export function ProviderApplicationDetailsPage() {
 
   const services = provider.services ?? [];
   const packages = provider.packages ?? [];
-  const photos = services.reduce((sum, service) => sum + (service.images?.length ?? 0), 0);
+  // Q-59 (D127): the work photos the application came with, not the services' images.
+  const photos = provider.portfolio ?? [];
+  const standing = photos.filter((photo) => photo.status !== 'REJECTED').length;
+  const waiting = photos.some((photo) => photo.status === 'PENDING');
+  const tooFewToApprove =
+    providerActionVisibility(provider.status).approve && standing < APPLICATION_MIN_PHOTOS;
   const where = [provider.primaryCategory?.nameAr, provider.city?.nameAr].filter(Boolean);
   const state = provider.status === 'PENDING'
     ? provider.resubmittedAt
@@ -270,7 +314,30 @@ export function ProviderApplicationDetailsPage() {
               {...(index === 0 ? fieldProps('SERVICE') : { canNote: false, onDraft })}
             />
           ))}
-          <Field label="صور الشغل" value={photoCount(photos)} canNote={false} onDraft={onDraft} />
+          <Field label="صور الشغل" value={photosLine(photos)} canNote={false} onDraft={onDraft}>
+            {photos.length > 0 ? (
+              <ul className="desk-photos desk-photos--small" aria-label="صور الشغل">
+                {photos.map((photo) => (
+                  <li key={photo.id} className="desk-photo">
+                    <DeskPhotoImage src={photo.imageUrl} alt={`صورة من شغل ${provider.businessName}`} />
+                    <small className={photo.status === 'REJECTED' ? 'desk-photo__flag' : undefined}>
+                      {photoState(photo)}
+                    </small>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            {tooFewToApprove ? (
+              <p className="desk-field-card__more">
+                ما تكفي للاعتماد: لازم {APPLICATION_MIN_PHOTOS} صور ما انشالت.
+              </p>
+            ) : null}
+            {waiting ? (
+              <p className="desk-field-card__more">
+                <Link to="/photos">راجعها في «صور تحتاج مراجعة»</Link>
+              </p>
+            ) : null}
+          </Field>
           {packages.map((item) => (
             <Field
               key={item.id}

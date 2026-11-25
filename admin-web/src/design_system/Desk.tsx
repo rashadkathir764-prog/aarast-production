@@ -1,7 +1,7 @@
 // The admin desk kit: the
 // page head, buttons, panels, tables, tags and stats every admin page uses.
-import type { ButtonHTMLAttributes, ReactNode } from 'react';
-import type { LucideIcon } from 'lucide-react';
+import { type ButtonHTMLAttributes, type ReactNode, useState } from 'react';
+import { EyeOff, type LucideIcon } from 'lucide-react';
 import { Pagination } from './Pagination';
 
 export type DeskTone =
@@ -259,6 +259,25 @@ export function DeskNote({ children, tone }: { children: ReactNode; tone?: 'cora
     <p className={tone ? `desk-note desk-ink--${tone}` : 'desk-note'} role={tone ? 'alert' : undefined}>
       {children}
     </p>
+  );
+}
+
+/**
+ * A portfolio photo's image (n07, a04). A refused photo has no image (it is
+ * deleted), and one that does not load is drawn the same, hidden from
+ * assistive technology: the card's words say what it is.
+ */
+export function DeskPhotoImage({ src, alt }: { src: string | null; alt: string }) {
+  const [broken, setBroken] = useState(false);
+  if (!src || broken) {
+    return (
+      <span className="desk-photo__image desk-photo__image--empty" aria-hidden="true">
+        <EyeOff size={44} strokeWidth={1.8} />
+      </span>
+    );
+  }
+  return (
+    <img className="desk-photo__image" src={src} alt={alt} loading="lazy" onError={() => setBroken(true)} />
   );
 }
 

@@ -17,6 +17,7 @@ import {
   ownerPorts,
   providerDashboardService,
 } from "./support/owner-ports";
+import { applicationPhotos, smokeMediaStorage } from "./support/application-photos";
 
 // A provider the back office lists before its owner has an account, then
 // claimed by the account that signs in with the same phone (V1 checklist
@@ -93,7 +94,8 @@ async function main(): Promise<void> {
     new OutboxService(),
   );
   const admins = adminService(prisma, { revokeConversationAccess: () => {} }, notifications);
-  const dashboard = providerDashboardService(prisma, notifications, {}, {});
+  const media = smokeMediaStorage(prisma);
+  const dashboard = providerDashboardService(prisma, notifications, media, {});
   const adminActor = { ...admin, adminMfa: true, sessionScope: "admin" } as any;
   const asUser = (user: typeof owner) => ({ ...user, sessionScope: "application" }) as any;
   let listingId: string | null = null;
@@ -138,6 +140,8 @@ async function main(): Promise<void> {
         cityId: city.id,
         categoryIds: [category.id],
         services: [{ title: "خدمة", basePrice: "100000" }],
+        // Q-59: a whole application, so the listing is what refuses it.
+        portfolio: await applicationPhotos(media, asUser(owner)),
       } as any),
       (error: any) => code(error) === "PROVIDER_LISTING_CLAIMABLE",
     );

@@ -2,6 +2,7 @@
 'use strict';
 
 const { registerVerified } = require('./verified-registration');
+const { uploadApplicationPhotos } = require('./verified-media-upload');
 
 /**
  * Backend Completion Smoke Test
@@ -348,6 +349,7 @@ async function run() {
       categoryIds: [reference.category.id],
       description: 'Provider used by backend completion smoke.',
       services: [{ title: 'Backend completion service', basePrice: '100000' }],
+      portfolio: await uploadApplicationPhotos({ request, token: providerUser.token }),
     }, providerUser.token);
     check('POST provider profile - HTTP 201', res.status === 201);
     providerId = requireResponseId('POST provider profile', res);
@@ -428,10 +430,21 @@ async function run() {
     const res = await request('PATCH', `/api/v1/quote-offers/${offerId}/accept`, null, owner.token);
     check('PATCH quote offer accept - HTTP 200', res.status === 200);
     check('accept creates provider link', res.body?.planProviderLink?.providerId === providerId);
-    check('accept declares automatic cost', res.body?.automaticCostCreated === true);
-    check('accept returns the automatic cost', typeof res.body?.weddingCost?.id === 'string');
-    check('accept exposes the linked cost', res.body?.costSuggestion?.suggestedAction === 'VIEW_COST');
-    check('accept exposes next actions', Array.isArray(res.body?.nextActions) && res.body.nextActions.includes('viewCost'));
+    // Q-55 (أ), D127: choosing the offer writes nothing in the money.
+    check('accept declares no automatic cost', res.body?.automaticCostCreated === false);
+    check('accept returns no cost', res.body?.weddingCost === null);
+    check('accept offers no cost to view', res.body?.costSuggestion?.suggestedAction === 'NONE');
+    check('accept offers the booking request next', Array.isArray(res.body?.nextActions) && res.body.nextActions.includes('requestBooking'));
+    check('accept writes no cost', (await prisma.weddingCost.count({ where: { quoteOfferId: offerId } })) === 0);
+  }
+
+  {
+    // The booking request is what puts the agreement in the plan's money.
+    const res = await request('POST', `/api/v1/me/quote-requests/${quoteId}/booking`, {
+      eventDate: dateOffsetIso(60).slice(0, 10),
+    }, owner.token);
+    check('POST booking request - HTTP 201', res.status === 201);
+    check('the booking request writes the offer\'s cost, once', (await prisma.weddingCost.count({ where: { quoteOfferId: offerId } })) === 1);
   }
 
   {

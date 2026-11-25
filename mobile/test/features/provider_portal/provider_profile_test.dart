@@ -857,7 +857,9 @@ void main() {
       expect(find.text('الإعدادات'), findsOneWidget);
       expect(find.text('تنبيه لكل طلب ورسالة'), findsOneWidget);
       expect(
-        find.text('تنبيهات الجوال تشتغل من إذن التنبيهات في جوالك.'),
+        find.text(
+          'قرارات الفريق على ملفك وصورك توصلك دايمًا. وتنبيهات الجوال تشتغل من إذن التنبيهات في جوالك.',
+        ),
         findsOneWidget,
       );
       expect(find.text('خطة عرسي'), findsOneWidget);

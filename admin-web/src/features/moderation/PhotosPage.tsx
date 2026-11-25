@@ -6,11 +6,18 @@
 // brides' reports («بلاغ من عروسة»), which have no source; the drawn
 // two-hour promise; the search box.
 import { useCallback, useEffect, useState } from 'react';
-import { EyeOff } from 'lucide-react';
 import { decidePortfolioPhoto, getPortfolioPhotos, type PortfolioPhoto } from './api';
 import { AdminPermission, Can } from '../auth/api';
 import { ConfirmDialog } from '../../design_system/ConfirmDialog';
-import { DeskHeader, DeskNote, DeskPager, DeskRetry, Panel, SoftAction } from '../../design_system/Desk';
+import {
+  DeskHeader,
+  DeskNote,
+  DeskPager,
+  DeskPhotoImage,
+  DeskRetry,
+  Panel,
+  SoftAction,
+} from '../../design_system/Desk';
 import { pageToShow } from '../../platform/api/query';
 
 type Page = {
@@ -20,26 +27,6 @@ type Page = {
   total: number;
   totalPages: number;
 };
-
-function PhotoTile({ photo }: { photo: PortfolioPhoto }) {
-  const [broken, setBroken] = useState(false);
-  if (!photo.imageUrl || broken) {
-    return (
-      <span className="desk-photo__image desk-photo__image--empty" aria-hidden="true">
-        <EyeOff size={44} strokeWidth={1.8} />
-      </span>
-    );
-  }
-  return (
-    <img
-      className="desk-photo__image"
-      src={photo.imageUrl}
-      alt={`صورة من معرض ${photo.provider.businessName}`}
-      loading="lazy"
-      onError={() => setBroken(true)}
-    />
-  );
-}
 
 export function PhotosPage() {
   const [page, setPage] = useState(1);
@@ -112,7 +99,7 @@ export function PhotosPage() {
           <ul className="desk-photos" aria-label="صور تحتاج مراجعة">
             {result.items.map((photo) => (
               <li key={photo.id} className="desk-photo">
-                <PhotoTile photo={photo} />
+                <DeskPhotoImage src={photo.imageUrl} alt={`صورة من معرض ${photo.provider.businessName}`} />
                 <strong>
                   {photo.album ? `${photo.provider.businessName} · ${photo.album}` : photo.provider.businessName}
                 </strong>

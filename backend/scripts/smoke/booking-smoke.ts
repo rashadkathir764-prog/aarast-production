@@ -15,7 +15,12 @@ import { MarketplaceAdminService } from "../../src/modules/marketplace/internal/
 import * as core from "../../src/modules/marketplace/infrastructure/marketplace-core.repository";
 import * as dashboardStore from "../../src/modules/marketplace/infrastructure/provider-dashboard.repository";
 import { PermissionService } from "../../src/modules/collaboration/internal/permission.service";
-import { notificationsService, ownerPorts } from "./support/owner-ports";
+import {
+  contributionHistoryService,
+  marketplaceRelations,
+  notificationsService,
+  ownerPorts,
+} from "./support/owner-ports";
 
 // Bookings without payment (V1 checklist 4.6) on a real database: requests,
 // the provider's decisions, the calendar, and the provider's daily number
@@ -110,9 +115,10 @@ async function main(): Promise<void> {
   }
 
   const notifications: any[] = [];
+  const permissions = new PermissionService(prisma as any, ownerPorts.plans);
   const bookings = new BookingsService(
     prisma as any,
-    new PermissionService(prisma as any, ownerPorts.plans),
+    permissions,
     {
       createNotificationInTransaction: async (_tx: unknown, input: any) => {
         notifications.push(input);
@@ -120,6 +126,13 @@ async function main(): Promise<void> {
       },
     } as any,
     ownerPorts.finance,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    // Q-55 (D127): a plan's booking request writes the offer's agreement.
+    marketplaceRelations,
+    contributionHistoryService(prisma, permissions),
   );
 
   let planId: string | null = null;
@@ -275,6 +288,25 @@ async function main(): Promise<void> {
     await assert.rejects(bookings.listForPlan(customerB as any, plan.id));
     console.log("PASS - a plan lists its bookings with the provider's name, to its people only");
 
+    // Q-55 (أ), D127: the plan's booking request wrote the offer's
+    // agreement in its money, once; a request outside a plan writes none.
+    const agreements = await prisma.weddingCost.findMany({ where: { weddingPlanId: plan.id } });
+    assert.equal(agreements.length, 1);
+    assert.equal(agreements[0].quoteOfferId, planBooking.quoteOfferId);
+    assert.equal(agreements[0].totalAmount.toString(), "400000");
+    const accountOffers = await prisma.quoteOffer.findMany({
+      where: { quoteRequestId: { in: [quoteA.id, quoteB.id] } },
+      select: { id: true },
+    });
+    assert.equal(accountOffers.length, 2);
+    assert.equal(
+      await prisma.weddingCost.count({
+        where: { quoteOfferId: { in: accountOffers.map((offer) => offer.id) } },
+      }),
+      0,
+    );
+    console.log("PASS - a plan's booking request writes the offer's agreement in its money, once");
+
     // RA-BE-48: a booking asked again is the same row. A day change left
     // waiting on the booking before was accepted onto the new one and moved
     // its day; and «تم» said on the day, while a cancel and a move were still
@@ -418,6 +450,9 @@ async function main(): Promise<void> {
         where: { weddingPlanId: planId },
         data: { weddingPlanId: null },
       });
+      // Q-55: the agreement its booking request wrote, and its category.
+      await prisma.weddingCost.deleteMany({ where: { weddingPlanId: planId } });
+      await prisma.budgetCategory.deleteMany({ where: { weddingPlanId: planId } });
       // D116: every plan has its wedding row; the events go before the plan.
       await prisma.planEvent.deleteMany({ where: { weddingPlanId: planId } });
       await prisma.weddingPlan.deleteMany({ where: { id: planId } });

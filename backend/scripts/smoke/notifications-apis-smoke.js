@@ -2,6 +2,7 @@
 'use strict';
 
 const { registerVerified } = require('./verified-registration');
+const { uploadApplicationPhotos } = require('./verified-media-upload');
 
 /**
  * Internal Notifications APIs Smoke Test
@@ -235,6 +236,7 @@ async function run() {
       categoryIds: [reference.category.id],
       description: 'Phase9 provider',
       services: [{ title: 'Phase9 service', basePrice: '100000' }],
+      portfolio: await uploadApplicationPhotos({ request, token: providerUser.token }),
     }, providerUser.token);
     check('provider creates profile - HTTP 201', res.status === 201);
     providerId = requireResponseId('provider creates profile', res);

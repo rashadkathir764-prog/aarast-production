@@ -14,11 +14,13 @@ import type { AdminPortfolioRow } from '../modules/marketplace/public/marketplac
 import {
   PORTFOLIO_REJECTION_REASON_MAX_LENGTH,
 } from '../modules/marketplace/public/provider-portfolio';
+import { isProviderAwaitingApproval } from '../modules/marketplace/public/provider-review';
 import type { NotificationsPort } from '../modules/notifications/public/notifications.port';
 import { runSerializableTransaction } from '../platform/database/serializable-transaction';
 import { PrismaService } from '../platform/database/prisma.service';
 import { noticeRoutes } from '../shared-kernel/routes/notification-routes';
 import type { AdminOwners } from './admin-owners';
+import { toAdminPortfolioPhoto } from './admin.presenter';
 import { recordAdminAuditChange } from '../modules/backoffice/public/admin-audit-change';
 import type {
   AdminPortfolioDecisionDto,
@@ -39,15 +41,7 @@ export interface AdminPortfolioReviewDependencies {
 
 export function toAdminPortfolioResponse(row: AdminPortfolioRow) {
   return {
-    id: row.id,
-    imageUrl: row.status === PortfolioItemStatus.REJECTED ? null : row.imageUrl,
-    album: row.album,
-    forWomen: row.forWomen,
-    noFaces: row.noFaces,
-    status: row.status,
-    rejectionReason: row.rejectionReason,
-    reviewedAt: row.reviewedAt,
-    createdAt: row.createdAt,
+    ...toAdminPortfolioPhoto(row),
     provider: {
       id: row.provider.id,
       businessName: row.provider.businessName,
@@ -60,9 +54,14 @@ export function toAdminPortfolioResponse(row: AdminPortfolioRow) {
 export function portfolioDecisionNotice(row: AdminPortfolioRow) {
   const where = row.album ? `في «${row.album}»` : 'في معرض الشغل';
   if (row.status === PortfolioItemStatus.APPROVED) {
+    const readers = row.forWomen ? 'للعرائس' : 'للعرسان';
     return {
       title: 'انقبلت صورة من معرضك',
-      body: `صورتك ${where} تظهر الحين ${row.forWomen ? 'للعرائس' : 'للعرسان'}.`,
+      // Q-59 (D127): his application's photos are reviewed before his
+      // profile is approved, and show only once it is.
+      body: isProviderAwaitingApproval(row.provider)
+        ? `صورتك ${where} تظهر ${readers} لما نعتمد ملفك.`
+        : `صورتك ${where} تظهر الحين ${readers}.`,
     };
   }
   return {

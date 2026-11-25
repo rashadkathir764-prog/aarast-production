@@ -11,6 +11,7 @@ import {
 } from 'class-validator';
 import { MaxCharacters } from '../../shared-kernel/text/text-length';
 import { SupportedCurrency } from '../../shared-kernel/money/currency';
+import { PortfolioItemDto } from './update-provider-portfolio.dto';
 
 /** A service the provider joins with (B-10): its name and its price. */
 export class ApplyProviderServiceDto {
@@ -73,4 +74,17 @@ export class ApplyProviderDto {
   @ValidateNested({ each: true })
   @Type(() => ApplyProviderServiceDto)
   services?: ApplyProviderServiceDto[];
+
+  /**
+   * Q-59 (أ, D127): his work photos, by their verified `provider-portfolio`
+   * upload keys; fewer than three is refused with 422
+   * PROVIDER_PHOTOS_REQUIRED. They wait for the team in «معرض الشغل».
+   */
+  @IsArray()
+  @IsOptional()
+  // The portfolio's own limit answers with its own code; this bounds the body.
+  @ArrayMaxSize(100)
+  @ValidateNested({ each: true })
+  @Type(() => PortfolioItemDto)
+  portfolio?: PortfolioItemDto[];
 }

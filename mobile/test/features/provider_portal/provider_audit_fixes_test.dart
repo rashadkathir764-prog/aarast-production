@@ -164,6 +164,46 @@ void main() {
       },
     );
 
+    // Q-74 (D127): the price groups as it is typed, as every amount in the
+    // app does («520000» read as «520,000»), and reaches the server whole.
+    testWidgets('the offer price groups as typed and is sent without commas', (
+      tester,
+    ) async {
+      final api = _PortalApi(quotes: [_quoteJson()], hasBooking: false);
+      await _pumpRequests(tester, api);
+      await _openRequest(tester);
+      await tester.tap(find.byKey(const Key('provider-request-offer')));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byKey(const Key('provider-offer-amount')),
+        '520000',
+      );
+      await tester.pump();
+      final field = tester.widget<EditableText>(
+        find.descendant(
+          of: find.byKey(const Key('provider-offer-amount')),
+          matching: find.byType(EditableText),
+        ),
+      );
+      expect(field.controller.text, '520,000');
+      // An Arabic keyboard's digits are the same number.
+      await tester.enterText(
+        find.byKey(const Key('provider-offer-amount')),
+        '٥٢٠٠٠٠',
+      );
+      await tester.pump();
+      expect(field.controller.text, '520,000');
+      await tester.enterText(
+        find.byKey(const Key('provider-offer-message')),
+        'تصوير ليلة كاملة',
+      );
+      await _sendOffer(tester);
+
+      expect(api.createdAmounts, ['520000']);
+      await tester.pump(const Duration(seconds: 5));
+    });
+
     testWidgets('an expired offer is renewed with a new end date', (
       tester,
     ) async {
@@ -755,6 +795,7 @@ class _PortalApi extends ProviderDashboardApi {
   int profileLoads = 0;
   final statusUpdates = <String>[];
   final createdOffers = <DateTime?>[];
+  final createdAmounts = <String>[];
   final updatedOffers = <DateTime?>[];
   final updatedOfferIds = <String>[];
   final updatedOfferVersions = <int?>[];
@@ -842,6 +883,7 @@ class _PortalApi extends ProviderDashboardApi {
     int? deliveryDays,
   }) async {
     createdOffers.add(validUntil);
+    createdAmounts.add(amount);
     return QuoteOffer.fromJson({'id': 'offer-new', 'status': 'PENDING'});
   }
 

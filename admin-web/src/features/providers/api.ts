@@ -115,6 +115,23 @@ export type ProviderApplication = {
   reviewsCount: number;
   services?: ProviderServiceProjection[];
   packages?: ProviderPackageProjection[];
+  /**
+   * Q-59 (D127): his work photos in his order, each with its review; on the
+   * details read only. Approval needs three that were not refused.
+   */
+  portfolio?: Array<{
+    id: string;
+    /** Null once refused: the image is deleted. */
+    imageUrl: string | null;
+    album: string | null;
+    /** «حفلات النساء»: brides only, and only without faces. */
+    forWomen: boolean;
+    noFaces: boolean;
+    status: 'PENDING' | 'APPROVED' | 'REJECTED';
+    rejectionReason: string | null;
+    reviewedAt: string | null;
+    createdAt: string;
+  }>;
   createdAt: string;
   updatedAt: string;
 };

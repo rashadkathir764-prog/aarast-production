@@ -2,6 +2,7 @@
 'use strict';
 
 const { registerVerified } = require('./verified-registration');
+const { uploadApplicationPhotos } = require('./verified-media-upload');
 
 /**
  * Providers + Quotes APIs Smoke Test
@@ -153,6 +154,7 @@ async function run() {
       categoryIds: [reference.category.id],
       description: 'Phase8 provider profile',
       services: [{ title: 'Phase8 joining service', basePrice: '100000' }],
+      portfolio: await uploadApplicationPhotos({ request, token: providerUser.token }),
     }, providerUser.token);
     check('POST /api/v1/provider/apply - HTTP 201', res.status === 201);
     check('provider profile has id', typeof res.body?.id === 'string');
@@ -350,11 +352,30 @@ async function run() {
     check('PATCH /api/v1/quote-offers/:id/accept - HTTP 200', res.status === 200);
     check('accepted offer status is ACCEPTED', res.body?.offer?.status === 'ACCEPTED');
     check('accept creates plan provider link', res.body?.planProviderLink?.providerId === providerId);
-    check('accept declares automatic cost', res.body?.automaticCostCreated === true);
-    check('accept returns the automatic cost', typeof res.body?.weddingCost?.id === 'string');
-    check('accept exposes the linked cost', res.body?.costSuggestion?.suggestedAction === 'VIEW_COST');
-    check('accept returns canonical next actions', Array.isArray(res.body?.nextActions) && res.body.nextActions.includes('viewCost') && res.body.nextActions.includes('viewAcceptedProvider'));
-    check('accept creates one automatic cost', (await prisma.weddingCost.count({ where: { weddingPlanId: planId } })) === costsBeforeAccept + 1);
+    // Q-55 (أ), D127: choosing the offer writes nothing in the money.
+    check('accept declares no automatic cost', res.body?.automaticCostCreated === false);
+    check('accept returns no cost', res.body?.weddingCost === null);
+    check('accept offers no cost to view', res.body?.costSuggestion?.suggestedAction === 'NONE');
+    check('accept returns canonical next actions', Array.isArray(res.body?.nextActions) && res.body.nextActions.includes('requestBooking') && res.body.nextActions.includes('viewAcceptedProvider') && !res.body.nextActions.includes('viewCost'));
+    check('accept creates no cost', (await prisma.weddingCost.count({ where: { weddingPlanId: planId } })) === costsBeforeAccept);
+    check('accept writes no agreement for the offer', (await prisma.weddingCost.count({ where: { quoteOfferId: offerId } })) === 0);
+  }
+
+  {
+    // Q-55 (أ), D127: asking for the booking puts the offer's agreement in
+    // the plan's money, once; asked again after a cancel, it is the same one.
+    const agreements = () => prisma.weddingCost.findMany({ where: { quoteOfferId: offerId } });
+    const asked = await request('POST', `/api/v1/me/quote-requests/${quoteId}/booking`, { eventDate: futureDay(40) }, customer.token);
+    check('POST booking request - HTTP 201', asked.status === 201);
+    const afterBooking = await agreements();
+    check('the booking request writes the offer\'s agreement', afterBooking.length === 1);
+    check('the agreement carries the offer\'s amount', afterBooking[0]?.totalAmount?.toString() === '320000');
+    const cancelled = await request('PATCH', `/api/v1/me/bookings/${asked.body?.id}/cancel`, {}, customer.token);
+    check('customer cancels the booking request - HTTP 200', cancelled.status === 200);
+    const again = await request('POST', `/api/v1/me/quote-requests/${quoteId}/booking`, { eventDate: futureDay(41) }, customer.token);
+    check('customer asks for the booking again - HTTP 201', again.status === 201);
+    const afterAgain = await agreements();
+    check('asking again writes no second agreement', afterAgain.length === 1 && afterAgain[0]?.id === afterBooking[0]?.id);
   }
 
   {

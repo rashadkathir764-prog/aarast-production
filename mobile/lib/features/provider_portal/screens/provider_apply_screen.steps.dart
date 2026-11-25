@@ -36,6 +36,58 @@ class _StepTitle extends StatelessWidget {
   }
 }
 
+/// One uploaded photo of p05, square, with «شيل الصورة» on its corner.
+class _ApplyPhoto extends StatelessWidget {
+  const _ApplyPhoto({required this.photo, required this.onRemove, super.key});
+
+  final MediaUploadTicket photo;
+  final VoidCallback? onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final url = photo.publicUrl.trim();
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(AarastV3Radius.control),
+          child: url.isEmpty
+              ? const ColoredBox(color: AarastV3Color.line)
+              : AarastNetworkImage(
+                  url,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) =>
+                      const ColoredBox(color: AarastV3Color.line),
+                ),
+        ),
+        PositionedDirectional(
+          top: 0,
+          end: 0,
+          child: IconButton(
+            key: Key('provider-apply-photo-remove-${photo.key}'),
+            tooltip: 'شيل الصورة',
+            onPressed: onRemove,
+            icon: const DecoratedBox(
+              decoration: BoxDecoration(
+                color: AarastV3Color.paper,
+                shape: BoxShape.circle,
+              ),
+              child: Padding(
+                padding: EdgeInsets.all(AarastV3Space.x1),
+                child: Icon(
+                  LucideIcons.x,
+                  size: AarastV3Icon.sm,
+                  color: AarastV3Color.ink,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 /// Why a picker is not done yet, as a text field says it.
 class _FieldError extends StatelessWidget {
   const _FieldError(this.text);

@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/media/aarast_network_image.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
-import '../../../core/media/media_upload_api.dart';
-import '../../../core/network/api_client.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../../../core/widgets/aarast_toast.dart';
@@ -19,13 +16,13 @@ import '../../marketplace/marketplace_api.dart'
         portfolioSocialLabel,
         portfolioSocialNetworks;
 import '../providers/provider_dashboard_provider.dart';
+import '../widgets/provider_photo_upload.dart';
 
 /// A fixed dimension of this layout, not a spacing step (D74).
 const _galleryThumbWidth = 92.0;
 
-typedef ProviderGalleryImagePicker = Future<List<XFile>> Function();
-typedef ProviderGalleryImageUploader =
-    Future<MediaUploadTicket> Function(XFile file);
+typedef ProviderGalleryImagePicker = ProviderPhotoPicker;
+typedef ProviderGalleryImageUploader = ProviderPhotoUploader;
 
 /// p37 «معرض الشغل» (B-16, D62): his photos by album, each new one marked
 /// «نراجعها» until the moderation team approves it, a refused one with the
@@ -44,8 +41,6 @@ class ProviderGalleryScreen extends StatefulWidget {
 }
 
 class _ProviderGalleryScreenState extends State<ProviderGalleryScreen> {
-  static const _maximumImagesPerSelection = 10;
-
   String? _album;
   bool _busy = false;
 
@@ -363,68 +358,25 @@ class _ProviderGalleryScreenState extends State<ProviderGalleryScreen> {
   Future<void> _addImages(ProviderPortfolio portfolio, String? selected) async {
     final place = await _chooseAlbum(portfolio, selected);
     if (place == null || !mounted) return;
-    late final List<XFile> files;
-    try {
-      files =
-          await (widget.pickImages?.call() ??
-              ImagePicker().pickMultiImage(
-                imageQuality: 84,
-                maxWidth: 2000,
-                limit: _maximumImagesPerSelection,
-              ));
-    } catch (_) {
-      if (mounted) {
-        AarastToast.showError(
-          context,
-          'ما قدرنا نفتح الصور. يمكن إذن الصور مقفول في الجوال.',
-        );
-      }
-      return;
-    }
-    if (files.isEmpty || !mounted) return;
-    final room = portfolio.maxItems - portfolio.items.length;
-    final chosen = files
-        .take(
-          room < _maximumImagesPerSelection ? room : _maximumImagesPerSelection,
-        )
-        .toList();
     setState(() => _busy = true);
-    final keys = <String>[];
-    String? lastError;
     try {
-      final upload =
-          widget.uploadImage ??
-          (XFile file) => context.read<MediaUploadApi>().uploadImage(
-            file: file,
-            purpose: 'provider-portfolio',
-          );
-      for (final file in chosen) {
-        try {
-          keys.add((await upload(file)).key);
-        } on ApiException catch (error) {
-          lastError = error.message;
-          if (error.statusCode != null && error.statusCode! >= 500) break;
-        } catch (_) {
-          lastError = 'ما قدرنا نرفع صورة منها.';
-        }
-        if (!mounted) return;
-      }
-      if (keys.isEmpty) {
-        AarastToast.showError(
-          context,
-          lastError ?? 'ما قدرنا نرفع الصور، ومرة ثانية غالبًا تمشي.',
-        );
-        return;
-      }
+      final uploads = await pickAndUploadProviderPhotos(
+        context,
+        room: portfolio.maxItems - portfolio.items.length,
+        pick: widget.pickImages,
+        upload: widget.uploadImage,
+      );
+      if (uploads == null || !mounted) return;
+      final keys = [for (final ticket in uploads.tickets) ticket.key];
       await _save(
         [
           ..._itemsOf(portfolio.items),
           for (final key in keys)
             {'key': key, 'album': place.album, 'noFaces': place.noFaces},
         ],
-        success: keys.length == chosen.length
+        success: uploads.complete
             ? 'وصلتنا ${arabicCount(keys.length, one: 'صورة وحدة', two: 'صورتين', few: 'صور', many: 'صورة')}، نراجعها قبل ما تظهر.'
-            : 'وصلتنا ${keys.length} من ${chosen.length} صور، نراجعها قبل ما تظهر.',
+            : 'وصلتنا ${keys.length} من ${uploads.asked} صور، نراجعها قبل ما تظهر.',
       );
       if (mounted) setState(() => _album = place.album);
     } finally {

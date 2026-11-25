@@ -263,7 +263,7 @@ test("refresh token schema and authenticated lifecycle stay wired", () => {
     /JwtModule\.registerAsync\(\{\s*useFactory: \(\) => identityJwtModuleOptions\(\),/,
   );
   const environment = {
-    JWT_SECRET: "k3Jq9vX2mP7rT4wZ8nB5cL1dF6hG0sYaQe",
+    JWT_SECRET: 'identity-task-five-valid-secret-value-8Z!pQ2xK',
     NODE_ENV: "test",
   } as NodeJS.ProcessEnv;
   assert.equal(identityJwtModuleOptions(environment).signOptions?.expiresIn, "15m");

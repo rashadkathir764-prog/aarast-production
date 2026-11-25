@@ -72,6 +72,8 @@ const report = (
   conversationId: `conversation-${id}`,
   reason,
   status: 'OPEN',
+  closingNote: null,
+  closedAt: null,
   createdAt,
   updatedAt: createdAt,
   reporter: { id: reporterId, name: reporterName, phone: null, avatarUrl: null },

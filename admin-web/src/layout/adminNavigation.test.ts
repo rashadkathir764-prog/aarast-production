@@ -37,6 +37,8 @@ describe('admin navigation', () => {
       '/providers/applications',
       // B-12: the claims waiting for review.
       '/providers/listed',
+      // RA-AD-27: the providers' profile changes waiting for review.
+      '/profile-changes',
       '/conversation-reports',
     ]);
   });

@@ -1762,7 +1762,7 @@ const r19ProviderPortalApi = Object.freeze({
 // -2 (RA-BE-161, 2026-11-24): the assistant's consent is the server's
 // record, so the assistant screen and w40 no longer read the signed-in
 // account's id from the auth owner API (two imports of AuthController gone).
-const r19LegalRecordCount = 274;
+const r19LegalRecordCount = 275;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -3428,6 +3428,12 @@ const trackedShellEntryBatchContracts = [
       'GuestPersona',
       'WeddingLocationDraft',
     ],
+  },
+  {
+    source: 'mobile/lib/features/welcome_gateway/screens/smart_welcome_screen.dart',
+    target: 'mobile/lib/features/sharing/sharing_api.dart',
+    // RA-MO-337: a later registrant's invite waiting for their number.
+    show: ['SharingProvider'],
   },
   {
     source: 'mobile/lib/features/welcome_gateway/screens/smart_welcome_screen.dart',

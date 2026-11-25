@@ -3378,7 +3378,7 @@ without an account.
   replies of one hour are one notice for the plan, not one per guest
   (RA-BE-174, RA-BE-190): it names the guest while only one has answered in
   the hour, and once a second has, it says replies came, names no one and
-  opens `/wedding-plans/:planId/guests/attendance`; the next hour starts a
+  opens the plan's attendance screen in the app; the next hour starts a
   new one.
 - `GET /api/v1/public/rsvp/:token/card-photo` (no auth, 60/min) redirects
   (`302`) to a signed read of the card photo valid for 120 seconds; the
@@ -3557,7 +3557,7 @@ thread. A helper's thread carries `throughHelper: { name }` for its customer-sid
 readers other than him (`name` as the plan reads the member, `null` once his
 account is erased, shown «عضو سابق»); it is `null` for the shared thread, for the
 helper himself and for the provider. A block is the plan's with the provider:
-`PATCH /conversations/:id/block` by the provider, the owner or a partner applies
+`PATCH /api/v1/conversations/:id/block` by the provider, the owner or a partner applies
 to every thread of that plan and provider, a helper's own block to his thread
 only, and a helper's new thread starts with the plan's block. An `ACCOUNT` conversation is unique by requester account and
 Provider. Creating a QuoteRequest creates or reuses that context inside the
@@ -3833,7 +3833,7 @@ or `DISMISSED` needs `note` (trimmed, 1 to 500 characters; else 400
 `CONVERSATION_REPORT_CLOSING_NOTE_REQUIRED`). The report keeps it as
 `closingNote` with `closedAt`, and its reporter gets a
 `CONVERSATION_REPORT_CLOSED` notification («راجعنا بلاغك», the note as its
-body, opening `/conversations/:conversationId`), under his messages switch
+body, opening that conversation in the app), under his messages switch
 (`providerMessagesEnabled`) and pushed on the messages channel, held through
 the quiet hours with generic lock-screen words. `OPEN` clears both and tells no
 one. A report closed before 2026-11-25 has neither.

@@ -507,11 +507,19 @@ test('quote fixture cleanup deletes operation outputs before fixture roots in on
   const updates = new Map<string, unknown>();
   const database = new Proxy({}, {
     get(_target, model: string) {
-      if (model === '$executeRaw') {
-        return async () => { calls.push('$executeRaw'); };
+      if (model === '$queryRaw') {
+        return async (strings: TemplateStringsArray) => {
+          calls.push('$queryRaw');
+          updates.set('$queryRaw', strings.join('?'));
+          return [];
+        };
       }
 
       return {
+        update: async (value: unknown) => {
+          calls.push(`markDue:${model}`);
+          updates.set(`markDue:${model}`, value);
+        },
         findMany: async () => model === 'weddingCost'
           ? [{ id: 'cost-1' }]
           : model === 'chatMessage'
@@ -534,8 +542,19 @@ test('quote fixture cleanup deletes operation outputs before fixture roots in on
     city: { id: 'city' }, category: { id: 'category' }, service: { id: 'service' },
     conversation: { id: 'conversation' }, quoteRequest: { id: 'request' }, offer: { id: 'offer' },
   });
-  assert.ok(calls.indexOf('$executeRaw') < calls.indexOf('costPayment'));
-  assert.ok(calls.indexOf('costPayment') < calls.indexOf('weddingCost'));
+  // RA-BE-180: no session setting opens the ledger; the plan is made due,
+  // then the database's eraser removes the payments, then the costs go.
+  assert.equal(calls.includes('costPayment'), false);
+  assert.ok(calls.includes('markDue:weddingPlan'));
+  assert.ok(calls.indexOf('markDue:weddingPlan') < calls.indexOf('$queryRaw'));
+  assert.ok(calls.indexOf('$queryRaw') < calls.indexOf('weddingCost'));
+  assert.match(String(updates.get('$queryRaw')), /aarast_erase_cost_ledger/);
+  const markDue = updates.get('markDue:weddingPlan') as {
+    where: { id: string };
+    data: { deletionRequestedAt: Date; deletionScheduledFor: Date };
+  };
+  assert.deepEqual(markDue.where, { id: 'plan' });
+  assert.ok(markDue.data.deletionScheduledFor.getTime() <= Date.now());
   assert.ok(calls.indexOf('weddingCost') < calls.indexOf('quoteOffer'));
   assert.ok(calls.indexOf('conversationEvent') < calls.indexOf('conversation'));
   assert.ok(calls.includes('notification'));
@@ -571,8 +590,9 @@ test('quote cleanup deletes notification outbox records using collected notifica
   const calls: Array<{ model: string; operation: string; value?: unknown }> = [];
   const database = new Proxy({}, {
     get(_target, model: string) {
-      if (model === '$executeRaw') return async () => { calls.push({ model, operation: 'execute' }); };
+      if (model === '$queryRaw') return async () => { calls.push({ model, operation: 'erase' }); return []; };
       return {
+        update: async (value: unknown) => { calls.push({ model, operation: 'markDue', value }); },
         findMany: async () => {
           calls.push({ model, operation: 'find' });
           if (model === 'notification') return [{ id: 'notification-1' }];

@@ -254,6 +254,11 @@ function readManifest(): R6Manifest {
   return JSON.parse(readFileSync(manifestPath, 'utf8')) as R6Manifest;
 }
 
+const protectedTransportPaths = new Set([
+  'backend/src/platform/otp-transport/openwa-otp.channel.ts',
+  'backend/src/platform/otp-transport/openwa-transient-text.ts',
+]);
+
 function copyProtectedFixture(root: string): void {
   for (const relativePath of [
     'backend/architecture/ownership-baseline.json',
@@ -271,8 +276,12 @@ function copyProtectedFixture(root: string): void {
     mkdirSync(path.dirname(target), { recursive: true });
     // Closed: the fixture exercises the lineage law, whose ownership baseline
     // is the one recorded at the lineage commit; the live baseline shrinks by
-    // exact subtraction under the ownership program.
-    if (closed && relativePath === 'backend/architecture/ownership-baseline.json') {
+    // exact subtraction under the ownership program. The two protected
+    // transport files are lineage too: the product keeps editing the OTP
+    // channel after the closure (RA-MO-360, Q-52), so the fixture holds their
+    // bytes at the lineage commit, which the pinned hashes still prove.
+    if (closed && (relativePath === 'backend/architecture/ownership-baseline.json'
+        || protectedTransportPaths.has(relativePath))) {
       const closure = require(path.join(backendRoot, 'scripts', 'architecture', 'modular-monolith-closure.cjs')).readClosure(repositoryRoot) as { lineageCommit: string };
       writeFileSync(target, readImmutableFile(closure.lineageCommit, relativePath), 'utf8');
       continue;

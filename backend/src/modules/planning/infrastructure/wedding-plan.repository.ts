@@ -136,6 +136,49 @@ export function clearPlanDeletionRequest(tx: Prisma.TransactionClient, id: strin
   });
 }
 
+/** RA-OP-32: the days the re-deletion list keeps an id, past the oldest backup (90). */
+export const ERASED_PLAN_LIST_DAYS = 120;
+
+/**
+ * RA-OP-32: an erased plan goes on the re-deletion list, so a backup
+ * restored later erases it again (deploy/aws/host/restore.sh).
+ */
+export function recordErasedPlans(
+  tx: Prisma.TransactionClient,
+  weddingPlanIds: readonly string[],
+  erasedAt: Date,
+) {
+  return tx.erasedPlan.createMany({
+    data: weddingPlanIds.map((weddingPlanId) => ({ weddingPlanId, erasedAt })),
+    skipDuplicates: true,
+  });
+}
+
+/** RA-OP-32: a plan on the list came back from a backup; it is not taken back. */
+export async function isErasedPlan(
+  tx: Prisma.TransactionClient,
+  weddingPlanId: string,
+): Promise<boolean> {
+  return (
+    (await tx.erasedPlan.findUnique({
+      where: { weddingPlanId },
+      select: { weddingPlanId: true },
+    })) !== null
+  );
+}
+
+/** RA-OP-32: ids older than 120 days leave the list; no backup holds them. */
+export async function removeOldErasedPlans(
+  client: Prisma.TransactionClient,
+  now: Date,
+): Promise<number> {
+  const before = new Date(now.getTime() - ERASED_PLAN_LIST_DAYS * 24 * 60 * 60 * 1000);
+  const result = await client.erasedPlan.deleteMany({
+    where: { erasedAt: { lt: before } },
+  });
+  return result.count;
+}
+
 export function archiveWeddingPlan(tx: Prisma.TransactionClient, id: string) {
   return tx.weddingPlan.update({
     where: { id },

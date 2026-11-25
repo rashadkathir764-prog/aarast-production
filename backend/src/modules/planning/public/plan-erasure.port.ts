@@ -42,4 +42,13 @@ export interface PlanErasurePort {
     weddingPlanId: string,
     now: Date,
   ): Promise<boolean>;
+  /**
+   * RA-OP-32: the erasure of a plan writes its id on a re-deletion list (a
+   * restored backup erases it again); ids older than 120 days, past the
+   * oldest backup, leave it. The number removed.
+   */
+  removeOldErasedPlans(
+    client: Prisma.TransactionClient,
+    now: Date,
+  ): Promise<number>;
 }

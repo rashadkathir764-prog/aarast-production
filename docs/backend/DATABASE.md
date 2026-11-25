@@ -293,6 +293,17 @@ backup brought back is due for erasure at once, the hourly purge erases it
 again through the saga, and the server refuses to take such an account back
 (`ACCOUNT_ERASED`). The hourly purge job removes ids older than 120 days.
 
+The plans have the same list (RA-OP-32, Q-45): migration
+`20261125140000_notifications_chat_leftovers` creates `ErasedPlan`
+(`weddingPlanId` primary key, `erasedAt`). Planning's `deletePlansInTransaction`
+writes the id of every plan it erases, whether the owner deleted it or his
+account was erased. `restore.sh` copies the replaced database's list too (when
+it has one), and `reapply-erasures.sql` marks every listed plan the backup
+brought back as due now (`deletionRequestedAt` a minute ago,
+`deletionScheduledFor` now); the hourly plan purge erases it again, and taking
+it back is refused (`409 PLAN_ERASED`). The hourly plan purge removes ids older
+than 120 days.
+
 ## Durable Account Deletion Receipt
 
 Migration `20260803110000_add_account_deletion_receipts` creates

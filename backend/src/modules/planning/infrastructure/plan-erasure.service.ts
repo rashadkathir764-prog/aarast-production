@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { PlanErasurePort } from '../public/plan-erasure.port';
 import { deletePlanEventRowsOfPlans } from './plan-events.repository';
+import { recordErasedPlans, removeOldErasedPlans } from './wedding-plan.repository';
 
 @Injectable()
 export class PlanErasureService implements PlanErasurePort {
@@ -31,6 +32,15 @@ export class PlanErasureService implements PlanErasurePort {
     await tx.weddingPlan.deleteMany({
       where: { id: { in: [...weddingPlanIds] } },
     });
+    // RA-OP-32: a backup restored later erases these plans again.
+    await recordErasedPlans(tx, weddingPlanIds, new Date());
+  }
+
+  async removeOldErasedPlans(
+    client: Prisma.TransactionClient,
+    now: Date,
+  ): Promise<number> {
+    return removeOldErasedPlans(client, now);
   }
 
   async listPlanOwnersInTransaction(

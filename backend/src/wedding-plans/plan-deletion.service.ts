@@ -21,6 +21,7 @@ import {
 } from "../modules/notifications/public/notifications.port";
 import {
   clearPlanDeletionRequest,
+  isErasedPlan,
   markPlanDeletionRequested,
 } from "../modules/planning/infrastructure/wedding-plan.repository";
 import { PrismaService } from "../platform/database/prisma.service";
@@ -102,6 +103,15 @@ export class PlanDeletionService {
           statusCode: 409,
           code: "PLAN_DELETION_NOT_PENDING",
           message: "الخطة ما هي في طريقها للحذف.",
+        });
+      }
+      // RA-OP-32: a plan erased before a backup was restored waits to be
+      // erased again; it is not taken back.
+      if (await isErasedPlan(tx, plan.id)) {
+        throw new ConflictException({
+          statusCode: 409,
+          code: "PLAN_ERASED",
+          message: "الخطة هذي انحذفت قبل، وما تنرجع.",
         });
       }
       await clearPlanDeletionRequest(tx, plan.id);

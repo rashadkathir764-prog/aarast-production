@@ -47,6 +47,7 @@ function recorder() {
     },
     planEvent: delegate('planEvent'),
     weddingPlan: delegate('weddingPlan'),
+    erasedPlan: delegate('erasedPlan'),
     provider: delegate('provider', [{ id: 'provider-1' }]),
     providerReview: delegate('providerReview', [{ providerId: 'provider-1' }]),
     reviewReport: delegate('reviewReport'),
@@ -89,10 +90,17 @@ test('planning locks the owned plans first and deletes them last', async () => {
   await service.deletePlansInTransaction(tx, []);
   assert.deepEqual(statements, ['SELECT "id" FROM "WeddingPlan" WHERE "ownerUserId" = ? ORDER BY "id" ASC FOR UPDATE']);
   // D65: the plan's own events go before the plan.
-  assert.deepEqual(calls.slice(1), [
+  assert.deepEqual(calls.slice(1, 3), [
     ['planEvent.deleteMany', { where: { weddingPlanId: { in: ['plan-1'] } } }],
     ['weddingPlan.deleteMany', { where: { id: { in: ['plan-1'] } } }],
   ]);
+  // RA-OP-32: the plan's id goes on the re-deletion list, once the plan is gone.
+  assert.equal(calls.length, 4);
+  assert.equal(calls[3]![0], 'erasedPlan.createMany');
+  const listed = calls[3]![1] as { data: Array<{ weddingPlanId: string; erasedAt: Date }>; skipDuplicates: boolean };
+  assert.deepEqual(listed.data.map((row) => row.weddingPlanId), ['plan-1']);
+  assert.ok(listed.data[0]!.erasedAt instanceof Date);
+  assert.equal(listed.skipDuplicates, true);
 });
 
 test('marketplace lists, locks and deletes its rows in the account scope', async () => {

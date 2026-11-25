@@ -90,6 +90,11 @@ export class PlanDeletionPurgeService {
     return summary;
   }
 
+  /** RA-OP-32: the re-deletion list forgets plan ids older than 120 days. */
+  forgetOldErasedPlans(now: Date): Promise<number> {
+    return this.planErasure.removeOldErasedPlans(this.prisma, now);
+  }
+
   /** True when the plan was erased; false when it is gone or was taken back. */
   async erasePlan(
     weddingPlanId: string,

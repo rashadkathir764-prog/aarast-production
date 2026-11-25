@@ -11,8 +11,8 @@
 # when it loads without a single error do the names swap. The database it
 # replaces is kept under another name, never dropped here. Then postgres-roles
 # re-applies the least-privilege grants to the restored database, migrate
-# brings it up to the live release, the accounts erased since the backup are
-# marked to be erased again (RA-OP-32), and the backend starts. What was
+# brings it up to the live release, the accounts and plans erased since the
+# backup are marked to be erased again (RA-OP-32), and the backend starts. What was
 # written after the backup is not in it: that is what a restore means.
 # No secret is printed.
 set -euo pipefail
@@ -97,7 +97,8 @@ fi
 # restored database is brought to the live release first (postgres-roles and
 # migrate), then the re-deletion list of the database it replaced is put back
 # into it and every account on it is marked due: the backend's hourly purge
-# erases it again, and the server refuses to take it back.
+# erases it again, and the server refuses to take it back. The plans erased
+# since the backup are listed and marked the same way (RA-OP-32, Q-45).
 undo_hint() { echo "The database it replaced is $kept: rename it back to $db to undo." >&2; }
 if ! dc run --rm --quiet-pull migrate >/dev/null; then
   echo "FAIL: the restored database could not be brought to release $current." >&2
@@ -105,14 +106,19 @@ if ! dc run --rm --quiet-pull migrate >/dev/null; then
   exit 1
 fi
 if [ "$(in_db "$kept" "SELECT to_regclass('public.\"ErasedAccount\"') IS NOT NULL")" = t ]; then
-  if ! in_db "$db" 'CREATE TABLE "ErasedAccountIncoming" ("userId" TEXT PRIMARY KEY, "erasedAt" TIMESTAMP(3) NOT NULL)' >/dev/null \
+  # The plans' list (ErasedPlan) came a release after the accounts'; a database
+  # without it simply has no plans to erase again.
+  kept_has_plans=$(in_db "$kept" "SELECT to_regclass('public.\"ErasedPlan\"') IS NOT NULL")
+  if ! in_db "$db" 'CREATE TABLE "ErasedAccountIncoming" ("userId" TEXT PRIMARY KEY, "erasedAt" TIMESTAMP(3) NOT NULL); CREATE TABLE "ErasedPlanIncoming" ("weddingPlanId" TEXT PRIMARY KEY, "erasedAt" TIMESTAMP(3) NOT NULL)' >/dev/null \
     || ! in_db "$kept" 'COPY "ErasedAccount" TO STDOUT' | in_db "$db" 'COPY "ErasedAccountIncoming" FROM STDIN' >/dev/null \
+    || { [ "$kept_has_plans" = t ] && ! in_db "$kept" 'COPY "ErasedPlan" TO STDOUT' | in_db "$db" 'COPY "ErasedPlanIncoming" FROM STDIN' >/dev/null; } \
     || ! dc exec -T postgres sh -c 'PGOPTIONS="-c client_min_messages=warning" psql -q -tA -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$1"' sh "$db" <"$here/reapply-erasures.sql" >/dev/null; then
-    echo "FAIL: the accounts erased since the backup could not be marked again; the backend is not started." >&2
+    echo "FAIL: the accounts and plans erased since the backup could not be marked again; the backend is not started." >&2
     undo_hint
     exit 1
   fi
   echo "accounts erased since the backup, to be erased again: $(in_db "$db" 'SELECT count(*) FROM "User" u JOIN "ErasedAccount" e ON e."userId" = u."id"')"
+  echo "plans erased since the backup, to be erased again: $(in_db "$db" 'SELECT count(*) FROM "WeddingPlan" p JOIN "ErasedPlan" e ON e."weddingPlanId" = p."id"')"
 fi
 
 # postgres-roles and migrate run again before the backend, as on every start.

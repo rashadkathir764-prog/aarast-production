@@ -15,7 +15,8 @@ export class PlanDeletionPurgeScheduler {
 
   @Cron("45 * * * *")
   async purgeDuePlans(): Promise<void> {
-    const { erased, failures } = await this.plans.purgeDuePlans(new Date());
+    const now = new Date();
+    const { erased, failures } = await this.plans.purgeDuePlans(now);
     if (erased > 0) this.logger.log(`Erased ${erased} plan(s) after their 30 days`);
     for (const failure of failures) {
       this.logger.error(
@@ -23,5 +24,8 @@ export class PlanDeletionPurgeScheduler {
         failure.error instanceof Error ? failure.error.stack : String(failure.error),
       );
     }
+    // RA-OP-32: the re-deletion list keeps an id 120 days, past every backup.
+    const listed = await this.plans.forgetOldErasedPlans(now);
+    if (listed > 0) this.logger.log(`Removed ${listed} plan id(s) from the re-deletion list`);
   }
 }

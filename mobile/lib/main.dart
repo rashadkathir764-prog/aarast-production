@@ -233,6 +233,8 @@ Future<void> _bootstrapApplication(ObservabilityConfig observability) async {
     apiClient: apiClient,
     pendingPlanCleanupStore: pendingPlanCleanupStore,
     reachability: serverReachability,
+    // RA-MO-343: a change that waits is sent again by itself.
+    retryDelay: OfflineSyncService.standardRetryDelay,
   );
   WidgetsBinding.instance.addObserver(offlineSyncService);
   await offlineSyncService.refreshStatus();

@@ -23,6 +23,7 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
     required this.apiClient,
     PendingPlanCleanupStore? pendingPlanCleanupStore,
     ServerReachability? reachability,
+    this.retryDelay,
   }) : _pendingPlanCleanupStore = pendingPlanCleanupStore,
        _reachability = reachability {
     _reachability?.addListener(_onReachabilityChanged);
@@ -40,10 +41,62 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
   /// the first answer from the server sends it.
   bool get serverOutOfReach => _reachability?.reachable == false;
 
+  /// RA-MO-343: how long the queue waits before trying again by itself after
+  /// a send failed, by how many tries in a row failed (0 for the first); null
+  /// is no automatic retry. The app passes [standardRetryDelay].
+  final Duration Function(int attempt)? retryDelay;
+
+  /// 10 seconds, then doubling to a ceiling of 5 minutes: quick enough that a
+  /// lost signal comes back unnoticed, slow enough never to be a busy loop.
+  static Duration standardRetryDelay(int attempt) {
+    const first = Duration(seconds: 10);
+    const ceiling = Duration(minutes: 5);
+    final doubled = first * (1 << attempt.clamp(0, 5));
+    return doubled > ceiling ? ceiling : doubled;
+  }
+
+  Timer? _retryTimer;
+  int _retryAttempt = 0;
+  bool _disposed = false;
+
+  /// Tries again after the next wait, unless a retry is already waiting.
+  void _scheduleRetry() {
+    final delayFor = retryDelay;
+    if (_disposed ||
+        delayFor == null ||
+        _retryTimer != null ||
+        _cacheOwnerUserId == null) {
+      return;
+    }
+    _retryTimer = Timer(delayFor(_retryAttempt++), () {
+      _retryTimer = null;
+      unawaited(_retryNow());
+    });
+  }
+
+  Future<void> _retryNow() async {
+    try {
+      await syncPendingChanges();
+    } on Object {
+      // Logged by the pass itself (SYNC_FAILED); the wait grows and it is
+      // tried again, so a failing store is not a loop either.
+      _scheduleRetry();
+    }
+  }
+
+  /// Nothing waits for a retry any more: an answer came, the queue is empty,
+  /// or the session ended.
+  void _stopRetrying() {
+    _retryTimer?.cancel();
+    _retryTimer = null;
+    _retryAttempt = 0;
+  }
+
   void _onReachabilityChanged() {
     final reachability = _reachability;
     if (reachability == null || !reachability.reachable) return;
     if (_state != SyncState.offline) return;
+    _stopRetrying();
     _state = SyncState.synced;
     _lastError = null;
     unawaited(refreshStatus().then((_) => syncPendingChanges()));
@@ -51,6 +104,8 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _disposed = true;
+    _stopRetrying();
     _reachability?.removeListener(_onReachabilityChanged);
     super.dispose();
   }
@@ -200,6 +255,11 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
                 ? SyncState.syncError
                 : SyncState.hasPendingChanges)
           : SyncState.synced;
+    }
+    // RA-MO-343: a change kept on the phone while offline has no pass of its
+    // own to start the retries; they start here.
+    if (_state == SyncState.offline && _pendingCount > 0 && !_syncInFlight) {
+      _scheduleRetry();
     }
     notifyListeners();
   }
@@ -432,6 +492,7 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
 
   void _bindCacheOwner(String? userId) {
     if (_cacheOwnerUserId == userId) return;
+    _stopRetrying();
     _sessionGeneration += 1;
     _cacheOwnerUserId = userId;
     _quarantinedPlanIds.clear();
@@ -515,6 +576,9 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
       var blockedAny = false;
       var sessionChanged = false;
       var stopForNetworkFailure = false;
+      // A change that failed and waits for another try (the network, a
+      // server error), as against one refused for good.
+      var waitsForRetry = false;
       final processedItemIds = <String>{};
       while (!stopForNetworkFailure) {
         // Re-read after every successful item. A just-synced parent may have
@@ -609,7 +673,9 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
           // updated app to send; the app shows «حدّث التطبيق».
           if (ApiClient.isAppUpdateRequired(error)) break;
           final apiError = ApiException.fromDio(error);
-          blockedAny = await _handleSyncError(item, apiError) || blockedAny;
+          final refused = await _handleSyncError(item, apiError);
+          blockedAny = refused || blockedAny;
+          if (!refused) waitsForRetry = true;
           if (apiError.isNetworkFailure || _isNotNow(apiError)) {
             stopForNetworkFailure = true;
           }
@@ -618,7 +684,9 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
             sessionChanged = true;
             break;
           }
-          blockedAny = await _handleSyncError(item, error) || blockedAny;
+          final refused = await _handleSyncError(item, error);
+          blockedAny = refused || blockedAny;
+          if (!refused) waitsForRetry = true;
         }
       }
 
@@ -628,6 +696,13 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
       }
 
       final remaining = await database.pendingSyncCount();
+      // RA-MO-343: what failed and still waits is tried again by itself,
+      // after a growing wait; anything else ends the retries.
+      if (remaining > 0 && waitsForRetry) {
+        _scheduleRetry();
+      } else {
+        _stopRetrying();
+      }
       if (remaining == 0 && !blockedAny) {
         _state = SyncState.synced;
         _lastError = null;
@@ -698,6 +773,9 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      // RA-MO-343: coming back to the app tries at once and starts the
+      // waits over.
+      _stopRetrying();
       unawaited(syncPendingChanges());
     }
   }

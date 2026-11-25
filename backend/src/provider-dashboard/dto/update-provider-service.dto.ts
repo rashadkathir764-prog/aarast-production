@@ -1,5 +1,6 @@
-import { IsBoolean, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsBoolean, IsOptional, IsString } from 'class-validator';
 import { MaxCharacters } from '../../shared-kernel/text/text-length';
+import { SupportedCurrency } from '../../shared-kernel/money/currency';
 
 // RA-BE-15: bounded as the service is created (create-provider-service.dto.ts).
 export class UpdateProviderServiceDto {
@@ -28,7 +29,7 @@ export class UpdateProviderServiceDto {
 
   @IsString()
   @IsOptional()
-  @MaxLength(8)
+  @SupportedCurrency()
   currency?: string;
 
   @IsString()

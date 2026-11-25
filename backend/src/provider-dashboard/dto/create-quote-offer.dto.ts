@@ -2,13 +2,13 @@ import {
   IsArray,
   IsInt,
   Max,
-  MaxLength,
   Min,
   IsNotEmpty,
   IsOptional,
   IsString,
 } from 'class-validator';
 import { MaxCharacters } from '../../shared-kernel/text/text-length';
+import { SupportedCurrency } from '../../shared-kernel/money/currency';
 
 // RA-BE-15: the offer is read by the couple and kept in every version, so its
 // text has a bound: the title is a package's (create-provider-package.dto.ts),
@@ -30,7 +30,7 @@ export class CreateQuoteOfferDto {
 
   @IsString()
   @IsOptional()
-  @MaxLength(8)
+  @SupportedCurrency()
   currency?: string;
 
   @IsString()

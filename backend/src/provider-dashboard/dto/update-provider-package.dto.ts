@@ -4,9 +4,9 @@ import {
   IsBoolean,
   IsOptional,
   IsString,
-  MaxLength,
 } from 'class-validator';
 import { MaxCharacters } from '../../shared-kernel/text/text-length';
+import { SupportedCurrency } from '../../shared-kernel/money/currency';
 
 // RA-BE-15: bounded as the package is created (create-provider-package.dto.ts).
 export class UpdateProviderPackageDto {
@@ -30,7 +30,7 @@ export class UpdateProviderPackageDto {
 
   @IsString()
   @IsOptional()
-  @MaxLength(8)
+  @SupportedCurrency()
   currency?: string;
 
   @IsOptional()

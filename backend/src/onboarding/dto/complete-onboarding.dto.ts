@@ -14,6 +14,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { MaxCharacters } from '../../shared-kernel/text/text-length';
+import { SupportedCurrency } from '../../shared-kernel/money/currency';
 
 /**
  * J1-13: the items a new plan starts with. A phone plan carries every
@@ -85,7 +86,7 @@ export class CompleteOnboardingDto {
   budgetIncludesMahr?: boolean;
 
   @IsString()
-  @MaxLength(8)
+  @SupportedCurrency()
   @IsOptional()
   currency?: string;
 

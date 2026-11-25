@@ -11,6 +11,7 @@ import {
   MaxLength,
 } from 'class-validator';
 import { MaxCharacters } from '../../shared-kernel/text/text-length';
+import { SupportedCurrency } from '../../shared-kernel/money/currency';
 
 export class CreateWeddingPlanDto {
   /** RA-BE-15: as the onboarding title, «عرس» and a name of up to 120. */
@@ -52,7 +53,7 @@ export class CreateWeddingPlanDto {
   budgetIncludesMahr?: boolean;
 
   @IsString()
-  @MaxLength(8)
+  @SupportedCurrency()
   @IsOptional()
   currency?: string;
 

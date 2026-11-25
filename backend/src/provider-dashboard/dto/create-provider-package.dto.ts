@@ -4,9 +4,9 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
-  MaxLength,
 } from 'class-validator';
 import { MaxCharacters } from '../../shared-kernel/text/text-length';
+import { SupportedCurrency } from '../../shared-kernel/money/currency';
 
 // RA-BE-15: what a provider writes is read by every customer, so it has a
 // bound, above the phone's fields (the description stops at 220 there). The
@@ -33,7 +33,7 @@ export class CreateProviderPackageDto {
 
   @IsString()
   @IsOptional()
-  @MaxLength(8)
+  @SupportedCurrency()
   currency?: string;
 
   @IsOptional()

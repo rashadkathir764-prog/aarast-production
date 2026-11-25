@@ -11,6 +11,7 @@ import {
   ValidateNested,
 } from "class-validator";
 import { MaxCharacters } from "../../shared-kernel/text/text-length";
+import { SupportedCurrency } from "../../shared-kernel/money/currency";
 
 export class MoneyBudgetCategoryDto {
   @IsString()
@@ -44,7 +45,7 @@ export class ReplaceMoneyBudgetDto {
 
   @IsString()
   @IsNotEmpty()
-  @MaxLength(8)
+  @SupportedCurrency()
   currency!: string;
 
   /**

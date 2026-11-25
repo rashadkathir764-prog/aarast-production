@@ -2,12 +2,12 @@ import {
   IsArray,
   IsInt,
   Max,
-  MaxLength,
   Min,
   IsOptional,
   IsString,
 } from 'class-validator';
 import { MaxCharacters } from '../../shared-kernel/text/text-length';
+import { SupportedCurrency } from '../../shared-kernel/money/currency';
 
 // RA-BE-15: bounded as the offer is sent (create-quote-offer.dto.ts).
 export class UpdateQuoteOfferDto {
@@ -27,7 +27,7 @@ export class UpdateQuoteOfferDto {
 
   @IsString()
   @IsOptional()
-  @MaxLength(8)
+  @SupportedCurrency()
   currency?: string;
 
   @IsString()

@@ -10,6 +10,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { MaxCharacters } from '../../shared-kernel/text/text-length';
+import { SupportedCurrency } from '../../shared-kernel/money/currency';
 
 /** A service the provider joins with (B-10): its name and its price. */
 export class ApplyProviderServiceDto {
@@ -24,7 +25,7 @@ export class ApplyProviderServiceDto {
 
   @IsString()
   @IsOptional()
-  @MaxLength(8)
+  @SupportedCurrency()
   currency?: string;
 
   @IsString()

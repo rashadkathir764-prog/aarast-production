@@ -1,4 +1,5 @@
 import { IsBoolean, IsOptional, IsString, MaxLength } from 'class-validator';
+import { SupportedCurrency } from '../../shared-kernel/money/currency';
 
 export class AdminServiceQueryDto {
   @IsString()
@@ -63,7 +64,7 @@ export class AdminServiceDto {
 
   @IsString()
   @IsOptional()
-  @MaxLength(8)
+  @SupportedCurrency()
   currency?: string;
 
   @IsString()

@@ -108,10 +108,15 @@ export class AuthUserRepository {
     oldHash: string,
     newHash: string,
   ) {
-    return client.user.updateMany({
-      where: { id: userId, [field]: oldHash },
-      data: { [field]: newHash },
-    });
+    return field === 'appPasswordHash'
+      ? client.user.updateMany({
+        where: { id: userId, appPasswordHash: oldHash },
+        data: { appPasswordHash: newHash },
+      })
+      : client.user.updateMany({
+        where: { id: userId, passwordHash: oldHash },
+        data: { passwordHash: newHash },
+      });
   }
 
   markPhoneVerified(tx: Prisma.TransactionClient, user: User, purposeIsLogin: boolean, now: Date) {

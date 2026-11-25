@@ -135,6 +135,8 @@ export async function startHttpApp(
     async request(method, path, options = {}) {
       const response = await fetch(`${url}${path}`, {
         method,
+        // A redirect is the route's answer; it is not followed.
+        redirect: 'manual',
         headers: {
           ...(options.token ? { Authorization: `Bearer ${options.token}` } : {}),
           ...(options.body !== undefined || options.rawBody !== undefined

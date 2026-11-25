@@ -963,5 +963,6 @@ class _EditSharing extends SharingProvider {
     required String role,
     required PlanRolePermissions permissions,
     required SharedMember from,
+    ParticipantGender? gender,
   }) async => false;
 }

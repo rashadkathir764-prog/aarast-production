@@ -5,7 +5,9 @@
 library;
 
 import 'dart:async';
+import 'dart:typed_data';
 
+import 'package:aarast_mobile/core/media/media_upload_api.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/session/safe_user.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
@@ -35,6 +37,7 @@ import 'package:aarast_mobile/features/provider_portal/screens/provider_services
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -598,12 +601,27 @@ void main() {
     );
   });
 
-  // p06 «خدمتك وسعرها» (B-10, D41): the joining's service step.
+  // p06 «خدمتك وسعرها» (B-10, D41): the joining's service step, after
+  // p05's three work photos (Q-59).
   testWidgets('apply service step', (tester) async {
+    var uploaded = 0;
     await _shot(
       tester,
       'v02b_apply_service',
-      const ProviderApplyScreen(),
+      ProviderApplyScreen(
+        pickImages: () async => [
+          for (var index = 0; index < 3; index += 1)
+            XFile.fromData(Uint8List(3), name: 'photo-$index.jpg'),
+        ],
+        uploadImage: (file) async => MediaUploadTicket(
+          key: 'provider-portfolio/u/${uploaded += 1}.jpg',
+          attachmentRef: '',
+          uploadUrl: '',
+          publicUrl: '',
+          contentType: 'image/jpeg',
+          byteSize: 3,
+        ),
+      ),
       await _session(_DashApi(hasProfile: false)),
       h: 1100,
       act: () async {
@@ -625,6 +643,10 @@ void main() {
         await tester.tap(find.byKey(const ValueKey('provider-apply-next')));
         await tester.pumpAndSettle();
         await pick('provider-apply-city', 'provider-apply-option-city-sanaa');
+        await tester.tap(find.byKey(const ValueKey('provider-apply-next')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('provider-apply-photos-add')));
+        await tester.pumpAndSettle();
         await tester.tap(find.byKey(const ValueKey('provider-apply-next')));
         await tester.pumpAndSettle();
         await tester.enterText(

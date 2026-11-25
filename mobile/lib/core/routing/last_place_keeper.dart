@@ -29,13 +29,12 @@ String? resumableLocation(String? location) {
   return value;
 }
 
-/// y06/y07, y08 and y09: the pages that celebrate something once.
+/// y08 and y09: the pages that celebrate something once.
 bool _celebratesOnce(Uri uri) {
   final segments = uri.pathSegments;
   if (segments.length < 4 || segments.first != 'wedding-plans') return false;
   final rest = segments.sublist(2);
-  return rest.first == 'moments' ||
-      (rest.length == 3 &&
+  return (rest.length == 3 &&
           rest[0] == 'money' &&
           rest[1] == 'mahr' &&
           rest[2] == 'moment') ||

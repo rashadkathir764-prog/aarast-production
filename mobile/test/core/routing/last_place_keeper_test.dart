@@ -30,7 +30,6 @@ class _AppState extends State<_App> {
         '/wedding-plans/:id/guests',
         '/wedding-plans/:id/guests/invite',
         '/wedding-plans/:id/dashboard',
-        '/wedding-plans/:id/moments/:moment',
         '/wedding-plans/:id/money',
         '/wedding-plans/:id/money/mahr/moment',
         '/wedding-plans/:id/providers',
@@ -105,7 +104,6 @@ void main() {
   ) async {
     await tester.pumpWidget(const _App());
     for (final (moment, parent) in [
-      ('/wedding-plans/plan-1/moments/week', '/wedding-plans/plan-1/dashboard'),
       (
         '/wedding-plans/plan-1/money/mahr/moment',
         '/wedding-plans/plan-1/money',

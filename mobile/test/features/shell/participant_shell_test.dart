@@ -578,8 +578,8 @@ void main() {
   // RA-MO-356 (Q-18): the partner keeps the participant's home, and had no
   // wedding week on it: no programme of the nights and no y06/y07, which
   // only the owner's home opened.
-  testWidgets('Q-18: the partner reads the wedding week and is greeted by '
-      'y06; a helper is not', (tester) async {
+  testWidgets('Q-18: the partner reads the wedding week, a helper does not; '
+      'D130: no celebration page opens over the home', (tester) async {
     final today = sanaaToday();
     String day(DateTime value) =>
         '${value.year}-${value.month.toString().padLeft(2, '0')}-'
@@ -605,7 +605,6 @@ void main() {
     );
     await partner.pump(tester, routed: true);
 
-    // y06 is open over the home, which is under it.
     final week = find.byKey(
       const ValueKey('participant-week-program'),
       skipOffstage: false,
@@ -619,7 +618,8 @@ void main() {
       ),
       findsOneWidget,
     );
-    expect(partner.opened, ['/wedding-plans/$_planId/moments/week']);
+    // D130: the week is read on the home itself; nothing is pushed over it.
+    expect(partner.opened, isEmpty);
     expect(tester.takeException(), isNull);
 
     await tester.pumpWidget(const SizedBox.shrink());
@@ -1098,14 +1098,14 @@ class _Harness {
       ).copyWith(textScaler: appTextScaler(textScale)),
       child: child!,
     );
-    // [routed]: the shell under a router, so a page it pushes (y06, y07)
-    // is recorded in [opened].
+    // [routed]: the shell under a router, so a plan page it pushes over
+    // itself is recorded in [opened] (D130: none should be).
     final router = routed
         ? GoRouter(
             routes: [
               GoRoute(path: '/', builder: (_, _) => const MainShell()),
               GoRoute(
-                path: appRoute('/wedding-plans/:id/moments/:moment'),
+                path: appRoute('/wedding-plans/:id/dashboard'),
                 builder: (_, state) {
                   opened.add(state.uri.toString());
                   return const SizedBox.shrink();

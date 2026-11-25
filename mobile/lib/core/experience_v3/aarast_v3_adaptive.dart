@@ -413,8 +413,6 @@ abstract final class AarastV3ScreenCatalog {
     if (normalized.endsWith('/dashboard')) return home;
     if (normalized.endsWith('/plan-center')) return planDetail;
     if (normalized.endsWith('/events')) return planEvents;
-    // y06 and y07 are the home's own moments.
-    if (RegExp(r'/moments/[^/]+$').hasMatch(normalized)) return home;
     if (normalized.endsWith('/timeline')) return tasks;
     if (normalized.endsWith('/contributions')) return contributionHistory;
     if (normalized.endsWith('/notifications')) return notifications;

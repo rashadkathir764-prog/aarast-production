@@ -178,7 +178,6 @@ void main() {
     for (final path in [
       '/wedding-plans/:id/plan-center',
       '/wedding-plans/:id/events',
-      '/wedding-plans/:id/moments/:moment',
       '/wedding-plans/:id/tasks/create',
       '/wedding-plans/:id/tasks/:taskId/edit',
       '/wedding-plans/:id/timeline',
@@ -235,7 +234,6 @@ void main() {
       '/wedding-plans/plan-1/dashboard': WeddingPlanRouteAccess.viewPlan,
       '/wedding-plans/plan-1/plan-center': WeddingPlanRouteAccess.viewPlan,
       '/wedding-plans/plan-1/events': WeddingPlanRouteAccess.viewPlan,
-      '/wedding-plans/plan-1/moments/day': WeddingPlanRouteAccess.viewPlan,
       '/wedding-plans/plan-1/timeline': WeddingPlanRouteAccess.manageTasks,
       '/wedding-plans/plan-1/notifications': WeddingPlanRouteAccess.viewPlan,
       '/wedding-plans/plan-1/contributions': WeddingPlanRouteAccess.viewPlan,

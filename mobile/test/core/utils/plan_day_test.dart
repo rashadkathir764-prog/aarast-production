@@ -4,6 +4,25 @@ import 'package:aarast_mobile/features/wedding_plans/models/wedding_plan_stage.d
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('D130: the next day in Sana\'a begins at 21:00 UTC, whatever the '
+      'phone zone', () {
+    // 20:30 UTC is 23:30 in Sana'a: half an hour to its midnight.
+    expect(
+      untilNextSanaaDay(now: DateTime.utc(2027, 1, 20, 20, 30)),
+      const Duration(minutes: 30),
+    );
+    // 21:00 UTC is Sana'a's midnight: a whole day to the next one.
+    expect(
+      untilNextSanaaDay(now: DateTime.utc(2027, 1, 20, 21)),
+      const Duration(days: 1),
+    );
+    // The last day of a month rolls into the next month.
+    expect(
+      untilNextSanaaDay(now: DateTime.utc(2027, 1, 31, 20, 59, 59)),
+      const Duration(seconds: 1),
+    );
+  });
+
   test('a day is sent without a time, so no zone can move it', () {
     expect(planDayToJson(DateTime(2027, 1, 21)), '2027-01-21');
     expect(planDayToJson(DateTime(2027, 1, 21, 23, 30)), '2027-01-21');

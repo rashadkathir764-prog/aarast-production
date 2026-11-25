@@ -56,7 +56,6 @@
 - `/wedding-plans/:id/guests/invite`
 - `/wedding-plans/:id/guests/send`
 - `/wedding-plans/:id/guests/view/:guestId`
-- `/wedding-plans/:id/moments/:moment`
 - `/wedding-plans/:id/money`
 - `/wedding-plans/:id/money/budget`
 - `/wedding-plans/:id/money/categories/:categoryId`
@@ -92,4 +91,4 @@
 - `/wedding-plans/create`
 - `/welcome`
 
-Total: 91 unique routes
+Total: 90 unique routes

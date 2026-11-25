@@ -118,8 +118,6 @@ import '../../features/wedding_plans/wedding_plans_api.dart'
         MyWeddingPlansScreen,
         PlanAssistantScreen,
         PlanCenterScreen,
-        WeddingMoment,
-        WeddingMomentScreen,
         WeddingPlanDashboardScreen;
 import '../../features/welcome_gateway/welcome_gateway_api.dart'
     show SmartWelcomeScreen;
@@ -296,11 +294,6 @@ class AppRouter {
   /// b12 «مناسبات عرسك» (D65).
   static String planEvents(String id) {
     return '/wedding-plans/$id/events';
-  }
-
-  /// y06 «دخلت أسبوع عرسك» or y07 «اليوم عرسك», once per phone (D65).
-  static String weddingMoment(String id, WeddingMoment moment) {
-    return '/wedding-plans/$id/moments/${moment.name}';
   }
 
   static String planCenter(String id) {
@@ -599,7 +592,6 @@ WeddingPlanRouteAccess weddingPlanRouteAccessForPath(String path) {
     'dashboard' ||
     'plan-center' ||
     'events' ||
-    'moments' ||
     'notifications' ||
     'contributions' => WeddingPlanRouteAccess.viewPlan,
     'timeline' => WeddingPlanRouteAccess.manageTasks,

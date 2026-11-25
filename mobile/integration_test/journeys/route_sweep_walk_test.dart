@@ -46,8 +46,6 @@ const _routes = [
   '/wedding-plans/:planId/guests/import',
   '/wedding-plans/:planId/guests/invite',
   '/wedding-plans/:planId/guests/view/:guestId',
-  '/wedding-plans/:planId/moments/week',
-  '/wedding-plans/:planId/moments/day',
   '/wedding-plans/:planId/money',
   '/wedding-plans/:planId/money/budget',
   '/wedding-plans/:planId/money/categories/:categoryId',

@@ -36,7 +36,6 @@ import '../providers/dashboard_summary_provider.dart';
 import '../widgets/dashboard/aarast_dashboard_view.dart';
 import '../widgets/plan_assistant_entry.dart';
 import '../widgets/push_off_card.dart';
-import '../utils/wedding_moment_watch.dart';
 
 /// b07, once the day has passed: what is left to pay, from the money read.
 /// RA-MO-92 (D59, D102): with the owner's own figure ([ownerOutstanding],
@@ -146,10 +145,27 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
       );
       _load();
     });
+    _scheduleNewDay();
+  }
+
+  /// D130: at midnight in Sana'a the home moves to the new day by itself
+  /// (the count, the stage, what is due today), not only when reopened.
+  Timer? _newDay;
+
+  void _scheduleNewDay() {
+    _newDay?.cancel();
+    // A second past midnight, so the new day has begun when it is read.
+    _newDay = Timer(untilNextSanaaDay() + const Duration(seconds: 1), () {
+      if (!mounted) return;
+      setState(() {});
+      unawaited(_load());
+      _scheduleNewDay();
+    });
   }
 
   @override
   void dispose() {
+    _newDay?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     appLogEvent(
       'DASHBOARD_DISPOSED',
@@ -165,6 +181,8 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state != AppLifecycleState.resumed || !mounted) return;
+    // A phone asleep across midnight: the day is counted again from now.
+    _scheduleNewDay();
     unawaited(_load());
   }
 
@@ -279,14 +297,6 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
       // Without a reading the card stays out; the week home shows the rest.
       if (mounted) setState(() => _weekBookings = null);
     }
-  }
-
-  /// y06 on entering the wedding week, y07 on the day (D65).
-  final _weddingMoments = WeddingMomentWatch();
-
-  void _watchWeddingMoment(String planId, DateTime? weddingDate) {
-    if (_isLocalGuestPlan) return;
-    _weddingMoments.watch(context, planId: planId, weddingDate: weddingDate);
   }
 
   Future<void> _loadLocalDashboard() async {
@@ -623,7 +633,6 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
       );
     }
 
-    _watchWeddingMoment(selectedPlanId, summary.weddingDate);
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 380),
       switchInCurve: Curves.easeOutCubic,

@@ -29,7 +29,6 @@ void main() {
       '/wedding-plans/plan-1/dashboard': 'home',
       '/wedding-plans/plan-1/plan-center': 'plan-detail',
       '/wedding-plans/plan-1/events': 'plan-events',
-      '/wedding-plans/plan-1/moments/week': 'home',
       '/wedding-plans/plan-1/tasks': 'tasks',
       '/wedding-plans/plan-1/tasks/create': 'task-form',
       '/wedding-plans/plan-1/guests': 'guests',

@@ -7,7 +7,7 @@ import '../data/plan_events_api.dart';
 import '../models/plan_event.dart';
 
 /// D65: the open plan's events, read by b12, the wedding week (b04) and
-/// day (b05) on the home, and the moments y06 and y07.
+/// day (b05) on the home.
 class PlanEventsProvider extends ChangeNotifier with SessionScopedNotifier {
   PlanEventsProvider({required this.api});
 

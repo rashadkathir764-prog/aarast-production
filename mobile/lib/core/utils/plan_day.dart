@@ -49,6 +49,16 @@ DateTime sanaaToday({DateTime? now}) {
   return DateTime(at.year, at.month, at.day);
 }
 
+/// How long until the next day begins in Sana'a (midnight there, 21:00
+/// UTC), so a screen open across midnight moves to the new day by itself:
+/// «يومان على عرسك» becomes «غدًا عرسك» without being reopened (D130).
+Duration untilNextSanaaDay({DateTime? now}) {
+  // [sanaaClock] is a UTC value moved to Sana'a's hours, so its fields are
+  // Sana'a's and its difference to the next UTC-built midnight is exact.
+  final at = sanaaClock(now: now);
+  return DateTime.utc(at.year, at.month, at.day + 1).difference(at);
+}
+
 /// The wedding week: the last [weddingWeekDays] days before the wedding.
 /// Its moment opens and its program starts on the same day (RA-MO-211).
 const weddingWeekDays = 7;

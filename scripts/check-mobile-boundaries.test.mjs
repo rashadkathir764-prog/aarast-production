@@ -1764,7 +1764,10 @@ const r19ProviderPortalApi = Object.freeze({
 // account's id from the auth owner API (two imports of AuthController gone).
 // +1 (Q-74, D127, 2026-11-25): the provider's offer form groups its price as
 // typed with the finance owner API's MoneyInputFormatter; no new export.
-const r19LegalRecordCount = 276;
+// -2 (D130, 2026-11-26): the wedding week's and day's celebration pages
+// (y06, y07) are gone with their two imports (the auth and wedding-day
+// owner APIs); the home carries the week and the day itself.
+const r19LegalRecordCount = 274;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -2386,8 +2389,6 @@ const trackedOwnerApiContracts = [
     area: 'features/wedding_plans',
     path: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
     exports: [
-      // y06/y07 (D65): which wedding moment a route opens.
-      { uri: 'data/wedding_moment_ledger.dart', show: ['WeddingMoment'] },
       { uri: 'data/wedding_plans_api.dart', show: ['WeddingPlansApi'] },
       {
         uri: 'models/dashboard_summary.dart',
@@ -2452,11 +2453,6 @@ const trackedOwnerApiContracts = [
       {
         uri: 'screens/plan_management_screen.dart',
         show: ['PlanCenterScreen'],
-      },
-      // y06/y07 (D65): the wedding week's and day's moments.
-      {
-        uri: 'screens/wedding_moment_screen.dart',
-        show: ['WeddingMomentScreen'],
       },
       {
         uri: 'screens/wedding_plan_dashboard_screen.dart',
@@ -3208,16 +3204,6 @@ const trackedPlanningBatchContracts = [
     show: ['PlanEventsProvider'],
   },
   {
-    source: 'mobile/lib/features/wedding_plans/screens/wedding_moment_screen.dart',
-    target: 'mobile/lib/features/auth/auth_api.dart',
-    show: ['AuthController'],
-  },
-  {
-    source: 'mobile/lib/features/wedding_plans/screens/wedding_moment_screen.dart',
-    target: 'mobile/lib/features/wedding_day/wedding_day_api.dart',
-    show: ['PlanEvent', 'PlanEventsProvider'],
-  },
-  {
     source: 'mobile/lib/features/wedding_plans/utils/plan_pulse_sync.dart',
     target: 'mobile/lib/features/guests/guests_api.dart',
     show: ['GuestSummary'],
@@ -3668,9 +3654,6 @@ const trackedCompositionRootContracts = [
           'MyWeddingPlansScreen',
           'PlanAssistantScreen',
           'PlanCenterScreen',
-          // y06/y07 (D65): the wedding week's and day's moments.
-          'WeddingMoment',
-          'WeddingMomentScreen',
           'WeddingPlanDashboardScreen',
         ],
       },

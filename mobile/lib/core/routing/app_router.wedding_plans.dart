@@ -45,21 +45,6 @@ List<RouteBase> _weddingPlanRoutes() => [
       );
     },
   ),
-  // y06 and y07, opened once per phone by the owner's home (D65).
-  GoRoute(
-    path: '/wedding-plans/:id/moments/:moment',
-    builder: (context, state) {
-      final id = state.pathParameters['id'] ?? '';
-      final moment = state.pathParameters['moment'] == WeddingMoment.day.name
-          ? WeddingMoment.day
-          : WeddingMoment.week;
-      return WeddingPlanContextGate(
-        weddingPlanId: id,
-        requiredAccess: WeddingPlanRouteAccess.viewPlan,
-        child: WeddingMomentScreen(weddingPlanId: id, moment: moment),
-      );
-    },
-  ),
   GoRoute(
     path: '/wedding-plans/:id/tasks/create',
     builder: (context, state) {

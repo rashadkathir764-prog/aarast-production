@@ -90,7 +90,7 @@ test("RA-BE-188: promised money is reminded the day before and on the day, one k
   assert.equal(dayAfter, null);
   assert.ok(dayBefore && onTheDay);
   assert.equal(dayBefore.type, NotificationType.FUNDING_EXPECTED);
-  assert.equal(dayBefore.title, "موعد باقي المهر بكرة");
+  assert.equal(dayBefore.title, "موعد باقي المهر غدًا");
   assert.equal(onTheDay.title, "موعد باقي المهر اليوم");
   assert.equal((dayBefore.data as any).reminder, "DAY_BEFORE");
   assert.equal((onTheDay.data as any).reminder, "ON_THE_DAY");

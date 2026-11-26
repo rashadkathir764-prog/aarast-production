@@ -46,8 +46,8 @@ export function memberRightsChangedNotice(args: {
       `${who} ${changed} اللي تشوفيه في ${args.planTitle}`,
     ),
     body: gendered(
-      "افتح الخطة وشوف ايش عليك فيها الحين.",
-      "افتحي الخطة وشوفي ايش عليك فيها الحين.",
+      "افتح الخطة واطّلع على ما يخصك فيها الآن.",
+      "افتحي الخطة واطّلعي على ما يخصك فيها الآن.",
     ),
     entityType: "shared_member",
     entityId: args.sharedMemberId,

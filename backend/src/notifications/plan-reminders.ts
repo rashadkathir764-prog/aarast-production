@@ -337,7 +337,7 @@ export function expectedFundingRow(
     weddingPlanId: source.weddingPlanId,
     type: NotificationType.FUNDING_EXPECTED,
     priority: NotificationPriority.NORMAL,
-    title: `موعد ${source.sourceName} ${reminder === "ON_THE_DAY" ? "اليوم" : "بكرة"}`,
+    title: `موعد ${source.sourceName} ${reminder === "ON_THE_DAY" ? "اليوم" : "غدًا"}`,
     body: weekdayDayMonthWords(source.expectedAt),
     data: {
       fundingSourceId: source.id,
@@ -403,7 +403,7 @@ export function weddingCountdownRow(
 
 function countdownTitle(daysUntil: number): string {
   if (daysUntil === 0) return "اليوم يوم العرس";
-  if (daysUntil === 1) return "العرس بكرة";
+  if (daysUntil === 1) return "العرس غدًا";
   return `باقي ${dayCountWords(daysUntil)} على العرس`;
 }
 

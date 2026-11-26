@@ -1064,7 +1064,7 @@ export class SharingService {
           priority: NotificationPriority.HIGH,
           title: "الدعوة انقبلت",
           // RA-BE-41: named as the app shows the account (an admin's app name).
-          body: `${this.actorVoice(currentUser).name} معك في الخطة الحين.`,
+          body: `${this.actorVoice(currentUser).name} معك في الخطة الآن.`,
           entityType: "plan_invite",
           entityId: invite.id,
           routeTarget: noticeRoutes.sharing(invite.weddingPlanId),

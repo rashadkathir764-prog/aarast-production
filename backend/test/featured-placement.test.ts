@@ -302,7 +302,7 @@ test('a recorded placement keeps who and the note, no amount, and tells the prov
   assert.equal(later.created[0].startNoticeAt, null);
 });
 
-test('a17 says «مو ظاهر للعرسان» instead of «شغّال» when the rule does not hold', async () => {
+test('a17 says «لا يظهر للعرسان» instead of «شغّال» when the rule does not hold', async () => {
   const row = (id: string, providerId: string) => ({
     id,
     providerId,
@@ -550,7 +550,7 @@ test('what the hourly job says is true for where the provider stands', () => {
   const started = noticeMessage('started', '2026-12-31', true)!;
   assert.equal(started.title, 'بدأ ظهورك المميز');
   assert.ok(started.body.includes('يطلع مع المميزين أول'));
-  assert.ok(noticeMessage('started', '2026-12-31', false)!.body.includes('مو ظاهر للعرسان'));
+  assert.ok(noticeMessage('started', '2026-12-31', false)!.body.includes('لا يظهر للعرسان'));
   // RA-BE-32 (D96): this asked the ending notice to say «لو تبي تجدده كلّم
   // فريق اعّرست», a sale outside Google Play's billing, and the ended one
   // «لو تبي ترجع مميز»; the phone and the admin's words had dropped both.

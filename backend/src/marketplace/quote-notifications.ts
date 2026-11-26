@@ -351,7 +351,7 @@ export function quoteRequestExpiringProviderNotification(args: {
     userId: args.providerUserId,
     type: NotificationType.QUOTE_REQUEST_EXPIRING,
     priority: NotificationPriority.HIGH,
-    title: who ? `طلب ${who} ينتهي بكرة` : "عندك طلب ينتهي بكرة",
+    title: who ? `طلب ${who} ينتهي غدًا` : "أحد طلباتك ينتهي غدًا",
     body: "ما رديت عليه للحين. أرسل عرضك أو اعتذر قبل ما ينتهي.",
     entityType: "quote_request",
     entityId: args.quoteRequestId,

@@ -224,7 +224,7 @@ async function main(): Promise<void> {
     assert.equal(approvedNotice.routeTarget, "/provider/gallery");
     const profile = await dashboard.getProfile(asUser(providerUser));
     assert.deepEqual(profile.portfolio, { photos: 3, pending: 1, rejected: 0, socialNetworks: ["tiktok"] });
-    assert.equal(approvedNotice.body, "صورتك في «حفلات النساء» تظهر الحين للعرائس.");
+    assert.equal(approvedNotice.body, "صورتك في «حفلات النساء» تظهر الآن للعرائس.");
     console.log("PASS - approved photos show; the women's album only after «بدون وجوه» was checked, and to brides only; he is told");
 
     await assert.rejects(

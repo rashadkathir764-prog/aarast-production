@@ -701,7 +701,7 @@ test("a confirmed booking reminds both sides a week and a day before, once each"
 
   const dayBefore = await bookings.sendDueReminders(at("2027-02-17"));
   assert.equal(dayBefore.sent, 2);
-  assert.match(textFor("MASCULINE", db.notifications.slice(-1)[0].title), /بكرة$/);
+  assert.match(textFor("MASCULINE", db.notifications.slice(-1)[0].title), /غدًا$/);
   assert.equal(db.notifications.slice(-1)[0].priority, "HIGH");
 
   // The day itself and after: nothing.

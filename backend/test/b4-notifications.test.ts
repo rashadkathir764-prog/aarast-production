@@ -223,7 +223,13 @@ function assertCleanWords(label: string, text: string): void {
   assert.doesNotMatch(text, /\d{1,2}\/\d{1,2}\/\d{2,4}/u, `${label}: a numeric date in «${text}»`);
   assert.doesNotMatch(text, /\d{4}-\d{2}-\d{2}/u, `${label}: an ISO date in «${text}»`);
   assert.doesNotMatch(text, /ر\.ي|ريال|دولار/u, `${label}: an amount in the words «${text}»`);
-  for (const word of ['مورد', 'بوابة', 'المزوّد', 'مزوّد', 'لديك', 'تم إ', 'تم ت', 'تم ق', 'تم ر', 'غدًا', 'قريباً']) {
+  // D129 (docs/project/LANGUAGE.md): the glossary's words («المزوّد»,
+  // «غدًا») are the language now; what it never writes is refused: another
+  // name for a provider, «تمّ» with a noun, dialect and officialese.
+  for (const word of [
+    'مورد', 'بوابة', 'تم إ', 'تم ت', 'تم ق', 'تم ر', 'قريباً',
+    'بكرة', 'الحين', 'يرجى', 'تعذّر',
+  ]) {
     assert.equal(text.includes(word), false, `${label}: «${word}» in «${text}»`);
   }
 }
@@ -386,7 +392,7 @@ test('B-38: days read the app way', () => {
   assert.equal(weekdayDayMonthWords(new Date('2026-10-30T00:00:00.000Z')), 'الجمعة 30 أكتوبر');
   assert.equal(weekdayDayMonthWords(new Date('2027-01-20T21:00:00.000Z')), 'الخميس 21 يناير');
   assert.equal(daysBetween(today, new Date('2026-10-30T00:00:00.000Z')), 5);
-  assert.deepEqual([0, 1, 2, 5, 11].map(whenWords), ['اليوم', 'بكرة', 'بعد يومين', 'بعد 5 أيام', 'بعد 11 يوم']);
+  assert.deepEqual([0, 1, 2, 5, 11].map(whenWords), ['اليوم', 'غدًا', 'بعد يومين', 'بعد 5 أيام', 'بعد 11 يومًا']);
   assert.deepEqual([1, 2, 4].map(starsWords), ['نجمة وحدة', 'نجمتين', '4 نجوم']);
 });
 

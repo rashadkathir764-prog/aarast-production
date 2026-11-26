@@ -36,12 +36,12 @@ test("a task is reminded a week, a day and on its day, and a late one once", () 
   for (const days of [2, 3, 4, 5, 6, 8, 30]) assert.equal(isTaskDueReminderDay(days), false, String(days));
 });
 
-test("the phone text says the real distance: بعد أسبوع, بكرة, اليوم", () => {
+test("the phone text says the real distance: بعد أسبوع, غدًا, اليوم", () => {
   const week = taskDueNotice("owner-1", task("2026-10-18T00:00:00.000Z"), today);
   const tomorrow = taskDueNotice("owner-1", task("2026-10-12T00:00:00.000Z"), today);
   const todayRow = taskDueNotice("owner-1", task("2026-10-11T00:00:00.000Z"), today);
   assert.equal(week.title, "مهمة بعد أسبوع");
-  assert.equal(tomorrow.title, "مهمة بكرة");
+  assert.equal(tomorrow.title, "مهمة غدًا");
   assert.equal(todayRow.title, "مهمة اليوم");
   assert.deepEqual(
     [week, tomorrow, todayRow].map((row) => (row.data as Record<string, unknown>).daysUntil),
@@ -51,7 +51,7 @@ test("the phone text says the real distance: بعد أسبوع, بكرة, الي
 
   const expected: Array<[number, string]> = [
     [7, "بعد أسبوع"],
-    [1, "بكرة"],
+    [1, "غدًا"],
     [0, "اليوم"],
   ];
   for (const [daysUntil, words] of expected) {
@@ -62,7 +62,7 @@ test("the phone text says the real distance: بعد أسبوع, بكرة, الي
     assert.equal(copy.body.includes("القاعة"), false);
   }
   // A «ذكّرني» time carries no distance and keeps the plain words.
-  assert.match(pushNotificationCopy(NotificationType.TASK_DUE_SOON, {}).body, /قريب/u);
+  assert.match(pushNotificationCopy(NotificationType.TASK_DUE_SOON, {}).body, /اقترب/u);
 });
 
 test("a reminder key is per reader, task, step and due date: a moved date re-arms", () => {
@@ -106,14 +106,14 @@ test("the wedding day is its own step with its own key", () => {
   const dayBefore = weddingCountdownRow("member-1", plan, today);
   const weddingDay = weddingCountdownRow("member-1", plan, new Date(today.getTime() + DAY_MS));
   assert.ok(dayBefore && weddingDay);
-  assert.equal(dayBefore.title, "العرس بكرة");
+  assert.equal(dayBefore.title, "العرس غدًا");
   assert.equal(weddingDay.title, "اليوم يوم العرس");
   assert.equal(weddingDay.body, "ألف مبروك!");
   assert.notEqual(dayBefore.dedupeKey, weddingDay.dedupeKey);
   assert.equal((weddingDay.data as Record<string, unknown>).daysUntil, 0);
   assert.equal(
     pushNotificationCopy(NotificationType.WEDDING_COUNTDOWN, weddingDay.data).title,
-    "اليوم يوم العرس",
+    "اليوم عرسك",
   );
 });
 

@@ -175,7 +175,8 @@ test("the wedding countdown reminds a month, a week, a day before and on the day
   assert.ok(row);
   assert.equal(row.type, NotificationType.WEDDING_COUNTDOWN);
   // B-38/D55: the day in words and no command in one gender to everyone.
-  assert.equal(row.title, "باقي 30 يوم على العرس");
+  // D129: the count's own rule, «30 يومًا».
+  assert.equal(row.title, "باقي 30 يومًا على العرس");
   assert.equal(row.body, "يوم الثلاثاء 10 نوفمبر. اللي باقي قبله في الخطة.");
   assert.equal(row.routeTarget, "/wedding-plans/plan-1/dashboard");
 
@@ -184,7 +185,7 @@ test("the wedding countdown reminds a month, a week, a day before and on the day
     { id: "plan-1", weddingDate: new Date("2026-10-12T00:00:00.000Z") },
     today,
   );
-  assert.equal(tomorrow?.title, "العرس بكرة");
+  assert.equal(tomorrow?.title, "العرس غدًا");
   assert.equal(tomorrow?.priority, NotificationPriority.HIGH);
 
   assert.equal(
@@ -216,7 +217,7 @@ test("postponing the wedding restarts the countdown", () => {
 // reach the phone too, with generic words (`money-funding-reminders-push.test.ts`).
 test("the countdown and the plan's money reminders are pushed", () => {
   assert.equal(isPushNotificationType(NotificationType.WEDDING_COUNTDOWN), true);
-  assert.equal(pushNotificationCopy(NotificationType.WEDDING_COUNTDOWN).title, "العرس يقرب");
+  assert.equal(pushNotificationCopy(NotificationType.WEDDING_COUNTDOWN).title, "عرسك يقترب");
   for (const type of [
     NotificationType.BUDGET_CATEGORY_EXCEEDED,
     NotificationType.LOAN_REPAYMENT_DUE_SOON,

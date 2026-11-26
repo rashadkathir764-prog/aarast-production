@@ -199,8 +199,8 @@ test("Q-50: the notice reaches the phone on the messages channel, held through t
   assert.notEqual(pushNotBefore(type, aden("23:30")), null);
   assert.equal(pushNotBefore(type, aden("12:00")), null);
   assert.deepEqual(pushNotificationCopy(type), {
-    title: "راجعنا بلاغك",
-    body: "اللي سويناه في اعّرست.",
+    title: "رُوجع بلاغك",
+    body: "ما تم فيه تجده في اعّرست.",
   });
   assert.deepEqual([...NOTIFICATION_ROUTES.CONVERSATION_REPORT_CLOSED], ["/conversations/:conversationId"]);
 });

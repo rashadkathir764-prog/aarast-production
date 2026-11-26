@@ -1393,7 +1393,7 @@ export class GuestsService {
     throw new UnprocessableEntityException({
       statusCode: 422,
       code: "PLAN_GUESTS_LIMIT",
-      message: `الخطة تشيل ${PLAN_GUESTS_MAX} اسم بالكثير، وفيها الحين ${count}.`,
+      message: `تتسع الخطة لـ${PLAN_GUESTS_MAX} ضيف على الأكثر، وفيها الآن ${count}.`,
     });
   }
 

@@ -124,6 +124,15 @@ async function main(): Promise<void> {
         notifications.push(input);
         return null;
       },
+      // D132: a provider's news goes to everyone who manages the plan's
+      // providers; here, the one recipient the booking names.
+      createProviderUpdateNotificationsInTransaction: async (
+        _tx: unknown,
+        input: any,
+      ) => {
+        notifications.push(input);
+        return [];
+      },
     } as any,
     ownerPorts.finance,
     undefined,

@@ -57,24 +57,28 @@ export function daysBetween(today: CalendarDay, day: CalendarDay): number {
   );
 }
 
-/** «يوم واحد», «يومين», «5 أيام», «11 يوم». */
+/**
+ * «يوم واحد», «يومين», «5 أيام», «11 يومًا», «100 يوم» (D129: the count's
+ * own rule; «يومين» is the form these lines use, after «بعد» and «متأخرة»).
+ */
 export function dayCountWords(days: number): string {
   if (days === 1) return 'يوم واحد';
   if (days === 2) return 'يومين';
   if (days >= 3 && days <= 10) return `${days} أيام`;
-  return `${days} يوم`;
+  const lastTwo = days % 100;
+  return lastTwo >= 11 && lastTwo <= 99 ? `${days} يومًا` : `${days} يوم`;
 }
 
-/** When a day `days` away is: «اليوم», «بكرة», «بعد يومين», «بعد 5 أيام». */
+/** When a day `days` away is: «اليوم», «غدًا», «بعد يومين», «بعد 5 أيام». */
 export function whenWords(days: number): string {
   if (days <= 0) return 'اليوم';
-  if (days === 1) return 'بكرة';
+  if (days === 1) return 'غدًا';
   return `بعد ${dayCountWords(days)}`;
 }
 
 /**
  * `whenWords` for a reminder, where a week away is «بعد أسبوع» (the day a
- * reminder is sent a week ahead): «اليوم», «بكرة», «بعد أسبوع», «بعد 5 أيام».
+ * reminder is sent a week ahead): «اليوم», «غدًا», «بعد أسبوع», «بعد 5 أيام».
  */
 export function reminderWhenWords(days: number): string {
   return days === 7 ? 'بعد أسبوع' : whenWords(days);

@@ -186,36 +186,36 @@ test("Q-60: the lock screen says which decision came, never the name, the reason
       NotificationType.PROVIDER_NEEDS_CHANGES,
       { providerStatus: "NEEDS_CHANGES", reviewNote: "غيّر الاسم يا خالد" },
       "ملاحظة على ملفك",
-      "ملفك يحتاج تعديل بسيط، والملاحظة تنتظرك في اعّرست.",
+      "يحتاج ملفك تعديلًا، والملاحظة في اعّرست.",
     ],
     [
       NotificationType.PROVIDER_SUSPENDED,
       { providerStatus: "SUSPENDED", reviewNote: "بلاغات من 3 عرسان" },
-      "وقّفنا ملفك",
-      "ملفك ما يظهر للعرسان الحين، والتفاصيل في اعّرست.",
+      "أُوقف ملفك",
+      "ملفك لا يظهر للعرسان الآن، والتفاصيل في اعّرست.",
     ],
     [
       NotificationType.PROVIDER_CLAIM_DECIDED,
       { claimStatus: "APPROVED" },
-      "انقبل استلامك للملف",
-      "الملف صار لك، وتكمّله من اعّرست.",
+      "قُبل استلامك للملف",
+      "صار الملف لك، ويمكن إكماله في اعّرست.",
     ],
     [
       NotificationType.PROVIDER_CLAIM_DECIDED,
       { claimStatus: "REJECTED" },
-      "ما قبلنا الاستلام",
+      "لم يُقبل استلام الملف",
       "السبب في اعّرست.",
     ],
     [
       NotificationType.PORTFOLIO_REVIEWED,
       { decision: "APPROVED" },
-      "انقبلت صورة من معرضك",
-      "تفاصيلها في اعّرست.",
+      "قُبلت صورة من معرضك",
+      "التفاصيل في اعّرست.",
     ],
     [
       NotificationType.PORTFOLIO_REVIEWED,
       { decision: "REJECTED" },
-      "ما قبلنا صورة من معرضك",
+      "لم تُقبل صورة من معرضك",
       "السبب في اعّرست.",
     ],
   ];
@@ -244,10 +244,10 @@ test("Q-60: the new pushes go on the messages channel and wait out the quiet hou
 test("the provider's lock screen says what happened with no name, amount or customer", () => {
   const cases: Array<[NotificationType, unknown, string]> = [
     [NotificationType.QUOTE_REQUEST_SUBMITTED, { recipientAudience: "PROVIDER" }, "وصلك طلب جديد"],
-    [NotificationType.QUOTE_ACCEPTED, { recipientAudience: "PROVIDER" }, "انقبل عرضك"],
-    [NotificationType.QUOTE_REJECTED, { recipientAudience: "PROVIDER" }, "عرضك ما انقبل"],
-    [NotificationType.PROVIDER_APPROVED, undefined, "اعتمدنا ملفك"],
-    [NotificationType.PROVIDER_REJECTED, undefined, "ما اعتمدنا ملفك"],
+    [NotificationType.QUOTE_ACCEPTED, { recipientAudience: "PROVIDER" }, "قُبل عرضك"],
+    [NotificationType.QUOTE_REJECTED, { recipientAudience: "PROVIDER" }, "لم يُقبل عرضك"],
+    [NotificationType.PROVIDER_APPROVED, undefined, "اعتُمد ملفك"],
+    [NotificationType.PROVIDER_REJECTED, undefined, "لم يُعتمد ملفك"],
   ];
   for (const [type, data, title] of cases) {
     const copy = pushNotificationCopy(type, data);

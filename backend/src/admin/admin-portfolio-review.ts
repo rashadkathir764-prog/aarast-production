@@ -61,7 +61,7 @@ export function portfolioDecisionNotice(row: AdminPortfolioRow) {
       // profile is approved, and show only once it is.
       body: isProviderAwaitingApproval(row.provider)
         ? `صورتك ${where} تظهر ${readers} لما نعتمد ملفك.`
-        : `صورتك ${where} تظهر الحين ${readers}.`,
+        : `صورتك ${where} تظهر الآن ${readers}.`,
     };
   }
   return {

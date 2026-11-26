@@ -3,6 +3,7 @@ import { startOfRiyadhDay } from "../shared-kernel/time/business-day";
 import { isQuietHour, quietHoursEnd } from "../shared-kernel/time/quiet-hours";
 import { REMINDER_SCHEDULE } from "../shared-kernel/time/reminder-schedule";
 import { reminderWhenWords } from "../shared-kernel/voice/day-words";
+import { PUSH_COPY, type PushCopy } from "../shared-kernel/copy/push.ar";
 
 /**
  * RA-MO-360: the phone's notification channel of a push, the one place a
@@ -340,205 +341,95 @@ function isExpectedTodayNotice(data: unknown): boolean {
 export function pushNotificationCopy(
   type: NotificationType,
   data?: unknown,
-): {
-  title: string;
-  body: string;
-} {
+): PushCopy {
   switch (type) {
     case NotificationType.TASK_ASSIGNED:
-      return {
-        title: "مهمة جديدة",
-        body: "عندك مهمة جديدة، وتفاصيلها في اعّرست.",
-      };
-    // RA-BE-189: the phone says the real distance («اليوم», «بكرة», «بعد
+      return PUSH_COPY.taskAssigned;
+    // RA-BE-189: the phone says the real distance («اليوم», «غدًا», «بعد
     // أسبوع»); a «ذكّرني» time carries none and says only that it is near.
     case NotificationType.TASK_DUE_SOON: {
       const days = taskDueDays(data);
-      return {
-        title: "تذكير بمهمة",
-        body:
-          days === null
-            ? "عندك مهمة موعدها قريب، وتفاصيلها في اعّرست."
-            : `عندك مهمة موعدها ${reminderWhenWords(days)}، وتفاصيلها في اعّرست.`,
-      };
+      return PUSH_COPY.taskDueSoon(
+        days === null ? null : reminderWhenWords(days),
+      );
     }
-    // RA-BE-99: a task whose day passed is late, not coming; the notice in
-    // the app says «مهمة متأخرة», and the lock screen says the same.
+    // RA-BE-99: a task whose day passed is late, not coming.
     case NotificationType.TASK_OVERDUE:
-      return {
-        title: "مهمة متأخرة",
-        body: "عندك مهمة فات موعدها، وتفاصيلها في اعّرست.",
-      };
+      return PUSH_COPY.taskOverdue;
     case NotificationType.CHAT_MESSAGE_RECEIVED:
-      return {
-        title: "رسالة جديدة",
-        body: "وصلتك رسالة في اعّرست.",
-      };
+      return PUSH_COPY.chatMessage;
     // RA-BE-99: on the day itself the lock screen does not say it is near.
     case NotificationType.WEDDING_COUNTDOWN:
-      return isWeddingDayNotice(data)
-        ? { title: "اليوم يوم العرس", body: "ألف مبروك، واللي باقي لليوم في اعّرست." }
-        : { title: "العرس يقرب", body: "اللي باقي قبله في اعّرست." };
+      return isWeddingDayNotice(data) ? PUSH_COPY.weddingDay : PUSH_COPY.weddingNear;
     case NotificationType.QUOTE_OFFER_RECEIVED:
-      return isRevisedOfferNotice(data)
-        ? {
-            title: "عدّلوا عرضهم",
-            body: "وصلتك نسخة جديدة من العرض، وفي اعّرست ايش تغيّر.",
-          }
-        : {
-            title: "وصلك عرض",
-            body: "وصلك عرض جديد، وتفاصيله في اعّرست.",
-          };
+      return isRevisedOfferNotice(data) ? PUSH_COPY.offerRevised : PUSH_COPY.offerReceived;
     case NotificationType.QUOTE_REQUEST_EXPIRING:
-      return {
-        title: "طلب ينتهي بكرة",
-        body: "عندك طلب ما رديت عليه وينتهي بكرة. افتح اعّرست وردّ عليه.",
-      };
+      return PUSH_COPY.requestExpiringForProvider;
     case NotificationType.BOOKING_REQUESTED:
-      return {
-        title: "طلب حجز جديد",
-        body: "وصلك طلب حجز، وتفاصيله في اعّرست.",
-      };
+      return PUSH_COPY.bookingRequested;
     // RA-BE-187: a money reminder tells there is one, never which or how much.
     case NotificationType.PAYMENT_SCHEDULE_DUE_SOON:
-      return {
-        title: "موعد دفعة يقرب",
-        body: "عندك دفعة موعدها قريب، وتفاصيلها في اعّرست.",
-      };
+      return PUSH_COPY.paymentDueSoon;
     case NotificationType.PAYMENT_SCHEDULE_OVERDUE:
-      return {
-        title: "دفعة متأخرة",
-        body: "عندك دفعة فات موعدها، وتفاصيلها في اعّرست.",
-      };
+      return PUSH_COPY.paymentOverdue;
     case NotificationType.LOAN_REPAYMENT_DUE_SOON:
-      return {
-        title: "موعد سداد يقرب",
-        body: "عندك سداد موعده قريب، وتفاصيله في اعّرست.",
-      };
+      return PUSH_COPY.loanDueSoon;
     case NotificationType.LOAN_REPAYMENT_OVERDUE:
-      return {
-        title: "سداد متأخر",
-        body: "عندك سداد فات موعده، وتفاصيله في اعّرست.",
-      };
+      return PUSH_COPY.loanOverdue;
     case NotificationType.BUDGET_CATEGORY_EXCEEDED:
-      return {
-        title: "بند فات المخطط له",
-        body: "فيه بند في الميزانية صار أكثر من المخطط، وتفاصيله في اعّرست.",
-      };
+      return PUSH_COPY.budgetItemExceeded;
     // RA-BE-188: promised money, the day before and on the day.
     case NotificationType.FUNDING_EXPECTED:
-      return isExpectedTodayNotice(data)
-        ? {
-            title: "فلوس موعودة اليوم",
-            body: "اليوم موعد فلوس موعودة، وتفاصيلها في اعّرست.",
-          }
-        : {
-            title: "فلوس موعودة بكرة",
-            body: "بكرة موعد فلوس موعودة، وتفاصيلها في اعّرست.",
-          };
+      return isExpectedTodayNotice(data) ? PUSH_COPY.promisedToday : PUSH_COPY.promisedTomorrow;
     case NotificationType.BOOKING_UPDATED:
-      return {
-        title: "تحديث على حجز",
-        body: "فيه جديد على حجز، وتفاصيله في اعّرست.",
-      };
-    // RA-BE-186: the provider's own notices, in the provider's voice and
-    // with no customer's name or price on the lock screen.
+      return PUSH_COPY.bookingUpdated;
+    // RA-BE-186: the provider's own notices, with no customer's name or
+    // price on the lock screen.
     case NotificationType.QUOTE_REQUEST_SUBMITTED:
-      return {
-        title: "وصلك طلب جديد",
-        body: "ردّ عليه بعرضك أو اعتذر، وتفاصيله في اعّرست.",
-      };
+      return PUSH_COPY.requestForProvider;
     case NotificationType.QUOTE_ACCEPTED:
-      return {
-        title: "انقبل عرضك",
-        body: "تفاصيله في اعّرست.",
-      };
+      return PUSH_COPY.offerAcceptedForProvider;
     // The plan's side of a request's end: which provider stays in the app.
     case NotificationType.QUOTE_REJECTED:
       if (!isProviderAudience(data)) {
         switch (noticeStatus(data)) {
           case "WITHDRAWN":
-            return {
-              title: "سُحب عرض",
-              body: "سحب أحد المزوّدين عرضه، والتفاصيل في اعّرست.",
-            };
+            return PUSH_COPY.offerWithdrawn;
           case "EXPIRED":
-            return {
-              title: "انتهى طلب دون رد",
-              body: "انتهت مدة أحد الطلبات دون رد، والتفاصيل في اعّرست.",
-            };
+            return PUSH_COPY.requestExpired;
           default:
-            return {
-              title: "اعتذار عن طلب",
-              body: "اعتذر أحد المزوّدين عن طلب، والتفاصيل في اعّرست.",
-            };
+            return PUSH_COPY.requestDeclined;
         }
       }
-      return {
-        title: "عرضك ما انقبل",
-        body: "تفاصيله في اعّرست.",
-      };
+      return PUSH_COPY.offerDeclinedForProvider;
     case NotificationType.SHARING_INVITATION:
-      return {
-        title: "دعوة إلى خطة عرس",
-        body: "وصلتك دعوة للمشاركة في خطة، والتفاصيل في اعّرست.",
-      };
+      return PUSH_COPY.planInvitation;
     case NotificationType.SHARING_INVITE_ACCEPTED:
-      return {
-        title: "قُبلت الدعوة",
-        body: "انضم مشارك جديد إلى الخطة، والتفاصيل في اعّرست.",
-      };
+      return PUSH_COPY.invitationAccepted;
     case NotificationType.REVIEW_RECEIVED:
-      return {
-        title: "تقييم جديد",
-        body: "وصل تقييم جديد على ملفك، والتفاصيل في اعّرست.",
-      };
+      return PUSH_COPY.reviewReceived;
     // How many replied stays in the app; the lock screen says only that
     // some did.
     case NotificationType.GUEST_RESPONDED:
-      return {
-        title: "ردود جديدة",
-        body: "وصلت ردود جديدة على دعوتك، والتفاصيل في اعّرست.",
-      };
+      return PUSH_COPY.guestReplies;
     case NotificationType.PROVIDER_APPROVED:
-      return {
-        title: "اعتمدنا ملفك",
-        body: "ملفك صار ظاهر للعرسان، وتفاصيله في اعّرست.",
-      };
+      return PUSH_COPY.providerApproved;
     case NotificationType.PROVIDER_REJECTED:
-      return {
-        title: "ما اعتمدنا ملفك",
-        body: "تفاصيله في اعّرست.",
-      };
-    // Q-60: the team's note and reason stay in the app, never on the lock
-    // screen.
+      return PUSH_COPY.providerRejected;
+    // Q-60: the team's note and reason stay in the app.
     case NotificationType.PROVIDER_NEEDS_CHANGES:
-      return {
-        title: "ملاحظة على ملفك",
-        body: "ملفك يحتاج تعديل بسيط، والملاحظة تنتظرك في اعّرست.",
-      };
+      return PUSH_COPY.providerNeedsChanges;
     case NotificationType.PROVIDER_SUSPENDED:
-      return {
-        title: "وقّفنا ملفك",
-        body: "ملفك ما يظهر للعرسان الحين، والتفاصيل في اعّرست.",
-      };
+      return PUSH_COPY.providerSuspended;
     case NotificationType.PROVIDER_CLAIM_DECIDED:
-      return isRefusalNotice(data, "claimStatus")
-        ? { title: "ما قبلنا الاستلام", body: "السبب في اعّرست." }
-        : {
-            title: "انقبل استلامك للملف",
-            body: "الملف صار لك، وتكمّله من اعّرست.",
-          };
+      return isRefusalNotice(data, "claimStatus") ? PUSH_COPY.claimRefused : PUSH_COPY.claimAccepted;
     case NotificationType.PORTFOLIO_REVIEWED:
       return isRefusalNotice(data, "decision")
-        ? { title: "ما قبلنا صورة من معرضك", body: "السبب في اعّرست." }
-        : { title: "انقبلت صورة من معرضك", body: "تفاصيلها في اعّرست." };
-    // Q-50: the team's reason stays in the app, never on the lock screen.
+        ? PUSH_COPY.portfolioPhotoRefused
+        : PUSH_COPY.portfolioPhotoAccepted;
+    // Q-50: the team's reason stays in the app.
     case NotificationType.CONVERSATION_REPORT_CLOSED:
-      return {
-        title: "راجعنا بلاغك",
-        body: "اللي سويناه في اعّرست.",
-      };
+      return PUSH_COPY.reportClosed;
     default:
       throw new Error("UnsupportedPushNotificationType");
   }

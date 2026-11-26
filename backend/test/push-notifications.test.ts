@@ -606,10 +606,10 @@ test("an overdue task and the wedding day have their own lock-screen words", () 
   assert.equal(pushNotificationCopy(NotificationType.TASK_DUE_SOON).title, "تذكير بمهمة");
 
   const day = pushNotificationCopy(NotificationType.WEDDING_COUNTDOWN, { daysUntil: 0 });
-  assert.equal(day.title, "اليوم يوم العرس");
+  assert.equal(day.title, "اليوم عرسك");
   assert.equal(
     pushNotificationCopy(NotificationType.WEDDING_COUNTDOWN, { daysUntil: 3 }).title,
-    "العرس يقرب",
+    "عرسك يقترب",
   );
   // Never a name or an amount on the lock screen.
   for (const copy of [overdue, day]) assert.doesNotMatch(copy.body, /\d/u);

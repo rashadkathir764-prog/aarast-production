@@ -138,11 +138,11 @@ test('B-16: the provider reads the decision and the reason, in the portal\'s voi
   } as any;
   assert.deepEqual(portfolioDecisionNotice({ ...base, status: PortfolioItemStatus.APPROVED }), {
     title: 'انقبلت صورة من معرضك',
-    body: 'صورتك في «الزفة» تظهر الحين للعرسان.',
+    body: 'صورتك في «الزفة» تظهر الآن للعرسان.',
   });
   assert.equal(
     portfolioDecisionNotice({ ...base, album: WOMEN_ALBUM, forWomen: true, status: PortfolioItemStatus.APPROVED }).body,
-    'صورتك في «حفلات النساء» تظهر الحين للعرائس.',
+    'صورتك في «حفلات النساء» تظهر الآن للعرائس.',
   );
   assert.deepEqual(
     portfolioDecisionNotice({ ...base, album: null, status: PortfolioItemStatus.REJECTED, rejectionReason: 'فيها وجه واضح' }),

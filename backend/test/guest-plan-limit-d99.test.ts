@@ -126,7 +126,7 @@ const isPlanFull = (count: number) => (error: any) => {
   assert.equal(error.response.code, "PLAN_GUESTS_LIMIT");
   assert.equal(
     error.response.message,
-    `الخطة تشيل ${PLAN_GUESTS_MAX} اسم بالكثير، وفيها الحين ${count}.`,
+    `تتسع الخطة لـ${PLAN_GUESTS_MAX} ضيف على الأكثر، وفيها الآن ${count}.`,
   );
   return true;
 };

@@ -424,7 +424,7 @@ test("the new pushes have a channel and generic words: no name, amount or count 
     [NotificationType.QUOTE_REJECTED, { recipientAudience: "CUSTOMER", status: "REJECTED" }, "اعتذار عن طلب"],
     [NotificationType.QUOTE_REJECTED, { recipientAudience: "CUSTOMER", status: "WITHDRAWN" }, "سُحب عرض"],
     [NotificationType.QUOTE_REJECTED, { recipientAudience: "CUSTOMER", status: "EXPIRED" }, "انتهى طلب دون رد"],
-    [NotificationType.QUOTE_REJECTED, { recipientAudience: "PROVIDER", status: "REJECTED" }, "عرضك ما انقبل"],
+    [NotificationType.QUOTE_REJECTED, { recipientAudience: "PROVIDER", status: "REJECTED" }, "لم يُقبل عرضك"],
     [NotificationType.SHARING_INVITATION, {}, "دعوة إلى خطة عرس"],
     [NotificationType.SHARING_INVITE_ACCEPTED, {}, "قُبلت الدعوة"],
     [NotificationType.REVIEW_RECEIVED, { recipientAudience: "PROVIDER", rating: 2 }, "تقييم جديد"],

@@ -111,6 +111,11 @@ abstract final class PlayServicesCheck {
   /// The phone's Android version (`Build.VERSION.SDK_INT`), asked of the
   /// same channel.
   static Future<int?> sdkInt() => _channel.invokeMethod<int>('sdkInt');
+
+  /// Opens this app's notification settings in the phone, where the person
+  /// turns back on what they turned off; false when it would not open.
+  static Future<bool> openNotificationSettings() async =>
+      await _channel.invokeMethod<bool>('openNotificationSettings') ?? false;
 }
 
 abstract interface class PushMessagingGateway {

@@ -3,6 +3,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/offline/offline_contract.dart';
 import '../../../core/offline/offline_sync_service.dart';
 import '../models/account_deletion_impact.dart';
+import '../models/reminder_schedule.dart';
 import '../models/user_settings.dart';
 
 /// The account's settings and privacy.
@@ -21,6 +22,7 @@ class SettingsApi {
 
   static const _settingsKey = 'user-settings';
   static const _privacyKey = 'user-privacy';
+  static const _scheduleKey = 'reminder-schedule';
 
   Future<UserSettings> getSettings() async {
     return UserSettings.fromJson(
@@ -62,6 +64,20 @@ class SettingsApi {
       replacePendingForEntity: true,
     );
     return UserSettings.fromJson(json);
+  }
+
+  /// The server's reminder table, for the «متى يصلك» lines; null when the
+  /// phone cannot read it whole (another version).
+  Future<ReminderSchedule?> getReminderSchedule() async {
+    return ReminderSchedule.fromResponse(
+      await _reads.blob('/api/v1/notifications/schedule', metaKey: _scheduleKey),
+    );
+  }
+
+  /// The phone's copy of the table, or null before the first answer.
+  Future<ReminderSchedule?> cachedReminderSchedule() async {
+    final json = await _reads.cachedBlob(_scheduleKey);
+    return json == null ? null : ReminderSchedule.fromResponse(json);
   }
 
   /// D63 (w05): what deleting the account takes with it.

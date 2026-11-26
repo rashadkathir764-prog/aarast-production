@@ -152,6 +152,246 @@ abstract class AppText {
   /// In ar, this message translates to:
   /// **'نخبرك بكل جديد'**
   String get pushPermissionProviderTitle;
+
+  /// An hour of the day in Sana'a, said as people say it: «9 مساءً». other is midnight.
+  ///
+  /// In ar, this message translates to:
+  /// **'{period, select, morning{{hour} صباحًا} noon{{hour} ظهرًا} evening{{hour} مساءً} other{منتصف الليل}}'**
+  String clockHour(String period, int hour);
+
+  /// Note on the alerts settings page: what a phone alert never shows on the lock screen.
+  ///
+  /// In ar, this message translates to:
+  /// **'لا تظهر على شاشة القفل أسماء ولا مبالغ.'**
+  String get lockScreenNote;
+
+  /// Line under pushNotAskedTitle; the button under it is pushPermissionAllow.
+  ///
+  /// In ar, this message translates to:
+  /// **'{gender, select, female{اسمحي بها لتصلك التذكيرات حتى لو كان التطبيق مغلقًا.} other{اسمح بها لتصلك التذكيرات حتى لو كان التطبيق مغلقًا.}}'**
+  String pushNotAskedBody(String gender);
+
+  /// Banner at the top of the alerts settings page when the app has never asked the phone for notifications.
+  ///
+  /// In ar, this message translates to:
+  /// **'لم نسألك بعد عن تنبيهات الجوال'**
+  String get pushNotAskedTitle;
+
+  /// Line under pushOffTitle: what happens now, and how to turn them on.
+  ///
+  /// In ar, this message translates to:
+  /// **'{gender, select, female{تصلك التنبيهات داخل التطبيق فقط. افتحي إعدادات الجوال وفعّلي تنبيهات اعّرست.} other{تصلك التنبيهات داخل التطبيق فقط. افتح إعدادات الجوال وفعّل تنبيهات اعّرست.}}'**
+  String pushOffBody(String gender);
+
+  /// Banner at the top of the alerts settings page when the phone has this app's notifications off.
+  ///
+  /// In ar, this message translates to:
+  /// **'تنبيهات الجوال مقفلة'**
+  String get pushOffTitle;
+
+  /// Button on the notifications-off banner: opens this app's notification settings in the phone.
+  ///
+  /// In ar, this message translates to:
+  /// **'{gender, select, female{افتحي إعدادات الجوال} other{افتح إعدادات الجوال}}'**
+  String pushOpenPhoneSettings(String gender);
+
+  /// Toast after the reader allowed notifications from the banner.
+  ///
+  /// In ar, this message translates to:
+  /// **'فُعّلت تنبيهات الجوال.'**
+  String get pushTurnedOn;
+
+  /// Note on the alerts settings page when this phone cannot get phone alerts (no Google services, or a build without them).
+  ///
+  /// In ar, this message translates to:
+  /// **'لا تصل تنبيهات الجوال إلى هذا الجهاز، فتجد تنبيهاتك داخل التطبيق.'**
+  String get pushUnavailableLine;
+
+  /// Note under the switches: the quiet hours, from the server's table, and what still comes through them.
+  ///
+  /// In ar, this message translates to:
+  /// **'من {start} إلى {end} لا نرسل إلى جوالك، إلا الرسائل وطلبات الحجز فتصلك في أي وقت.'**
+  String quietHoursLine(String start, String end);
+
+  /// quietHoursLine when the server lets nothing through at night but the wedding-week news.
+  ///
+  /// In ar, this message translates to:
+  /// **'من {start} إلى {end} لا نرسل إلى جوالك، وتصلك التنبيهات بعدها.'**
+  String quietHoursPlainLine(String start, String end);
+
+  /// Header of the alerts settings page (features/settings/screens/settings_screen.dart), opened from «المزيد». The list itself is «التنبيهات»; this is its settings.
+  ///
+  /// In ar, this message translates to:
+  /// **'إعدادات التنبيهات'**
+  String get settingsAlertsTitle;
+
+  /// Switch: reminders of a confirmed booking's day (bookingRemindersEnabled).
+  ///
+  /// In ar, this message translates to:
+  /// **'الحجوزات'**
+  String get settingsRowBookings;
+
+  /// Switch: providers' offers, messages, booking answers and reviews (providerMessagesEnabled).
+  ///
+  /// In ar, this message translates to:
+  /// **'العروض والمحادثات'**
+  String get settingsRowOffers;
+
+  /// Switch: payment, loan and promised-money reminders, and a budget item gone over (paymentRemindersEnabled).
+  ///
+  /// In ar, this message translates to:
+  /// **'الدفعات'**
+  String get settingsRowPayments;
+
+  /// Switch on the alerts settings page: task reminders, a task given to the reader, and the countdown to the wedding (the server's taskRemindersEnabled).
+  ///
+  /// In ar, this message translates to:
+  /// **'المهام'**
+  String get settingsRowTasks;
+
+  /// Toast when a switch could not be saved; the switch goes back to what it was.
+  ///
+  /// In ar, this message translates to:
+  /// **'{gender, select, female{لم يُحفظ التغيير، حاولي مرة ثانية.} other{لم يُحفظ التغيير، حاول مرة ثانية.}}'**
+  String settingsSaveFailed(String gender);
+
+  /// Line under settingsSignInTitle: why the settings need an account.
+  ///
+  /// In ar, this message translates to:
+  /// **'ترتبط التنبيهات بحسابك لنحفظها لك.'**
+  String get settingsSignInBody;
+
+  /// Title of the sign-in panel on the alerts settings page, shown to someone without an account.
+  ///
+  /// In ar, this message translates to:
+  /// **'{gender, select, female{سجّلي الدخول لإدارة الإعدادات} other{سجّل الدخول لإدارة الإعدادات}}'**
+  String settingsSignInTitle(String gender);
+
+  /// Choice: ask each time whether to send the task message.
+  ///
+  /// In ar, this message translates to:
+  /// **'اسألني'**
+  String get taskMessageAsk;
+
+  /// Line under taskMessageTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'{gender, select, female{نجهّز له رسالة فيها المهمة وموعدها، تُرسل من جوالك أنتِ.} other{نجهّز له رسالة فيها المهمة وموعدها، تُرسل من جوالك أنت.}}'**
+  String taskMessageBody(String gender);
+
+  /// Choice: never prepare the task message.
+  ///
+  /// In ar, this message translates to:
+  /// **'{gender, select, female{لا ترسلي} other{لا ترسل}}'**
+  String taskMessageOff(String gender);
+
+  /// Box on the alerts settings page: what happens right after a task is given to someone with a phone number. A choice of this phone.
+  ///
+  /// In ar, this message translates to:
+  /// **'{gender, select, female{حين تسندين مهمة إلى أحد} other{حين تسند مهمة إلى أحد}}'**
+  String taskMessageTitle(String gender);
+
+  /// Choice: open WhatsApp with the message right away.
+  ///
+  /// In ar, this message translates to:
+  /// **'{gender, select, female{افتحي واتساب مباشرة} other{افتح واتساب مباشرة}}'**
+  String taskMessageWhatsApp(String gender);
+
+  /// First part of a settings timing line: «قبل موعدها بأسبوع وبيوم». The owner is the thing reminded of: feminine for tasks, payments and bookings (non-human plural), masculine for promised money.
+  ///
+  /// In ar, this message translates to:
+  /// **'{owner, select, masculine{قبل موعده {when}} other{قبل موعدها {when}}}'**
+  String timingBefore(String owner, String when);
+
+  /// Two parts of one timing line joined with the Arabic comma: «قبل موعدها بأسبوع، ومرة إن تأخرت».
+  ///
+  /// In ar, this message translates to:
+  /// **'{first}، {second}'**
+  String timingClauses(String first, String second);
+
+  /// How long before a due day a reminder comes, after «قبل موعدها»: «بيوم», «بـ3 أيام». Seven, fourteen and thirty use timingWeek, timingTwoWeeks and timingMonth. From the server's reminder table.
+  ///
+  /// In ar, this message translates to:
+  /// **'{days, plural, =1{بيوم} =2{بيومين} few{بـ{days} أيام} many{بـ{days} يومًا} other{بـ{days} يوم}}'**
+  String timingDays(int days);
+
+  /// After «قبل موعدها»: thirty days before.
+  ///
+  /// In ar, this message translates to:
+  /// **'بشهر'**
+  String get timingMonth;
+
+  /// Timing line of the offers and conversations switch: they are sent as they arrive.
+  ///
+  /// In ar, this message translates to:
+  /// **'فور وصولها'**
+  String get timingOnArrival;
+
+  /// Added after timingBefore when a reminder also comes on the due day itself.
+  ///
+  /// In ar, this message translates to:
+  /// **'{owner, select, masculine{وفي يومه} other{وفي يومها}}'**
+  String timingOnTheDay(String owner);
+
+  /// The whole timing when a reminder comes on the due day only.
+  ///
+  /// In ar, this message translates to:
+  /// **'{owner, select, masculine{في يومه} other{في يومها}}'**
+  String timingOnlyOnTheDay(String owner);
+
+  /// Added to a timing line: a late task or payment is told once.
+  ///
+  /// In ar, this message translates to:
+  /// **'ومرة إن تأخرت'**
+  String get timingOverdueOnce;
+
+  /// Added after the payments' «قبل موعدها بأسبوع»: a payment with its own reminder day is told on that day instead.
+  ///
+  /// In ar, this message translates to:
+  /// **'{gender, select, female{أو في يوم التذكير الذي تحددينه} other{أو في يوم التذكير الذي تحدده}}'**
+  String timingOwnDay(String gender);
+
+  /// Added to the tasks line: a task's own «ذكّرني» time is honoured.
+  ///
+  /// In ar, this message translates to:
+  /// **'{gender, select, female{وفي الوقت الذي تختارينه لها} other{وفي الوقت الذي تختاره لها}}'**
+  String timingOwnTime(String gender);
+
+  /// Two timings joined: «بأسبوع وبيوم». Folded left for more than two.
+  ///
+  /// In ar, this message translates to:
+  /// **'{first} و{second}'**
+  String timingPair(String first, String second);
+
+  /// Second sentence of the payments line: when promised money (the mahr's rest, every promised source) is reminded of.
+  ///
+  /// In ar, this message translates to:
+  /// **'والمال الموعود {when}'**
+  String timingPromised(String when);
+
+  /// After «قبل موعدها»: fourteen days before.
+  ///
+  /// In ar, this message translates to:
+  /// **'بأسبوعين'**
+  String get timingTwoWeeks;
+
+  /// After «قبل موعدها»: seven days before (timingDays for other counts).
+  ///
+  /// In ar, this message translates to:
+  /// **'بأسبوع'**
+  String get timingWeek;
+
+  /// weddingWeekLine for a span other than seven days.
+  ///
+  /// In ar, this message translates to:
+  /// **'{days, plural, few{وفي آخر {days} أيام قبل العرس يصلك ليلًا ما يغيّر عرسك، مثل إلغاء حجز أو دفعة تستحق اليوم.} other{وفي آخر {days} يومًا قبل العرس يصلك ليلًا ما يغيّر عرسك، مثل إلغاء حجز أو دفعة تستحق اليوم.}}'**
+  String weddingDaysLine(int days);
+
+  /// Second quiet-hours sentence: in the last seven days before the wedding, news that changes it comes at night too (the server's weddingWeek rule). Other spans use weddingDaysLine.
+  ///
+  /// In ar, this message translates to:
+  /// **'وفي الأسبوع الأخير قبل العرس يصلك ليلًا ما يغيّر عرسك، مثل إلغاء حجز أو دفعة تستحق اليوم.'**
+  String get weddingWeekLine;
 }
 
 class _AppTextDelegate extends LocalizationsDelegate<AppText> {

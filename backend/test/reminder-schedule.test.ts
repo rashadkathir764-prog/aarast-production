@@ -1,6 +1,8 @@
 import "reflect-metadata";
 
 import assert from "node:assert/strict";
+import { readFileSync, writeFileSync } from "node:fs";
+import path from "node:path";
 import { test } from "node:test";
 import { NotificationType } from "@prisma/client";
 import {
@@ -46,6 +48,21 @@ test("the schedule endpoint returns the reminder table itself", () => {
   assert.ok(routes.indexOf("schedule") < routes.indexOf("findOne"));
   // Plain data: it survives JSON as it is.
   assert.deepEqual(JSON.parse(JSON.stringify(REMINDER_SCHEDULE)), REMINDER_SCHEDULE);
+});
+
+// The phone draws its settings lines from this answer; its tests read the
+// committed copy (`reminder_timing_lines_test.dart`). This fails when the
+// copy drifts from the table; regenerate it with
+// `WRITE_REMINDER_SCHEDULE_FIXTURE=1 node --test -r ts-node/register test/reminder-schedule.test.ts`.
+test("the phone's copy of the schedule answer is the server's", () => {
+  const fixture = path.resolve(__dirname, "../../mobile/test/fixtures/reminder_schedule.json");
+  const expected = `${JSON.stringify(new NotificationsController({} as never).schedule(), null, 2)}\n`;
+  if (process.env.WRITE_REMINDER_SCHEDULE_FIXTURE === "1") writeFileSync(fixture, expected);
+  assert.equal(
+    readFileSync(fixture, "utf8").replace(/\r\n/g, "\n"),
+    expected,
+    "mobile/test/fixtures/reminder_schedule.json is stale (see the comment above)",
+  );
 });
 
 test("a task is reminded exactly on the table's days, once late", () => {

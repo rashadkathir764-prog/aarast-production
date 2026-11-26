@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
@@ -25,13 +27,30 @@ class PushOffCard extends StatefulWidget {
   State<PushOffCard> createState() => _PushOffCardState();
 }
 
-class _PushOffCardState extends State<PushOffCard> {
+class _PushOffCardState extends State<PushOffCard>
+    with WidgetsBindingObserver {
   bool _off = false;
+
+  /// The phone's settings were opened from here: coming back, the card
+  /// reads the phone again and goes once they are on.
+  bool _sentToSettings = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) => _check());
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) unawaited(_check());
   }
 
   PushNotificationsController? get _push {
@@ -43,16 +62,23 @@ class _PushOffCardState extends State<PushOffCard> {
   }
 
   Future<void> _check() async {
-    final off = await _push?.isTurnedOff() ?? false;
-    if (mounted && off != _off) setState(() => _off = off);
+    final push = _push;
+    final off = await push?.isTurnedOff() ?? false;
+    if (!mounted) return;
+    if (_sentToSettings && !off) {
+      _sentToSettings = false;
+      await push?.turnedOnInPhoneSettings();
+      if (!mounted) return;
+      AarastToast.showSuccess(context, 'انفتحت التنبيهات.');
+    }
+    if (off != _off) setState(() => _off = off);
   }
 
   Future<void> _open() async {
-    final on = await _push?.askAgain() ?? false;
+    final opened = await _push?.openPhoneSettings() ?? false;
     if (!mounted) return;
-    if (on) {
-      setState(() => _off = false);
-      AarastToast.showSuccess(context, 'انفتحت التنبيهات.');
+    if (opened) {
+      _sentToSettings = true;
     } else {
       AarastToast.showInfo(
         context,

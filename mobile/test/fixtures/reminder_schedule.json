@@ -1,0 +1,100 @@
+{
+  "reminderSchedule": {
+    "version": 1,
+    "timeZone": "Asia/Aden",
+    "dayScan": {
+      "everyHourAtMinute": 5,
+      "firstHour": 9
+    },
+    "tasks": {
+      "daysBefore": [
+        7,
+        1,
+        0
+      ],
+      "overdue": "ONCE",
+      "ownReminderTime": {
+        "checkEveryMinutes": 5,
+        "lateUpToHours": 24
+      }
+    },
+    "payments": {
+      "firstReminderDaysBefore": 7,
+      "ownReminderDay": true,
+      "overdue": "ONCE"
+    },
+    "loanRepayments": {
+      "firstReminderDaysBefore": 7,
+      "overdue": "ONCE"
+    },
+    "promisedMoney": {
+      "daysBefore": [
+        1,
+        0
+      ]
+    },
+    "bookings": {
+      "daysBefore": [
+        7,
+        1
+      ]
+    },
+    "weddingCountdown": {
+      "daysBefore": [
+        30,
+        7,
+        1,
+        0
+      ]
+    },
+    "guestRepliesDigest": {
+      "atMostEveryHours": 3
+    },
+    "quietHours": {
+      "startHour": 21,
+      "endHour": 9,
+      "alwaysThrough": [
+        "CHAT_MESSAGE_RECEIVED",
+        "BOOKING_REQUESTED"
+      ],
+      "weddingWeek": {
+        "daysBefore": 7,
+        "through": [
+          {
+            "type": "BOOKING_UPDATED",
+            "kinds": [
+              "DECLINED",
+              "CANCELLED",
+              "PROVIDER_SUSPENDED",
+              "PROVIDER_CLOSED",
+              "CHANGE_ACCEPTED",
+              "CHANGE_DECLINED"
+            ]
+          },
+          {
+            "type": "QUOTE_REJECTED",
+            "kinds": [
+              "REJECTED",
+              "WITHDRAWN"
+            ]
+          },
+          {
+            "type": "PAYMENT_SCHEDULE_DUE_SOON",
+            "kinds": [
+              "DUE_TODAY"
+            ]
+          },
+          {
+            "type": "PAYMENT_SCHEDULE_OVERDUE",
+            "kinds": []
+          }
+        ]
+      },
+      "weddingDay": {
+        "allPlanNoticesExcept": [
+          "GUEST_RESPONDED"
+        ]
+      }
+    }
+  }
+}

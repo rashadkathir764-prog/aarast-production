@@ -51,5 +51,321 @@
   "pushPermissionProviderTitle": "نخبرك بكل جديد",
   "@pushPermissionProviderTitle": {
     "description": "Title of the permission sheet for a provider, after his application or claim is sent. Providers are addressed neutrally (D70)."
+  },
+  "clockHour": "{period, select, morning{{hour} صباحًا} noon{{hour} ظهرًا} evening{{hour} مساءً} other{منتصف الليل}}",
+  "@clockHour": {
+    "description": "An hour of the day in Sana'a, said as people say it: «9 مساءً». other is midnight.",
+    "placeholders": {
+      "period": {
+        "type": "String",
+        "description": "morning (1-11), noon (12-16), evening (17-23) or midnight (0)."
+      },
+      "hour": {
+        "type": "int",
+        "description": "The hour on a 12-hour clock."
+      }
+    }
+  },
+  "lockScreenNote": "لا تظهر على شاشة القفل أسماء ولا مبالغ.",
+  "@lockScreenNote": {
+    "description": "Note on the alerts settings page: what a phone alert never shows on the lock screen."
+  },
+  "pushNotAskedBody": "{gender, select, female{اسمحي بها لتصلك التذكيرات حتى لو كان التطبيق مغلقًا.} other{اسمح بها لتصلك التذكيرات حتى لو كان التطبيق مغلقًا.}}",
+  "@pushNotAskedBody": {
+    "description": "Line under pushNotAskedTitle; the button under it is pushPermissionAllow.",
+    "placeholders": {
+      "gender": {
+        "type": "String",
+        "description": "The reader's form: female or male."
+      }
+    }
+  },
+  "pushNotAskedTitle": "لم نسألك بعد عن تنبيهات الجوال",
+  "@pushNotAskedTitle": {
+    "description": "Banner at the top of the alerts settings page when the app has never asked the phone for notifications."
+  },
+  "pushOffBody": "{gender, select, female{تصلك التنبيهات داخل التطبيق فقط. افتحي إعدادات الجوال وفعّلي تنبيهات اعّرست.} other{تصلك التنبيهات داخل التطبيق فقط. افتح إعدادات الجوال وفعّل تنبيهات اعّرست.}}",
+  "@pushOffBody": {
+    "description": "Line under pushOffTitle: what happens now, and how to turn them on.",
+    "placeholders": {
+      "gender": {
+        "type": "String",
+        "description": "The reader's form: female or male."
+      }
+    }
+  },
+  "pushOffTitle": "تنبيهات الجوال مقفلة",
+  "@pushOffTitle": {
+    "description": "Banner at the top of the alerts settings page when the phone has this app's notifications off."
+  },
+  "pushOpenPhoneSettings": "{gender, select, female{افتحي إعدادات الجوال} other{افتح إعدادات الجوال}}",
+  "@pushOpenPhoneSettings": {
+    "description": "Button on the notifications-off banner: opens this app's notification settings in the phone.",
+    "placeholders": {
+      "gender": {
+        "type": "String",
+        "description": "The reader's form: female or male."
+      }
+    }
+  },
+  "pushTurnedOn": "فُعّلت تنبيهات الجوال.",
+  "@pushTurnedOn": {
+    "description": "Toast after the reader allowed notifications from the banner."
+  },
+  "pushUnavailableLine": "لا تصل تنبيهات الجوال إلى هذا الجهاز، فتجد تنبيهاتك داخل التطبيق.",
+  "@pushUnavailableLine": {
+    "description": "Note on the alerts settings page when this phone cannot get phone alerts (no Google services, or a build without them)."
+  },
+  "quietHoursLine": "من {start} إلى {end} لا نرسل إلى جوالك، إلا الرسائل وطلبات الحجز فتصلك في أي وقت.",
+  "@quietHoursLine": {
+    "description": "Note under the switches: the quiet hours, from the server's table, and what still comes through them.",
+    "placeholders": {
+      "start": {
+        "type": "String",
+        "description": "clockHour of the start."
+      },
+      "end": {
+        "type": "String",
+        "description": "clockHour of the end."
+      }
+    }
+  },
+  "quietHoursPlainLine": "من {start} إلى {end} لا نرسل إلى جوالك، وتصلك التنبيهات بعدها.",
+  "@quietHoursPlainLine": {
+    "description": "quietHoursLine when the server lets nothing through at night but the wedding-week news.",
+    "placeholders": {
+      "start": {
+        "type": "String",
+        "description": "clockHour of the start."
+      },
+      "end": {
+        "type": "String",
+        "description": "clockHour of the end."
+      }
+    }
+  },
+  "settingsAlertsTitle": "إعدادات التنبيهات",
+  "@settingsAlertsTitle": {
+    "description": "Header of the alerts settings page (features/settings/screens/settings_screen.dart), opened from «المزيد». The list itself is «التنبيهات»; this is its settings."
+  },
+  "settingsRowBookings": "الحجوزات",
+  "@settingsRowBookings": {
+    "description": "Switch: reminders of a confirmed booking's day (bookingRemindersEnabled)."
+  },
+  "settingsRowOffers": "العروض والمحادثات",
+  "@settingsRowOffers": {
+    "description": "Switch: providers' offers, messages, booking answers and reviews (providerMessagesEnabled)."
+  },
+  "settingsRowPayments": "الدفعات",
+  "@settingsRowPayments": {
+    "description": "Switch: payment, loan and promised-money reminders, and a budget item gone over (paymentRemindersEnabled)."
+  },
+  "settingsRowTasks": "المهام",
+  "@settingsRowTasks": {
+    "description": "Switch on the alerts settings page: task reminders, a task given to the reader, and the countdown to the wedding (the server's taskRemindersEnabled)."
+  },
+  "settingsSaveFailed": "{gender, select, female{لم يُحفظ التغيير، حاولي مرة ثانية.} other{لم يُحفظ التغيير، حاول مرة ثانية.}}",
+  "@settingsSaveFailed": {
+    "description": "Toast when a switch could not be saved; the switch goes back to what it was.",
+    "placeholders": {
+      "gender": {
+        "type": "String",
+        "description": "The reader's form: female or male."
+      }
+    }
+  },
+  "settingsSignInBody": "ترتبط التنبيهات بحسابك لنحفظها لك.",
+  "@settingsSignInBody": {
+    "description": "Line under settingsSignInTitle: why the settings need an account."
+  },
+  "settingsSignInTitle": "{gender, select, female{سجّلي الدخول لإدارة الإعدادات} other{سجّل الدخول لإدارة الإعدادات}}",
+  "@settingsSignInTitle": {
+    "description": "Title of the sign-in panel on the alerts settings page, shown to someone without an account.",
+    "placeholders": {
+      "gender": {
+        "type": "String",
+        "description": "The reader's form: female or male."
+      }
+    }
+  },
+  "taskMessageAsk": "اسألني",
+  "@taskMessageAsk": {
+    "description": "Choice: ask each time whether to send the task message."
+  },
+  "taskMessageBody": "{gender, select, female{نجهّز له رسالة فيها المهمة وموعدها، تُرسل من جوالك أنتِ.} other{نجهّز له رسالة فيها المهمة وموعدها، تُرسل من جوالك أنت.}}",
+  "@taskMessageBody": {
+    "description": "Line under taskMessageTitle.",
+    "placeholders": {
+      "gender": {
+        "type": "String",
+        "description": "The reader's form: female or male."
+      }
+    }
+  },
+  "taskMessageOff": "{gender, select, female{لا ترسلي} other{لا ترسل}}",
+  "@taskMessageOff": {
+    "description": "Choice: never prepare the task message.",
+    "placeholders": {
+      "gender": {
+        "type": "String",
+        "description": "The reader's form: female or male."
+      }
+    }
+  },
+  "taskMessageTitle": "{gender, select, female{حين تسندين مهمة إلى أحد} other{حين تسند مهمة إلى أحد}}",
+  "@taskMessageTitle": {
+    "description": "Box on the alerts settings page: what happens right after a task is given to someone with a phone number. A choice of this phone.",
+    "placeholders": {
+      "gender": {
+        "type": "String",
+        "description": "The reader's form: female or male."
+      }
+    }
+  },
+  "taskMessageWhatsApp": "{gender, select, female{افتحي واتساب مباشرة} other{افتح واتساب مباشرة}}",
+  "@taskMessageWhatsApp": {
+    "description": "Choice: open WhatsApp with the message right away.",
+    "placeholders": {
+      "gender": {
+        "type": "String",
+        "description": "The reader's form: female or male."
+      }
+    }
+  },
+  "timingBefore": "{owner, select, masculine{قبل موعده {when}} other{قبل موعدها {when}}}",
+  "@timingBefore": {
+    "description": "First part of a settings timing line: «قبل موعدها بأسبوع وبيوم». The owner is the thing reminded of: feminine for tasks, payments and bookings (non-human plural), masculine for promised money.",
+    "placeholders": {
+      "owner": {
+        "type": "String",
+        "description": "masculine or feminine: the grammatical gender of what is reminded of."
+      },
+      "when": {
+        "type": "String",
+        "description": "timingDays, or several joined by timingPair."
+      }
+    }
+  },
+  "timingClauses": "{first}، {second}",
+  "@timingClauses": {
+    "description": "Two parts of one timing line joined with the Arabic comma: «قبل موعدها بأسبوع، ومرة إن تأخرت».",
+    "placeholders": {
+      "first": {
+        "type": "String",
+        "description": "The line so far."
+      },
+      "second": {
+        "type": "String",
+        "description": "The next part, which starts with و or أو."
+      }
+    }
+  },
+  "timingDays": "{days, plural, =1{بيوم} =2{بيومين} few{بـ{days} أيام} many{بـ{days} يومًا} other{بـ{days} يوم}}",
+  "@timingDays": {
+    "description": "How long before a due day a reminder comes, after «قبل موعدها»: «بيوم», «بـ3 أيام». Seven, fourteen and thirty use timingWeek, timingTwoWeeks and timingMonth. From the server's reminder table.",
+    "placeholders": {
+      "days": {
+        "type": "int",
+        "description": "Days before the due day, 1 or more."
+      }
+    }
+  },
+  "timingMonth": "بشهر",
+  "@timingMonth": {
+    "description": "After «قبل موعدها»: thirty days before."
+  },
+  "timingOnArrival": "فور وصولها",
+  "@timingOnArrival": {
+    "description": "Timing line of the offers and conversations switch: they are sent as they arrive."
+  },
+  "timingOnTheDay": "{owner, select, masculine{وفي يومه} other{وفي يومها}}",
+  "@timingOnTheDay": {
+    "description": "Added after timingBefore when a reminder also comes on the due day itself.",
+    "placeholders": {
+      "owner": {
+        "type": "String",
+        "description": "masculine or feminine, as in timingBefore."
+      }
+    }
+  },
+  "timingOnlyOnTheDay": "{owner, select, masculine{في يومه} other{في يومها}}",
+  "@timingOnlyOnTheDay": {
+    "description": "The whole timing when a reminder comes on the due day only.",
+    "placeholders": {
+      "owner": {
+        "type": "String",
+        "description": "masculine or feminine, as in timingBefore."
+      }
+    }
+  },
+  "timingOverdueOnce": "ومرة إن تأخرت",
+  "@timingOverdueOnce": {
+    "description": "Added to a timing line: a late task or payment is told once."
+  },
+  "timingOwnDay": "{gender, select, female{أو في يوم التذكير الذي تحددينه} other{أو في يوم التذكير الذي تحدده}}",
+  "@timingOwnDay": {
+    "description": "Added after the payments' «قبل موعدها بأسبوع»: a payment with its own reminder day is told on that day instead.",
+    "placeholders": {
+      "gender": {
+        "type": "String",
+        "description": "The reader's form: female or male."
+      }
+    }
+  },
+  "timingOwnTime": "{gender, select, female{وفي الوقت الذي تختارينه لها} other{وفي الوقت الذي تختاره لها}}",
+  "@timingOwnTime": {
+    "description": "Added to the tasks line: a task's own «ذكّرني» time is honoured.",
+    "placeholders": {
+      "gender": {
+        "type": "String",
+        "description": "The reader's form: female or male."
+      }
+    }
+  },
+  "timingPair": "{first} و{second}",
+  "@timingPair": {
+    "description": "Two timings joined: «بأسبوع وبيوم». Folded left for more than two.",
+    "placeholders": {
+      "first": {
+        "type": "String",
+        "description": "The earlier timing, already in words."
+      },
+      "second": {
+        "type": "String",
+        "description": "The next timing, already in words."
+      }
+    }
+  },
+  "timingPromised": "والمال الموعود {when}",
+  "@timingPromised": {
+    "description": "Second sentence of the payments line: when promised money (the mahr's rest, every promised source) is reminded of.",
+    "placeholders": {
+      "when": {
+        "type": "String",
+        "description": "timingBefore/timingOnTheDay for promised money, masculine."
+      }
+    }
+  },
+  "timingTwoWeeks": "بأسبوعين",
+  "@timingTwoWeeks": {
+    "description": "After «قبل موعدها»: fourteen days before."
+  },
+  "timingWeek": "بأسبوع",
+  "@timingWeek": {
+    "description": "After «قبل موعدها»: seven days before (timingDays for other counts)."
+  },
+  "weddingDaysLine": "{days, plural, few{وفي آخر {days} أيام قبل العرس يصلك ليلًا ما يغيّر عرسك، مثل إلغاء حجز أو دفعة تستحق اليوم.} other{وفي آخر {days} يومًا قبل العرس يصلك ليلًا ما يغيّر عرسك، مثل إلغاء حجز أو دفعة تستحق اليوم.}}",
+  "@weddingDaysLine": {
+    "description": "weddingWeekLine for a span other than seven days.",
+    "placeholders": {
+      "days": {
+        "type": "int",
+        "description": "Days before the wedding the rule starts, 3 or more."
+      }
+    }
+  },
+  "weddingWeekLine": "وفي الأسبوع الأخير قبل العرس يصلك ليلًا ما يغيّر عرسك، مثل إلغاء حجز أو دفعة تستحق اليوم.",
+  "@weddingWeekLine": {
+    "description": "Second quiet-hours sentence: in the last seven days before the wedding, news that changes it comes at night too (the server's weddingWeek rule). Other spans use weddingDaysLine."
   }
 }

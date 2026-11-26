@@ -32,6 +32,25 @@ enum PushPermissionReason {
   participant,
 }
 
+/// What this phone does with the app's alerts, as the settings page says it.
+enum PushPhoneState {
+  /// No phone alerts here at all: no Google services, a registration that
+  /// failed, or a build without Firebase. The alerts stay in the app.
+  unavailable,
+
+  /// The app never asked the phone: one tap asks it.
+  notAsked,
+
+  /// The person turned them off: only the phone's own settings turn them on.
+  off,
+
+  /// They reach the phone.
+  on,
+
+  /// The phone did not say; nothing is claimed.
+  unknown,
+}
+
 class PushNotificationsController extends ChangeNotifier
     implements SessionPushTeardownPort {
   PushNotificationsController({
@@ -43,6 +62,7 @@ class PushNotificationsController extends ChangeNotifier
     OpenConversationRegistry? openConversations,
     NoticeArrivals? noticeArrivals,
     ServerReachability? reachability,
+    Future<bool> Function()? openPhoneNotificationSettings,
   }) : _preferences = preferences,
        _gateway = gateway,
        _registrationApi = registrationApi,
@@ -50,10 +70,14 @@ class PushNotificationsController extends ChangeNotifier
        _openConversations = openConversations,
        _noticeArrivals = noticeArrivals,
        _reachability = reachability,
+       _openPhoneSettings =
+           openPhoneNotificationSettings ??
+           PlayServicesCheck.openNotificationSettings,
        _wasReachable = reachability?.reachable ?? true {
     reachability?.addListener(_onReachabilityChanged);
   }
 
+  final Future<bool> Function() _openPhoneSettings;
   final SharedPreferences _preferences;
   final PushMessagingGateway _gateway;
   final PushInstallationRegistry _registrationApi;
@@ -335,19 +359,45 @@ class PushNotificationsController extends ChangeNotifier
     }
   }
 
-  /// w39 «افتح الإعدادات»: asks the phone again; true once they are on.
-  /// A phone that will not ask again leaves them to its own settings.
-  Future<bool> askAgain() async {
-    await _initializing;
-    if (!isAvailable) return false;
+  /// w39 «افتح الإعدادات»: this app's notification settings in the phone.
+  /// Turned off by the person, they come back on there only: asking again
+  /// shows nothing on a phone refused twice (Android 13+) or below 13. The
+  /// page that opened them reads [phoneState] again when the app is back
+  /// in front. False when the phone would not open them.
+  Future<bool> openPhoneSettings() async {
     try {
-      final status = await _gateway.requestPermission();
-      if (status != PushAuthorizationStatus.authorized) return false;
-      await _queueCurrentRegistration();
-      return true;
+      return await _openPhoneSettings();
     } on Object {
       return false;
     }
+  }
+
+  /// The registration once the person turned them on in the phone's
+  /// settings: called when a page sees [PushPhoneState.on] again.
+  Future<void> turnedOnInPhoneSettings() => _queueCurrentRegistration();
+
+  /// The settings page's banner: what the phone does with the alerts now.
+  Future<PushPhoneState> phoneState() async {
+    await _initializing;
+    if (!isAvailable || unavailableOnThisPhone) return PushPhoneState.unavailable;
+    try {
+      return switch (await _authorization()) {
+        PushAuthorizationStatus.authorized => PushPhoneState.on,
+        PushAuthorizationStatus.denied => PushPhoneState.off,
+        PushAuthorizationStatus.notDetermined => PushPhoneState.notAsked,
+      };
+    } on Object {
+      return PushPhoneState.unknown;
+    }
+  }
+
+  /// «اسمح بالتنبيهات» on the settings page: asks the phone its question,
+  /// once, and says what it answered.
+  Future<PushPhoneState> askFromSettings() async {
+    await requestPermissionOnFirstOpen();
+    final state = await phoneState();
+    notifyListeners();
+    return state;
   }
 
   Future<void> bindAuthenticatedUser(String? userId) {

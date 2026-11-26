@@ -6,6 +6,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/offline/cached_first_load.dart';
 import '../../../core/session/session_scoped_change_notifier.dart';
 import '../data/settings_api.dart';
+import '../models/reminder_schedule.dart';
 import '../models/user_settings.dart';
 
 class SettingsProvider extends ChangeNotifier with SessionScopedNotifier {
@@ -33,9 +34,30 @@ class SettingsProvider extends ChangeNotifier with SessionScopedNotifier {
   bool _isStale = false;
   bool get isStale => _isStale;
 
+  /// The server's reminder table, for the «متى يصلك» lines; null while the
+  /// phone has neither a copy nor an answer (the lines are left out).
+  ReminderSchedule? _schedule;
+  ReminderSchedule? get schedule => _schedule;
+
   /// D85: the phone's copy shows at once; the server's answer replaces it.
   Future<void> loadSettings() async {
     _successMessage = null;
+    await Future.wait([_loadSettings(), _loadSchedule()]);
+  }
+
+  /// The table is the server's and the same for everyone: a failure leaves
+  /// the copy (or no lines), never an error on the page.
+  Future<void> _loadSchedule() => readCachedFirst<ReminderSchedule>(
+    cached: _api.cachedReminderSchedule,
+    remote: () async =>
+        await _api.getReminderSchedule() ??
+        (throw const FormatException('Unreadable reminder schedule')),
+    apply: (schedule) => _schedule = schedule,
+    state: ({required loading, required stale, error}) => notifyListeners(),
+    describe: (error) => '',
+  );
+
+  Future<void> _loadSettings() async {
     await readCachedFirst<UserSettings>(
       cached: _api.cachedSettings,
       remote: _api.getSettings,

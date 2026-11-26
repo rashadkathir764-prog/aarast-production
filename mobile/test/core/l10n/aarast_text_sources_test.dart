@@ -52,10 +52,11 @@ void main() {
     for (final entry in arb.entries) {
       if (entry.key.startsWith('@')) continue;
       final value = entry.value as String;
-      // The ICU frame (select/plural names) is not the user's text.
+      // The ICU frame (select/plural names, each case's label: `female{`,
+      // `masculine{`, `=1{`) is not the user's text.
       final words = value
           .replaceAll(RegExp(r'\{\s*\w+\s*,\s*(select|plural)\s*,'), '')
-          .replaceAll(RegExp(r'\b(female|male|other|zero|one|two|few|many)\{'), '');
+          .replaceAll(RegExp(r'(=\d+|\b[A-Za-z]+)\{'), '');
       for (final word in _banned) {
         if (RegExp('(^|[^؀-ۿ])$word(\$|[^؀-ۿ])')
             .hasMatch(words)) {

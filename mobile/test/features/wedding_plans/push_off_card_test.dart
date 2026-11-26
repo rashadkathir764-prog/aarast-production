@@ -23,7 +23,10 @@ Future<(DevicePreferences, _Gateway)> _pump(
   // The app asked once and the person said no: from Android 13 only that
   // makes «denied» notifications turned off.
   bool askedBefore = true,
+  bool settingsOpen = true,
+  bool signedIn = false,
 }) async {
+  _settingsOpened = 0;
   SharedPreferences.setMockInitialValues({
     if (askedBefore) pushPermissionRequestedPreferenceKey: true,
   });
@@ -34,8 +37,13 @@ Future<(DevicePreferences, _Gateway)> _pump(
     preferences: stored,
     gateway: gateway,
     registrationApi: _Registry(),
+    openPhoneNotificationSettings: () async {
+      _settingsOpened += 1;
+      return settingsOpen;
+    },
   );
   await push.initialize();
+  if (signedIn) await push.bindAuthenticatedUser('user-1');
   await tester.pumpWidget(
     MultiProvider(
       providers: [
@@ -118,24 +126,68 @@ void main() {
     );
   });
 
-  testWidgets('asking again turns them on and the card goes', (tester) async {
-    final (_, gateway) = await _pump(
-      tester,
-      afterAsking: PushAuthorizationStatus.authorized,
-    );
+  // Turned off by the person, they come back on in the phone's settings
+  // only: the button used to ask again, which a phone refused twice (or
+  // below Android 13) never shows, so nothing happened.
+  testWidgets('«افتح الإعدادات» opens the phone\'s settings, and coming back '
+      'with them on puts the card away', (tester) async {
+    final (_, gateway) = await _pump(tester, signedIn: true);
+    final registeredWhileOff = gateway.registered;
 
     await tester.tap(find.text('افتح الإعدادات'));
     await tester.pumpAndSettle();
 
-    expect(gateway.asked, 1);
+    expect(_settingsOpened, 1);
+    expect(gateway.asked, 0, reason: 'the phone is not asked again');
+    expect(find.byKey(const ValueKey('push-off-card')), findsOneWidget);
+
+    // Turned on there, then back to the app.
+    gateway.status = PushAuthorizationStatus.authorized;
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pumpAndSettle();
+
     expect(find.byKey(const ValueKey('push-off-card')), findsNothing);
+    expect(find.text('انفتحت التنبيهات.'), findsOneWidget);
+    expect(
+      gateway.registered,
+      greaterThan(registeredWhileOff),
+      reason: 'registered again',
+    );
+  });
+
+  testWidgets('back from the settings still off, the card stays', (
+    tester,
+  ) async {
+    await _pump(tester);
+    await tester.tap(find.text('افتح الإعدادات'));
+    await tester.pumpAndSettle();
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('push-off-card')), findsOneWidget);
+    expect(find.text('انفتحت التنبيهات.'), findsNothing);
+  });
+
+  testWidgets('a phone that will not open its settings is told the way', (
+    tester,
+  ) async {
+    await _pump(tester, settingsOpen: false);
+    await tester.tap(find.text('افتح الإعدادات'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('من إعدادات الجوال › التطبيقات'), findsOneWidget);
   });
 }
+
+int _settingsOpened = 0;
 
 class _Gateway implements PushMessagingGateway {
   _Gateway(this.status, this.afterAsking, [this.noGoogleServices = false]);
 
-  final PushAuthorizationStatus status;
+  PushAuthorizationStatus status;
+  int registered = 0;
   final PushAuthorizationStatus afterAsking;
   final bool noGoogleServices;
   int asked = 0;
@@ -173,7 +225,10 @@ class _Gateway implements PushMessagingGateway {
   Future<int?> androidSdkInt() async => 33;
 
   @override
-  Future<String> ensureRegistrationAndGetInstallationId() async => 'fid-1';
+  Future<String> ensureRegistrationAndGetInstallationId() async {
+    registered += 1;
+    return 'fid-1';
+  }
 
   @override
   Future<PushNotificationTap?> consumeInitialNotificationTap() async => null;

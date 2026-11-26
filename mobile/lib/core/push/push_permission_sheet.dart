@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../experience_v3/aarast_v3.dart';
+import '../l10n/aarast_text.dart';
 import 'push_notifications_controller.dart' show PushPermissionReason;
 
 /// RA-MO-360: the one line that comes before the phone's own «اسمح
@@ -13,18 +14,19 @@ Future<bool> showPushPermissionSheet(
   BuildContext context, {
   PushPermissionReason reason = PushPermissionReason.plan,
 }) async {
+  final text = context.text;
   final (title, subtitle) = switch (reason) {
     PushPermissionReason.plan => (
-      'نذكّرك بمواعيدك',
-      'مواعيد الدفعات والمهام وردود المزودين توصلك حتى لو التطبيق مسكّر.',
+      text.pushPermissionPlanTitle,
+      text.pushPermissionPlanBody,
     ),
     PushPermissionReason.provider => (
-      'نخبرك بكل جديد',
-      'قرار مراجعة طلبك والطلبات الجديدة من العرسان تصلك حتى لو كان التطبيق مغلقًا.',
+      text.pushPermissionProviderTitle,
+      text.pushPermissionProviderBody,
     ),
     PushPermissionReason.participant => (
-      'نخبرك بما يخصّك',
-      'المهام المسندة إليك وتذكيراتها تصلك حتى لو كان التطبيق مغلقًا.',
+      text.pushPermissionParticipantTitle,
+      text.pushPermissionParticipantBody,
     ),
   };
   final allow = await showJourneySheet<bool>(
@@ -36,7 +38,7 @@ Future<bool> showPushPermissionSheet(
       children: [
         JourneyButton(
           key: const ValueKey('push-permission-allow'),
-          label: sheetContext.say('اسمح بالتنبيهات', 'اسمحي بالتنبيهات'),
+          label: text.pushPermissionAllow(sheetContext.gender),
           background: AarastV3Color.brandAccentStrong,
           expand: true,
           onPressed: () => Navigator.pop(sheetContext, true),
@@ -44,7 +46,7 @@ Future<bool> showPushPermissionSheet(
         const SizedBox(height: AarastV3Space.x2),
         JourneyButton.quiet(
           key: const ValueKey('push-permission-later'),
-          label: 'لاحقًا',
+          label: text.pushPermissionLater,
           expand: true,
           onPressed: () => Navigator.pop(sheetContext, false),
         ),

@@ -32,6 +32,9 @@ dependencies:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
+  # D129: the generated AppText (l10n.yaml) reads intl; this is the version
+  # flutter_localizations already locked, made direct, not a new package.
+  intl: 0.20.2
 
   dio: ^5.9.2
   crypto: ^3.0.7
@@ -83,6 +86,8 @@ sentry:
 
 # The following section is specific to Flutter packages.
 flutter:
+  # D129: the app's words are generated from lib/l10n (l10n.yaml).
+  generate: true
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in

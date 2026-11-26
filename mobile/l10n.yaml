@@ -1,0 +1,11 @@
+# D129 (docs/project/LANGUAGE.md): every word the user reads comes from one
+# place. Each feature keeps its own source in lib/l10n/parts/<feature>.arb;
+# `dart run tool/merge_arb.dart` joins them into app_ar.arb, and
+# `flutter gen-l10n` writes the class the app reads (AppText). Arabic only:
+# the point is one source of words, not more languages.
+arb-dir: lib/l10n
+template-arb-file: app_ar.arb
+output-dir: lib/l10n/generated
+output-localization-file: app_text.dart
+output-class: AppText
+nullable-getter: false

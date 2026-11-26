@@ -1,0 +1,55 @@
+{
+  "@@locale": "ar",
+  "noticeGone": "لم يعد هذا متاحًا",
+  "@noticeGone": {
+    "description": "One line shown in the notifications inbox when a tapped push's notice no longer exists for this account (deleted, or access lost)."
+  },
+  "noticeUnreachable": "{gender, select, female{لا اتصال بالشبكة، حاولي فتحه بعد قليل.} other{لا اتصال بالشبكة، حاول فتحه بعد قليل.}}",
+  "@noticeUnreachable": {
+    "description": "One line in the inbox when a tapped push's notice cannot be read: no network and no copy on the phone. Addressed in the reader's gender.",
+    "placeholders": {
+      "gender": {
+        "type": "String",
+        "description": "The reader's form: female or male."
+      }
+    }
+  },
+  "pushPermissionAllow": "{gender, select, female{اسمحي بالتنبيهات} other{اسمح بالتنبيهات}}",
+  "@pushPermissionAllow": {
+    "description": "Main button of the permission sheet; pressing it shows the phone's own permission prompt. Addressed to the reader in their gender.",
+    "placeholders": {
+      "gender": {
+        "type": "String",
+        "description": "The reader's form: female or male."
+      }
+    }
+  },
+  "pushPermissionLater": "لاحقًا",
+  "@pushPermissionLater": {
+    "description": "Secondary button of the permission sheet: closes it without asking the phone."
+  },
+  "pushPermissionParticipantBody": "تصلك المهام المسندة إليك وتذكيراتها حتى لو كان التطبيق مغلقًا.",
+  "@pushPermissionParticipantBody": {
+    "description": "Line under pushPermissionParticipantTitle: what the notifications are for a participant."
+  },
+  "pushPermissionParticipantTitle": "نخبرك بما يخصّك",
+  "@pushPermissionParticipantTitle": {
+    "description": "Title of the permission sheet for a participant who just joined a plan from an invitation."
+  },
+  "pushPermissionPlanBody": "تصلك مواعيد الدفعات والمهام وردود المزوّدين حتى لو كان التطبيق مغلقًا.",
+  "@pushPermissionPlanBody": {
+    "description": "Line under pushPermissionPlanTitle: what the notifications are for the plan's owner. Neutral form, read by groom and bride."
+  },
+  "pushPermissionPlanTitle": "نذكّرك بمواعيدك",
+  "@pushPermissionPlanTitle": {
+    "description": "Title of the sheet shown before the phone's own notifications permission prompt, for a groom or bride after the first plan or reminder (core/push/push_permission_sheet.dart). Read by the plan's owner."
+  },
+  "pushPermissionProviderBody": "يصلك قرار مراجعة طلبك والطلبات الجديدة من العرسان حتى لو كان التطبيق مغلقًا.",
+  "@pushPermissionProviderBody": {
+    "description": "Line under pushPermissionProviderTitle: what the notifications are for a provider."
+  },
+  "pushPermissionProviderTitle": "نخبرك بكل جديد",
+  "@pushPermissionProviderTitle": {
+    "description": "Title of the permission sheet for a provider, after his application or claim is sent. Providers are addressed neutrally (D70)."
+  }
+}

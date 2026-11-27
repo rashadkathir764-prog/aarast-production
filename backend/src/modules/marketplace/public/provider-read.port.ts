@@ -74,6 +74,35 @@ export interface ProviderReadPort {
     weddingPlanId: string,
     quoteRequestIds: readonly string[] | null,
   ): Promise<Array<{ quoteRequestId: string; quoteOfferId: string | null }>>;
+  /**
+   * REFINEMENT_SPEC 2.1: the plan's bookings asked for and not yet confirmed
+   * by their provider (REQUESTED) whose day has not passed in Yemen at
+   * `now` (one whose day passed is over, RA-MO-263), the nearest day first,
+   * at most `take`; `quoteRequestIds` narrows to a contributor's quotes.
+   */
+  listPlanUnconfirmedBookings(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+    quoteRequestIds: readonly string[] | null,
+    now: Date,
+    take: number,
+  ): Promise<
+    Array<{ quoteRequestId: string; providerName: string; eventDate: Date }>
+  >;
+  /**
+   * The providers of the plan this reader may rate now and has not rated:
+   * a CONFIRMED booking whose day has passed in Yemen at `now`, on a request
+   * the reader sent, that the provider did not report «ما صار» (his own
+   * absence aside), and no review of his by the reader. The same rule
+   * `createReview` enforces (F10), so the home asks for a rating only where
+   * one can be written, and stops asking once it is.
+   */
+  countPlanProvidersToRate(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+    userId: string,
+    now: Date,
+  ): Promise<number>;
   /** The plan's active links to active providers; `quoteRequestIds` narrows to a contributor's quotes. */
   countActivePlanProviderLinks(
     client: Prisma.TransactionClient,

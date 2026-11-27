@@ -4,7 +4,8 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { BadRequestException } from '@nestjs/common';
 import { NotificationType, Prisma } from '@prisma/client';
-import * as presenter from '../src/dashboard/dashboard-summary.presenter';
+// The home's next steps moved to their own policy file (REFINEMENT_SPEC 2.1).
+import * as presenter from '../src/dashboard/dashboard-next-steps';
 import {
   bookingCustomerNotification,
   bookingProviderNotification,
@@ -125,6 +126,9 @@ test('B5: a06 is read as money and a day; a bad amount or day is refused', () =>
 test('B5: the home next steps speak to a bride in the feminine and name her guests', () => {
   const base = {
     weddingPlanId: 'plan-1',
+    // REFINEMENT_SPEC 2.1: the setup steps are asked while the wedding is
+    // more than thirty days away.
+    weddingDate: new Date(2027, 9, 25),
     tasks: [],
     paymentSchedules: [],
     today: new Date(2026, 9, 25),
@@ -145,7 +149,7 @@ test('B5: the home next steps speak to a bride in the feminine and name her gues
     planPersona: 'BRIDE',
   });
   const titles = bride.map((item) => item.title);
-  assert.ok(titles.includes('أكملي موقع الزفاف'), titles.join(' | '));
+  assert.ok(titles.includes('حددي مدينة العرس'), titles.join(' | '));
   assert.ok(titles.includes('حددي ميزانية الخطة'));
   assert.ok(titles.includes('ابدئي قائمة الضيفات'));
   const offers = presenter.buildImportantItems({
@@ -159,7 +163,7 @@ test('B5: the home next steps speak to a bride in the feminine and name her gues
   });
   assert.equal(
     offers.find((item) => item.type === 'QUOTE_RECEIVED')?.actionLabel,
-    'شوفي العرض',
+    'افتحي العرض',
   );
 
   // A groom helping in the bride's plan: his own form, her plan's guests.

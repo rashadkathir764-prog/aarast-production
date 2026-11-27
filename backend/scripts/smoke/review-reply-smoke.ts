@@ -168,7 +168,14 @@ async function main(): Promise<void> {
     assert.match(toReviewer.title, /^رد .+ على تقييمك$/u);
     console.log("PASS - the reviewer is told and the notice opens the provider's page");
 
-    const publicReviews = await market.findProviderReviews(provider.id);
+    // Without page/limit the public reviews stay the plain list the
+    // published app reads (the paged answer comes only when asked).
+    const reviewList = async () => {
+      const answer = await market.findProviderReviews(provider.id);
+      assert.ok(Array.isArray(answer), "no page asked: a plain list");
+      return answer;
+    };
+    const publicReviews = await reviewList();
     assert.equal(publicReviews[0]?.reply?.body, "نعتذر عن التأخير، وعدّلنا التسليم.");
     await assert.rejects(
       market.updateReview(asUser(customerA), review.id, { comment: "غيّرت رأيي" } as any),
@@ -189,13 +196,13 @@ async function main(): Promise<void> {
 
     const hidden = await admins.updateReviewReplyStatus(asAdmin, review.id, { status: "HIDDEN" });
     assert.equal(hidden.reply?.status, ReviewStatus.HIDDEN);
-    assert.equal((await market.findProviderReviews(provider.id)).find((item) => item.id === review.id)?.reply, null);
+    assert.equal((await reviewList()).find((item) => item.id === review.id)?.reply, null);
     const own = (await dashboard.findReviews(asUser(providerUser))).find((item) => item.id === review.id);
     assert.equal(own?.reply?.status, ReviewStatus.HIDDEN);
     const listed = await admins.listReviews({ providerId: provider.id } as any);
     assert.equal(listed.items.find((item: any) => item.id === review.id)?.reply?.status, ReviewStatus.HIDDEN);
     await admins.updateReviewReplyStatus(asAdmin, review.id, { status: "PUBLISHED" });
-    assert.ok((await market.findProviderReviews(provider.id)).find((item) => item.id === review.id)?.reply);
+    assert.ok((await reviewList()).find((item) => item.id === review.id)?.reply);
     await assert.rejects(
       admins.updateReviewReplyStatus(asAdmin, review.id, { status: "PENDING" }),
       /PUBLISHED or HIDDEN/u,

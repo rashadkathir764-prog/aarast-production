@@ -20,6 +20,7 @@ import {
   summarizeResponsiveness,
 } from "../src/marketplace/provider-responsiveness";
 import { MarketplacePresenter } from "../src/marketplace/marketplace.presenter";
+import { pricedOffersInScope } from "../src/marketplace/provider-list-scope";
 
 // Trust signals on a provider card: the admin "verified" badge, the date the
 // price last changed, and how quickly the provider usually answers.
@@ -225,6 +226,24 @@ test("responsiveness gives unanswered requests a grace period", () => {
 test("the provider list shows when its prices last changed", () => {
   const now = new Date("2026-10-11T00:00:00.000Z");
   const category = { id: "cat-1", nameAr: "قاعات", nameEn: null, slug: "halls", icon: null, showForGroom: true, showForBride: true, isActive: true, sortOrder: 0 } as any;
+  const services = [
+    { title: "A", basePrice: new Prisma.Decimal(1), currency: "YER", priceUpdatedAt: new Date("2026-09-01T00:00:00.000Z"), category },
+    { title: "B", basePrice: new Prisma.Decimal(2), currency: "YER", priceUpdatedAt: new Date("2026-10-01T00:00:00.000Z"), category },
+    { title: "C", basePrice: null, currency: "YER", priceUpdatedAt: null, category },
+  ];
+  // No category asked: every priced service (provider-list-scope.ts).
+  const listing = {
+    priceOffers: pricedOffersInScope(
+      {
+        primaryCategoryId: null,
+        services: services.map((service) => ({ ...service, categoryId: category.id })),
+        packages: [],
+      },
+      null,
+    ),
+    matchedCategoryId: null,
+    cardPhotoUrl: null,
+  };
   const response = MarketplacePresenter.toProviderListResponse({
     id: "provider-1",
     cityId: "city-1",
@@ -247,12 +266,8 @@ test("the provider list shows when its prices last changed", () => {
     ratingCount: 0,
     createdAt: now,
     updatedAt: now,
-    servicePreviews: [
-      { title: "A", basePrice: new Prisma.Decimal(1), currency: "YER", priceUpdatedAt: new Date("2026-09-01T00:00:00.000Z"), category },
-      { title: "B", basePrice: new Prisma.Decimal(2), currency: "YER", priceUpdatedAt: new Date("2026-10-01T00:00:00.000Z"), category },
-      { title: "C", basePrice: null, currency: "YER", priceUpdatedAt: null, category },
-    ],
-  } as any);
+    servicePreviews: services,
+  } as any, listing);
 
   assert.equal(response.verifiedAt, now);
   assert.equal(

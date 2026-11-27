@@ -1,7 +1,7 @@
-import { ConflictException } from "@nestjs/common";
+import { BadRequestException, ConflictException } from "@nestjs/common";
 import type { Prisma } from "@prisma/client";
 import * as bookings from "../modules/marketplace/infrastructure/marketplace-booking.repository";
-import { bookingDay, bookingDayFull, bookingToday } from "./booking-policy";
+import { bookingDay, bookingDayFull, bookingToday, parseBookingDate } from "./booking-policy";
 
 type Tx = Prisma.TransactionClient;
 
@@ -41,6 +41,20 @@ export function requestedBookableDay(
   if (!eventDate) return null;
   const day = bookingDay(eventDate);
   return day.getTime() < bookingToday(now).getTime() ? null : day;
+}
+
+/**
+ * RA-BE-150, D131: the wedding day the list or a provider's page is asked
+ * about (`eventDate`, `YYYY-MM-DD`); null with none or a day already past
+ * (no booking's day). A malformed one is a 400.
+ */
+export function askedAvailabilityDay(value: string | undefined, now: Date): Date | null {
+  const asked = value?.trim();
+  const day = asked ? parseBookingDate(asked, null, now) : null;
+  if (day === "INVALID_DATE") {
+    throw new BadRequestException("eventDate must be YYYY-MM-DD");
+  }
+  return typeof day === "string" ? null : day;
 }
 
 /** RA-BE-150: the refusal before anyone commits to a day the provider cannot take. */

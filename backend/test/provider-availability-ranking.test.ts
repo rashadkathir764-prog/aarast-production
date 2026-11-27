@@ -106,6 +106,13 @@ const row = (id: string, over: Partial<RankSignals> = {}): RankSignals => ({
   ...over,
 });
 const order = (rows: RankSignals[]) => rankProviders(rows, NOW).map((r) => r.id);
+/** What the list reads of his prices and work photos (none priced, [photos] approved). */
+const offers = (photos: number) => ({
+  primaryCategoryId: null,
+  services: [],
+  packages: [],
+  _count: { portfolioItems: photos },
+});
 
 test("one 5-star review no longer beats 63 reviews averaging 4.8", () => {
   assert.ok(smoothedRating(4.8, 63) > smoothedRating(5, 1));
@@ -131,8 +138,9 @@ test("a new provider with a full profile is not buried under an old one with no 
 });
 
 test("a fuller profile and a faster answer rank higher, all else equal", () => {
-  const bare = profileCompleteness({ logoUrl: null, coverUrl: null, description: null, address: null, whatsapp: null, socialLinks: null });
-  const full = profileCompleteness({ logoUrl: "l", coverUrl: "c", description: "d", address: "a", whatsapp: null, socialLinks: { tiktok: "x" } });
+  // 2026-11-26 review: his work and a price, not a logo and a cover.
+  const bare = profileCompleteness({ approvedPhotos: 0, hasPublishedPrice: false, description: null, address: null, whatsapp: null, socialLinks: null });
+  const full = profileCompleteness({ approvedPhotos: 5, hasPublishedPrice: true, description: "d", address: "a", whatsapp: null, socialLinks: { tiktok: "x" } });
   assert.equal(bare, 0);
   assert.equal(full, 1);
   assert.deepEqual(order([row("bare", { profile: bare }), row("full", { profile: full })]), ["full", "bare"]);
@@ -180,8 +188,8 @@ test("Q-73: unverified providers come after verified ones, each band in today's 
 
 test("Q-73: the list reads verifiedAt, so an unchecked provider ranks below a checked one", async () => {
   const candidates = [
-    { id: "unchecked", userId: "u1", verifiedAt: null, ratingAverage: new Prisma.Decimal("5"), ratingCount: 99, createdAt: daysAgo(400), logoUrl: "l", coverUrl: "c", description: "d", address: "a", whatsapp: "w", socialLinks: null, featuredPeriods: [] },
-    { id: "checked", userId: "u2", verifiedAt: daysAgo(10), ratingAverage: new Prisma.Decimal("3"), ratingCount: 2, createdAt: daysAgo(400), logoUrl: null, coverUrl: null, description: null, address: null, whatsapp: null, socialLinks: null, featuredPeriods: [] },
+    { id: "unchecked", userId: "u1", verifiedAt: null, ratingAverage: new Prisma.Decimal("5"), ratingCount: 99, createdAt: daysAgo(400), logoUrl: "l", coverUrl: "c", description: "d", address: "a", whatsapp: "w", socialLinks: null, featuredPeriods: [], ...offers(5) },
+    { id: "checked", userId: "u2", verifiedAt: daysAgo(10), ratingAverage: new Prisma.Decimal("3"), ratingCount: 2, createdAt: daysAgo(400), logoUrl: null, coverUrl: null, description: null, address: null, whatsapp: null, socialLinks: null, featuredPeriods: [], ...offers(0) },
   ];
   let selected: any = null;
   const client: any = {
@@ -208,10 +216,10 @@ test("equal scores are ordered by age and then id, so a page never repeats or sk
 
 test("the list is cut after ranking: the page holds the ranked rows, only they are read whole", async () => {
   const candidates = [
-    { id: "p1", userId: "u1", ratingAverage: new Prisma.Decimal("5"), ratingCount: 1, createdAt: daysAgo(400), logoUrl: "l", coverUrl: "c", description: "d", address: "a", whatsapp: "w", socialLinks: null, featuredPeriods: [] },
-    { id: "p2", userId: "u2", ratingAverage: new Prisma.Decimal("4.8"), ratingCount: 63, createdAt: daysAgo(400), logoUrl: "l", coverUrl: "c", description: "d", address: "a", whatsapp: "w", socialLinks: null, featuredPeriods: [] },
-    { id: "p3", userId: "u3", ratingAverage: new Prisma.Decimal("0"), ratingCount: 0, createdAt: daysAgo(400), logoUrl: "l", coverUrl: "c", description: "d", address: "a", whatsapp: "w", socialLinks: null, featuredPeriods: [{ startsAt: NOW, endsAt: NOW }] },
-    { id: "p4", userId: null, ratingAverage: new Prisma.Decimal("5"), ratingCount: 99, createdAt: daysAgo(400), logoUrl: "l", coverUrl: "c", description: "d", address: "a", whatsapp: "w", socialLinks: null, featuredPeriods: [{ startsAt: NOW, endsAt: NOW }] },
+    { id: "p1", userId: "u1", ratingAverage: new Prisma.Decimal("5"), ratingCount: 1, createdAt: daysAgo(400), logoUrl: "l", coverUrl: "c", description: "d", address: "a", whatsapp: "w", socialLinks: null, featuredPeriods: [], ...offers(5) },
+    { id: "p2", userId: "u2", ratingAverage: new Prisma.Decimal("4.8"), ratingCount: 63, createdAt: daysAgo(400), logoUrl: "l", coverUrl: "c", description: "d", address: "a", whatsapp: "w", socialLinks: null, featuredPeriods: [], ...offers(5) },
+    { id: "p3", userId: "u3", ratingAverage: new Prisma.Decimal("0"), ratingCount: 0, createdAt: daysAgo(400), logoUrl: "l", coverUrl: "c", description: "d", address: "a", whatsapp: "w", socialLinks: null, featuredPeriods: [{ startsAt: NOW, endsAt: NOW }], ...offers(5) },
+    { id: "p4", userId: null, ratingAverage: new Prisma.Decimal("5"), ratingCount: 99, createdAt: daysAgo(400), logoUrl: "l", coverUrl: "c", description: "d", address: "a", whatsapp: "w", socialLinks: null, featuredPeriods: [{ startsAt: NOW, endsAt: NOW }], ...offers(5) },
   ];
   const wholeReads: string[][] = [];
   const client: any = {
@@ -282,7 +290,12 @@ test("«الأنسب» is the ranking itself", () => {
 
 test("the sort and hideBusy are read from the query; hideBusy needs a day", () => {
   assert.equal(providerDirectoryOptions({}, null).sort, "best");
-  assert.equal(providerDirectoryOptions({ sort: "price" }, null).sort, "price");
+  // 2026-11-26 review: prices compare inside the asked categories only.
+  assert.equal(
+    providerDirectoryOptions({ sort: "price", categoryId: "27f8d6f4-18ee-4b57-b732-2c21a2bd0d92" }, null).sort,
+    "price",
+  );
+  assert.equal(providerDirectoryOptions({ sort: "price" }, null).sort, "best", "no price order under «الكل»");
   assert.throws(() => providerDirectoryOptions({ sort: "cheapest" }, null), /sort/);
   assert.equal(providerDirectoryOptions({ eventDate: "2027-02-18", hideBusy: "true" }, DAY).hideBusy, true);
   assert.throws(() => providerDirectoryOptions({ hideBusy: "true" }, null), /hideBusy needs eventDate/);

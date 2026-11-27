@@ -1,6 +1,8 @@
 import * as core from "../modules/marketplace/infrastructure/marketplace-core.repository";
-import { hasCompletedBookingWith } from "../modules/marketplace/infrastructure/marketplace-booking.repository";
-import { countProvidersByCategory, readProviderDirectoryPage } from "./provider-directory";
+import { hasCompletedBookingWith, listProvidersDayStatus } from "../modules/marketplace/infrastructure/marketplace-booking.repository";
+import { countProvidersByCategory, readProviderDirectory } from "./provider-directory";
+import { readProviderReviewPage } from "./provider-review-page";
+import { askedAvailabilityDay } from "./provider-day-availability";
 import { bookingToday } from "./booking-policy";
 import { applicationDisplayName } from "../shared-kernel/privacy/application-user-identity";
 import { toReviewIdentity } from "../shared-kernel/privacy/review-identity";
@@ -44,6 +46,8 @@ import { CreateProviderReviewDto } from "./dto/create-provider-review.dto";
 import { CreateQuoteRequestDto } from "./dto/create-quote-request.dto";
 import { ListProvidersQueryDto } from "./dto/list-providers-query.dto";
 import { ListServicesQueryDto } from "./dto/list-services-query.dto";
+import { ListProviderReviewsQueryDto } from "./dto/list-provider-reviews-query.dto";
+import { ProviderDetailsQueryDto } from "./dto/provider-details-query.dto";
 import { ReportProviderReviewDto } from "./dto/report-provider-review.dto";
 import { UpdateProviderReviewDto } from "./dto/update-provider-review.dto";
 import { quoteLifecycleStatus } from "./quote-lifecycle";
@@ -171,29 +175,10 @@ export class MarketplaceService {
     };
   }
 
-  async findProviders(query: ListProvidersQueryDto) {
-    // D131: the ranked page and the day's status (provider-directory.ts).
-    const { total, rows: providerRows, dayStatus, pagination } =
-      await readProviderDirectoryPage(this.prisma, query, new Date());
-    // Catalog's city and category rows are attached after the own-table read.
-    const providers = await this.relations.attachProviderListCatalog(
-      this.prisma,
-      providerRows,
-    );
-    return MarketplaceQuery.paginate(
-      providers.map((provider) => ({
-        ...MarketplacePresenter.toProviderListResponse(provider),
-        // D131: what is known of the asked day: CLOSED (he closed it) or
-        // FULL (Aarast's bookings filled it); null with no day asked or
-        // nothing known. Nothing here says he is free.
-        dayStatus: dayStatus?.get(provider.id) ?? null,
-        // RA-BE-150, kept for phones before D131: false when he is known to
-        // be busy, null otherwise, so no phone says «فاضي» without proof.
-        availableOnEventDate: dayStatus?.has(provider.id) ? false : null,
-      })),
-      total,
-      pagination,
-    );
+  findProviders(query: ListProvidersQueryDto) {
+    // D131: the ranked page, each row inside the asked categories, and the
+    // day's status (provider-directory.ts).
+    return readProviderDirectory(this.prisma, this.relations, query, new Date());
   }
 
   /** D131 (F8): how many providers each category chip opens (provider-directory.ts). */
@@ -210,9 +195,12 @@ export class MarketplaceService {
     return { recorded: true };
   }
 
-  async findProvider(id: string) {
+  async findProvider(id: string, query: ProviderDetailsQueryDto = {}) {
     MarketplaceQuery.assertUuid(id, "providerId");
-    const providerRow = await core.findActiveProviderWithServices(this.prisma, id, new Date());
+    const now = new Date();
+    // D131 (2026-11-26 review): the plan's day is read as the list reads it.
+    const day = askedAvailabilityDay(query.eventDate, now);
+    const providerRow = await core.findActiveProviderWithServices(this.prisma, id, now);
 
     if (!providerRow) {
       throw new NotFoundException("Provider not found");
@@ -229,8 +217,13 @@ export class MarketplaceService {
     const responseSample = await core.providerResponseSample(
       this.prisma,
       id,
-      responsivenessWindow(new Date()),
+      responsivenessWindow(now),
     );
+    // CLOSED or FULL with the same proof as the list's; null when no day is
+    // asked or nothing is known, never «free».
+    const dayStatus = day
+      ? ((await listProvidersDayStatus(this.prisma, [id], day)).get(id) ?? null)
+      : null;
 
     return {
       ...MarketplacePresenter.toProviderResponse({
@@ -238,6 +231,7 @@ export class MarketplaceService {
         services: providerServices,
       }),
       responsiveness: summarizeResponsiveness(responseSample),
+      dayStatus,
     };
   }
 
@@ -320,8 +314,17 @@ export class MarketplaceService {
     };
   }
 
-  async findProviderReviews(providerId: string) {
+  /**
+   * His published reviews. With `page` or `limit` (2026-11-26 review): one
+   * page, newest first, with the summary of them all (provider-review-page.ts).
+   * Without either: every one as a bare list, as the apps already out read
+   * it (RA-BE-01: a deploy adds, it never breaks).
+   */
+  async findProviderReviews(providerId: string, query: ListProviderReviewsQueryDto = {}) {
     await this.findActiveProviderOrThrow(providerId);
+    if (query.page !== undefined || query.limit !== undefined) {
+      return readProviderReviewPage(this.prisma, this.relations, providerId, query);
+    }
     const reviews = await this.relations.attachReviewUsers(
       this.prisma,
       await core.listPublishedProviderReviews(this.prisma, providerId),

@@ -47,7 +47,12 @@ export async function readPlanBookedServices(
   scope: {
     /** A contributor's requests; null: the plan's. */
     quoteRequestIds: readonly string[] | null;
-    /** The reader's costs (never another account's private ones); null: the plan's. */
+    /**
+     * The reader's costs (never another account's private ones); null: the
+     * plan's. Empty for a reader who sees no agreement (no money rights,
+     * REFINEMENT_SPEC 2.4): booked is then read from the confirmed bookings
+     * alone, each by its request, and no agreement is read at all.
+     */
     costIds: readonly string[] | null;
   },
 ): Promise<PlanBookedServices> {
@@ -59,10 +64,13 @@ export async function readPlanBookedServices(
   const offerIds = bookings.flatMap((booking) =>
     booking.quoteOfferId ? [booking.quoteOfferId] : [],
   );
-  const [costs, outsideItemIds] = await Promise.all([
-    owners.finance.listCostsForOffers(tx, offerIds),
-    owners.finance.listOutsidePartyItemIds(tx, weddingPlanId, scope.costIds),
-  ]);
+  const readsAgreements = scope.costIds === null || scope.costIds.length > 0;
+  const [costs, outsideItemIds] = readsAgreements
+    ? await Promise.all([
+        owners.finance.listCostsForOffers(tx, offerIds),
+        owners.finance.listOutsidePartyItemIds(tx, weddingPlanId, scope.costIds),
+      ])
+    : [[], []];
   const itemByOffer = new Map(
     costs
       .filter((cost) => scope.costIds === null || scope.costIds.includes(cost.id))

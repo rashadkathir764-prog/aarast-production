@@ -42,7 +42,11 @@ const task = (
   responsibleSource: null,
   title: `Task ${id}`,
   description: null,
-  dueDate: new Date("2020-01-01T00:00:00.000Z"),
+  // REFINEMENT_SPEC 2.1 (rule 8): a task late by more than seven days is no
+  // next step, so a task due in 2020 no longer reached the summary's items,
+  // where these tests look for the contributor's scope. Late by a day, it
+  // still does.
+  dueDate: new Date(Date.now() - 86_400_000),
   taskCategory: null,
   reminderAt: null,
   status: WeddingTaskStatus.TODO,

@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { InsightsReadPorts } from '../insights-read-ports';
+import { lateTaskWindowStart } from '../dashboard-priority';
 import { PrismaService } from '../../platform/database/prisma.service';
 import { runRetryableTransaction } from '../../platform/database/serializable-transaction';
 import { endOfRiyadhDay, startOfRiyadhDay } from '../../shared-kernel/time/business-day';
@@ -441,6 +442,8 @@ export class AssistantService {
             scope: { kind: 'all', readerUserId },
             today,
             endOfToday: endOfRiyadhDay(today),
+            // The assistant reads the counts only; the window is the home's.
+            lateFrom: lateTaskWindowStart(today),
           }),
         ]);
         const [moneyFacts, quotes, market] = await Promise.all([

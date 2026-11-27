@@ -48,7 +48,15 @@ export type TaskReadScope =
   | { kind: 'contributor'; assigneeUserId: string; taskIds: readonly string[] };
 
 export interface PlanTaskDashboard {
-  urgentTasks: WeddingTask[];
+  /**
+   * The open tasks the home may act on (REFINEMENT_SPEC 2.1): due today,
+   * then late since `lateFrom`, the nearest day first, at most three. A
+   * task late before `lateFrom` stays in the counts only.
+   */
+  actionableTasks: WeddingTask[];
+  /** The nearest open task due after today (the home's «المهمة القادمة»). */
+  upcomingTask: WeddingTask | null;
+  /** The nearest open task by its day, whatever the day (the summary's `nextTask`). */
   nextTask: WeddingTask | null;
   totalTasks: number;
   completedTasks: number;
@@ -101,7 +109,7 @@ export interface TasksPort {
     take: number,
     readerUserId: string,
   ): Promise<WeddingTask[]>;
-  /** The plan dashboard's task counters and its two urgent tasks and next task, inside the reader's scope. */
+  /** The plan dashboard's task counters, the tasks it acts on and its next tasks, inside the reader's scope. */
   getPlanTaskDashboard(
     client: Prisma.TransactionClient,
     input: {
@@ -109,6 +117,8 @@ export interface TasksPort {
       scope: TaskReadScope;
       today: Date;
       endOfToday: Date;
+      /** The oldest due day a late task may have and still be acted on. */
+      lateFrom: Date;
     },
   ): Promise<PlanTaskDashboard>;
   /** The plan's dated open tasks in due order, inside the reader's scope (the timeline). */

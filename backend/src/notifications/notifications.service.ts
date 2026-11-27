@@ -125,6 +125,7 @@ import {
   taskReminderNotice,
   weddingCountdownRow,
 } from "./plan-reminders";
+import { notificationPreferenceKey } from "./notification-preferences";
 import {
   NotificationsRepository,
   type DueNotificationRow,
@@ -1229,46 +1230,12 @@ export class NotificationsService implements NotificationsPort {
     );
   }
 
+  /** The one rule (`notification-preferences.ts`), which the schedule endpoint also returns. */
   private preferenceKeyForType(
     type: NotificationType,
     data?: Prisma.InputJsonValue,
   ): keyof NotificationContentPreference | null {
-    switch (type) {
-      case NotificationType.TASK_DUE_SOON:
-      case NotificationType.TASK_OVERDUE:
-      case NotificationType.TASK_ASSIGNED:
-        return "taskRemindersEnabled";
-      case NotificationType.PAYMENT_SCHEDULE_DUE_SOON:
-      case NotificationType.PAYMENT_SCHEDULE_OVERDUE:
-      case NotificationType.BUDGET_CATEGORY_EXCEEDED:
-      case NotificationType.LOAN_REPAYMENT_DUE_SOON:
-      case NotificationType.LOAN_REPAYMENT_OVERDUE:
-      case NotificationType.FUNDING_EXPECTED:
-        return "paymentRemindersEnabled";
-      case NotificationType.WEDDING_COUNTDOWN:
-        return "taskRemindersEnabled";
-      case NotificationType.QUOTE_REQUEST_SUBMITTED:
-      case NotificationType.QUOTE_REQUEST_EXPIRING:
-      case NotificationType.QUOTE_OFFER_RECEIVED:
-      case NotificationType.QUOTE_ACCEPTED:
-      case NotificationType.QUOTE_REJECTED:
-      case NotificationType.CHAT_MESSAGE_RECEIVED:
-      case NotificationType.BOOKING_REQUESTED:
-      case NotificationType.REVIEW_RECEIVED:
-      case NotificationType.REVIEW_REPLIED:
-      // Q-50 (أ): what came of a report on a conversation is the messages'.
-      case NotificationType.CONVERSATION_REPORT_CLOSED:
-        return "providerMessagesEnabled";
-      // RA-BE-190: a customer's booking reminders are the «الحجوزات» switch;
-      // every other booking notice, and the provider's own reminders (his one
-      // switch says «الحجوزات» too), stay with the offers and chats.
-      case NotificationType.BOOKING_UPDATED:
-        return isCustomerBookingReminder(data)
-          ? "bookingRemindersEnabled"
-          : "providerMessagesEnabled";
-      default:
-        return null;
-    }
+    return notificationPreferenceKey(type, data);
   }
 
   private preferenceEnabled(
@@ -2328,10 +2295,4 @@ function pushRequestFields(push: PushRequest, now: Date): NotificationPushFields
     pushLastError: null,
     ...(push.enqueue ? { pushRequestedAt: now } : {}),
   };
-}
-
-function isCustomerBookingReminder(data: Prisma.InputJsonValue | undefined): boolean {
-  if (!data || typeof data !== "object" || Array.isArray(data)) return false;
-  const fields = data as Record<string, unknown>;
-  return fields.reminder === true && fields.recipientAudience === "CUSTOMER";
 }

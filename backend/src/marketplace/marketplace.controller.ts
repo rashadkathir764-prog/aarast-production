@@ -21,6 +21,8 @@ import { CreateProviderReviewDto } from "./dto/create-provider-review.dto";
 import { CreateQuoteRequestDto } from "./dto/create-quote-request.dto";
 import { ListProvidersQueryDto } from "./dto/list-providers-query.dto";
 import { ListServicesQueryDto } from "./dto/list-services-query.dto";
+import { ListProviderReviewsQueryDto } from "./dto/list-provider-reviews-query.dto";
+import { ProviderDetailsQueryDto } from "./dto/provider-details-query.dto";
 import { UpdateProviderReviewDto } from "./dto/update-provider-review.dto";
 import { ReportProviderReviewDto } from "./dto/report-provider-review.dto";
 import { MarketplaceService } from "./marketplace.service";
@@ -87,8 +89,11 @@ export class ProvidersController {
   }
 
   @Get(":id/reviews")
-  findProviderReviews(@Param("id") id: string) {
-    return this.marketplaceService.findProviderReviews(id);
+  findProviderReviews(
+    @Param("id") id: string,
+    @Query() query: ListProviderReviewsQueryDto,
+  ) {
+    return this.marketplaceService.findProviderReviews(id, query);
   }
 
   // B-16 (f03): approved photos only; the women's album for a bride only, so
@@ -150,8 +155,11 @@ export class ProvidersController {
   }
 
   @Get(":id")
-  findProvider(@Param("id") id: string) {
-    return this.marketplaceService.findProvider(id);
+  findProvider(
+    @Param("id") id: string,
+    @Query() query: ProviderDetailsQueryDto,
+  ) {
+    return this.marketplaceService.findProvider(id, query);
   }
 }
 

@@ -14,6 +14,12 @@ import {
   WeddingTaskPriority,
 } from '@prisma/client';
 import * as dashboardPresenter from '../src/dashboard/dashboard-summary.presenter';
+// REFINEMENT_SPEC 2.1: the home's next steps moved to their own policy file.
+import * as nextSteps from '../src/dashboard/dashboard-next-steps';
+
+// The steps below ask for the setup chain, which the spec asks only while
+// the wedding is more than thirty days away.
+const farWedding = new Date(2028, 0, 1);
 
 type ServiceDashboardResponse =
   import('../src/dashboard/dashboard.service').WeddingPlanDashboardSummaryResponse;
@@ -96,8 +102,9 @@ test('dashboard maps a payment schedule to the canonical due-money contract', ()
 
 test('dashboard important items use WeddingCost routes and preserve priority', () => {
   const today = new Date(2026, 6, 11);
-  const items = dashboardPresenter.buildImportantItems({
+  const items = nextSteps.buildImportantItems({
     weddingPlanId: 'plan-1',
+    weddingDate: farWedding,
     tasks: [
       {
         id: 'task-1',
@@ -131,33 +138,38 @@ test('dashboard important items use WeddingCost routes and preserve priority', (
     planPersona: 'GROOM',
   });
 
+  // REFINEMENT_SPEC 2.1 (2026-11-26): a payment due today or late comes
+  // first, before a late task, whatever their days; the old order put the
+  // older of the two first, so the task led here.
   assert.deepEqual(
     items.map((item) => item.type),
-    ['TASK_OVERDUE', 'PAYMENT_SCHEDULE_DUE', 'QUOTE_RECEIVED'],
+    ['PAYMENT_SCHEDULE_DUE', 'TASK_OVERDUE', 'QUOTE_RECEIVED'],
   );
   // A next step names the thing, says why, and offers its own action.
-  assert.equal(items[0].title, 'تأكيد القاعة');
-  assert.equal(items[0].subtitle, 'متأخرة يومين');
-  assert.equal(items[0].actionLabel, 'افتح المهمة');
-  assert.equal(items[0].routeTarget, '/wedding-plans/plan-1/tasks/task-1');
-  assert.equal(items[1].title, 'دفعة القاعة');
+  assert.equal(items[1].title, 'تأكيد القاعة');
+  assert.equal(items[1].subtitle, 'متأخرة منذ يومين');
+  assert.equal(items[1].actionLabel, 'افتح المهمة');
+  assert.equal(items[1].routeTarget, '/wedding-plans/plan-1/tasks/task-1');
+  assert.equal(items[0].title, 'دفعة القاعة');
   // RA-MO-161 (2026-11-13): said as a payment, not the hall's own day.
-  assert.equal(items[1].subtitle, 'دفعة فات موعدها من يوم واحد');
-  assert.equal(items[1].actionLabel, 'سجّل الدفعة');
-  assert.equal(items[1].amount, '2500');
+  assert.equal(items[0].subtitle, 'دفعة متأخرة منذ يوم واحد');
+  assert.equal(items[0].actionLabel, 'سجّل الدفعة');
+  assert.equal(items[0].amount, '2500');
   // The amount is data, so «أخفِ المبالغ» can hide it.
-  assert.ok(!`${items[1].title}${items[1].subtitle}${items[1].body}`.includes('2500'));
+  assert.ok(!`${items[0].title}${items[0].subtitle}${items[0].body}`.includes('2500'));
   assert.equal(
-    items[1].routeTarget,
+    items[0].routeTarget,
     '/wedding-plans/plan-1/money/costs/cost-1/schedules/schedule-1/pay',
   );
-  assert.deepEqual(items[1].data, {
+  assert.deepEqual(items[0].data, {
     weddingPlanId: 'plan-1',
     weddingCostId: 'cost-1',
     paymentScheduleId: 'schedule-1',
   });
-  assert.equal(items[2].title, 'وصلك عرضين');
-  assert.equal(items[2].actionLabel, 'قارن العروض');
+  // LANGUAGE §4.6: the dual in its case, and its own words.
+  assert.equal(items[2].title, 'وصلك عرضان');
+  assert.equal(items[2].subtitle, 'قارن بينهما قبل أن تنتهي مدتهما.');
+  assert.equal(items[2].actionLabel, 'قارن العرضين');
   assert.equal(items[2].routeTarget, '/wedding-plans/plan-1/providers');
 });
 
@@ -166,8 +178,10 @@ test('dashboard important items use WeddingCost routes and preserve priority', (
 // a thing that waits on someone else. The step is now his own: the nearest
 // task with a day, then the first open essential; the invitation is no step.
 test('dashboard next step: the nearest task, then the open essential, never an invitation', () => {
-  const items = dashboardPresenter.buildImportantItems({
+  const items = nextSteps.buildImportantItems({
     weddingPlanId: 'plan-1',
+    // 13 days out, as on his phone.
+    weddingDate: new Date(2026, 10, 30),
     tasks: [],
     nextTask: {
       id: 'task-9',
@@ -200,7 +214,7 @@ test('dashboard next step: the nearest task, then the open essential, never an i
   );
   assert.equal(items[0].title, 'اختر المصور');
   assert.equal(items[0].routeTarget, '/wedding-plans/plan-1/tasks/task-9');
-  assert.equal(items[1].title, 'ما اتفقت على القاعة بعد');
+  assert.equal(items[1].title, 'لم تتفق على القاعة بعد');
   assert.equal(items[1].entityId, 'cat-venue');
   assert.equal(
     items[1].routeTarget,
@@ -214,6 +228,7 @@ test('dashboard next step: the nearest task, then the open essential, never an i
 test('dashboard next step: the essential is named by the plan item, never beside the first quote', () => {
   const base = {
     weddingPlanId: 'plan-1',
+    weddingDate: farWedding,
     tasks: [],
     nextTask: null,
     paymentSchedules: [],
@@ -237,14 +252,14 @@ test('dashboard next step: the essential is named by the plan item, never beside
       name: 'فستان',
     },
   };
-  const named = dashboardPresenter.buildImportantItems({
+  const named = nextSteps.buildImportantItems({
     ...base,
     quoteRequestsCount: 3,
   });
   assert.equal(named[0].type, 'ESSENTIAL_MISSING');
-  assert.equal(named[0].title, 'ما اتفقت على فستان بعد');
+  assert.equal(named[0].title, 'لم تتفق على فستان بعد');
 
-  const firstQuote = dashboardPresenter.buildImportantItems({
+  const firstQuote = nextSteps.buildImportantItems({
     ...base,
     quoteRequestsCount: 0,
   });
@@ -254,8 +269,9 @@ test('dashboard next step: the essential is named by the plan item, never beside
 });
 
 test('dashboard next step: a missing basic still comes before a dated task', () => {
-  const items = dashboardPresenter.buildImportantItems({
+  const items = nextSteps.buildImportantItems({
     weddingPlanId: 'plan-1',
+    weddingDate: farWedding,
     tasks: [],
     nextTask: {
       id: 'task-9',
@@ -286,8 +302,9 @@ test('dashboard next step: a missing basic still comes before a dated task', () 
 });
 
 test('dashboard next step: a reader who cannot record money only reads the payment', () => {
-  const [item] = dashboardPresenter.buildImportantItems({
+  const [item] = nextSteps.buildImportantItems({
     weddingPlanId: 'plan-1',
+    weddingDate: farWedding,
     tasks: [],
     paymentSchedules: [
       {
@@ -314,8 +331,8 @@ test('dashboard next step: a reader who cannot record money only reads the payme
     planPersona: 'BRIDE',
   });
 
-  assert.equal(item.subtitle, 'دفعة موعدها بعد 5 أيام');
-  assert.equal(item.actionLabel, 'شوفي الدفعة');
+  assert.equal(item.subtitle, 'دفعة تستحق بعد 5 أيام');
+  assert.equal(item.actionLabel, 'افتحي الدفعة');
   assert.equal(
     item.routeTarget,
     '/wedding-plans/plan-1/money/costs/cost-1/schedules/schedule-1',
@@ -323,8 +340,9 @@ test('dashboard next step: a reader who cannot record money only reads the payme
 });
 
 test('dashboard setup actions and provider preview keep current product wording', () => {
-  const setupItems = dashboardPresenter.buildImportantItems({
+  const setupItems = nextSteps.buildImportantItems({
     weddingPlanId: 'plan-1',
+    weddingDate: farWedding,
     tasks: [],
     paymentSchedules: [],
     today: new Date(2026, 6, 11),
@@ -415,21 +433,21 @@ test('dashboard money warnings distinguish budget, overdue and due-soon states',
         type: 'BUDGET_EXCEEDED',
         severity: 'DANGER',
         // D105: by the expected cost, and in the app's words.
-        message: 'تكلفة العرس المتوقعة فاتت الميزانية.',
+        message: 'التكلفة المتوقعة للعرس فوق الميزانية.',
         count: null,
         amount: '125.50',
       },
       {
         type: 'PAYMENT_SCHEDULE_OVERDUE',
         severity: 'DANGER',
-        message: 'لديك مواعيد دفع متأخرة تحتاج متابعة.',
+        message: 'عندك دفعة متأخرة.',
         count: 1,
         amount: null,
       },
       {
         type: 'PAYMENT_SCHEDULE_DUE_SOON',
         severity: 'WARNING',
-        message: 'لديك مواعيد دفع خلال الأيام السبعة القادمة.',
+        message: 'عندك دفعتان خلال الأيام السبعة القادمة.',
         count: 2,
         amount: null,
       },
@@ -583,10 +601,11 @@ test('dashboard money totals are exact decimal sums, never float accumulations',
 // come in one order, each only while it is missing: the budget, the mahr,
 // the first agreement, the guests, then the first quote.
 function setupItems(
-  overrides: Partial<Parameters<typeof dashboardPresenter.buildImportantItems>[0]>,
+  overrides: Partial<Parameters<typeof nextSteps.buildImportantItems>[0]>,
 ) {
-  return dashboardPresenter.buildImportantItems({
+  return nextSteps.buildImportantItems({
     weddingPlanId: 'plan-1',
+    weddingDate: farWedding,
     tasks: [],
     paymentSchedules: [],
     today: new Date(2026, 6, 11),
@@ -614,8 +633,8 @@ test('dashboard next step: a new plan without its mahr asks for the mahr first',
     groom.map((item) => item.type),
     ['RECORD_MAHR', 'ADD_FIRST_COST', 'ADD_GUESTS'],
   );
-  assert.equal(groom[0].title, 'اتفقتوا على المهر؟');
-  assert.equal(groom[0].subtitle, 'نحسبه لحاله، برا ميزانية العرس.');
+  assert.equal(groom[0].title, 'هل اتفقتم على المهر؟');
+  assert.equal(groom[0].subtitle, 'نحسبه وحده، خارج ميزانية العرس.');
   assert.equal(groom[0].actionLabel, 'سجّل المهر');
   assert.equal(groom[0].routeTarget, '/wedding-plans/plan-1/money/mahr');
   assert.equal(groom[0].route, '/wedding-plans/plan-1/money/mahr');
@@ -626,11 +645,11 @@ test('dashboard next step: a new plan without its mahr asks for the mahr first',
   // D114: a groom who chose to count the mahr in his budget is told so.
   const [inside] = setupItems({ mahrInsideBudget: true });
   assert.equal(inside.type, 'RECORD_MAHR');
-  assert.equal(inside.subtitle, 'نحسبه من ميزانيتك، مثل ما اخترت.');
+  assert.equal(inside.subtitle, 'نحسبه من ميزانيتك كما اخترت.');
 
   const [bride] = setupItems({ form: 'FEMININE', planPersona: 'BRIDE' });
   assert.equal(bride.type, 'RECORD_MAHR');
-  assert.equal(bride.title, 'اتفقتوا على المهر؟');
+  assert.equal(bride.title, 'هل اتفقتم على المهر؟');
   assert.equal(bride.actionLabel, 'سجّلي المهر');
 
   // The budget, while it is missing, still comes before the mahr.
@@ -649,9 +668,9 @@ test('dashboard next step: with the mahr recorded and no agreement, the first ag
   assert.equal(groom[0].title, 'سجّل أول اتفاق');
   assert.equal(
     groom[0].subtitle,
-    'القاعة أو الذهب أو الكسوة: أول رقم يخلي الباقي يبان',
+    'القاعة أو الذهب أو الكسوة: بأول رقم يتضح الباقي.',
   );
-  assert.equal(groom[0].actionLabel, 'أضف اتفاق');
+  assert.equal(groom[0].actionLabel, 'أضف اتفاقًا');
   assert.equal(
     groom[0].routeTarget,
     '/wedding-plans/plan-1/money/costs/create',
@@ -666,7 +685,9 @@ test('dashboard next step: with the mahr recorded and no agreement, the first ag
   });
   assert.equal(bride.type, 'ADD_FIRST_COST');
   assert.equal(bride.title, 'سجّلي أول اتفاق');
-  assert.equal(bride.actionLabel, 'أضيفي اتفاق');
+  // The bride's plan names its own place and dress (`planWord`).
+  assert.equal(bride.subtitle, 'الصالة أو الذهب أو الفستان: بأول رقم يتضح الباقي.');
+  assert.equal(bride.actionLabel, 'أضيفي اتفاقًا');
 });
 
 test('dashboard next step: with agreements and no guests, the guests come first', () => {
@@ -686,6 +707,7 @@ test('dashboard next step: with agreements and no guests, the guests come first'
   });
   assert.equal(bride.type, 'ADD_GUESTS');
   assert.equal(bride.title, 'ابدئي قائمة الضيفات');
+  assert.equal(bride.subtitle, 'العدد يحدد حجم الصالة وتكلفة الضيافة.');
   assert.equal(bride.actionLabel, 'أضيفي أول ضيفة');
   // D55: the groom reading the bride's plan is addressed as himself.
   const [groomInBridePlan] = setupItems({

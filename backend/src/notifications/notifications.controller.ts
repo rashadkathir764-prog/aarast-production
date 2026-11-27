@@ -15,6 +15,7 @@ import { AuthenticatedUser } from "../modules/identity/public/identity-session.t
 import { CurrentUser } from "../modules/identity/public/current-user.decorator";
 import { JwtAuthGuard } from "../modules/identity/public/jwt-auth.guard";
 import { REMINDER_SCHEDULE } from "../shared-kernel/time/reminder-schedule";
+import { preferenceCoverage } from "./notification-preferences";
 import { NotificationsService } from "./notifications.service";
 
 @Controller("api/v1/notifications")
@@ -59,7 +60,9 @@ export class NotificationsController {
   @Get("schedule")
   @Header("Cache-Control", "private, max-age=3600")
   schedule() {
-    return { reminderSchedule: REMINDER_SCHEDULE };
+    // What each alert switch silences, from the rule the notices are
+    // written by: the settings page says it from here.
+    return { reminderSchedule: REMINDER_SCHEDULE, preferenceCoverage: preferenceCoverage() };
   }
 
   @Get(":id")

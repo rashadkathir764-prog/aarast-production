@@ -8,7 +8,7 @@ import {
   NotificationPriority,
   PaymentScheduleStatus,
   PlanProviderLinkStatus,
-  type Prisma,
+  Prisma,
   ProviderStatus,
   QuoteRequestStatus,
   WeddingCostStatus,
@@ -103,18 +103,55 @@ test('finance serves a plan\'s money picture and pending schedules, narrowed to 
   const scheduleInclude = {
     weddingCost: { select: { title: true, totalAmount: true, paidAmount: true } },
   };
+  // A total order: two dates of one day made together read the same way
+  // every time.
+  const byDueThenId = [...byDue, { id: 'asc' }];
   assert.deepEqual(calls, [
     ['paymentSchedule.findMany', {
       where: { status: PaymentScheduleStatus.PENDING, weddingCost: costWhere() },
       include: scheduleInclude,
-      orderBy: byDue,
+      orderBy: byDueThenId,
     }],
     ['paymentSchedule.findMany', {
       where: { status: PaymentScheduleStatus.PENDING, weddingCost: costWhere(['cost-1']) },
       include: scheduleInclude,
-      orderBy: byDue,
+      orderBy: byDueThenId,
     }],
   ]);
+});
+
+// The home named two payments of 300 thousand where the money tab named
+// one: each pending date took the agreement's whole rest on its own.
+test('finance: the pending dates of one agreement share what it still owes', async () => {
+  const decimal = (value: string) => new Prisma.Decimal(value);
+  const hall = { title: 'القاعة', totalAmount: decimal('1000000'), paidAmount: decimal('700000') };
+  const photo = { title: 'التصوير', totalAmount: decimal('400000'), paidAmount: decimal('0') };
+  const schedule = (id: string, weddingCostId: string, amount: string, weddingCost: typeof hall) => ({
+    id,
+    weddingCostId,
+    amount: decimal(amount),
+    dueDate: new Date('2026-12-01T00:00:00.000Z'),
+    weddingCost,
+  });
+  const { client } = recorder({
+    // In the read's own order: the earliest date first.
+    'paymentSchedule.findMany': [
+      schedule('hall-1', 'cost-hall', '500000', hall),
+      schedule('photo-1', 'cost-photo', '250000', photo),
+      schedule('hall-2', 'cost-hall', '500000', hall),
+    ],
+  });
+  const pending = await new FinancePortService(catalogWithoutMoneyLinks)
+    .listPendingPaymentSchedules(client, 'plan-1', null);
+  // 300 thousand is left on the hall: its first date asks for it, and the
+  // second, left with nothing, is no payment to make.
+  assert.deepEqual(
+    pending.map((item) => [item.id, item.amount.toString(), item.weddingCost.title]),
+    [
+      ['hall-1', '300000', 'القاعة'],
+      ['photo-1', '250000', 'التصوير'],
+    ],
+  );
 });
 
 test('tasks serves the upcoming tasks, the plan dashboard counters and the dated open tasks in the reader\'s scope', async () => {
@@ -123,11 +160,13 @@ test('tasks serves the upcoming tasks, the plan dashboard counters and the dated
   const today = new Date('2026-09-23T00:00:00.000Z');
   const endOfToday = new Date('2026-09-23T23:59:59.999Z');
   await tasks.listUpcomingTasks(client, 'plan-1', 5, 'owner-1');
+  const lateFrom = new Date('2026-09-16T00:00:00.000Z');
   const dashboard = await tasks.getPlanTaskDashboard(client, {
     weddingPlanId: 'plan-1',
     scope: { kind: 'contributor', assigneeUserId: 'user-1', taskIds: ['task-1'] },
     today,
     endOfToday,
+    lateFrom,
   });
   assert.equal(dashboard.totalTasks, 3);
   await tasks.listDatedOpenTasks(client, 'plan-1', { kind: 'none' });
@@ -147,7 +186,13 @@ test('tasks serves the upcoming tasks, the plan dashboard counters and the dated
   };
   assert.deepEqual(calls, [
     ['weddingTask.findMany', { where: { weddingPlanId: 'plan-1', status: open, ...visibleTo('owner-1') }, orderBy: byDue, take: 5 }],
-    ['weddingTask.findMany', { where: { ...scoped, dueDate: { lte: endOfToday }, status: open }, orderBy: byDue, take: 2 }],
+    // REFINEMENT_SPEC 2.1: the home acts on today's tasks, then the ones
+    // late by up to seven days, the nearest first (it read the two oldest),
+    // and its «المهمة القادمة» is the nearest one after today.
+    // Both end on the id: tasks made together share their second, and the
+    // first step must not change from one read to the next.
+    ['weddingTask.findMany', { where: { ...scoped, dueDate: { gte: lateFrom, lte: endOfToday }, status: open }, orderBy: [{ dueDate: 'desc' }, { createdAt: 'asc' }, { id: 'asc' }], take: 3 }],
+    ['weddingTask.findFirst', { where: { ...scoped, dueDate: { gt: endOfToday }, status: open }, orderBy: [...byDue, { id: 'asc' }] }],
     ['weddingTask.findFirst', { where: { ...scoped, status: open }, orderBy: byDue }],
     // RA-BE-93: a cancelled task is not one of the plan's tasks in the total.
     ['weddingTask.count', { where: { ...scoped, status: { not: WeddingTaskStatus.CANCELLED } } }],
@@ -174,6 +219,50 @@ test('guests serves the plan dashboard counters, narrowed to a contributor\'s gu
     ['guest.count', { where: { ...base, attendanceStatus: GuestAttendanceStatus.DECLINED } }],
     ['guest.count', { where: { ...base, OR: [{ phone: null }, { phone: '' }, { name: '' }] } }],
   ]);
+});
+
+// «قيّم المزوّدين» was asked of every reader whose plan held a provider:
+// the count is of what `createReview` would accept (F10) and has not been
+// written yet.
+test('marketplace counts the providers the reader may rate and has not rated', async () => {
+  const now = new Date('2026-10-25T09:00:00.000Z');
+  const { client, calls } = recorder({
+    'booking.findMany': [{ providerId: 'hall' }, { providerId: 'photo' }],
+    'providerReview.findMany': [{ providerId: 'hall' }],
+  });
+  const providers = new ProviderReadService();
+  assert.equal(
+    await providers.countPlanProvidersToRate(client, 'plan-1', 'user-1', now),
+    1,
+  );
+  const [[bookingQuery, bookingArgs], [reviewQuery, reviewArgs]] = calls as Array<
+    [string, { where: Record<string, unknown>; distinct: string[] }]
+  >;
+  assert.equal(bookingQuery, 'booking.findMany');
+  assert.equal(bookingArgs.where.status, BookingStatus.CONFIRMED);
+  // A day before Yemen's today (`bookingToday`): the booking's day passed.
+  assert.deepEqual(bookingArgs.where.eventDate, {
+    lt: new Date('2026-10-25T00:00:00.000Z'),
+  });
+  // On a request the reader sent, for this plan.
+  assert.deepEqual(bookingArgs.where.quoteRequest, {
+    weddingPlanId: 'plan-1',
+    userId: 'user-1',
+  });
+  assert.deepEqual(bookingArgs.distinct, ['providerId']);
+  assert.equal(reviewQuery, 'providerReview.findMany');
+  assert.deepEqual(reviewArgs.where, {
+    userId: 'user-1',
+    providerId: { in: ['hall', 'photo'] },
+  });
+
+  // Nothing served: no review is read, and nothing is asked.
+  const none = recorder();
+  assert.equal(
+    await providers.countPlanProvidersToRate(none.client, 'plan-1', 'user-1', now),
+    0,
+  );
+  assert.equal(none.calls.length, 1);
 });
 
 test('marketplace serves the home counters, the active plan provider links and the plan quote counters', async () => {

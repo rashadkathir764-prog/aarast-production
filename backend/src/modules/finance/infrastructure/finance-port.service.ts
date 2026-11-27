@@ -578,13 +578,33 @@ export class FinancePortService implements FinancePort {
           select: { title: true, totalAmount: true, paidAmount: true },
         },
       },
-      orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }],
+      orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
     });
-    return schedules.map(({ weddingCost, ...schedule }) => ({
-      ...schedule,
-      amount: amountDueOf(schedule.amount, weddingCost),
-      weddingCost: { title: weddingCost.title },
-    }));
+    // RA-BE-53, as the money tab reads it (`openScheduleAmounts`): the dates
+    // of one agreement share what it still owes, the earliest first, and a
+    // date left with nothing is no payment to make. Each date used to take
+    // the agreement's whole rest on its own: 300 thousand left over two
+    // dates of 500 read as two payments of 300 on the home, and one in the
+    // money tab.
+    const room = new Map<string, Prisma.Decimal>();
+    const open: PendingPaymentSchedule[] = [];
+    for (const { weddingCost, ...schedule } of schedules) {
+      const left =
+        room.get(schedule.weddingCostId) ??
+        Prisma.Decimal.max(
+          weddingCost.totalAmount.minus(weddingCost.paidAmount),
+          0,
+        );
+      const amount = Prisma.Decimal.min(schedule.amount, left);
+      room.set(schedule.weddingCostId, left.minus(amount));
+      if (amount.lte(0)) continue;
+      open.push({
+        ...schedule,
+        amount,
+        weddingCost: { title: weddingCost.title },
+      });
+    }
+    return open;
   }
 
   async listDuePaymentSchedules(

@@ -70,6 +70,11 @@ function rankedListClient(
     address: null,
     whatsapp: null,
     socialLinks: null,
+    // His prices and approved work photos (provider-list-scope.ts): none.
+    primaryCategoryId: null,
+    services: [],
+    packages: [],
+    _count: { portfolioItems: 0 },
   });
   return {
     $queryRaw: async () => [],

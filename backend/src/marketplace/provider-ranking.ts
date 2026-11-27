@@ -16,9 +16,16 @@ export const RANK_WEIGHTS = {
   response: 0.2,
 } as const;
 
-/** A new provider is lifted by up to this much, falling to nothing at `NEWCOMER_DAYS`. */
-export const NEWCOMER_LIFT = 0.1;
+/**
+ * A new provider is lifted by up to this much, falling to nothing at
+ * `NEWCOMER_DAYS` (2026-11-26 review: 0.1 put an empty new profile over a
+ * proven one; 0.05 is a nudge, not a jump).
+ */
+export const NEWCOMER_LIFT = 0.05;
 export const NEWCOMER_DAYS = 30;
+
+/** Approved work photos that count as a shown portfolio in `profileCompleteness`. */
+export const PROFILE_PORTFOLIO_PHOTOS = 5;
 
 const DAY_MS = 86_400_000;
 
@@ -47,10 +54,15 @@ export function smoothedRating(average: number, count: number): number {
   );
 }
 
-/** What he shows a customer: a logo, a cover, a description, an address, a way to reach him. */
+/**
+ * What he shows a customer (2026-11-26 review): his work (at least
+ * `PROFILE_PORTFOLIO_PHOTOS` approved photos), a published price (an active
+ * service or package with one), a description, an address, a way to reach
+ * him. A logo and a cover said little: anyone fills them in a minute.
+ */
 export function profileCompleteness(provider: {
-  logoUrl: string | null;
-  coverUrl: string | null;
+  approvedPhotos: number;
+  hasPublishedPrice: boolean;
   description: string | null;
   address: string | null;
   whatsapp: string | null;
@@ -62,8 +74,8 @@ export function profileCompleteness(provider: {
     typeof provider.socialLinks === "object" &&
     Object.keys(provider.socialLinks as object).length > 0;
   const shown = [
-    filled(provider.logoUrl),
-    filled(provider.coverUrl),
+    provider.approvedPhotos >= PROFILE_PORTFOLIO_PHOTOS,
+    provider.hasPublishedPrice,
     filled(provider.description),
     filled(provider.address),
     filled(provider.whatsapp) || hasSocial,
@@ -107,8 +119,10 @@ export const PROVIDER_SORTS: readonly ProviderSort[] = ["best", "rating", "price
 
 export interface SortSignals extends RankSignals {
   /**
-   * His lowest active service price in Yemeni rials, null when he priced
-   * none in rials: a price in another currency is not compared with these.
+   * His lowest price in Yemeni rials among the active services and priced
+   * packages of the asked categories (provider-list-scope.ts), null when he
+   * priced none of them in rials: a price in another currency is not
+   * compared with these.
    */
   lowestPriceYer: number | null;
 }
@@ -127,11 +141,15 @@ export function orderProviders<T extends SortSignals>(
   const byPlace = (a: T, b: T) => place.get(a.id)! - place.get(b.id)!;
   if (sort === "rating") {
     // The smoothed average (RA-BE-151): one five-star review does not pass
-    // sixty-three reviews averaging 4.8.
+    // sixty-three reviews averaging 4.8. Who has no review is not rated at
+    // all (2026-11-26 review): the prior alone (4) put him above every
+    // provider rated under it, so he comes after all the rated ones.
     const rating = (row: T) => smoothedRating(row.ratingAverage, row.ratingCount);
+    const unrated = (row: T) => (row.ratingCount > 0 ? 0 : 1);
     return [...ranked].sort(
       (a, b) =>
         unclaimedLast(a) - unclaimedLast(b) ||
+        unrated(a) - unrated(b) ||
         rating(b) - rating(a) ||
         byPlace(a, b),
     );

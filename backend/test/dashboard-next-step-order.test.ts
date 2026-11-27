@@ -30,7 +30,10 @@ async function nextSteps(fixture: Fixture) {
     id: 'plan-1',
     ownerUserId: 'owner-1',
     title: 'Plan',
-    weddingDate: new Date('2027-01-01T00:00:00.000Z'),
+    // REFINEMENT_SPEC 2.1: the setup steps are asked only while the wedding
+    // is more than thirty days away; a fixed day ran into that window with
+    // the clock (2027-01-01 is within it from 2 December 2026).
+    weddingDate: new Date(Date.now() + 120 * 86_400_000),
     city: 'صنعاء',
     location: null,
     estimatedBudget: new Prisma.Decimal('5000000'),

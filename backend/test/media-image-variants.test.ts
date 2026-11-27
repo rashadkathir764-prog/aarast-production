@@ -285,7 +285,7 @@ test("the marketplace sends the copies with the provider", () => {
     city: null,
     primaryCategory: null,
     servicePreviews: [],
-  } as never) as Record<string, unknown>;
+  } as never, { priceOffers: [], matchedCategoryId: null, cardPhotoUrl: null }) as Record<string, unknown>;
   for (const field of Object.keys(provider)) {
     assert.equal(listed[field], provider[field as keyof typeof provider], field);
   }

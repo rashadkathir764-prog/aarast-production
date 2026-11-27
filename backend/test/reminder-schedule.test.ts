@@ -11,6 +11,7 @@ import {
 } from "../src/marketplace/booking-notifications";
 import { expectedFundingReminder } from "../src/modules/finance/domain/funding-policy";
 import { NotificationsController } from "../src/notifications/notifications.controller";
+import { preferenceCoverage } from "../src/notifications/notification-preferences";
 import {
   DUE_REMINDER_SCAN_CRON,
   TASK_REMINDER_TIME_SCAN_CRON,
@@ -42,12 +43,64 @@ const today = new Date("2026-12-01T00:00:00+03:00");
 
 test("the schedule endpoint returns the reminder table itself", () => {
   const controller = new NotificationsController({} as never);
-  assert.deepEqual(controller.schedule(), { reminderSchedule: REMINDER_SCHEDULE });
+  assert.deepEqual(controller.schedule(), {
+    reminderSchedule: REMINDER_SCHEDULE,
+    preferenceCoverage: preferenceCoverage(),
+  });
   // Before `:id`: «schedule» is a route, not a notice id.
   const routes = Object.getOwnPropertyNames(NotificationsController.prototype);
   assert.ok(routes.indexOf("schedule") < routes.indexOf("findOne"));
   // Plain data: it survives JSON as it is.
   assert.deepEqual(JSON.parse(JSON.stringify(REMINDER_SCHEDULE)), REMINDER_SCHEDULE);
+});
+
+// The settings page says what each switch silences from this coverage. A
+// new notice type lands here first: it must be put under a switch or in
+// the «always» list on purpose, and the phone's words for it follow.
+test("every notice type is under one switch or always comes, and the list is pinned", () => {
+  const { switches, always } = preferenceCoverage();
+  const listed = [...Object.values(switches).flat(), ...always];
+  const expected = [
+    ...Object.values(NotificationType).filter((type) => type !== NotificationType.BOOKING_UPDATED),
+    "BOOKING_REMINDER",
+    "BOOKING_NEWS",
+  ];
+  assert.deepEqual([...listed].sort(), [...expected].sort());
+  assert.equal(new Set(listed).size, listed.length, "each type once");
+  // The «always» list, as written: `notificationPreferenceKey` answers null
+  // for every type it does not name, so a new type would join this list in
+  // silence and the check above would still pass. It joins it here, by a
+  // decision.
+  assert.deepEqual(always, [
+    NotificationType.SHARING_INVITATION,
+    NotificationType.SHARING_UPDATED,
+    NotificationType.SHARING_INVITE_ACCEPTED,
+    NotificationType.SHARING_INVITE_DECLINED,
+    NotificationType.PLAN_UPDATED,
+    NotificationType.SYNC_REQUIRED,
+    NotificationType.GENERAL,
+    NotificationType.GUEST_RESPONDED,
+    NotificationType.PROVIDER_APPROVED,
+    NotificationType.PROVIDER_NEEDS_CHANGES,
+    NotificationType.PROVIDER_REJECTED,
+    NotificationType.PROVIDER_SUSPENDED,
+    NotificationType.PROVIDER_IN_REVIEW,
+    NotificationType.PROVIDER_CLAIM_DECIDED,
+    NotificationType.LISTING_PLAN_CHANGED,
+    NotificationType.PORTFOLIO_REVIEWED,
+    NotificationType.PROVIDER_PROFILE_CHANGE_REVIEWED,
+  ]);
+  assert.deepEqual(switches.bookingRemindersEnabled, ["BOOKING_REMINDER"]);
+  assert.ok(switches.providerMessagesEnabled.includes("BOOKING_NEWS"));
+  assert.ok(switches.taskRemindersEnabled.includes(NotificationType.WEDDING_COUNTDOWN));
+  assert.ok(switches.taskRemindersEnabled.includes(NotificationType.TASK_ASSIGNED));
+  for (const type of [
+    NotificationType.LOAN_REPAYMENT_DUE_SOON,
+    NotificationType.FUNDING_EXPECTED,
+    NotificationType.BUDGET_CATEGORY_EXCEEDED,
+  ]) {
+    assert.ok(switches.paymentRemindersEnabled.includes(type), type);
+  }
 });
 
 // The phone draws its settings lines from this answer; its tests read the

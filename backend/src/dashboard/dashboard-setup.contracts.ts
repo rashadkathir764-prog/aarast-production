@@ -18,7 +18,16 @@ export type DashboardNextStepType =
   // Rashad 2026-11-17: the nearest task with a day, then the first open
   // essential, when nothing is late or due.
   | 'TASK_UPCOMING'
-  | 'ESSENTIAL_MISSING';
+  | 'ESSENTIAL_MISSING'
+  // REFINEMENT_SPEC 2.1: a booking its provider has not confirmed while the
+  // wedding is within seven days; the wedding's date while it has none.
+  | 'BOOKING_UNCONFIRMED'
+  | 'SET_DATE'
+  // After the wedding: what is owed with no day, a loan still owed, and the
+  // providers to rate.
+  | 'DEBT_UNDATED'
+  | 'LOAN_OUTSTANDING'
+  | 'RATE_PROVIDERS';
 
 /** A next step on the home: the closed item, with the wider type. */
 export type DashboardNextStepResponse = Omit<

@@ -43,8 +43,10 @@ import {
 import { ListProvidersQueryDto } from "./dto/list-providers-query.dto";
 import { ListServicesQueryDto } from "./dto/list-services-query.dto";
 import { providerCategoryFilter } from "./provider-category-filter";
+import type { PricedOffer } from "./provider-list-scope";
 import { quoteLifecycleStatus } from "./quote-lifecycle";
-import { parseBookingDate, toBookingResponse } from "./booking-policy";
+import { toBookingResponse } from "./booking-policy";
+import { askedAvailabilityDay } from "./provider-day-availability";
 
 export class MarketplaceQuery {
   private constructor() {}
@@ -88,16 +90,11 @@ export class MarketplaceQuery {
     }
     // RA-BE-09: the text is matched folded, as the phone matches it, by the
     // caller (findProviderIdsMatchingSearch), which adds the ids it found.
-    const asked = query.eventDate?.trim();
-    const day = asked ? parseBookingDate(asked, null, now) : null;
-    if (day === "INVALID_DATE") {
-      throw new BadRequestException("eventDate must be YYYY-MM-DD");
-    }
     return {
       pagination,
       where,
       searchKey: this.searchKey(query.search),
-      availabilityDay: typeof day === "string" ? null : day,
+      availabilityDay: askedAvailabilityDay(query.eventDate, now),
     };
   }
 
@@ -316,6 +313,12 @@ export class MarketplacePresenter {
     };
   }
 
+  /**
+   * A row of the customers' list. [listing] is what the row says inside the
+   * asked categories (provider-list-scope.ts): the prices the card's «من X»
+   * reads (his services and priced packages there), the category he was
+   * found under, and the card's photo.
+   */
   static toProviderListResponse(
     provider: ProviderWithFeature & {
       city?: City | null;
@@ -327,15 +330,14 @@ export class MarketplacePresenter {
         category: ProviderCategory;
       })[];
     },
+    listing: {
+      priceOffers: readonly PricedOffer[];
+      matchedCategoryId: string | null;
+      cardPhotoUrl: string | null;
+    },
   ) {
-    const prices = provider.servicePreviews
-      .map((service) => service.basePrice)
-      .filter((price): price is Prisma.Decimal => price !== null);
-    const currencies = new Set(
-      provider.servicePreviews
-        .filter((service) => service.basePrice !== null)
-        .map((service) => service.currency),
-    );
+    const prices = listing.priceOffers.map((offer) => offer.price);
+    const currencies = new Set(listing.priceOffers.map((offer) => offer.currency));
     const commonCurrency =
       prices.length > 0 && currencies.size === 1
         ? currencies.values().next().value
@@ -349,12 +351,18 @@ export class MarketplacePresenter {
       }
     }
     let pricesUpdatedAt: Date | null = null;
-    for (const service of provider.servicePreviews) {
-      const stamp = service.priceUpdatedAt;
+    for (const offer of listing.priceOffers) {
+      const stamp = offer.priceUpdatedAt;
       if (stamp && (pricesUpdatedAt === null || stamp > pricesUpdatedAt)) {
         pricesUpdatedAt = stamp;
       }
     }
+    const matchedCategory =
+      provider.primaryCategory?.id === listing.matchedCategoryId
+        ? provider.primaryCategory
+        : provider.servicePreviews.find(
+            (service) => service.category.id === listing.matchedCategoryId,
+          )?.category;
     const categories = [
       ...new Map(
         provider.servicePreviews.map((service) => [
@@ -383,6 +391,12 @@ export class MarketplacePresenter {
         currency: commonCurrency ?? null,
         pricesUpdatedAt,
       },
+      // The asked category he was found under; null when none is asked.
+      matchedCategory:
+        listing.matchedCategoryId && matchedCategory
+          ? this.toCategoryResponse(matchedCategory)
+          : null,
+      cardPhotoUrl: listing.cardPhotoUrl,
     };
   }
 

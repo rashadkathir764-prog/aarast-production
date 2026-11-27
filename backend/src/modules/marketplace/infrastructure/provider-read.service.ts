@@ -14,6 +14,7 @@ import type {
 import { groupPrices, type PriceGroup } from '../public/market-prices';
 import { featuredNowProviderWhere } from '../public/featured-placement';
 import { listPricedServices } from './market-prices.repository';
+import { bookingToday } from '../../../marketplace/booking-policy';
 import {
   arabicSearchKey,
   likePatternContaining,
@@ -99,6 +100,69 @@ export class ProviderReadService implements ProviderReadPort {
       orderBy: { quoteRequestId: 'asc' },
       select: { quoteRequestId: true, quoteOfferId: true },
     });
+  }
+
+  async listPlanUnconfirmedBookings(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+    quoteRequestIds: readonly string[] | null,
+    now: Date,
+    take: number,
+  ): Promise<
+    Array<{ quoteRequestId: string; providerName: string; eventDate: Date }>
+  > {
+    if (quoteRequestIds?.length === 0) return [];
+    const bookings = await client.booking.findMany({
+      where: {
+        status: BookingStatus.REQUESTED,
+        eventDate: { gte: bookingToday(now) },
+        quoteRequest: { weddingPlanId },
+        ...(quoteRequestIds ? { quoteRequestId: { in: [...quoteRequestIds] } } : {}),
+      },
+      orderBy: [{ eventDate: 'asc' }, { quoteRequestId: 'asc' }],
+      take,
+      select: {
+        quoteRequestId: true,
+        eventDate: true,
+        provider: { select: { businessName: true } },
+      },
+    });
+    return bookings.map((booking) => ({
+      quoteRequestId: booking.quoteRequestId,
+      providerName: booking.provider.businessName,
+      eventDate: booking.eventDate,
+    }));
+  }
+
+  async countPlanProvidersToRate(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+    userId: string,
+    now: Date,
+  ): Promise<number> {
+    const served = await client.booking.findMany({
+      where: {
+        status: BookingStatus.CONFIRMED,
+        eventDate: { lt: bookingToday(now) },
+        // B-22, RA-BE-46: as `hasCompletedBookingWith` reads it.
+        OR: [{ notHappenedAt: null }, { notHappenedReason: 'WE_DID_NOT_ATTEND' }],
+        quoteRequest: { weddingPlanId, userId },
+      },
+      distinct: ['providerId'],
+      orderBy: { providerId: 'asc' },
+      select: { providerId: true },
+    });
+    if (served.length === 0) return 0;
+    const rated = await client.providerReview.findMany({
+      where: {
+        userId,
+        providerId: { in: served.map((booking) => booking.providerId) },
+      },
+      distinct: ['providerId'],
+      orderBy: { providerId: 'asc' },
+      select: { providerId: true },
+    });
+    return served.length - rated.length;
   }
 
   async countActivePlanProviderLinks(

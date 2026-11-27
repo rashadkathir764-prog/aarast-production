@@ -131,9 +131,19 @@ test("provider list response keeps category and active service summary", () => {
         category,
       },
     ],
-  } as never);
+  } as never, {
+    // No category asked: every priced service (provider-list-scope.ts).
+    priceOffers: [
+      { price: new Prisma.Decimal("250000"), currency: "YER", priceUpdatedAt: new Date("2026-07-20T00:00:00.000Z") },
+      { price: new Prisma.Decimal("400000"), currency: "YER", priceUpdatedAt: new Date("2026-07-24T00:00:00.000Z") },
+    ],
+    matchedCategoryId: null,
+    cardPhotoUrl: null,
+  });
 
   assert.equal(response.primaryCategory?.nameAr, "التصوير");
+  assert.equal(response.matchedCategory, null);
+  assert.equal(response.cardPhotoUrl, null);
   assert.deepEqual(response.serviceSummary, {
     activeCount: 2,
     titles: ["تصوير فوتوغرافي", "فيديو الزفاف"],

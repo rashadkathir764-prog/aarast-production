@@ -255,7 +255,9 @@ async function seedProvider(
       title: service.title,
       description: service.description,
       basePrice: service.price,
-      priceUnit: service.unit,
+      // The unit is the provider's own words, shown under the price as they
+      // are: the demo wrote the spec's English key («event») on the page.
+      priceUnit: service.unit === 'package' ? 'للباقة' : 'للمناسبة',
       currency: 'YER',
       priceUpdatedAt: inDays(-14),
       cityId: cities.get(spec.city)!,

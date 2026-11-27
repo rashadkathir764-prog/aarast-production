@@ -10,7 +10,8 @@ const MAX_CATEGORY_IDS = 50;
  * The directory's category filter: `categoryId`, or G40's `categoryIds` (a
  * money item's `providerCategoryIds`, comma-separated); a provider whose own
  * kind or any active service is in one of them is listed. Null lists every
- * category. Both at once is a 400.
+ * category. Both at once is a 400. The chips' counts file a provider by the
+ * same rule (`providerCategoryIdsOf`, provider-list-scope.ts).
  */
 export function providerCategoryFilter(
   query: Pick<ListProvidersQueryDto, "categoryId" | "categoryIds">,
@@ -25,7 +26,12 @@ export function providerCategoryFilter(
   };
 }
 
-function providerCategoryIds(
+/**
+ * The asked categories, checked; null when none is asked. They are the
+ * list's filter and the scope of each row's price and matched category
+ * (provider-list-scope.ts).
+ */
+export function providerCategoryIds(
   query: Pick<ListProvidersQueryDto, "categoryId" | "categoryIds">,
 ): string[] | null {
   const many = query.categoryIds?.trim() || null;

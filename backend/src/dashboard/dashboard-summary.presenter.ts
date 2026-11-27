@@ -1,37 +1,18 @@
-import {
-  PaymentScheduleStatus,
-  Prisma,
-  WeddingPlan,
-  WeddingTaskPriority,
-} from "@prisma/client";
+import { Prisma, WeddingPlan } from "@prisma/client";
 import {
   DashboardDueMoneyItem,
-  DashboardImportantItemResponse,
   DashboardNotificationPreviewResponse,
   DashboardNotificationRecord,
   DashboardPaymentScheduleRecord,
   DashboardPlanProviderLinkRecord,
   DashboardProviderPreviewResponse,
-  DashboardTaskRecord,
   WeddingPlanDashboardSummaryResponse,
 } from "./dashboard.contracts";
-import type {
-  DashboardNextStepResponse,
-  DashboardNextStepType,
-} from "./dashboard-setup.contracts";
-import { selectTopDashboardActions } from "./dashboard-priority";
-import type { PlanEssential, PlanEssentialKey } from "./plan-essentials";
-import {
-  type AddressForm,
-  gendered,
-  textFor,
-} from "../shared-kernel/voice/address-form";
-import {
-  dayCountWords,
-  daysBetween,
-  weekdayDayMonthWords,
-  whenWords,
-} from "../shared-kernel/voice/day-words";
+import { daysBetween } from "../shared-kernel/voice/day-words";
+import { MONEY_WARNING_COPY } from "../shared-kernel/copy/money-warnings.ar";
+
+// The home's next steps (REFINEMENT_SPEC 2.1) are built and ordered in
+// `dashboard-next-steps.ts` and `dashboard-priority.ts`.
 
 export function toPaymentScheduleDueMoneyItem(
   schedule: DashboardPaymentScheduleRecord,
@@ -48,361 +29,6 @@ export function toPaymentScheduleDueMoneyItem(
 
 export function compareDates(first: Date, second: Date): number {
   return first.getTime() - second.getTime();
-}
-
-export function buildImportantItems({
-  weddingPlanId,
-  tasks,
-  nextTask = null,
-  missingEssential = null,
-  paymentSchedules,
-  today,
-  receivedQuotes,
-  hasLocation,
-  hasBudget,
-  guestCount,
-  quoteRequestsCount,
-  acceptedProviders,
-  canManagePlan,
-  canManageMoney,
-  canManageGuests,
-  canManageProviders,
-  form,
-  planPersona,
-  mahrRecorded = null,
-  weddingCostsCount = null,
-  mahrInsideBudget = false,
-}: {
-  weddingPlanId: string;
-  tasks: DashboardTaskRecord[];
-  /** The plan's nearest open task, whatever its day (or none). */
-  nextTask?: DashboardTaskRecord | null;
-  /** G23's first essential still open and not answered away. */
-  missingEssential?:
-    | (Pick<PlanEssential, "key" | "budgetCategoryId"> & {
-        /** The plan's own item name; the fixed word when it is missing. */
-        name?: string | null;
-      })
-    | null;
-  paymentSchedules: DashboardDueMoneyItem[];
-  today: Date;
-  receivedQuotes: number;
-  hasLocation: boolean;
-  hasBudget: boolean;
-  guestCount: number;
-  quoteRequestsCount: number;
-  acceptedProviders: number;
-  /**
-   * RA-MO-147: every step of D78's chain is offered only to a reader who may
-   * take it, as the guests' already was (RA-BE-121). «أكمل موقع الزفاف» was
-   * asked of a viewer the server then refused.
-   */
-  canManagePlan: boolean;
-  /** A reader who may record a payment is offered that; others only read it. */
-  canManageMoney: boolean;
-  /** «أضف أول ضيف» opens the adding: only for a reader who may add (RA-BE-121). */
-  canManageGuests: boolean;
-  /** «اطلب أول عرض سعر» sends a request: only for a reader who may send it. */
-  canManageProviders: boolean;
-  /** The reader's form (B5): the next steps speak to them. */
-  form: AddressForm;
-  /** Whose wedding the plan is: the bride's guests are «الضيفات». */
-  planPersona: string | null;
-  /**
-   * Whether the plan's mahr is recorded; null when the reader may not record
-   * or see it (only the owner records it), so no step is invented.
-   */
-  mahrRecorded?: boolean | null;
-  /**
-   * The plan's wedding agreements, the mahr's not counted; null for a reader
-   * who does not see the plan's money.
-   */
-  weddingCostsCount?: number | null;
-  /** D114: the groom chose to count the mahr in his budget. */
-  mahrInsideBudget?: boolean;
-}): DashboardNextStepResponse[] {
-  const items: DashboardNextStepResponse[] = [];
-  const say = (masculine: string, feminine: string) =>
-    textFor(form, gendered(masculine, feminine));
-
-  // A next step names the thing, says why it is first, and offers the one
-  // action that moves it; the amount stays data so «أخفِ المبالغ» can hide it.
-  for (const task of tasks) {
-    const isOverdue = task.dueDate !== null && task.dueDate < today;
-    const days = task.dueDate ? daysBetween(today, task.dueDate) : null;
-    const taskRoute = `/wedding-plans/${weddingPlanId}/tasks/${task.id}`;
-    items.push({
-      id: task.id,
-      type: isOverdue ? "TASK_OVERDUE" : "TASK_TODAY",
-      title: task.title,
-      subtitle:
-        days === null
-          ? say("حدد لها موعد عشان ما تنساها", "حددي لها موعد عشان ما تنسيها")
-          : isOverdue
-            ? `متأخرة ${dayCountWords(-days)}`
-            : `موعدها ${whenWords(days)}`,
-      body: task.dueDate ? weekdayDayMonthWords(task.dueDate) : null,
-      icon: "calendar",
-      tone: isOverdue ? "danger" : toneForTaskPriority(task.priority),
-      priority: isOverdue ? "URGENT" : "HIGH",
-      actionLabel: say("افتح المهمة", "افتحي المهمة"),
-      dueDate: task.dueDate,
-      amount: null,
-      route: taskRoute,
-      routeTarget: taskRoute,
-      entityId: task.id,
-      data: { weddingPlanId, taskId: task.id },
-    });
-  }
-
-  for (const schedule of paymentSchedules) {
-    const overdue = schedule.dueDate < today;
-    const days = daysBetween(today, schedule.dueDate);
-    const scheduleRoute = `/wedding-plans/${weddingPlanId}/money/costs/${schedule.weddingCostId}/schedules/${schedule.id}`;
-    const routeTarget = canManageMoney ? `${scheduleRoute}/pay` : scheduleRoute;
-    items.push({
-      id: schedule.id,
-      type: "PAYMENT_SCHEDULE_DUE",
-      title: schedule.title,
-      // RA-MO-161: «القاعة · موعدها بعد 5 أيام» read as the hall's day;
-      // it is a payment to it.
-      subtitle: overdue
-        ? `دفعة فات موعدها من ${dayCountWords(-days)}`
-        : `دفعة موعدها ${whenWords(days)}`,
-      body: weekdayDayMonthWords(schedule.dueDate),
-      icon: "wallet",
-      tone: overdue ? "danger" : "warning",
-      priority: overdue ? "URGENT" : "HIGH",
-      actionLabel: canManageMoney
-        ? say("سجّل الدفعة", "سجّلي الدفعة")
-        : say("شوف الدفعة", "شوفي الدفعة"),
-      dueDate: schedule.dueDate,
-      amount: schedule.amount.toString(),
-      route: routeTarget,
-      routeTarget,
-      entityId: schedule.id,
-      data: {
-        weddingPlanId,
-        weddingCostId: schedule.weddingCostId,
-        paymentScheduleId: schedule.id,
-      },
-    });
-  }
-
-  if (receivedQuotes > 0) {
-    const single = receivedQuotes === 1;
-    const providersRoute = `/wedding-plans/${weddingPlanId}/providers`;
-    items.push({
-      id: `quote-received:${weddingPlanId}`,
-      type: "QUOTE_RECEIVED",
-      title: single
-        ? "وصلك عرض سعر"
-        : receivedQuotes === 2
-          ? "وصلك عرضين"
-          : `وصلك ${receivedQuotes} ${receivedQuotes <= 10 ? "عروض" : "عرض"}`,
-      subtitle: single
-        ? say("شوفه قبل ما تنتهي مدته", "شوفيه قبل ما تنتهي مدته")
-        : say(
-            "قارن بينها قبل ما تنتهي مدتها",
-            "قارني بينها قبل ما تنتهي مدتها",
-          ),
-      body: null,
-      icon: "provider",
-      tone: "warning",
-      priority: "HIGH",
-      actionLabel: single
-        ? say("شوف العرض", "شوفي العرض")
-        : say("قارن العروض", "قارني العروض"),
-      dueDate: null,
-      amount: null,
-      route: providersRoute,
-      routeTarget: providersRoute,
-      entityId: null,
-      data: { weddingPlanId },
-    });
-  }
-
-  // Rashad 2026-11-17: the next step is the reader's own to take. An
-  // invitation that waits on the person invited is not one; the home's
-  // «فريق الخطة» says it, so it is no step here.
-  //
-  // With nothing late, due or received, and D78's basics done: the nearest
-  // task with a day (one due today or before is already above), then the
-  // first essential the plan still has open, in G23's order (the venue
-  // first). They follow the chain, not the sort, so a dated task never
-  // steps over a missing budget.
-  const later: DashboardNextStepResponse[] = [];
-  if (nextTask?.dueDate && !tasks.some((task) => task.id === nextTask.id)) {
-    const days = daysBetween(today, nextTask.dueDate);
-    const taskRoute = `/wedding-plans/${weddingPlanId}/tasks/${nextTask.id}`;
-    later.push({
-      id: nextTask.id,
-      type: "TASK_UPCOMING",
-      title: nextTask.title,
-      subtitle: `موعدها ${whenWords(days)}`,
-      body: weekdayDayMonthWords(nextTask.dueDate),
-      icon: "calendar",
-      tone: toneForTaskPriority(nextTask.priority),
-      priority: "NORMAL",
-      actionLabel: say("افتح المهمة", "افتحي المهمة"),
-      dueDate: nextTask.dueDate,
-      amount: null,
-      route: taskRoute,
-      routeTarget: taskRoute,
-      entityId: nextTask.id,
-      data: { weddingPlanId, taskId: nextTask.id },
-    });
-  }
-  if (
-    missingEssential?.budgetCategoryId &&
-    canManageMoney &&
-    canManageProviders
-  ) {
-    const itemId = missingEssential.budgetCategoryId;
-    // The item's own name (review 2026-11-18): a fixed word named «البدلة
-    // والكسوة» an item called «فستان» in a helper's plan.
-    const itemName =
-      missingEssential.name?.trim() ||
-      essentialName(missingEssential.key, planPersona);
-    const itemRoute = `/wedding-plans/${weddingPlanId}/providers/requests?item=${encodeURIComponent(itemId)}`;
-    later.push({
-      id: `essential:${missingEssential.key}:${weddingPlanId}`,
-      type: "ESSENTIAL_MISSING",
-      title: say(
-        `ما اتفقت على ${itemName} بعد`,
-        `ما اتفقتِ على ${itemName} بعد`,
-      ),
-      subtitle: say(
-        "اطلب عروض من المزودين، أو سجّل اتفاقك لو اتفقت",
-        "اطلبي عروض من المزودين، أو سجّلي اتفاقك لو اتفقتِ",
-      ),
-      body: null,
-      icon: "provider",
-      tone: "info",
-      priority: "NORMAL",
-      actionLabel: say("شوف المزودين", "شوفي المزودين"),
-      dueDate: null,
-      amount: null,
-      route: itemRoute,
-      routeTarget: itemRoute,
-      // The money item it reads; the home's suggestions keep it, with its
-      // «⋯», the place to answer it (review 2026-11-18).
-      entityId: itemId,
-      data: { weddingPlanId, budgetCategoryId: itemId },
-    });
-  }
-
-  // D78: the one chain, in its order: place, budget, mahr, first agreement,
-  // guests, first quote, each only while it is missing.
-  if (canManagePlan && !hasLocation) {
-    items.push(
-      setupAction(
-        weddingPlanId,
-        "SET_LOCATION",
-        say("أكمل موقع الزفاف", "أكملي موقع الزفاف"),
-        "عشان تشوف مزودين مدينتك وتوصلهم طلباتك بوضوح",
-        say("حدد الموقع", "حددي الموقع"),
-        `/wedding-plans/${weddingPlanId}/plan-center`,
-      ),
-    );
-  }
-  if (canManageMoney && !hasBudget) {
-    items.push(
-      setupAction(
-        weddingPlanId,
-        "SET_BUDGET",
-        say("حدد ميزانية الخطة", "حددي ميزانية الخطة"),
-        say(
-          "رقم تقريبي يكفي، ومنه تعرف كم تقدر تصرف على كل بند",
-          "رقم تقريبي يكفي، ومنه تعرفي كم تقدري تصرفي على كل بند",
-        ),
-        say("حدد الميزانية", "حددي الميزانية"),
-        `/wedding-plans/${weddingPlanId}/money/budget`,
-      ),
-    );
-  }
-  // J1-04: the home's next step is the first item, so the money basics come
-  // here in the one order the app follows: the mahr (a groom's or a bride's
-  // plan, outside the wedding budget), then the first agreement. Each only
-  // while it is missing, and only for a reader who may record it.
-  const planHasMahrSide = planPersona === "GROOM" || planPersona === "BRIDE";
-  if (canManageMoney && planHasMahrSide && mahrRecorded === false) {
-    items.push(
-      setupAction(
-        weddingPlanId,
-        "RECORD_MAHR",
-        "اتفقتوا على المهر؟",
-        mahrInsideBudget
-          ? "نحسبه من ميزانيتك، مثل ما اخترت."
-          : "نحسبه لحاله، برا ميزانية العرس.",
-        say("سجّل المهر", "سجّلي المهر"),
-        `/wedding-plans/${weddingPlanId}/money/mahr`,
-      ),
-    );
-  }
-  if (canManageMoney && weddingCostsCount === 0) {
-    items.push(
-      setupAction(
-        weddingPlanId,
-        "ADD_FIRST_COST",
-        say("سجّل أول اتفاق", "سجّلي أول اتفاق"),
-        "القاعة أو الذهب أو الكسوة: أول رقم يخلي الباقي يبان",
-        say("أضف اتفاق", "أضيفي اتفاق"),
-        `/wedding-plans/${weddingPlanId}/money/costs/create`,
-      ),
-    );
-  }
-  if (canManageGuests && guestCount === 0) {
-    // D55: the verb follows the reader, the guests follow the plan: the
-    // bride's are «الضيفات», so her first one is «ضيفة».
-    const brideGuests = planPersona === "BRIDE";
-    items.push(
-      setupAction(
-        weddingPlanId,
-        "ADD_GUESTS",
-        `${say("ابدأ", "ابدئي")} قائمة ${brideGuests ? "الضيفات" : "الضيوف"}`,
-        brideGuests
-          ? "العدد يحدد حجم الصالة وتكلفة الضيافة"
-          : "العدد يحدد حجم القاعة وتكلفة الضيافة",
-        brideGuests
-          ? say("أضف أول ضيفة", "أضيفي أول ضيفة")
-          : say("أضف أول ضيف", "أضيفي أول ضيف"),
-        // RA-MO-63: «أضف أول ضيف» opens the adding, not the empty list.
-        `/wedding-plans/${weddingPlanId}/guests/add`,
-      ),
-    );
-  }
-  if (
-    canManageProviders &&
-    quoteRequestsCount === 0 &&
-    acceptedProviders === 0
-  ) {
-    items.push(
-      setupAction(
-        weddingPlanId,
-        "REQUEST_QUOTE",
-        say("اطلب أول عرض سعر", "اطلبي أول عرض سعر"),
-        "الليالي تنحجز بدري، والعرض يعطيك سعر حقيقي بدل التخمين",
-        say("شوف المزودين", "شوفي المزودين"),
-        `/wedding-plans/${weddingPlanId}/providers`,
-      ),
-    );
-  }
-  // RA-MO-147: «مزود في خطتك · عرض الملف» closed this list once the chain
-  // was done, and the home drew it as «الخطوة الجاية». It is no step; the
-  // plan's providers have their own list (`planProviders`).
-
-  const limit = 3;
-  const top = selectTopDashboardActions(items, limit);
-  // Review 2026-11-18: «اطلب أول عرض سعر» already sends to the providers;
-  // a missing essential beside it said the same step twice.
-  const asksQuotes = top.some((item) => item.type === "REQUEST_QUOTE");
-  return [
-    ...top,
-    ...later.filter(
-      (item) => !(asksQuotes && item.type === "ESSENTIAL_MISSING"),
-    ),
-  ].slice(0, limit);
 }
 
 export function toProviderPreviewResponse(
@@ -455,7 +81,7 @@ export function buildFinancialWarnings({
     warnings.push({
       type: "BUDGET_EXCEEDED",
       severity: "DANGER",
-      message: "تكلفة العرس المتوقعة فاتت الميزانية.",
+      message: MONEY_WARNING_COPY.budgetExceeded,
       count: null,
       amount: moneyOrNull(remaining.abs()),
     });
@@ -464,7 +90,7 @@ export function buildFinancialWarnings({
     warnings.push({
       type: "PAYMENT_SCHEDULE_OVERDUE",
       severity: "DANGER",
-      message: "لديك مواعيد دفع متأخرة تحتاج متابعة.",
+      message: MONEY_WARNING_COPY.paymentsOverdue(overdueCount),
       count: overdueCount,
       amount: null,
     });
@@ -473,7 +99,7 @@ export function buildFinancialWarnings({
     warnings.push({
       type: "PAYMENT_SCHEDULE_DUE_SOON",
       severity: "WARNING",
-      message: "لديك مواعيد دفع خلال الأيام السبعة القادمة.",
+      message: MONEY_WARNING_COPY.paymentsDueSoon(dueSoonCount),
       count: dueSoonCount,
       amount: null,
     });
@@ -549,73 +175,4 @@ export function progressPercentage(
 ): number {
   if (totalTasks < 1) return 0;
   return Math.round((completedTasks / totalTasks) * 100);
-}
-
-/** An essential's name as the home's suggestions say it. */
-function essentialName(
-  key: PlanEssentialKey,
-  planPersona: string | null,
-): string {
-  const bride = planPersona === "BRIDE";
-  switch (key) {
-    case "VENUE":
-      return bride ? "الصالة" : "القاعة";
-    case "DRESS":
-      return bride ? "الفستان" : "البدلة والكسوة";
-    case "PHOTO":
-      return "التصوير";
-    case "GOLD":
-      return "الذهب والشبكة";
-    case "HOME":
-      return "الشقة وتجهيز المنزل";
-    case "HONEYMOON":
-      return "شهر العسل";
-  }
-}
-
-function setupAction(
-  weddingPlanId: string,
-  type: Extract<
-    DashboardNextStepType,
-    | "SET_LOCATION"
-    | "SET_BUDGET"
-    | "RECORD_MAHR"
-    | "ADD_FIRST_COST"
-    | "ADD_GUESTS"
-    | "REQUEST_QUOTE"
-  >,
-  title: string,
-  reason: string,
-  actionLabel: string,
-  routeTarget: string,
-): DashboardNextStepResponse {
-  const moneyStep =
-    type === "SET_BUDGET" ||
-    type === "RECORD_MAHR" ||
-    type === "ADD_FIRST_COST";
-  return {
-    id: `${type.toLowerCase()}:${weddingPlanId}`,
-    type,
-    title,
-    subtitle: reason,
-    body: null,
-    icon: moneyStep ? "wallet" : "calendar",
-    tone: "info",
-    priority: "LOW",
-    actionLabel,
-    dueDate: null,
-    amount: null,
-    route: routeTarget,
-    routeTarget,
-    entityId: weddingPlanId,
-    data: { weddingPlanId },
-  };
-}
-
-function toneForTaskPriority(
-  priority: WeddingTaskPriority,
-): DashboardImportantItemResponse["tone"] {
-  if (priority === WeddingTaskPriority.URGENT) return "danger";
-  if (priority === WeddingTaskPriority.HIGH) return "warning";
-  return "info";
 }

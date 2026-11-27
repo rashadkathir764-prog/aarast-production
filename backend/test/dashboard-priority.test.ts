@@ -2,43 +2,76 @@ import 'reflect-metadata';
 
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { selectTopDashboardActions } from '../src/dashboard/dashboard-priority';
+import { Prisma } from '@prisma/client';
+import {
+  lateTaskWindowStart,
+  orderNextSteps,
+  type RankedNextStep,
+} from '../src/dashboard/dashboard-priority';
 
-test('dashboard next actions are capped at three and ordered by priority', () => {
-  const actions = selectTopDashboardActions([
-    { id: 'setup', priority: 'LOW' as const, dueDate: null },
-    { id: 'quote', priority: 'HIGH' as const, dueDate: null },
-    {
-      id: 'overdue-task',
-      priority: 'URGENT' as const,
-      dueDate: new Date('2026-06-20T00:00:00.000Z'),
-    },
-    {
-      id: 'payment-schedule',
-      priority: 'URGENT' as const,
-      dueDate: new Date('2026-06-25T00:00:00.000Z'),
-    },
-  ]);
+// REFINEMENT_SPEC 2.1 (2026-11-26) replaced the old ordering by the item's
+// priority label then its day (`selectTopDashboardActions`, which put a task
+// late by weeks before a payment due today) with the spec's fixed tiers. The
+// two tests below kept their intent, a cap of three and the day deciding
+// inside one place, on the new ordering.
 
+const step = (
+  id: string,
+  tier: number,
+  key: number,
+  kind: RankedNextStep<string>['kind'] = 'OTHER',
+  amount: string | null = null,
+): RankedNextStep<string> => ({
+  tier,
+  key,
+  kind,
+  amount: amount === null ? null : new Prisma.Decimal(amount),
+  step: id,
+});
+
+test('next steps are capped at three and ordered by the spec\'s tiers', () => {
   assert.deepEqual(
-    actions.map((action) => action.id),
-    ['overdue-task', 'payment-schedule', 'quote'],
+    orderNextSteps([
+      step('setup', 6, 0),
+      step('quote', 5, 0, 'QUOTE'),
+      step('task-late', 3, 2, 'TASK'),
+      step('payment-due', 1, Date.UTC(2026, 5, 25), 'PAYMENT'),
+    ]),
+    ['payment-due', 'task-late', 'quote'],
   );
 });
 
-test('dashboard actions use due date ordering inside the same priority', () => {
-  const actions = selectTopDashboardActions([
-    {
-      id: 'later',
-      priority: 'HIGH' as const,
-      dueDate: new Date('2026-07-02T00:00:00.000Z'),
-    },
-    {
-      id: 'sooner',
-      priority: 'HIGH' as const,
-      dueDate: new Date('2026-06-28T00:00:00.000Z'),
-    },
-  ]);
+test('inside one tier the key decides, then the larger amount, then payment before task before offer', () => {
+  assert.deepEqual(
+    orderNextSteps(
+      [
+        step('later', 1, Date.UTC(2026, 6, 2), 'PAYMENT', '100'),
+        step('sooner-small', 1, Date.UTC(2026, 5, 28), 'PAYMENT', '100'),
+        step('sooner-large', 1, Date.UTC(2026, 5, 28), 'PAYMENT', '900'),
+      ],
+      5,
+    ),
+    ['sooner-large', 'sooner-small', 'later'],
+  );
+  assert.deepEqual(
+    orderNextSteps([
+      step('quote', 4, 0, 'QUOTE'),
+      step('task', 4, 0, 'TASK'),
+      step('payment', 4, 0, 'PAYMENT'),
+    ]),
+    ['payment', 'task', 'quote'],
+  );
+  // Equal in everything: the order they were built in.
+  assert.deepEqual(
+    orderNextSteps([step('first', 6, 0), step('second', 6, 0)]),
+    ['first', 'second'],
+  );
+});
 
-  assert.equal(actions[0]?.id, 'sooner');
+test('the late-task window starts seven days before today', () => {
+  const today = new Date('2026-11-25T21:00:00.000Z');
+  assert.equal(
+    lateTaskWindowStart(today).toISOString(),
+    '2026-11-18T21:00:00.000Z',
+  );
 });

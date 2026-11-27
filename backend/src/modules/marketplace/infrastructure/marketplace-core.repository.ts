@@ -1,4 +1,4 @@
-import { Prisma, ProviderStatus, ReviewStatus } from "@prisma/client";
+import { PortfolioItemStatus, Prisma, ProviderStatus, ReviewStatus } from "@prisma/client";
 import type {
   MarketplacePagination,
   MyQuoteAccessWhere,
@@ -16,10 +16,22 @@ import {
   profileCompleteness,
   type ProviderSort,
 } from "../../../marketplace/provider-ranking";
+import {
+  hasPublishedPrice,
+  lowestRialPrice,
+  pricedOffersInScope,
+  providerCategoryIdsOf,
+} from "../../../marketplace/provider-list-scope";
 import { activeFeaturedPeriodInclude } from "../public/featured-placement";
 import { likePatternContaining } from "../../../shared-kernel/text/arabic-search";
 
 type Client = Prisma.TransactionClient;
+
+/** A listed provider's active priced packages, each with its service's category (provider-list-scope.ts). */
+const LISTED_PACKAGES = {
+  where: { isActive: true, price: { not: null } },
+  select: { price: true, currency: true, service: { select: { categoryId: true } } },
+} satisfies Prisma.Provider$packagesArgs;
 
 
 /**
@@ -84,6 +96,8 @@ export async function searchActiveProviders(
   pagination: MarketplacePagination,
   now: Date,
   sort: ProviderSort = "best",
+  /** The asked categories: «الأقل سعرًا» compares his prices in them only (null: every one). */
+  scope: readonly string[] | null = null,
 ) {
   const candidates = await client.provider.findMany({
     where,
@@ -94,17 +108,22 @@ export async function searchActiveProviders(
       ratingAverage: true,
       ratingCount: true,
       createdAt: true,
-      logoUrl: true,
-      coverUrl: true,
+      primaryCategoryId: true,
       description: true,
       address: true,
       whatsapp: true,
       socialLinks: true,
       featuredPeriods: activeFeaturedPeriodInclude(now),
-      // D131: «الأقل سعرًا» compares his rial prices.
+      // D131 and the 2026-11-26 review: his prices, per category, for
+      // «الأقل سعرًا» and the profile's published price.
       services: {
-        where: { isActive: true, basePrice: { not: null }, currency: "YER" },
-        select: { basePrice: true },
+        where: { isActive: true },
+        select: { categoryId: true, basePrice: true, currency: true },
+      },
+      packages: LISTED_PACKAGES,
+      // The profile's work photos (PROFILE_PORTFOLIO_PHOTOS).
+      _count: {
+        select: { portfolioItems: { where: { status: PortfolioItemStatus.APPROVED } } },
       },
     },
   });
@@ -122,11 +141,15 @@ export async function searchActiveProviders(
       createdAt: row.createdAt,
       ratingAverage: Number(row.ratingAverage),
       ratingCount: row.ratingCount,
-      profile: profileCompleteness(row),
+      profile: profileCompleteness({
+        ...row,
+        approvedPhotos: row._count.portfolioItems,
+        hasPublishedPrice: hasPublishedPrice(row),
+      }),
       response: summarizeResponsiveness(
         samples.get(row.id) ?? { requests: 0, answered: 0, medianMinutes: null },
       ),
-      lowestPriceYer: lowestPrice(row.services),
+      lowestPriceYer: lowestRialPrice(pricedOffersInScope(row, scope)),
     })),
     sort,
     now,
@@ -145,6 +168,15 @@ export async function searchActiveProviders(
       services: {
         where: { isActive: true }, orderBy: [{ createdAt: "desc" }, { id: "asc" }],
         select: { title: true, basePrice: true, currency: true, priceUpdatedAt: true, categoryId: true },
+      },
+      packages: LISTED_PACKAGES,
+      // The card's photo (`cardPhotoUrl`): never one of the women's album,
+      // which only a bride may see (B-16) and a list does not know its reader.
+      portfolioItems: {
+        where: { status: PortfolioItemStatus.APPROVED, forWomen: false },
+        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }, { id: "asc" }],
+        take: 1,
+        select: { imageUrl: true },
       },
       featuredPeriods: activeFeaturedPeriodInclude(now),
     },
@@ -179,25 +211,7 @@ export async function listListedProviderCategories(
       services: { where: { isActive: true }, select: { categoryId: true } },
     },
   });
-  return rows.map((row) => [
-    ...new Set([
-      ...(row.primaryCategoryId ? [row.primaryCategoryId] : []),
-      ...row.services.flatMap((service) => (service.categoryId ? [service.categoryId] : [])),
-    ]),
-  ]);
-}
-
-/** His lowest priced active rial service, or null (a fake client may send no services). */
-function lowestPrice(
-  services: ReadonlyArray<{ basePrice: Prisma.Decimal | null }> | undefined,
-): number | null {
-  let lowest: number | null = null;
-  for (const service of services ?? []) {
-    if (service.basePrice === null) continue;
-    const price = Number(service.basePrice);
-    if (lowest === null || price < lowest) lowest = price;
-  }
-  return lowest;
+  return rows.map(providerCategoryIdsOf);
 }
 
 export function findActiveProviderWithServices(client: Client, id: string, now: Date) {
@@ -327,6 +341,33 @@ export function listPublishedProviderReviews(client: Client, providerId: string)
     where: { providerId, status: ReviewStatus.PUBLISHED },
     orderBy: { createdAt: "desc" },
   });
+}
+
+/** One page of his published reviews, newest first; the id makes the order total. */
+export function listPublishedProviderReviewsPage(
+  client: Client,
+  providerId: string,
+  pagination: MarketplacePagination,
+) {
+  return client.providerReview.findMany({
+    where: { providerId, status: ReviewStatus.PUBLISHED },
+    orderBy: [{ createdAt: "desc" }, { id: "asc" }],
+    skip: pagination.skip,
+    take: pagination.limit,
+  });
+}
+
+/** How many published reviews he has at each number of stars (only those with any). */
+export async function countPublishedProviderReviewsByRating(
+  client: Client,
+  providerId: string,
+): Promise<Array<{ rating: number; count: number }>> {
+  const groups = await client.providerReview.groupBy({
+    by: ["rating"],
+    where: { providerId, status: ReviewStatus.PUBLISHED },
+    _count: { _all: true },
+  });
+  return groups.map((group) => ({ rating: group.rating, count: group._count._all }));
 }
 
 export function findProviderAccountForFavorite(client: Client, providerId: string) {

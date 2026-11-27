@@ -41,9 +41,14 @@ import {
 } from "./dashboard-contributor-scope";
 import { loadPlanReadView, type PlanReadViewResponse } from "./plan-read-view";
 import { readPlanBookedServices } from "../modules/marketplace/public/plan-booked-services";
+import { buildImportantItems } from "./dashboard-next-steps";
+import {
+  lateTaskWindowStart,
+  NEXT_STEP_LIMIT,
+  UNCONFIRMED_BOOKING_WINDOW_DAYS,
+} from "./dashboard-priority";
 import {
   buildFinancialWarnings,
-  buildImportantItems,
   compareDates,
   daysRemaining,
   moneyOrNull,
@@ -144,10 +149,13 @@ export class DashboardService {
       weddingPlanId,
       currentUser,
     );
-    const today = startOfRiyadhDay();
+    const now = new Date();
+    const today = startOfRiyadhDay(now);
     const endOfToday = endOfRiyadhDay(today);
     const dueSoonEnd = new Date(endOfToday.getTime() + 7 * 86_400_000);
     const canViewMoney = this.permissions.canViewMoney(context);
+    const writeRights = planWriteRights(context, this.permissions);
+    const daysToWedding = daysRemaining(context.plan.weddingDate, today);
     const contributorIds = seesWholePlan(context)
       ? null
       : await resolveDashboardContributorDataScope({
@@ -216,6 +224,7 @@ export class DashboardService {
         scope: taskScope,
         today,
         endOfToday,
+        lateFrom: lateTaskWindowStart(today),
       }),
       this.owners.guests.getPlanGuestCounters(
         tx,
@@ -254,7 +263,8 @@ export class DashboardService {
       ),
     ]);
     const {
-      urgentTasks,
+      actionableTasks,
+      upcomingTask,
       nextTask,
       totalTasks,
       completedTasks,
@@ -309,32 +319,54 @@ export class DashboardService {
     // C24: a venue is secured by a confirmed booking with a venue provider,
     // or by a recorded agreement (a cost in a venue budget category). Each
     // owner answers for its own rows; catalog names the venue category.
-    const [venueCost, bookedCategoryIds] = await Promise.all([
-      canViewMoney
-        ? this.owners.finance.hasVenueCost(tx, weddingPlanId, costIds)
-        : Promise.resolve(false),
-      this.owners.quotes.listConfirmedBookingCategoryIds(
-        tx,
-        weddingPlanId,
-        quoteIds,
-      ),
-    ]);
+    const [venueCost, bookedCategoryIds, unconfirmedBookings, providersToRate] =
+      await Promise.all([
+        canViewMoney
+          ? this.owners.finance.hasVenueCost(tx, weddingPlanId, costIds)
+          : Promise.resolve(false),
+        this.owners.quotes.listConfirmedBookingCategoryIds(
+          tx,
+          weddingPlanId,
+          quoteIds,
+        ),
+        // REFINEMENT_SPEC 2.1 (2): a booking still unconfirmed matters only
+        // in the wedding's last week, and only to whoever follows it up.
+        writeRights.canManageProviders &&
+        daysToWedding !== null &&
+        daysToWedding >= 0 &&
+        daysToWedding <= UNCONFIRMED_BOOKING_WINDOW_DAYS
+          ? this.owners.providers.listPlanUnconfirmedBookings(
+              tx,
+              weddingPlanId,
+              quoteIds,
+              now,
+              NEXT_STEP_LIMIT,
+            )
+          : Promise.resolve([]),
+        // After the wedding: «قيّم المزوّدين» only while the reader has a
+        // provider he may rate and has not rated.
+        daysToWedding !== null && daysToWedding < 0
+          ? this.owners.providers.countPlanProvidersToRate(
+              tx,
+              weddingPlanId,
+              currentUser.id,
+              now,
+            )
+          : Promise.resolve(0),
+      ]);
     // D60: «محجوز», the one definition the providers board reads too. No
     // amount is read; another account's private costs count nowhere.
+    // REFINEMENT_SPEC 2.4: a reader who may not see the money sees no
+    // agreement either, so his «محجوز» is read from the confirmed bookings
+    // alone (`costIds: []`): no item an outside agreement booked, and no
+    // money item a booking's cost was filed under.
     const bookedServices = await readPlanBookedServices(
       tx,
       this.owners,
       weddingPlanId,
       {
         quoteRequestIds: quoteIds,
-        costIds: canViewMoney
-          ? costIds
-          : await this.owners.finance.excludeOthersPrivateCosts(
-              tx,
-              weddingPlanId,
-              currentUser.id,
-              contributorIds ? contributorIds.costIds : null,
-            ),
+        costIds: canViewMoney ? costIds : [],
       },
     );
     const venueBooked =
@@ -353,7 +385,6 @@ export class DashboardService {
       .filter((schedule) => schedule.dueDate <= dueSoonEnd)
       .map(toPaymentScheduleDueMoneyItem)
       .sort((a, b) => compareDates(a.dueDate, b.dueDate));
-    const dueMoneyItems = actionableSchedules.slice(0, 2);
     const nextPaymentSchedule = paymentSchedules[0]
       ? toPaymentScheduleDueMoneyItem(paymentSchedules[0])
       : null;
@@ -397,7 +428,6 @@ export class DashboardService {
       overdueCount: canViewMoney ? overdueSchedules.length : null,
       dueSoonCount: canViewMoney ? dueSoonSchedules.length : null,
     });
-    const writeRights = planWriteRights(context, this.permissions);
     const essentials = planItems
       ? planEssentials({
           persona: context.plan.persona,
@@ -413,12 +443,15 @@ export class DashboardService {
           !item.hidden &&
           item.budgetCategoryId !== null,
       ) ?? null;
+    // REFINEMENT_SPEC 2.1: the order of the home's next steps is decided
+    // there alone, from the facts read here.
     const importantItems = buildImportantItems({
       weddingPlanId,
-      tasks: urgentTasks,
+      weddingDate: context.plan.weddingDate,
+      tasks: actionableTasks,
       // Rashad 2026-11-17: with nothing late or due, the next step is the
-      // nearest task with a day, then the first essential still open.
-      nextTask,
+      // nearest task to come, then the first essential still open.
+      nextTask: upcomingTask,
       // Review 2026-11-18: named by the plan's own item, not a fixed word
       // («فستان» in a helper's plan was called «البدلة والكسوة»).
       missingEssential: missing
@@ -430,7 +463,10 @@ export class DashboardService {
               )?.name ?? null,
           }
         : null,
-      paymentSchedules: dueMoneyItems,
+      // Every pending date the reader may see: after the wedding the
+      // nearest one to come is a step, whatever its day.
+      paymentSchedules: paymentSchedules.map(toPaymentScheduleDueMoneyItem),
+      unconfirmedBookings,
       today,
       receivedQuotes,
       hasLocation: location !== null,
@@ -443,6 +479,7 @@ export class DashboardService {
       guestCount,
       quoteRequestsCount,
       acceptedProviders: providerCount,
+      providersToRate,
       // D112 (Q-21): an archived plan is asked for no next step that
       // changes it.
       canManagePlan: writeRights.canManagePlan,
@@ -458,6 +495,21 @@ export class DashboardService {
         money && seesWholePlan(context) ? money.budget.count : null,
       // D114: the mahr step says where the mahr is counted.
       mahrInsideBudget: money?.budget.includesMahr === true,
+      // After the wedding: the owner's dues with no day (finance's undated
+      // bucket, his part), for a reader who sees the plan's whole money.
+      undatedOwnerDebt:
+        money && seesWholePlan(context)
+          ? money.duesByMonth.undated.ownerAmount
+          : null,
+      // The funding is the owner's alone (null for anyone else).
+      loan: money?.funding
+        ? {
+            outstanding: money.funding.loanOutstanding,
+            fundingSourceId:
+              money.funding.nextLoanRepayment?.fundingSourceId ?? null,
+            nextDueDate: money.funding.nextLoanRepayment?.dueDate ?? null,
+          }
+        : null,
     });
     const currentUserRole = this.currentUserRole(context);
     const notificationPreviews = latestNotifications.map((notification) =>
@@ -479,7 +531,7 @@ export class DashboardService {
       city: context.plan.city,
       location,
       status: context.plan.status,
-      daysRemaining: daysRemaining(context.plan.weddingDate, today),
+      daysRemaining: daysToWedding,
       progressPercentage: progressPercentage(totalTasks, completedTasks),
       budgetTotal: moneyOrNull(budgetTotalNumber),
       confirmedCostTotal: moneyOrNull(confirmedCostNumber),

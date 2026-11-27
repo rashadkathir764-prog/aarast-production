@@ -91,37 +91,69 @@ export class TasksPortService implements TasksPort {
       scope: TaskReadScope;
       today: Date;
       endOfToday: Date;
+      lateFrom: Date;
     },
   ): Promise<PlanTaskDashboard> {
     const base = { weddingPlanId: input.weddingPlanId, ...scopeWhere(input.scope) };
-    const [urgentTasks, nextTask, totalTasks, completedTasks, openTasks, overdueTasks, todayTasks] =
-      await Promise.all([
-        client.weddingTask.findMany({
-          where: { ...base, dueDate: { lte: input.endOfToday }, status: openStatuses() },
-          orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }],
-          take: 2,
-        }),
-        client.weddingTask.findFirst({
-          where: { ...base, status: openStatuses() },
-          orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }],
-        }),
-        // A cancelled task is neither done nor one of the plan's tasks: the
-        // home's «2 من 4» counted it and the tasks list did not.
-        client.weddingTask.count({
-          where: { ...base, status: { not: WeddingTaskStatus.CANCELLED } },
-        }),
-        client.weddingTask.count({ where: { ...base, status: WeddingTaskStatus.DONE } }),
-        client.weddingTask.count({
-          where: { ...base, status: { in: [WeddingTaskStatus.TODO, WeddingTaskStatus.IN_PROGRESS] } },
-        }),
-        client.weddingTask.count({
-          where: { ...base, dueDate: { lt: input.today }, status: openStatuses() },
-        }),
-        client.weddingTask.count({
-          where: { ...base, dueDate: { gte: input.today, lte: input.endOfToday }, status: openStatuses() },
-        }),
-      ]);
-    return { urgentTasks, nextTask, totalTasks, completedTasks, openTasks, overdueTasks, todayTasks };
+    const [
+      actionableTasks,
+      upcomingTask,
+      nextTask,
+      totalTasks,
+      completedTasks,
+      openTasks,
+      overdueTasks,
+      todayTasks,
+    ] = await Promise.all([
+      // REFINEMENT_SPEC 2.1: today's, then the late ones since `lateFrom`,
+      // the nearest day first. Read oldest first, a task late for weeks
+      // took the home's places and the fresh ones never showed.
+      client.weddingTask.findMany({
+        where: {
+          ...base,
+          dueDate: { gte: input.lateFrom, lte: input.endOfToday },
+          status: openStatuses(),
+        },
+        // A total order: tasks made together (a starter list, an import)
+        // share their second, and the home's first step must not change
+        // from one read to the next.
+        orderBy: [{ dueDate: 'desc' }, { createdAt: 'asc' }, { id: 'asc' }],
+        take: 3,
+      }),
+      client.weddingTask.findFirst({
+        where: { ...base, dueDate: { gt: input.endOfToday }, status: openStatuses() },
+        orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
+      }),
+      client.weddingTask.findFirst({
+        where: { ...base, status: openStatuses() },
+        orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }],
+      }),
+      // A cancelled task is neither done nor one of the plan's tasks: the
+      // home's «2 من 4» counted it and the tasks list did not.
+      client.weddingTask.count({
+        where: { ...base, status: { not: WeddingTaskStatus.CANCELLED } },
+      }),
+      client.weddingTask.count({ where: { ...base, status: WeddingTaskStatus.DONE } }),
+      client.weddingTask.count({
+        where: { ...base, status: { in: [WeddingTaskStatus.TODO, WeddingTaskStatus.IN_PROGRESS] } },
+      }),
+      client.weddingTask.count({
+        where: { ...base, dueDate: { lt: input.today }, status: openStatuses() },
+      }),
+      client.weddingTask.count({
+        where: { ...base, dueDate: { gte: input.today, lte: input.endOfToday }, status: openStatuses() },
+      }),
+    ]);
+    return {
+      actionableTasks,
+      upcomingTask,
+      nextTask,
+      totalTasks,
+      completedTasks,
+      openTasks,
+      overdueTasks,
+      todayTasks,
+    };
   }
 
   async listDatedOpenTasks(

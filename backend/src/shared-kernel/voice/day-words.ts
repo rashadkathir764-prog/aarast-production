@@ -1,6 +1,6 @@
 /**
  * How the app writes a day in Arabic (B-38), the one place the server words
- * a date: «30 أكتوبر», «الجمعة 30 أكتوبر», «بكرة», «بعد 5 أيام». The phone
+ * a date: «30 أكتوبر», «الجمعة 30 أكتوبر», «غدًا», «بعد 5 أيام». The phone
  * writes days the same way (`arabic_date_formatter.dart`); a notice never
  * carries a numeric or ISO date.
  *
@@ -8,6 +8,8 @@
  * business day): a `@db.Date` value (UTC midnight) and a timestamp at the
  * local midnight both land on their own calendar day.
  */
+
+import { countedWords } from './count-words';
 
 const LOCAL_OFFSET_MS = 3 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -58,15 +60,18 @@ export function daysBetween(today: CalendarDay, day: CalendarDay): number {
 }
 
 /**
- * «يوم واحد», «يومين», «5 أيام», «11 يومًا», «100 يوم» (D129: the count's
- * own rule; «يومين» is the form these lines use, after «بعد» and «متأخرة»).
+ * «يوم واحد», «يومين», «5 أيام», «11 يومًا», «100 يوم», «103 أيام» (D129:
+ * the count's own rule, `countedWords`; «يومين» is the form these lines use,
+ * after «بعد» and «منذ»).
  */
 export function dayCountWords(days: number): string {
-  if (days === 1) return 'يوم واحد';
-  if (days === 2) return 'يومين';
-  if (days >= 3 && days <= 10) return `${days} أيام`;
-  const lastTwo = days % 100;
-  return lastTwo >= 11 && lastTwo <= 99 ? `${days} يومًا` : `${days} يوم`;
+  return countedWords(days, {
+    one: 'يوم واحد',
+    two: 'يومين',
+    few: 'أيام',
+    many: 'يومًا',
+    other: 'يوم',
+  });
 }
 
 /** When a day `days` away is: «اليوم», «غدًا», «بعد يومين», «بعد 5 أيام». */

@@ -76,6 +76,11 @@ test("the page's total is the ranked candidates, with no second count of the sam
     whatsapp: "w",
     socialLinks: null,
     featuredPeriods: [],
+    // His prices and approved work photos (provider-list-scope.ts): none.
+    primaryCategoryId: null,
+    services: [],
+    packages: [],
+    _count: { portfolioItems: 0 },
   });
   const reads: string[] = [];
   const client: any = {

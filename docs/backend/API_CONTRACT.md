@@ -990,7 +990,38 @@ The dashboard summary powers the mobile Home / Today Center. Existing count and 
 - `acceptedProvidersCount`: stable alias for accepted/active `PlanProviderLink` count.
 - `financialWarnings`: simple computable warnings such as budget exceeded or a payment schedule due soon.
 
-- `importantItems`: actionable task/payment-schedule/provider cards for "الأهم اليوم".
+- `importantItems` (and its alias `nextBestActions`): the home's next steps,
+  at most three, first first; the phone shows the first as «الخطوة التالية»
+  and never reorders them (REFINEMENT_SPEC 2.1, `dashboard-next-steps.ts`,
+  `dashboard-priority.ts`). Each item keeps the same shape (`id`, `type`,
+  `title`, `subtitle`, `body`, `icon`, `tone`, `priority`, `actionLabel`,
+  `dueDate`, `amount`, `route`, `routeTarget`, `entityId`, `data`); the
+  amount is data, never in the words. Before the wedding (or with no date):
+  1. `PAYMENT_SCHEDULE_DUE` due today or late, the oldest first, the larger
+     first on the same day (only for `canViewMoney`);
+  2. `BOOKING_UNCONFIRMED`: a booking still `REQUESTED` (its provider has not
+     confirmed) whose day has not passed, while the wedding is 0 to 7 days
+     away, only for `canManageProviders` (opens the request);
+  3. `TASK_TODAY`, then `TASK_OVERDUE` late by up to 7 days, the nearest day
+     first; 8. a task late by more is never an item (it stays in the counts);
+  4. `PAYMENT_SCHEDULE_DUE` within 1 to 7 days, by day;
+  5. `QUOTE_RECEIVED`;
+  6. only while the wedding is more than 30 days away or has no date, the
+     setup chain in order: `SET_DATE` (no date), `SET_LOCATION`, `SET_BUDGET`,
+     `RECORD_MAHR`, `ADD_FIRST_COST`, `ADD_GUESTS`, `REQUEST_QUOTE`;
+  7. `TASK_UPCOMING` (the nearest task after today), then `ESSENTIAL_MISSING`
+     (not beside `REQUEST_QUOTE`).
+  After the wedding day: `PAYMENT_SCHEDULE_DUE` due today or late; the
+  nearest `PAYMENT_SCHEDULE_DUE` to come, whatever its day; `DEBT_UNDATED`
+  (the owner's dues with no day, finance's `duesByMonth.undated.ownerAmount`,
+  for a reader who sees the whole plan's money; opens the money tab);
+  `LOAN_OUTSTANDING` (the owner's loan still owed; the owner alone; opens
+  «من وين»); `RATE_PROVIDERS` (the plan has accepted providers; only for
+  `canManageProviders`). Ties: the nearer day, then a payment before a task
+  before an offer. Every step is offered only to a reader who may take it,
+  and its action follows the rights: a payment is «سجّل الدفعة» to `…/pay`
+  only with `canManageMoney`, otherwise «شوف الدفعة» to the date itself.
+  A client that already offers «حدد الموعد» elsewhere skips `SET_DATE`.
 - `planProviders`: providers actually linked to the current WeddingPlan.
 - `importantNotifications`: latest user-owned notifications for this WeddingPlan.
 - `generatedAt`: server timestamp used by the mobile sync/status copy.
@@ -1007,7 +1038,10 @@ The dashboard summary powers the mobile Home / Today Center. Existing count and 
   one) counts once by its request (`quoteRequestIds`). An accepted offer
   without a confirmed booking is never booked («اخترت X · اطلب الحجز»). A
   contributor reads his own requests; nobody reads another account's private
-  costs; no amount is read. The home's «محجوز» tile and the providers board
+  costs; no amount is read. A reader without `canViewMoney` sees no agreement
+  (REFINEMENT_SPEC 2.4): his `bookedServices` is read from the confirmed
+  bookings alone, each counted once by its request (`budgetCategoryIds` is
+  empty). The home's «محجوز» tile and the providers board
   (f01) both read it (`plan-booked-services.ts`).
 - `membershipId` and `membershipAuthorityVersion`: the same current
   contributor-membership identity returned by `/api/v1/contexts`, or `null`
@@ -2717,21 +2751,36 @@ is never «free» (his bookings outside Aarast are unknown). The older
 to be busy, otherwise `null`, never `true`. Nobody is filtered out unless
 `hideBusy=true` is sent with the day: then the providers known to be busy are
 left out before the ranking and the page, so `total` and every page agree;
-`hideBusy` without `eventDate` is `400`.
+`hideBusy` without `eventDate` is `400`. With a day already past nobody is
+left out.
 
-`sort` picks the order (D131, docs/project/PROVIDER_RANKING.md): `best`
-(default) is verified providers first (Q-73), inside each band the featured
-(B-43), then claimed listings, then unclaimed ones, each by a score of a
-smoothed rating, the profile's completeness, the answer speed and a lift for
-a provider younger than 30 days (RA-BE-151); `rating` is by the smoothed
-rating, `price` by the lowest active service price in Yemeni rials (none in
-rials after), both with no featured lift and unclaimed listings last, ties
-in `best`'s order. Any other value is `400`.
+`sort` picks the order; the rules are docs/project/PROVIDER_RANKING.md (D131,
+the 2026-11-26 review): `best` (default), `rating` (whoever has no review
+after every rated provider) or `price`. `price` compares the lowest Yemeni
+rial price among the active services and priced packages of the asked
+categories only; without `categoryId` or `categoryIds` it is not applied and
+the page comes in `best`'s order (it is not refused: an app already out may
+send it, RA-BE-01). Any other value is `400`.
+
+The page answers what it applied, next to `items`, `page`, `limit`, `total`
+and `totalPages` (2026-11-26):
+
+- `sort`: the order the rows are in (`best`, `rating` or `price`).
+- `hideBusyApplied`: `true` only when the busy were left out (`hideBusy=true`
+  with a day still to come).
 
 `GET /api/v1/providers/category-counts` (D131) takes the same filters as the
 list except the category, sort and page, and answers `{ total, categories:
 [{ categoryId, count }] }`: how many providers each category chip would
 show, a provider counted in his main category and in each active service's.
+It is the list's own matching rule, so `GET /api/v1/providers?categoryId=X`
+lists exactly the providers counted under X (a shelf of `limit` rows shows
+the first of them).
+
+`GET /api/v1/providers/:id?eventDate=YYYY-MM-DD` (2026-11-26) reads the day
+as the list does (a malformed one is `400`, a past one asks nothing) and adds
+`dayStatus` (`CLOSED`, `FULL` or `null`) with the list's proof. The page always
+carries `dayStatus`, `null` without a day.
 
 A quote
 request, an offer and its acceptance for a day the provider cannot take are
@@ -2739,15 +2788,35 @@ request, an offer and its acceptance for a day the provider cannot take are
 
 `GET /api/v1/providers` keeps the paginated provider card contract compact but
 complete enough for discovery. Every item includes `primaryCategory` plus a
-`serviceSummary` built only from active services:
+`serviceSummary`:
 
-- `activeCount`
-- `titles`
-- unique `categories`
-- `minPrice`, `maxPrice`, and `currency` when all published prices use one
-  currency; mixed or absent prices remain `null`
-- `pricesUpdatedAt`: the latest `priceUpdatedAt` of the active services, or
-  `null` when none has a price
+- `activeCount`, `titles` and unique `categories`: from all his active
+  services
+- `minPrice`, `maxPrice`, and `currency` (2026-11-26): from his active
+  services and active priced packages in the asked categories (all of them
+  when no category is asked; a package goes under its service's category, or
+  his main one when it names no service), when they all use one currency;
+  mixed or absent prices remain `null`
+- `pricesUpdatedAt`: the latest `priceUpdatedAt` of those services, or `null`
+  when none has a price (a package keeps no price stamp)
+
+Every item also carries (2026-11-26):
+
+- `matchedCategory`: the asked category he was found under (his main one
+  when asked, else his newest active service's), as a category object;
+  `null` when no category is asked
+- `cardPhotoUrl`: his first approved portfolio photo outside the women's
+  album, else his cover's 480px copy, else the cover; `null` with neither. A
+  women's-album photo is never in the list.
+
+`GET /api/v1/providers/:id/reviews` (2026-11-26) takes `page` and `limit`
+(digits; `limit` 10 by default, at most 50). With either, it answers one page
+of the published reviews, newest first (then id), as `{ items, page, limit,
+total, totalPages, summary }`, `summary` being `{ average, count, distribution:
+{ "1": n, …, "5": n } }` over all of them (`average` to two decimals, `null`
+with none). With neither it stays the bare array of every published review that
+the apps already out read (RA-BE-01: a deploy adds, it never breaks); that form
+goes once no supported app reads it (`MIN_CLIENT_CONTRACT`).
 
 Provider trust signals (V1 checklist 4.11):
 
@@ -2766,6 +2835,8 @@ Provider trust signals (V1 checklist 4.11):
   when the provider sent an offer on it, or when it is unanswered, not
   cancelled and older than 48 hours. `typicalResponseHours` is the median time
   to the first offer rounded up to whole hours (`null` when none was answered).
+  The app says the answer time only when `answeredPercent` is 80 or more
+  (2026-11-26), otherwise only the answered share.
 - `POST /api/v1/providers/:id/views` (public, `200 { recorded: true }`, throttled to 30 per minute
   per client) counts one view of an active provider's page in a daily total
   (V1 checklist 4.19); who viewed is not stored. `404` when the provider is not
@@ -3141,9 +3212,10 @@ is taken or kept anywhere.
   `ProviderFeaturedPeriod` rows covers the moment of the request
   (`startsAt <= now < endsAt`, not ended early). It is read at request time,
   so a placement lapses at its end by itself.
-- `GET /api/v1/providers` lists the providers featured now first, then the
-  others, each group by rating, age and id (a total order; the page is cut
-  across both groups in one snapshot). `isFeatured` on every provider
+- `GET /api/v1/providers` in its default order (`sort=best`) lists the
+  providers featured now first inside each verification band, then the
+  others; the full order is docs/project/PROVIDER_RANKING.md (a total order;
+  the page is cut across the groups in one snapshot). `isFeatured` on every provider
   response (list, page, favorites) is that placement and `featuredUntil` its
   end (`null` when not featured): a phone showing a saved copy drops «مميز»
   once `featuredUntil` passed. `featured=true|false` filters by it. The

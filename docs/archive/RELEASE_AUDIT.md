@@ -946,7 +946,7 @@
 
 ### تحقق أحدث فرع على ويندوز (2026-11-21)
 
-الفرع `phase/branch-fixes-2026-11-16` استوعب رأس السحابة `af65ee79e` بتقديم مباشر. بقي `main` و`origin/main` على `51f292741`؛ لا دمج إلى main ولا نشر. نقطة الاستئناف ونتيجة CI في [STATUS.md](STATUS.md).
+الفرع `phase/branch-fixes-2026-11-16` استوعب رأس السحابة `af65ee79e` بتقديم مباشر. بقي `main` و`origin/main` على `51f292741`؛ لا دمج إلى main ولا نشر. نقطة الاستئناف ونتيجة CI في [STATUS.md](../project/STATUS.md).
 
 | النطاق | النتيجة المثبتة | الدليل |
 |---|---|---|
@@ -1024,9 +1024,9 @@ Samsung SM-S938B، دقة 1440×3120 وخط النظام 1.15، بتطبيق م�
 | [backend/test/architecture-r5-identity-relocation.test.ts](../../backend/test/architecture-r5-identity-relocation.test.ts) | تصحيح التجهيز التاريخي ليبقى من دون الاستثناء الذي أُضيف لاحقًا؛ كل اختبارات رفض المخالفات باقية. |
 | [backend/test/prisma-config-merge-security.test.ts](../../backend/test/prisma-config-merge-security.test.ts) | حماية النسخ المصححة والقفل، رفض العبث والنسخ غير المعتمدة، وفرض مراجعة إزالة استثناء effect عند تغير متطلب Prisma. |
 | [docs/project/DECISIONS.md](../../docs/project/DECISIONS.md) | تصحيح موضع D113 وتسجيل موافقة رشاد على الاستثناء المحدد وخطة إزالته وطلب CI. |
-| [docs/project/DESIGN_STATUS.md](../../docs/project/DESIGN_STATUS.md) | فصل دليل الوظيفة والتجربة والشكل وحدود التحقق الحالي. |
+| [docs/project/DESIGN_STATUS.md](DESIGN_STATUS.md) | فصل دليل الوظيفة والتجربة والشكل وحدود التحقق الحالي. |
 | [docs/project/PRODUCT.md](../../docs/project/PRODUCT.md) | مطابقة وصف الميزانية مع قرار budgetIncludesMahr الساري. |
-| [docs/project/RELEASE_AUDIT.md](../../docs/project/RELEASE_AUDIT.md) | أدلة الجولة ونتائجها وحدودها وسجل الملفات المتغيرة. |
+| [docs/project/RELEASE_AUDIT.md](RELEASE_AUDIT.md) | أدلة الجولة ونتائجها وحدودها وسجل الملفات المتغيرة. |
 | [docs/project/STATUS.md](../../docs/project/STATUS.md) | نقطة الاستئناف والنتيجة الحالية؛ تمييز الفرع المحلي والسحابي من main والنشر. |
 | [docs/qa/JOURNEY_WALKS.md](../../docs/qa/JOURNEY_WALKS.md) | توثيق تهيئة التذكيرات الحتمية وفشل المشغّل ومقارنة المال قبل الفصل وبعده. |
 | [mobile/integration_test/journeys/notification_open_walk_test.dart](../../mobile/integration_test/journeys/notification_open_walk_test.dart) | فحص التنقل بين إشعارات المال والمهام والعرض؛ يمنع النجاح بتغطية إشعارين فقط. |

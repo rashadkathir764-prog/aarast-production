@@ -88,7 +88,8 @@
 - `/wedding-plans/:id/tasks/:taskId/edit`
 - `/wedding-plans/:id/tasks/create`
 - `/wedding-plans/:id/timeline`
+- `/wedding-plans/:id/week`
 - `/wedding-plans/create`
 - `/welcome`
 
-Total: 90 unique routes
+Total: 91 unique routes

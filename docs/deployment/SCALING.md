@@ -4,7 +4,7 @@ Snapshot date: 2026-11-07
 
 What one Aarast server carries, measured, and the order in which to grow it.
 The measurements and their evidence are in
-[RELEASE_AUDIT.md](../project/RELEASE_AUDIT.md), section 3.6.
+[RELEASE_AUDIT.md](../archive/RELEASE_AUDIT.md), section 3.6.
 
 ## Current production footprint
 

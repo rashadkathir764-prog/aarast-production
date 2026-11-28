@@ -336,6 +336,17 @@ mixin _MarketplaceDirectory on _MarketplaceProviderCore {
     await loadMarketplace();
   }
 
+  /// «البحث في قسم …»: the search gives way to a category in one read. The
+  /// two were set one after the other, so the whole directory was read and
+  /// drawn (every shelf) before the category replaced it.
+  Future<void> browseCategory(String id) async {
+    _search = '';
+    _budgetMatchIntent = null;
+    _categoryId = id;
+    _keepSortOffered();
+    await loadMarketplace();
+  }
+
   /// D131 «رتّب حسب»: the order is not a filter, «امسح الفلتر» keeps it.
   /// «الأقل سعرًا» needs a category ([priceSortOffered]): the screen offers
   /// it only then, and under «الكل» it changes nothing (the server would

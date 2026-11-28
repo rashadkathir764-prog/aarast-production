@@ -11,6 +11,7 @@ import 'package:aarast_mobile/core/offline/offline_tables.dart';
 import 'package:aarast_mobile/features/marketplace/data/marketplace_api.dart';
 import 'package:aarast_mobile/features/marketplace/models/marketplace_models.dart';
 import 'package:aarast_mobile/features/marketplace/providers/marketplace_provider.dart';
+import 'package:aarast_mobile/features/marketplace/widgets/provider_result_card.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -222,8 +223,22 @@ void main() {
       final same = await api.getProvidersPage(categoryId: _photo);
       expect(same.items.single.serviceSummary?.minPrice, '250000');
       expect(same.items.single.matchedCategory?.nameAr, 'تصوير');
+      expect(same.items.single.priceUnknownInCopy, isFalse);
 
       final everything = await api.getProvidersPage();
+      // The row says its price is not known here, so the card says nothing
+      // of it: a missing price alone read «السعر عند الطلب» for a provider
+      // who had published one.
+      expect(everything.items.single.priceUnknownInCopy, isTrue);
+      expect(
+        providerCardFacts(
+          everything.items.single,
+          bridePlan: false,
+          now: DateTime(2026, 11, 28),
+          priceKnown: !everything.items.single.priceUnknownInCopy,
+        ).price,
+        isNull,
+      );
       expect(everything.items.single.serviceSummary?.minPrice, isNull);
       expect(everything.items.single.serviceSummary?.currency, isNull);
       expect(everything.items.single.matchedCategory, isNull);

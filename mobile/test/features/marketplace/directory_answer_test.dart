@@ -43,6 +43,9 @@ class _DirectoryApi extends MarketplaceApi {
   /// The day each page was asked about (RA-BE-150).
   final askedDays = <DateTime?>[];
 
+  /// Every page asked: its search and its category.
+  final asks = <({String search, String? categoryId})>[];
+
   /// The reader's own requests.
   List<QuoteRequest> quotes = const [];
 
@@ -69,6 +72,7 @@ class _DirectoryApi extends MarketplaceApi {
     int limit = 30,
   }) async {
     askedDays.add(eventDate);
+    asks.add((search: search ?? '', categoryId: categoryId));
     if (offline) {
       throw const ApiException('ما فيه نت', isNetworkFailure: true);
     }
@@ -187,6 +191,26 @@ void main() {
     await directory.loadMoreProviders();
     expect(directory.providers, hasLength(9));
     expect(directory.shelves.single.providers, hasLength(before));
+  });
+
+  // «البحث في قسم …» set the search and then the category: the whole
+  // directory was read (and its shelves drawn) before the category came.
+  test('a search gives way to a category in one read', () async {
+    final api = _DirectoryApi(firstPage: [_hall('a')]);
+    final directory = ProviderMarketplaceProvider(api);
+    await directory.loadMarketplace(includeAccountData: false);
+    await directory.setSearch('xyz');
+    api.asks.clear();
+
+    await directory.browseCategory('cat-venue');
+
+    expect(directory.search, '');
+    expect(directory.categoryId, 'cat-venue');
+    expect(
+      api.asks,
+      [(search: '', categoryId: 'cat-venue')],
+      reason: 'no read of the whole directory in between',
+    );
   });
 
   // The day's `dayStatus` counts every confirmed booking, the reader's own

@@ -141,6 +141,11 @@ class ProviderCategoryCounts {
   int countFor(String categoryId) => byCategory[categoryId] ?? 0;
 }
 
+/// The key the phone's saved copy sets on a row whose price it dropped
+/// (kept from another list's answer): [MarketplaceProvider.priceUnknownInCopy].
+/// Never sent by the server.
+const savedCopyPriceUnknownKey = '_priceUnknown';
+
 /// The directory's `dayStatus`; a server before D131 sends only
 /// `availableOnEventDate`, whose `false` is a full day and whose `true` was
 /// no proof of anything.
@@ -180,6 +185,7 @@ class MarketplaceProvider {
     this.verifiedAt,
     this.isClaimed = true,
     this.dayStatus,
+    this.priceUnknownInCopy = false,
     this.responsiveness,
     this.services = const [],
     this.serviceSummary,
@@ -216,6 +222,7 @@ class MarketplaceProvider {
       verifiedAt: _dateOrNull(json['verifiedAt']),
       isClaimed: json['isClaimed'] != false,
       dayStatus: providerDayStatusFromJson(json),
+      priceUnknownInCopy: json[savedCopyPriceUnknownKey] == true,
       responsiveness: _mapOrNull(
         json['responsiveness'],
         ProviderResponsiveness.fromJson,
@@ -286,6 +293,12 @@ class MarketplaceProvider {
   /// Aarast's bookings filled it. Null when no day was asked or nothing is
   /// known, which is never «free»: his bookings outside Aarast are unknown.
   final ProviderDayStatus? dayStatus;
+
+  /// The phone's saved copy holds this row from another list's answer (a
+  /// category's shelf, say), whose price is not this list's: the row then
+  /// carries no price, and that is «not known here», never «السعر عند
+  /// الطلب» (he may well have published one).
+  final bool priceUnknownInCopy;
 
   /// Only on the provider details response, and null with too little history.
   final ProviderResponsiveness? responsiveness;

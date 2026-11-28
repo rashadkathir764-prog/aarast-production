@@ -293,6 +293,8 @@ class MarketplaceApi {
     return {
       ...row,
       'matchedCategory': null,
+      // Not known here, which is not «السعر عند الطلب».
+      savedCopyPriceUnknownKey: true,
       if (summary is Map)
         'serviceSummary': {
           ...Map<String, dynamic>.from(summary),

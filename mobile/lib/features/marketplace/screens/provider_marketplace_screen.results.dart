@@ -178,7 +178,12 @@ extension _DirectoryView on _ProviderMarketplaceScreenState {
     // The phone's copy keeps the prices of the whole directory: inside a
     // category it does not know his price there (the data layer drops it),
     // which is not «السعر عند الطلب».
-    priceKnown: !(provider.listIsSavedCopy && _scopedList(provider)),
+    // And a row the copy kept from another list's answer (a shelf's) has no
+    // price of this list: after a search offline it read «السعر عند الطلب»
+    // for a provider with a published price.
+    priceKnown:
+        !(provider.listIsSavedCopy && _scopedList(provider)) &&
+        !item.priceUnknownInCopy,
     // A list of one city says it in its count line; the rows say it only
     // under «كل المدن».
     showCity: provider.cityId == null,
@@ -290,9 +295,11 @@ extension _DirectoryView on _ProviderMarketplaceScreenState {
         onAction: named == null
             ? () => _clearSearch(provider)
             : () async {
+                // One read: the box is emptied without its own search (the
+                // listener's debounce finds nothing changed).
+                final browsing = provider.browseCategory(named.id);
                 _searchController.clear();
-                await provider.setSearch('');
-                await provider.setCategory(named.id);
+                await browsing;
               },
       );
     }

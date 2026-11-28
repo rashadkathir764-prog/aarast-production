@@ -9,6 +9,15 @@ class AppTextAr extends AppText {
   AppTextAr([String locale = 'ar']) : super(locale);
 
   @override
+  String accountRecordedNothing(String gender) {
+    String _temp0 = intl.Intl.selectLogic(gender, {
+      'female': 'لم تسجّلي شيئًا بعد',
+      'other': 'لم تسجّل شيئًا بعد',
+    });
+    return '$_temp0';
+  }
+
+  @override
   String budgetItemAnswerFailed(String gender) {
     String _temp0 = intl.Intl.selectLogic(gender, {
       'female': 'لم يُحفظ ردّكِ. أعيدي المحاولة.',

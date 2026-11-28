@@ -182,6 +182,9 @@ void main() {
     );
     expect(find.text('في عرس المشارك'), findsOneWidget);
     expect(find.text('اللي سجّلته'), findsOneWidget);
+    // The real app (the father's walk, 2026-11-28) read «0 شي · تبقى باسمك»
+    // to a viewer who recorded nothing: a zero is not counted as kept.
+    expect(find.textContaining('0 شي'), findsNothing);
     expect(find.text('اطلع من الخطة'), findsOneWidget);
     // The owner's profile card and «عرسي» are not the participant's.
     expect(find.byTooltip('تعديل صورة الحساب'), findsNothing);

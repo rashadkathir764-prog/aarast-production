@@ -6,6 +6,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/l10n/aarast_text.dart';
 import '../../../core/network/api_client.dart' show ApiException;
 import '../../../core/routing/app_router.dart';
 import '../../../core/utils/arabic_count.dart';
@@ -218,6 +219,10 @@ class _ParticipantAccountSectionsState
               title: 'اللي سجّلته',
               subtitle: count == null
                   ? 'يبقى باسمك'
+                  // Nothing recorded yet is said as that: «0 شي · تبقى
+                  // باسمك» promised to keep nothing.
+                  : count == 0
+                  ? context.text.accountRecordedNothing(context.gender)
                   // RA-MO-280: the server counts the things recorded (a
                   // task edited three times is one), the page lists each
                   // change; «حركة» said the page's count, which it was not.

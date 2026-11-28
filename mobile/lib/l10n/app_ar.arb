@@ -1,5 +1,15 @@
 {
   "@@locale": "ar",
+  "accountRecordedNothing": "{gender, select, female{لم تسجّلي شيئًا بعد} other{لم تسجّل شيئًا بعد}}",
+  "@accountRecordedNothing": {
+    "description": "«حسابي» of a participant, under «اللي سجّلته», when the server counts nothing recorded by them in the open plan. It read «0 شي · تبقى باسمك», a zero promised to be kept.",
+    "placeholders": {
+      "gender": {
+        "type": "String",
+        "description": "The reader's form: female or male."
+      }
+    }
+  },
   "budgetItemAnswerFailed": "{gender, select, female{لم يُحفظ ردّكِ. أعيدي المحاولة.} other{لم يُحفظ ردّك. أعد المحاولة.}}",
   "@budgetItemAnswerFailed": {
     "description": "Toast when «لا أحتاجه» or «لاحقًا» was not saved (not a network failure, which says its own words).",

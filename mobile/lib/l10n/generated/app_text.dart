@@ -93,6 +93,12 @@ abstract class AppText {
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[Locale('ar')];
 
+  /// «حسابي» of a participant, under «اللي سجّلته», when the server counts nothing recorded by them in the open plan. It read «0 شي · تبقى باسمك», a zero promised to be kept.
+  ///
+  /// In ar, this message translates to:
+  /// **'{gender, select, female{لم تسجّلي شيئًا بعد} other{لم تسجّل شيئًا بعد}}'**
+  String accountRecordedNothing(String gender);
+
   /// Toast when «لا أحتاجه» or «لاحقًا» was not saved (not a network failure, which says its own words).
   ///
   /// In ar, this message translates to:

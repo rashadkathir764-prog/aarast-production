@@ -3,6 +3,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/forms/latin_digits_formatter.dart';
+import '../../../core/utils/arabic_count.dart';
 import '../../marketplace/marketplace_api.dart' show QuoteOfferLine;
 import '../data/provider_text_limits.dart';
 
@@ -193,5 +194,5 @@ String providerOfferDeliveryLabel(int? days) => switch (days) {
   14 => 'أسبوعين',
   30 => 'شهر',
   60 => 'شهرين',
-  _ => '$days يوم',
+  _ => arabicDays(days),
 };

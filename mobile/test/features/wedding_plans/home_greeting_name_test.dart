@@ -30,31 +30,30 @@ DashboardSummary _plan() => DashboardSummary.fromJson({
   'permissions': {'isOwner': true},
 });
 
-Future<void> _pump(WidgetTester tester, String userName) =>
-    tester.pumpWidget(
-      MaterialApp(
-        home: JourneyProfileScope(
-          profile: JourneyProfile.groom,
-          child: Scaffold(
-            body: AarastDashboardView(
-              summary: _plan(),
-              userName: userName,
-              bottomPadding: 24,
-              onNotifications: () {},
-              onProfile: () {},
-              onOpenPlan: () {},
-              onOpenMoney: () {},
-              onOpenTasks: () {},
-              onOpenProviders: () {},
-              onOpenGuests: () {},
-              onOpenSharing: () {},
-              onOpenNextStep: () {},
-              onOpenImportantItem: (_) {},
-            ),
-          ),
+Future<void> _pump(WidgetTester tester, String userName) => tester.pumpWidget(
+  MaterialApp(
+    home: JourneyProfileScope(
+      profile: JourneyProfile.groom,
+      child: Scaffold(
+        body: AarastDashboardView(
+          summary: _plan(),
+          userName: userName,
+          bottomPadding: 24,
+          onNotifications: () {},
+          onProfile: () {},
+          onOpenPlan: () {},
+          onOpenMoney: () {},
+          onOpenTasks: () {},
+          onOpenProviders: () {},
+          onOpenGuests: () {},
+          onOpenSharing: () {},
+          onOpenNextStep: () {},
+          onOpenImportantItem: (_) {},
         ),
       ),
-    );
+    ),
+  ),
+);
 
 void main() {
   test('a role or a word of kinship is no name to greet by', () {

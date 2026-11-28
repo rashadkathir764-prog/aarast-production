@@ -252,7 +252,7 @@ class _ProviderProfileTabState extends State<ProviderProfileTab> {
               color: AarastV3Color.primary,
               soft: AarastV3Color.primarySoft,
               title: 'أداؤك',
-              subtitle: 'آخر 30 يوم',
+              subtitle: 'آخر 30 يومًا',
               onTap: () => context.push(AppRouter.providerPerformance),
             ),
             // B-18 (p47): the customers' agreed, paid and left, read only.

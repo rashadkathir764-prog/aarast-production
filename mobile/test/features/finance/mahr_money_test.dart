@@ -80,10 +80,12 @@ Future<_Api> _pumpMoney(
 }
 
 void main() {
-  test('mahrWords says amounts the way people say them', () {
-    expect(mahrWords(1000000), 'مليون');
-    expect(mahrWords(2000000), 'مليونين');
-    expect(mahrWords(3000000), '3 مليون');
+  test('mahrWords says amounts the one way (D136: the digits lead)', () {
+    expect(mahrWords(1000000), '1 مليون');
+    expect(mahrWords(2000000), '2 مليون');
+    expect(mahrWords(3000000), '3 ملايين');
+    expect(mahrWords(15000000), '15 مليونًا');
+    expect(mahrWords(1500000), '1.5 مليون');
   });
 
   group('c01 the mahr beside the wedding', () {
@@ -515,7 +517,7 @@ void main() {
       );
       await tester.pumpAndSettle();
       // D75: the amount in words and the rest share one row.
-      expect(find.text('باقي مليون'), findsOneWidget);
+      expect(find.text('باقي 1 مليون'), findsOneWidget);
       expect(find.text('موعد تسليم الباقي'), findsOneWidget);
 
       await tester.tap(find.text('حفظ المهر'));
@@ -541,7 +543,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('ثلاثة مليون ر.ي'), findsOneWidget);
+      expect(find.text('ثلاثة ملايين ر.ي'), findsOneWidget);
       expect(find.textContaining('ريال'), findsNothing);
     });
 

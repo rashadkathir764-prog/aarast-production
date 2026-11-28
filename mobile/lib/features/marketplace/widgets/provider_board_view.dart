@@ -19,7 +19,7 @@ class ProviderBoardView extends StatelessWidget {
   final ValueChanged<ProviderBoardRow> onOpen;
   final ValueChanged<ProviderBoardRow> onSearch;
 
-  /// Opens «استكشف»: the way to start from an empty board.
+  /// Opens «الدليل»: the way to start from an empty board.
   final VoidCallback? onExplore;
 
   @override
@@ -37,8 +37,8 @@ class ProviderBoardView extends StatelessWidget {
             const SizedBox(height: AarastV3Space.x1),
             Text(
               context.say(
-                'أضف بنود عرسك في المال (القاعة، الضيافة، التصوير…) وتظهر هنا، أو دوّر في «استكشف».',
-                'أضيفي بنود عرسك في المال (الصالة، الضيافة، التصوير…) وتظهر هنا، أو دوّري في «استكشف».',
+                'أضف بنود عرسك في المال (القاعة، الضيافة، التصوير…) وتظهر هنا، أو دوّر في «الدليل».',
+                'أضيفي بنود عرسك في المال (الصالة، الضيافة، التصوير…) وتظهر هنا، أو دوّري في «الدليل».',
               ),
               style: JourneyType.of(
                 JourneyType.body,
@@ -50,7 +50,7 @@ class ProviderBoardView extends StatelessWidget {
               const SizedBox(height: AarastV3Space.x3),
               JourneyButton(
                 key: const ValueKey('provider-board-empty-explore'),
-                label: context.say('دوّر في استكشف', 'دوّري في استكشف'),
+                label: context.say('دوّر في الدليل', 'دوّري في الدليل'),
                 icon: LucideIcons.search,
                 background: context.accent.primary,
                 expand: true,

@@ -34,6 +34,7 @@ export 'screens/plan_assistant_screen.dart' show PlanAssistantScreen;
 export 'screens/plan_management_screen.dart' show PlanCenterScreen;
 export 'screens/wedding_plan_dashboard_screen.dart'
     show WeddingPlanDashboardScreen;
+export 'screens/wedding_week_screen.dart' show WeddingWeekScreen;
 export 'utils/assistant_consent.dart' show AssistantConsent;
 export 'utils/plan_pulse_sync.dart'
     show publishGuestPlanPulse, publishTaskPlanPulse;

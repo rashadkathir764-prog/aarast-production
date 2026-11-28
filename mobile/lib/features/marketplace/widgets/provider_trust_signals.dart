@@ -2,6 +2,8 @@ import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/experience_v3/aarast_journey_profile.dart';
+import '../../../core/l10n/aarast_text.dart';
+import '../../../core/utils/arabic_count.dart';
 import '../data/marketplace_api.dart';
 import '../models/marketplace_models.dart';
 
@@ -20,25 +22,20 @@ DateTime? latestPriceUpdate(Iterable<MarketplaceService> services) {
   return latest;
 }
 
-/// f03 «يرد عادة خلال ساعتين», only from answered requests; null when the
-/// provider has none to judge by.
+/// f03 «يردّ عادة خلال ساعتين», said only when he answered 80% of his
+/// requests or more (2026-11-26 review: a fast answer to half of them is no
+/// fast answer); below that «يردّ على 60% من الطلبات». Null with no history
+/// to judge by.
 String? providerRespondsLabel(ProviderResponsiveness? responsiveness) {
-  final hours = responsiveness?.typicalResponseHours;
   if (responsiveness == null || responsiveness.sampleSize == 0) return null;
-  if (hours == null) return null;
-  return 'يرد عادة ${_withinLabel(hours)}';
-}
-
-String _withinLabel(int hours) {
-  if (hours <= 1) return 'خلال ساعة';
-  if (hours == 2) return 'خلال ساعتين';
-  if (hours <= 10) return 'خلال $hours ساعات';
-  if (hours < 24) return 'خلال $hours ساعة';
-  final days = (hours / 24).ceil();
-  if (days == 1) return 'خلال يوم';
-  if (days == 2) return 'خلال يومين';
-  if (days <= 10) return 'خلال $days أيام';
-  return 'خلال $days يوم';
+  if (!responsiveness.saysResponseTime) {
+    return aarastText.providersRespondsShare(responsiveness.answeredPercent);
+  }
+  final hours = responsiveness.typicalResponseHours!;
+  if (hours < 24) {
+    return aarastText.providersRespondsHours(hours < 1 ? 1 : hours);
+  }
+  return aarastText.providersRespondsDays((hours / 24).ceil());
 }
 
 /// f03 «آخر تحديث للسعر قبل 3 أسابيع»; an old price also asks to confirm it.
@@ -57,19 +54,14 @@ String _ago(DateTime then, DateTime now) {
   final days = now.difference(then).inDays;
   if (days < 1) return 'اليوم';
   if (days == 1) return 'أمس';
-  if (days == 2) return 'قبل يومين';
-  if (days <= 10) return 'قبل $days أيام';
-  if (days < 14) return 'قبل $days يوم';
+  if (days < 14) return 'قبل ${arabicDays(days)}';
   if (days < 30) {
     final weeks = days ~/ 7;
-    return weeks == 2 ? 'قبل أسبوعين' : 'قبل $weeks أسابيع';
+    return 'قبل ${arabicCount(weeks, one: 'أسبوع', two: 'أسبوعين', few: 'أسابيع', many: 'أسبوعًا')}';
   }
   if (days >= 365) return 'قبل أكثر من سنة';
   final months = days ~/ 30;
-  if (months == 1) return 'قبل شهر';
-  if (months == 2) return 'قبل شهرين';
-  if (months <= 10) return 'قبل $months شهور';
-  return 'قبل $months شهر';
+  return 'قبل ${arabicCount(months, one: 'شهر', two: 'شهرين', few: 'شهور', many: 'شهر')}';
 }
 
 /// The same «يرد عادة …» line for a screen that only knows the provider's

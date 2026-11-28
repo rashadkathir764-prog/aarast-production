@@ -475,6 +475,9 @@ class _FakeSystemNotifications implements PushSystemNotifications {
 
   @override
   Future<void> cancelAll() async => cancelled++;
+
+  @override
+  Future<Set<String>> blockedChannels() async => const {};
 }
 
 class _FakePushGateway implements PushMessagingGateway {

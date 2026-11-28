@@ -33,7 +33,21 @@ class ProviderMarketplaceProvider extends _MarketplaceProviderCore
 
   List<ProviderPackage> packagesFor(String id) => _packages[id] ?? const [];
 
+  /// His published reviews read so far, newest first: the first page with
+  /// the page, more as [loadMoreReviews] reads them.
   List<ProviderReview> reviewsFor(String id) => _reviews[id] ?? const [];
+
+  /// What all his published reviews add up to (the server's summary), null
+  /// until read.
+  ProviderReviewSummary? reviewSummaryFor(String id) => _reviewSummaries[id];
+
+  /// More published reviews than [reviewsFor] holds.
+  bool hasMoreReviews(String id) {
+    final paging = _reviewPaging[id];
+    return paging != null && paging.page < paging.totalPages;
+  }
+
+  bool isLoadingMoreReviews(String id) => _reviewsLoadingMore.contains(id);
 
   /// f03 (B-16): his approved photos this reader may see, and his links;
   /// null until read (a signed-in reader only).
@@ -73,6 +87,24 @@ abstract class _MarketplaceProviderCore extends ChangeNotifier
   /// provider about. Context, not a filter: nobody is hidden by it, and the
   /// filters' reset leaves it.
   DateTime? _eventDate;
+
+  /// D131: the order the reader picked under «رتّب حسب».
+  ProviderSort _sort = ProviderSort.best;
+
+  /// D131 «أخفِ المشغولين يوم عرسي»: a filter, so «امسح الفلتر» resets it;
+  /// it means nothing without [_eventDate].
+  bool _hideBusy = false;
+
+  /// D131 (F8): what each category chip opens; null when not read (or the
+  /// read failed), and the chips then go without a number.
+  ProviderCategoryCounts? _categoryCounts;
+
+  /// What the shown list really is (2026-11-26 review): the phone's saved
+  /// copy or the server's answer, in which order, and whether the busy were
+  /// left out. The screen names only what was done.
+  bool _listIsSavedCopy = false;
+  ProviderSort? _appliedSort;
+  bool _hideBusyApplied = false;
   String? _categoryId;
   bool _includeAccountData = false;
   String? _catalogAudience;
@@ -92,16 +124,25 @@ abstract class _MarketplaceProviderCore extends ChangeNotifier
   /// is set (a letter typed), the page only when its answer comes.
   _DirectoryQuery? _appliedQuery;
 
-  /// The first page's length: a later page appends, and the sections are
-  /// fixed on the first page alone.
-  int _firstPageLength = 0;
-  Set<String> _browseSectionKinds = const {};
-  Set<String> _browseShelfKinds = const {};
+  /// «الدليل» while browsing everything: one shelf per category, each read
+  /// from the server under its category ([ProviderShelf]).
+  List<ProviderShelf> _shelves = const [];
+
+  /// What the drawn shelves were read under ([_shelfFilter]).
+  String? _shelvesFilter;
+
+  /// The filters every shelf is read under.
+  String _shelfFilter() =>
+      '${_cityId ?? ''}|${_eventDate?.toIso8601String() ?? ''}|$hideBusy';
+  bool _shelvesLoading = false;
   ProviderBudgetMatchIntent? _budgetMatchIntent;
   final Map<String, MarketplaceProvider> _details = {};
   final Map<String, List<MarketplaceService>> _services = {};
   final Map<String, List<ProviderPackage>> _packages = {};
   final Map<String, List<ProviderReview>> _reviews = {};
+  final Map<String, ProviderReviewSummary> _reviewSummaries = {};
+  final Map<String, ({int page, int totalPages})> _reviewPaging = {};
+  final Set<String> _reviewsLoadingMore = {};
   final Map<String, PublicPortfolio> _portfolios = {};
   final Map<String, String> _detailsErrors = {};
   final Map<String, String> _servicesErrors = {};
@@ -156,8 +197,57 @@ abstract class _MarketplaceProviderCore extends ChangeNotifier
   String get search => _search;
   String? get cityId => _cityId;
 
-  /// The wedding day each row says «فاضي» or «مشغول» for; null without one.
+  /// The wedding day each row is asked about (D131: only a proven «محجوز»
+  /// or «لا يستقبل حجوزات» is said); null without one.
   DateTime? get eventDate => _eventDate;
+
+  /// The providers this reader's own confirmed bookings hold on the asked
+  /// wedding day. The directory's `dayStatus` counts every confirmed
+  /// booking, the reader's own too, so the hall she booked herself read
+  /// «محجوز يوم عرسك» in the danger's colour, as if someone else took it;
+  /// these read «محجوز لك» instead.
+  Set<String> get providersBookedByReader {
+    final day = _eventDate;
+    if (day == null) return const {};
+    return {
+      for (final quote in _quoteRequests)
+        if (quote.booking case final booking?
+            when booking.isConfirmed &&
+                booking.eventDate.year == day.year &&
+                booking.eventDate.month == day.month &&
+                booking.eventDate.day == day.day)
+          quote.providerId,
+    };
+  }
+
+  ProviderSort get sort => _sort;
+
+  /// Whether the busy are left out: only with a wedding day.
+  bool get hideBusy => _hideBusy && _eventDate != null;
+  ProviderCategoryCounts? get categoryCounts => _categoryCounts;
+
+  /// «الأقل سعرًا» compares prices inside a kind only (2026-11-26 review):
+  /// it is offered once a category or a money item's categories are asked.
+  bool get priceSortOffered =>
+      _categoryId != null ||
+      (_budgetMatchIntent?.providerCategoryIds.isNotEmpty ?? false);
+
+  /// The shown list is the phone's saved copy («نسخة محفوظة»): no order
+  /// and no hiding were applied to it.
+  bool get listIsSavedCopy => _listIsSavedCopy;
+
+  /// «لم يصل الدليل، فهذه آخر نسخة في جوالك» is true: the list is the saved
+  /// copy and the server did not answer. The copy also shows first while the
+  /// request is still on its way (D85); the notice was said then too, on
+  /// every slow open, with nothing wrong.
+  bool get saysSavedCopy => _listIsSavedCopy && _isStale;
+
+  /// The order the shown list is in; null for the saved copy.
+  ProviderSort? get appliedSort => _appliedSort;
+
+  /// Whether the shown list left out those known busy on the wedding day
+  /// (never for a day already past, nor for the saved copy).
+  bool get hideBusyApplied => _hideBusyApplied;
   String? get categoryId => _categoryId;
   List<MarketplaceCity> get cities => _cities;
   List<ProviderCategory> get categories => _categories
@@ -176,20 +266,21 @@ abstract class _MarketplaceProviderCore extends ChangeNotifier
       _appliedQuery == null || _appliedQuery == _currentQuery();
 
   /// The shown page is the whole directory (no kind, no item, no name), as
-  /// it was asked: the sections stay until a search's answer comes.
+  /// it was asked: the shelves stay until a search's answer comes.
   bool get showsWholeDirectory => (_appliedQuery ?? _currentQuery()).browsing;
 
-  /// The kinds that make a section, and those of them that are sideways rows,
-  /// fixed on the whole directory's first page (D120, review 2026-11-18): a
-  /// later page fills sections already drawn, and the screen being built again
-  /// does not fix them anew.
-  /// Before a page is loaded they are read from [providers] as they are.
-  Set<String> get browseSectionKinds => _appliedQuery == null
-      ? _browseKindsOf(providers).sections
-      : _browseSectionKinds;
-  Set<String> get browseShelfKinds => _appliedQuery == null
-      ? _browseKindsOf(providers).shelves
-      : _browseShelfKinds;
+  /// The shelves of the whole directory, in the catalog's order, each
+  /// category this reader's plan shows that has someone under the filter.
+  List<ProviderShelf> get shelves {
+    final visible = {for (final category in categories) category.id};
+    return [
+      for (final shelf in _shelves)
+        if (visible.contains(shelf.categoryId)) shelf,
+    ];
+  }
+
+  /// The shelves are being read and none is drawn yet.
+  bool get shelvesLoading => _shelvesLoading;
 
   // Read through the getters, which the filters' setters keep.
   _DirectoryQuery _currentQuery() => (
@@ -198,38 +289,26 @@ abstract class _MarketplaceProviderCore extends ChangeNotifier
     categoryId: categoryId,
     intent: budgetMatchIntent?.providerCategoryIds.join(','),
     eventDate: eventDate,
+    sort: sort,
+    hideBusy: hideBusy,
   );
-
-  ({Set<String> sections, Set<String> shelves}) _browseKindsOf(
-    List<MarketplaceProvider> page,
-  ) {
-    final order = [for (final category in categories) category.id];
-    final first = providerSections(page, order);
-    return (
-      sections: {for (final section in first) section.categoryId},
-      shelves: {
-        for (final section in first)
-          if (section.providers.length >= providerShelfMinimum)
-            section.categoryId,
-      },
-    );
-  }
-
-  /// Fixes [browseSectionKinds] and [browseShelfKinds] on the first page,
-  /// each time it or its catalog is replaced ([directoryRevision]).
-  void _fixBrowseKinds() {
-    final kinds = _browseKindsOf(
-      _providers.take(_firstPageLength).toList(growable: false),
-    );
-    _browseSectionKinds = kinds.sections;
-    _browseShelfKinds = kinds.shelves;
-  }
 
   ProviderBudgetMatchIntent? get budgetMatchIntent => _budgetMatchIntent;
   Set<String> get favoriteProviderIds => _favoriteProviderIds;
   List<FavoriteProvider> get favoriteProviders => _favoriteProviders;
   List<QuoteRequest> get quoteRequests => _quoteRequests;
   bool get includesAccountData => _includeAccountData;
+
+  /// The reader's saved providers were asked of the server and it has not
+  /// answered yet. [isLoading] is false as soon as the phone's copy of the
+  /// directory shows, and the copy holds no account data: «لا مزوّدين في
+  /// المفضلة بعد» was said to a reader with saved providers, on a slow open.
+  bool get accountDataPending => _accountDataAsked && !_accountDataAnswered;
+
+  /// The server answered for the reader's saved providers at least once.
+  bool get accountDataRead => _accountDataAnswered;
+  bool _accountDataAsked = false;
+  bool _accountDataAnswered = false;
   int get currentPage => _currentPage;
   int get totalProviders => _totalProviders;
   int get totalPages => _totalPages;
@@ -289,6 +368,10 @@ abstract class _MarketplaceProviderCore extends ChangeNotifier
   }
 }
 
+/// Reviews read per page on a provider's page; its first three show, then
+/// «كل التقييمات (N)».
+const providerReviewsPageSize = 10;
+
 String? _normalizedAudience(String? value) {
   final normalized = value?.trim().toUpperCase();
   return normalized == 'GROOM' || normalized == 'BRIDE' ? normalized : null;
@@ -313,6 +396,7 @@ class _DirectoryBundle {
     required this.providers,
     required this.favorites,
     required this.quoteRequests,
+    required this.categoryCounts,
   });
 
   final List<MarketplaceCity> cities;
@@ -320,6 +404,7 @@ class _DirectoryBundle {
   final MarketplaceProviderPage providers;
   final _MarketplaceLoadResult<List<FavoriteProvider>>? favorites;
   final List<QuoteRequest>? quoteRequests;
+  final ProviderCategoryCounts? categoryCounts;
 }
 
 class _MarketplaceLoadResult<T> {
@@ -386,8 +471,16 @@ typedef _DirectoryQuery = ({
   String? categoryId,
   String? intent,
   DateTime? eventDate,
+  ProviderSort sort,
+  bool hideBusy,
 });
 
 extension on _DirectoryQuery {
-  bool get browsing => search.isEmpty && categoryId == null && intent == null;
+  /// The whole directory in its own order: an order picked by hand reads as
+  /// one list, not as sections by kind that would hide it.
+  bool get browsing =>
+      search.isEmpty &&
+      categoryId == null &&
+      intent == null &&
+      sort == ProviderSort.best;
 }

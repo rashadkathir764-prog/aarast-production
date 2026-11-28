@@ -199,7 +199,7 @@ abstract final class AarastV3ScreenCatalog {
 
   static const providers = AarastV3ScreenContract(
     id: 'providers',
-    location: 'المزودين',
+    location: 'المزوّدون',
     purpose: 'تلاقي مزود مناسب وتقارن، بلا حجز ما صار',
     archetype: AarastV3ScreenArchetype.root,
     states: _protectedStates,

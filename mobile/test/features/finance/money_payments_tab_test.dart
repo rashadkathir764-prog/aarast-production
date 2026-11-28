@@ -379,8 +379,9 @@ void main() {
     await _payments(tester);
 
     // 300,000 + 400,000 + 350,000 + 100,000 (hall, no date) + 800,000 =
-    // 1,950,000, a half rounded up.
+    // 1,950,000, a half rounded up: two millions, its digits leading (D136).
     final total = find.byKey(const ValueKey('money-due-total'));
+    expect(_said(tester, total), isNot(contains('مليونان')));
     expect(_said(tester, total), contains('2\u00a0مليون'));
     expect(_said(tester, total), contains('5 دفعات'));
     expect(_said(tester, total), contains('منها متأخر 300,000'));

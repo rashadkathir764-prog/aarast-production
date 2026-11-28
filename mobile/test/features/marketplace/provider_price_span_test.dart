@@ -53,4 +53,37 @@ void main() {
     expect(providerPriceSpan([_service('a', '', 'YER')]), isNull);
     expect(providerPriceRange(const []), isNull);
   });
+
+  // The comparison's column read the services alone: a provider priced in
+  // his packages said «السعر عند الطلب» over the packages' own prices.
+  test('the comparison reads the packages with the services', () {
+    const package = ProviderPackage(
+      id: 'pk',
+      providerId: 'p',
+      title: 'الباقة الكاملة',
+      isActive: true,
+      price: '250000',
+      currency: 'YER',
+    );
+    expect(providerPriceRange(const [], packages: const [package]), isNotNull);
+    expect(
+      _plain(providerPriceRange(const [], packages: const [package])!),
+      contains('250,000'),
+    );
+  });
+
+  // The short figure names no currency («من 15 ألفًا»), so it is the app's
+  // own alone: a price in another one keeps its sign.
+  test('a card shortens the app\'s currency only', () {
+    final riyal = _plain(
+      providerFromPriceShort((min: 250000, max: 250000, currency: 'YER'))!,
+    );
+    expect(riyal, contains('250 ألفًا'));
+    final saudi = _plain(
+      providerFromPriceShort((min: 15000, max: 15000, currency: 'SAR'))!,
+    );
+    expect(saudi, contains('15,000'));
+    expect(saudi, contains('ر.س'));
+    expect(saudi, isNot(contains('ألفًا')));
+  });
 }

@@ -78,6 +78,7 @@ const _routes = [
   '/wedding-plans/:planId/tasks/:taskId/edit',
   '/wedding-plans/:planId/tasks/create',
   '/wedding-plans/:planId/timeline',
+  '/wedding-plans/:planId/week',
 ];
 
 Map<String, String> _ids() => {

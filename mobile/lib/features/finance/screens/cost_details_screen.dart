@@ -394,7 +394,7 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
     if (days <= 0) return 'اليوم · $date';
     if (days == 1) return 'بكرة · $date';
     if (days <= 30) {
-      return 'بعد ${arabicCount(days, one: 'يوم', two: 'يومين', few: 'أيام', many: 'يوم')} · $date';
+      return 'بعد ${arabicDays(days)} · $date';
     }
     return date;
   }

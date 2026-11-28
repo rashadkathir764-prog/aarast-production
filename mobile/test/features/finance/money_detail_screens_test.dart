@@ -806,7 +806,7 @@ void main() {
 
         await tester.enterText(find.byType(EditableText).first, '500');
         await tester.pump();
-        expect(find.textContaining('خمسمية'), findsOneWidget);
+        expect(find.textContaining('خمسمئة'), findsOneWidget);
         expect(find.textContaining('أكثر من الباقي'), findsNothing);
 
         // «الباقي كامل» fills the whole remainder.

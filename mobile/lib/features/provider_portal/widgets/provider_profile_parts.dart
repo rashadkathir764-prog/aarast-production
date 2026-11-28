@@ -36,7 +36,7 @@ String providerAgoLabel(DateTime then, {DateTime? now}) {
   if (days < 1) return 'اليوم';
   if (days == 1) return 'أمس';
   if (days < 14) {
-    return 'قبل ${arabicCount(days, one: 'يوم', two: 'يومين', few: 'أيام', many: 'يوم')}';
+    return 'قبل ${arabicDays(days)}';
   }
   if (days < 30) {
     final weeks = days ~/ 7;
@@ -90,7 +90,7 @@ String providerHoursLabel(int hours) {
     );
   }
   final days = (hours / 24).ceil();
-  return arabicCount(days, one: 'يوم', two: 'يومين', few: 'أيام', many: 'يوم');
+  return arabicDays(days);
 }
 
 /// «4.7 · 38 تقييم».

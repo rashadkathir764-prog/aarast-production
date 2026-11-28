@@ -7,6 +7,18 @@ import 'package:flutter_test/flutter_test.dart';
 import '../../support/app_text_scale.dart';
 
 // f03 «صفحة المزود», on the prototype's own provider (استوديو ضوء صنعاء).
+//
+// Changed on purpose (2026-11-26, REFINEMENT_SPEC 2.7, the final providers
+// proposal): the identity is the name with ✓, then «الكيان · المدينة» (one
+// dot), the rating and how he answers; ONE price line «من X» over his
+// services and packages together (it was the services' range), with «ضمن
+// بندك»; a package's lines read with commas, not a chain of dots; a service
+// row says its price, not «من»; the price's age left the page (the element
+// removed: the request asks the provider for his price anyway); the words
+// are the arb part's MSA.
+
+/// A no-break space: an amount keeps its unit on its line.
+const _nb = ' ';
 
 final _now = DateTime(2026, 10, 24, 12);
 
@@ -26,33 +38,46 @@ void main() {
   testWidgets('f03 shows the provider as the prototype does', (tester) async {
     await _pumpView(tester, withinBudget: true, portfolio: _twoPhotos);
 
-    expect(find.text('استوديو ضوء صنعاء'), findsOneWidget);
-    expect(find.byTooltip('موثّق'), findsOneWidget);
-    expect(find.textContaining('4.8', findRichText: true), findsOneWidget);
     expect(
-      find.textContaining('(63) · صنعاء، حدة', findRichText: true),
+      find.textContaining('استوديو ضوء صنعاء', findRichText: true),
       findsOneWidget,
     );
-    expect(find.text('يرد عادة خلال ساعتين'), findsOneWidget);
-    expect(find.text('450,000\u00a0-\u00a0600,000\u00a0ر.ي'), findsOneWidget);
-    expect(find.text('ضمن بندك'), findsOneWidget);
-    expect(find.text('آخر تحديث للسعر قبل 3 أسابيع'), findsOneWidget);
+    expect(
+      find.byWidgetPredicate(
+        (widget) => widget is Icon && widget.semanticLabel == 'موثّق',
+      ),
+      findsOneWidget,
+    );
+    expect(find.textContaining('4.8', findRichText: true), findsOneWidget);
+    expect(find.text('التصوير · صنعاء'), findsOneWidget);
+    expect(find.text('يردّ عادة خلال ساعتين'), findsOneWidget);
+    expect(find.text('من 350,000$_nbر.ي · ضمن بندك'), findsOneWidget);
+    expect(find.textContaining('آخر تحديث للسعر'), findsNothing);
     expect(find.text('الباقات'), findsOneWidget);
     expect(find.text('صور فقط'), findsOneWidget);
-    expect(find.text('مصور واحد · 300 صورة'), findsOneWidget);
-    expect(find.text('350,000\u00a0ر.ي'), findsOneWidget);
+    expect(find.text('مصور واحد، 300 صورة'), findsOneWidget);
+    expect(find.text('350,000$_nbر.ي'), findsOneWidget);
     expect(find.text('صور وفيديو'), findsOneWidget);
-    expect(find.text('مصورين · فيلم 10 دقائق · ألبوم'), findsOneWidget);
-    expect(find.text('1 / 3 صورة'), findsOneWidget);
+    expect(find.text('مصورين، فيلم 10 دقائق، ألبوم'), findsOneWidget);
+    // His work photos first, then the cover; the counter says which.
+    expect(find.text('1 من 3'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('الخدمات'),
+      300,
+      scrollable: _page,
+    );
+    expect(find.text('450,000$_nbر.ي'), findsOneWidget);
+    expect(find.text('600,000$_nbر.ي'), findsOneWidget);
 
     // Dropped by the classification (no data behind them), and the old
     // page's extras that are not in the prototype.
     expect(find.textContaining('دفعوا فعلًا'), findsNothing);
     expect(find.textContaining('من 11 عرس'), findsNothing);
     expect(find.textContaining('فاضي'), findsNothing);
+    expect(find.textContaining('متاح'), findsNothing);
     expect(find.textContaining('مرجع تخطيطي'), findsNothing);
     expect(find.byTooltip('مشاركة'), findsNothing);
-    expect(find.byTooltip('حفظ المزود'), findsNothing);
+    expect(find.bySemanticsLabel('إضافة إلى المفضلة'), findsNothing);
     expect(find.textContaining('التقييمات'), findsNothing);
     expect(tester.takeException(), isNull);
   });
@@ -65,15 +90,24 @@ void main() {
       provider: _provider(coverUrl: null, logoUrl: 'https://img.test/logo.jpg'),
     );
 
+    // Changed on purpose (2026-11-26): no photo, no photo block; the logo
+    // is whole beside his name, never stretched over a photo's frame.
     expect(find.byType(Image), findsOneWidget);
+    expect(tester.widget<Image>(find.byType(Image)).fit, BoxFit.contain);
+    expect(find.byKey(const ValueKey('provider-details-photos')), findsNothing);
   });
 
   testWidgets('B-16: the approved portfolio photos join the count and the '
       'links show', (tester) async {
     await _pumpView(tester, portfolio: _twoPhotos);
 
-    expect(find.text('1 / 3 صورة'), findsOneWidget);
-    expect(find.text('روابط الشغل'), findsOneWidget);
+    expect(find.text('1 من 3'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('provider-social-tiktok')),
+      300,
+      scrollable: _page,
+    );
+    expect(find.text('روابط أعماله'), findsOneWidget);
     expect(find.byKey(const ValueKey('provider-social-tiktok')), findsOne);
     expect(find.byKey(const ValueKey('provider-social-facebook')), findsOne);
     expect(
@@ -88,7 +122,16 @@ void main() {
     // Both services carry a photo; without a portfolio only the cover shows.
     await _pumpView(tester);
 
-    expect(find.text('1 / 1 صورة'), findsOneWidget);
+    // One photo needs no counter, nor «كل الصور».
+    expect(find.byType(Image), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('provider-details-photo-count')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('provider-details-all-photos')),
+      findsNothing,
+    );
     expect(find.byKey(const ValueKey('provider-social-tiktok')), findsNothing);
   });
 
@@ -111,7 +154,8 @@ void main() {
     await tester.tap(find.bySemanticsLabel('افتح الصور'));
     await tester.pump();
 
-    expect(find.byType(PageView), findsOneWidget);
+    // The page's own photos and the gallery over them.
+    expect(find.byType(PageView), findsNWidgets(2));
   });
 
   testWidgets('without packages the priced services are the offers', (
@@ -119,13 +163,17 @@ void main() {
   ) async {
     await _pumpView(tester, packages: const []);
 
-    expect(find.text('الباقات'), findsOneWidget);
+    expect(find.text('الباقات'), findsNothing);
+    expect(find.text('الخدمات'), findsOneWidget);
+    expect(find.text('600,000$_nbر.ي'), findsOneWidget);
     expect(find.text('تصوير كامل'), findsOneWidget);
-    expect(find.text('600,000\u00a0ر.ي'), findsOneWidget);
-    expect(find.text('ضمن بندك'), findsNothing);
+    expect(find.text('من 450,000$_nbر.ي'), findsOneWidget);
+    expect(find.textContaining('ضمن بندك'), findsNothing);
   });
 
-  testWidgets('nothing priced shows no price and no offers', (tester) async {
+  testWidgets('nothing priced says «السعر عند الطلب» once, no offers', (
+    tester,
+  ) async {
     await _pumpView(
       tester,
       provider: _provider(withResponses: false, address: null),
@@ -133,15 +181,141 @@ void main() {
       packages: const [],
     );
 
-    expect(find.byKey(const ValueKey('provider-details-price')), findsNothing);
+    // A claimed provider with no price says so in the price line.
+    expect(
+      tester
+          .widget<Text>(find.byKey(const ValueKey('provider-details-price')))
+          .data,
+      'السعر عند الطلب',
+    );
     expect(find.text('الباقات'), findsNothing);
-    expect(find.textContaining('يرد عادة'), findsNothing);
-    // The cover is the only photo left.
-    expect(find.text('1 / 1 صورة'), findsOneWidget);
+    expect(find.textContaining('يردّ عادة'), findsNothing);
+    // The cover is the only photo left: no counter for one.
+    expect(find.byType(Image), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('an old price asks to confirm it', (tester) async {
+  // The real app read «صنعاء، حدة، صنعاء»: the city from his record, then
+  // an address that names it again.
+  testWidgets('the city is not said twice when his address names it', (
+    tester,
+  ) async {
+    final location = find.byKey(const ValueKey('provider-details-location'));
+
+    await _pumpView(tester, provider: _provider(address: 'حدة، صنعاء'));
+    await tester.scrollUntilVisible(location, 300, scrollable: _page);
+    expect(
+      find.descendant(of: location, matching: find.text('حدة، صنعاء')),
+      findsOneWidget,
+    );
+
+    // An address that names no city still gets it.
+    await _pumpView(tester, provider: _provider(address: 'حدة'));
+    await tester.scrollUntilVisible(location, 300, scrollable: _page);
+    expect(
+      find.descendant(of: location, matching: find.text('صنعاء، حدة')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('a service without a price is listed, «السعر عند الطلب»', (
+    tester,
+  ) async {
+    await _pumpView(
+      tester,
+      packages: const [],
+      services: const [
+        MarketplaceService(
+          id: 'service-drone',
+          providerId: 'provider-1',
+          title: 'تصوير بالدرون',
+          isActive: true,
+        ),
+      ],
+    );
+    expect(find.text('تصوير بالدرون'), findsOneWidget);
+    // The service's row and the page's price line both say it.
+    expect(find.text('السعر عند الطلب'), findsNWidgets(2));
+  });
+
+  testWidgets('the heart on the photos saves him', (tester) async {
+    var taps = 0;
+    await _pumpView(tester, onFavorite: () => taps++);
+    await tester.tap(find.byKey(const ValueKey('provider-details-favorite')));
+    expect(taps, 1);
+    expect(find.bySemanticsLabel('إضافة إلى المفضلة'), findsOneWidget);
+  });
+
+  testWidgets('the counter follows the photo shown', (tester) async {
+    await _pumpView(tester, portfolio: _twoPhotos);
+    expect(find.text('1 من 3'), findsOneWidget);
+    await tester.drag(
+      find.byKey(const ValueKey('provider-details-photos')),
+      const Offset(400, 0),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('2 من 3'), findsOneWidget);
+  });
+
+  testWidgets('three reviews, then «كل التقييمات» shows the rest', (
+    tester,
+  ) async {
+    await _pumpView(
+      tester,
+      reviews: [
+        for (var i = 1; i <= 5; i++)
+          ProviderReview(id: 'review-$i', rating: 5, userName: 'زبون $i'),
+      ],
+    );
+    final all = find.byKey(const ValueKey('provider-details-all-reviews'));
+    await tester.scrollUntilVisible(all, 300, scrollable: _page);
+    expect(find.text('كل التقييمات (5)'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('provider-details-review-review-4')),
+      findsNothing,
+    );
+    await tester.tap(all);
+    await tester.pump();
+    expect(all, findsNothing);
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('provider-details-review-review-5')),
+      300,
+      scrollable: _page,
+    );
+  });
+
+  testWidgets('more than five reviews: the summary with how the stars '
+      'spread; five or fewer: none', (tester) async {
+    const summary = ProviderReviewSummary(
+      average: 4.6,
+      count: 12,
+      distribution: {1: 0, 2: 1, 3: 1, 4: 2, 5: 8},
+    );
+    await _pumpView(
+      tester,
+      reviews: const [ProviderReview(id: 'review-1', rating: 5)],
+      reviewSummary: summary,
+    );
+    final box = find.byKey(const ValueKey('provider-details-review-summary'));
+    await tester.scrollUntilVisible(box, 300, scrollable: _page);
+    expect(find.text('12 تقييمًا'), findsOneWidget);
+    expect(find.text('كل التقييمات (12)'), findsOneWidget);
+
+    await _pumpView(
+      tester,
+      reviews: const [ProviderReview(id: 'review-1', rating: 5)],
+      reviewSummary: const ProviderReviewSummary(
+        average: 5,
+        count: 5,
+        distribution: {1: 0, 2: 0, 3: 0, 4: 0, 5: 5},
+      ),
+    );
+    expect(box, findsNothing);
+  });
+
+  testWidgets('an old price is said as «من X», without its age', (
+    tester,
+  ) async {
     await _pumpView(
       tester,
       services: [
@@ -154,10 +328,8 @@ void main() {
       packages: const [],
     );
 
-    expect(
-      find.text('آخر تحديث للسعر قبل 4 شهور · تأكد منه لما تطلب العرض'),
-      findsOneWidget,
-    );
+    expect(find.text('من 450,000$_nbر.ي'), findsOneWidget);
+    expect(find.textContaining('آخر تحديث للسعر'), findsNothing);
   });
 
   testWidgets('a failed refresh over an older copy offers a retry', (
@@ -171,15 +343,15 @@ void main() {
     );
 
     expect(
-      find.byKey(const ValueKey('journey-list-notice-error')),
+      find.byKey(const ValueKey('provider-details-stale')),
       findsOneWidget,
     );
-    await tester.tap(find.text('جرّب مرة ثانية'));
+    await tester.tap(find.text('أعد المحاولة'));
     expect(retries, 1);
   });
 
   // B-09: the published reviews with the provider's published reply under
-  // each (f03 draws no list; undrawn, built on the journey kit).
+  // each.
   testWidgets('the reviews read with the provider reply under each', (
     tester,
   ) async {
@@ -202,10 +374,11 @@ void main() {
     await tester.scrollUntilVisible(
       find.byKey(const ValueKey('provider-details-review-reply-review-1')),
       300,
+      scrollable: _page,
     );
     expect(find.text('التقييمات'), findsOneWidget);
-    expect(find.text('«الفيلم وصل بعد أسبوعين بالضبط»'), findsOneWidget);
-    expect(find.text('رد استوديو ضوء صنعاء'), findsOneWidget);
+    expect(find.text('الفيلم وصل بعد أسبوعين بالضبط'), findsOneWidget);
+    expect(find.text('ردّ استوديو ضوء صنعاء'), findsOneWidget);
     expect(find.text('شكرًا يا خالد، ونعتذر عن التأخير.'), findsOneWidget);
     expect(
       find.byKey(const ValueKey('provider-details-review-review-2')),
@@ -244,7 +417,7 @@ void main() {
     final flag = find.byKey(
       const ValueKey('provider-details-review-report-review-other'),
     );
-    await tester.scrollUntilVisible(flag, 300);
+    await tester.scrollUntilVisible(flag, 300, scrollable: _page);
     expect(
       find.byKey(const ValueKey('provider-details-review-report-review-mine')),
       findsNothing,
@@ -267,6 +440,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.byKey(const ValueKey('provider-details-review-review-1')),
       300,
+      scrollable: _page,
     );
     expect(
       find.byKey(const ValueKey('provider-details-review-report-review-1')),
@@ -278,9 +452,18 @@ void main() {
     await _pumpView(tester, width: 320, textScale: 1.3, withinBudget: true);
 
     expect(tester.takeException(), isNull);
-    expect(find.text('استوديو ضوء صنعاء'), findsOneWidget);
+    expect(
+      find.textContaining('استوديو ضوء صنعاء', findRichText: true),
+      findsOneWidget,
+    );
   });
 }
+
+/// The page's own scroll, not the photos' sideways one.
+final _page = find.byWidgetPredicate(
+  (widget) =>
+      widget is Scrollable && widget.axisDirection == AxisDirection.down,
+);
 
 MarketplaceProvider _provider({
   bool withResponses = true,
@@ -386,9 +569,11 @@ Future<void> _pumpView(
   double textScale = 1,
   bool dataSaver = false,
   List<ProviderReview> reviews = const [],
+  ProviderReviewSummary? reviewSummary,
   PublicPortfolio? portfolio,
   ValueChanged<ProviderReview>? onReportReview,
   String? readerUserId,
+  VoidCallback? onFavorite,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = Size(width, 1400);
@@ -418,9 +603,11 @@ Future<void> _pumpView(
             now: _now,
             dataSaver: dataSaver,
             reviews: reviews,
+            reviewSummary: reviewSummary,
             portfolio: portfolio,
             onReportReview: onReportReview,
             readerUserId: readerUserId,
+            onFavorite: onFavorite,
           ),
         ),
       ),

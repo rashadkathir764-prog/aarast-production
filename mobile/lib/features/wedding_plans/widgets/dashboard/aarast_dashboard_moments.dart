@@ -8,14 +8,13 @@ part of 'aarast_dashboard_view.dart';
 ({String drawn, String spoken}) homeCountdownWords(int? days) {
   if (days == null) return (drawn: '', spoken: '');
   if (days > 0) {
-    final word = arabicCountWord(
-      days,
-      one: 'يوم واحد',
-      two: 'يومين',
-      few: 'أيام',
-      many: 'يوم',
+    // One and two are words alone («يوم واحد», «يومين»); from three on the
+    // screen draws the digits and this carries the word beside them.
+    final spoken = '${arabicDays(days)} على عرسك';
+    return (
+      drawn: days <= 2 ? spoken : '${arabicDayWord(days)} على عرسك',
+      spoken: spoken,
     );
-    return (drawn: '$word على عرسك', spoken: '${arabicDays(days)} على عرسك');
   }
   if (days == 0) return (drawn: 'اليوم عرسك', spoken: 'اليوم عرسك');
   // The header already congratulates by name (b07), so the moment box states
@@ -211,8 +210,7 @@ class _TodayDue extends StatelessWidget {
 
 /// «دفعة اليوم», «دفعة بكرة», «دفعة بعد 3 أيام», «دفعة متأخرة 3 أيام».
 String _paymentWhen(int days) {
-  String count(int n) =>
-      arabicCount(n, one: 'يوم', two: 'يومين', few: 'أيام', many: 'يوم');
+  String count(int n) => arabicDays(n);
   if (days < 0) return 'دفعة متأخرة ${count(-days)}';
   return switch (days) {
     0 => 'دفعة اليوم',

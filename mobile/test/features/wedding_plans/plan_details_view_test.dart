@@ -252,13 +252,11 @@ void main() {
 
       expect(find.text('المهر من الميزانية؟'), findsOneWidget);
       expect(
-        find.text('الميزانية 7 مليون كلها للعرس، والمهر مليونين فوقها'),
+        find.text('الميزانية 7 ملايين كلها للعرس، والمهر 2 مليون فوقها'),
         findsOneWidget,
       );
       expect(
-        find.text(
-          'من الميزانية 7 مليون يروح مليونين للمهر، ويبقى للعرس 5 مليون',
-        ),
+        find.text('من الميزانية 7 ملايين: 2 مليون للمهر، و5 ملايين للعرس'),
         findsOneWidget,
       );
       expect(
@@ -293,9 +291,7 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(
-        find.text(
-          'من الميزانية 8 مليون يروح مليونين للمهر، ويبقى للعرس 6 مليون',
-        ),
+        find.text('من الميزانية 8 ملايين: 2 مليون للمهر، و6 ملايين للعرس'),
         findsOneWidget,
       );
     });

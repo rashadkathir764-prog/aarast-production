@@ -3,17 +3,21 @@ import 'package:aarast_mobile/features/wedding_plans/widgets/dashboard/aarast_da
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('days follow the Arabic count', () {
+  test('days follow the six Arabic count forms', () {
+    expect(arabicDays(0), '0 يوم');
     expect(arabicDays(1), 'يوم واحد');
     expect(arabicDays(2), 'يومين');
     expect(arabicDays(3), '3 أيام');
     expect(arabicDays(7), '7 أيام');
     expect(arabicDays(10), '10 أيام');
-    expect(arabicDays(11), '11 يوم');
-    expect(arabicDays(60), '60 يوم');
+    expect(arabicDays(11), '11 يومًا');
+    expect(arabicDays(60), '60 يومًا');
+    expect(arabicDays(99), '99 يومًا');
     expect(arabicDays(100), '100 يوم');
+    expect(arabicDays(102), '102 يوم');
     expect(arabicDays(103), '103 أيام');
-    expect(arabicDays(111), '111 يوم');
+    expect(arabicDays(111), '111 يومًا');
+    expect(arabicDays(200), '200 يوم');
   });
 
   test('the counted word alone, for a screen that draws the number', () {
@@ -22,21 +26,38 @@ void main() {
     String day(int n) => arabicCountWord(
       n,
       one: 'يوم واحد',
-      two: 'يومين',
+      two: 'يومان',
       few: 'أيام',
-      many: 'يوم',
+      many: 'يومًا',
+      other: 'يوم',
     );
     expect(day(1), 'يوم واحد');
-    expect(day(2), 'يومين');
+    expect(day(2), 'يومان');
     expect(day(3), 'أيام');
     expect(day(10), 'أيام');
-    expect(day(11), 'يوم');
-    expect(day(60), 'يوم');
+    expect(day(11), 'يومًا');
+    expect(day(60), 'يومًا');
+    expect(day(100), 'يوم');
     expect(day(103), 'أيام');
-    expect(day(111), 'يوم');
-    expect(day(0), 'أيام');
+    expect(day(111), 'يومًا');
+    // Never «0 أيام».
+    expect(day(0), 'يوم');
   });
 
+  test('a caller that passes one word for many and other keeps it', () {
+    String day(int n) => arabicCountWord(
+      n,
+      one: 'يوم واحد',
+      two: 'يومين',
+      few: 'أيام',
+      many: 'يومًا',
+    );
+    expect(day(11), 'يومًا');
+    expect(day(100), 'يومًا');
+    expect(day(0), 'يومًا');
+  });
+
+  // D134 (2026-11-27): the approved home stays, and its countdown with it.
   test('the countdown says the day count both ways', () {
     expect(homeCountdownWords(5).drawn, 'أيام على عرسك');
     expect(homeCountdownWords(5).spoken, '5 أيام على عرسك');
@@ -49,7 +70,7 @@ void main() {
   });
 
   test('both countdowns read a count the same way', () {
-    // b01/b02's hero and b04's wedding-week hero each wrote their own
+    // b01/b02's hero and the wedding week's hero each wrote their own
     // wording; the week one said «4 يوم على عرسك» while the greeting above it
     // said «باقي 4 أيام». They share homeCountdownWords now.
     for (final days in [3, 4, 7, 10, 103]) {
@@ -59,24 +80,46 @@ void main() {
         reason: 'days=$days',
       );
     }
+    // D136: the drawn word is the spoken one's («55 يومًا على عرسك»); the
+    // hero drew «55 يوم» over a card that said «بعد 48 يومًا».
     for (final days in [11, 60, 111]) {
       expect(
         homeCountdownWords(days).drawn,
-        'يوم على عرسك',
+        'يومًا على عرسك',
         reason: 'days=$days',
       );
+      expect(homeCountdownWords(days).spoken, '$days يومًا على عرسك');
     }
+    expect(homeCountdownWords(100).drawn, 'يوم على عرسك');
     expect(homeCountdownWords(2).drawn, 'يومين على عرسك');
     expect(homeCountdownWords(1).drawn, 'يوم واحد على عرسك');
   });
 
   test('any counted word', () {
-    String items(int n) =>
-        arabicCount(n, one: 'بند واحد', two: 'بندين', few: 'بنود', many: 'بند');
+    String items(int n) => arabicCount(
+      n,
+      one: 'بند واحد',
+      two: 'بندان',
+      few: 'بنود',
+      many: 'بندًا',
+      other: 'بند',
+    );
     expect(items(1), 'بند واحد');
-    expect(items(2), 'بندين');
+    expect(items(2), 'بندان');
     expect(items(5), '5 بنود');
-    expect(items(11), '11 بند');
-    expect(items(0), '0 بنود');
+    expect(items(11), '11 بندًا');
+    expect(items(100), '100 بند');
+    expect(items(0), '0 بند');
+    expect(
+      arabicCount(
+        0,
+        zero: 'لا بنود بعد',
+        one: 'بند واحد',
+        two: 'بندان',
+        few: 'بنود',
+        many: 'بندًا',
+      ),
+      'لا بنود بعد',
+    );
   });
 }

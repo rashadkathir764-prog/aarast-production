@@ -4,6 +4,8 @@
 @Tags(['golden'])
 library;
 
+import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart'
+    show JourneyCelebrationSky;
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/offline/local_database_json.dart';
 import 'package:aarast_mobile/core/offline/offline_sync_service.dart';
@@ -412,13 +414,14 @@ DashboardSummary _summary({
   bool guests = true,
   bool providers = true,
   bool money = false,
+  int daysRemaining = 93,
 }) => DashboardSummary(
   planId: _planId,
   title: 'عرس محمد',
   status: 'PLANNING',
   progressPercentage: 35,
   weddingDate: DateTime(2027, 1, 21),
-  daysRemaining: 93,
+  daysRemaining: daysRemaining,
   city: 'صنعاء',
   currency: 'YER',
   totalTasks: 4,
@@ -539,6 +542,7 @@ Future<(List<SingleChildWidget>, GoRouter)> _workspace({
   bool guests = true,
   bool providers = true,
   bool money = false,
+  int daysRemaining = 93,
 }) async {
   final contexts = await _contexts([
     _ctx(
@@ -559,6 +563,7 @@ Future<(List<SingleChildWidget>, GoRouter)> _workspace({
       guests: guests,
       providers: providers,
       money: money,
+      daysRemaining: daysRemaining,
     ),
   );
   final router = GoRouter(
@@ -857,6 +862,37 @@ void main() {
       h: 1700,
       providers: p,
       router: r,
+    );
+  });
+
+  // The wedding day's hero is the app's real celebration photo, as on the
+  // owner's «أسبوع العرس» (the drawn sky was «مش حلوه», Rashad 2026-11-27).
+  testWidgets('p09 helper workspace on the wedding day', (tester) async {
+    // The home counts from the plan's date, so the day is the clock's.
+    pinAppClock(DateTime(2027, 1, 21, 10));
+    addTearDown(() => pinAppClock(DateTime(2026, 10, 26, 12)));
+    final (p, r) = await _workspace(
+      role: 'HELPER',
+      screen: const ParticipantHomeScreen(weddingPlanId: _planId),
+      daysRemaining: 0,
+    );
+    await _shot(
+      tester,
+      'p09_workspace_day',
+      const SizedBox(),
+      h: 1500,
+      providers: p,
+      router: r,
+      act: () async {
+        // Decoded here, or the picture would show the plan's colour alone.
+        await tester.runAsync(
+          () => precacheImage(
+            const AssetImage(JourneyCelebrationSky.asset),
+            tester.element(find.byType(ParticipantHomeScreen)),
+          ),
+        );
+        await tester.pump(const Duration(milliseconds: 600));
+      },
     );
   });
 

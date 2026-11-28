@@ -65,7 +65,10 @@ WeddingPlanStageState resolveWeddingPlanStage(
       daysUntilWedding: days,
       label: 'قفلة الخطة',
       compactLabel: 'ما بعد العرس',
-      headline: ReaderVoice.say('اقفل اللي باقي على راحتك', 'اقفلي اللي باقي على راحتك'),
+      headline: ReaderVoice.say(
+        'اقفل اللي باقي على راحتك',
+        'اقفلي اللي باقي على راحتك',
+      ),
       guidance: ReaderVoice.say(
         'راجع اللي عليك والمهام المفتوحة، وما نحسبها خلصت وهي ما خلصت.',
         'راجعي اللي عليك والمهام المفتوحة، وما نحسبها خلصت وهي ما خلصت.',
@@ -88,7 +91,10 @@ WeddingPlanStageState resolveWeddingPlanStage(
       daysUntilWedding: days,
       label: 'الأسبوع الأخير',
       compactLabel: 'الأسبوع الأخير',
-      headline: ReaderVoice.say('ركّز على التأكيدات الأخيرة', 'ركّزي على التأكيدات الأخيرة'),
+      headline: ReaderVoice.say(
+        'ركّز على التأكيدات الأخيرة',
+        'ركّزي على التأكيدات الأخيرة',
+      ),
       guidance: ReaderVoice.say(
         'تابع المهام الحرجة وردود الضيوف والمزودين بس.',
         'تابعي المهام الحرجة وردود الضيوف والمزودين بس.',
@@ -101,7 +107,10 @@ WeddingPlanStageState resolveWeddingPlanStage(
       daysUntilWedding: days,
       label: 'الشهر الأخير',
       compactLabel: 'قبل العرس',
-      headline: ReaderVoice.say('ثبّت القرارات المفتوحة', 'ثبّتي القرارات المفتوحة'),
+      headline: ReaderVoice.say(
+        'ثبّت القرارات المفتوحة',
+        'ثبّتي القرارات المفتوحة',
+      ),
       guidance: ReaderVoice.say(
         'كمّل ردود الضيوف والمزودين وراجع الدفعات الجاية.',
         'كمّلي ردود الضيوف والمزودين وراجعي الدفعات الجاية.',
@@ -114,7 +123,10 @@ WeddingPlanStageState resolveWeddingPlanStage(
       daysUntilWedding: days,
       label: 'مرحلة الترتيب',
       compactLabel: 'التخطيط',
-      headline: ReaderVoice.say('احسم القرارات الكبيرة', 'احسمي القرارات الكبيرة'),
+      headline: ReaderVoice.say(
+        'احسم القرارات الكبيرة',
+        'احسمي القرارات الكبيرة',
+      ),
       guidance: ReaderVoice.say(
         'رتّب الأولويات قبل لا تصير القرارات مستعجلة.',
         'رتّبي الأولويات قبل لا تصير القرارات مستعجلة.',

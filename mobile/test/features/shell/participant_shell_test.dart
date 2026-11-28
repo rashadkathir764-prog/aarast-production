@@ -84,7 +84,7 @@ void main() {
       expect(find.text('عرس محمد ·'), findsOneWidget);
       expect(find.text('أنت مساعد'), findsOneWidget);
       expect(find.text('96'), findsOneWidget);
-      expect(find.text('يوم على العرس'), findsOneWidget);
+      expect(find.text('يومًا على العرس'), findsOneWidget);
       // The next step is the nearest open task, finished from here.
       expect(find.textContaining('الخطوة الجاية'), findsOneWidget);
       expect(find.text('رتّب الغداء مع أبو علي'), findsOneWidget);
@@ -164,7 +164,7 @@ void main() {
 
       // D52: without the providers right the plan's bookings are read (q16),
       // never locked away.
-      await _openTab(tester, 'المزودين');
+      await _openTab(tester, 'المزوّدون');
       expect(find.byType(ParticipantProvidersScreen), findsOneWidget);
       expect(find.byType(ParticipantLockedScreen), findsNothing);
       expect(find.text('عرس محمد · تشوف بس'), findsOneWidget);
@@ -316,7 +316,7 @@ void main() {
       expect(find.textContaining('ذكّر'), findsNothing);
       expect(find.text('الضيوف عند العريس'), findsNothing);
 
-      await _openTab(tester, 'المزودين');
+      await _openTab(tester, 'المزوّدون');
       expect(find.byType(ParticipantProvidersScreen), findsOneWidget);
       expect(find.text('قاعة سبأ'), findsOneWidget);
 
@@ -370,7 +370,7 @@ void main() {
       expect(find.text('الخطة في الذكريات، للقراءة فقط.'), findsOneWidget);
       expect(find.textContaining('عند العريس'), findsNothing);
 
-      await _openTab(tester, 'المزودين');
+      await _openTab(tester, 'المزوّدون');
       expect(find.byType(ParticipantProvidersScreen), findsOneWidget);
       expect(find.text('الخطة في الذكريات، للقراءة فقط.'), findsOneWidget);
       expect(tester.takeException(), isNull);
@@ -402,7 +402,7 @@ void main() {
     await _openTab(tester, 'الضيفات');
     expect(find.text('أكّدت'), findsOneWidget);
 
-    await _openTab(tester, 'المزودين');
+    await _openTab(tester, 'المزوّدون');
     expect(find.text('عرس سلمى · تشوفين بس'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -473,7 +473,7 @@ void main() {
     await _openTab(tester, 'الضيفات');
     expect(find.text('أكّدت'), findsOneWidget);
 
-    await _openTab(tester, 'المزودين');
+    await _openTab(tester, 'المزوّدون');
     expect(find.text('عرس سلمى · تشوف بس'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -527,6 +527,36 @@ void main() {
     expect(find.text('برنامج اليوم'), findsNothing);
 
     await tester.tap(find.byKey(const ValueKey('participant-today-done-t1')));
+    await tester.pumpAndSettle();
+    expect(harness.tasksApi.updates, [
+      {'status': 'DONE'},
+    ]);
+  });
+
+  // The day's home listed the tasks dated today alone: a helper's task late
+  // by a day, or given without a date, left his home on the wedding day.
+  testWidgets('q18: on the day, what is still open from before stays', (
+    tester,
+  ) async {
+    final harness = await _Harness.create(
+      daysRemaining: 0,
+      tasks: [
+        _task('late', 'استلم الورد', days: -1),
+        _task('undated', 'جهّز سيارة الزفة', days: null, mine: true),
+        _task('late-done', 'استلم البدلة', days: -2, done: true),
+        _task('after', 'رجّع الكراسي', days: 2),
+      ],
+    );
+    await harness.pump(tester);
+
+    expect(find.text('عليك اليوم'), findsOneWidget);
+    expect(find.text('استلم الورد'), findsOneWidget);
+    expect(find.text('جهّز سيارة الزفة'), findsOneWidget);
+    // Finished before the day, or dated after it: the tasks tab holds them.
+    expect(find.text('استلم البدلة'), findsNothing);
+    expect(find.text('رجّع الكراسي'), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('participant-today-done-late')));
     await tester.pumpAndSettle();
     expect(harness.tasksApi.updates, [
       {'status': 'DONE'},
@@ -844,7 +874,7 @@ Future<void> _openTab(WidgetTester tester, String label) async {
 WeddingTask _task(
   String id,
   String title, {
-  required int days,
+  required int? days,
   bool mine = false,
   bool done = false,
 }) {
@@ -855,7 +885,8 @@ WeddingTask _task(
     title: title,
     status: done ? 'DONE' : 'TODO',
     priority: 'MEDIUM',
-    dueDate: today.add(Duration(days: days)),
+    // Null: a task given without a date.
+    dueDate: days == null ? null : today.add(Duration(days: days)),
     assigneeUserId: mine ? 'saleh' : null,
     createdAt: DateTime(2026, 10, 1),
     updatedAt: DateTime(2026, 10, 1),

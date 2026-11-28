@@ -3,7 +3,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/offline/offline_contract.dart';
 import '../../../core/offline/offline_sync_service.dart';
 import '../models/account_deletion_impact.dart';
-import '../models/reminder_schedule.dart';
+import '../models/preference_coverage.dart';
 import '../models/user_settings.dart';
 
 /// The account's settings and privacy.
@@ -66,18 +66,22 @@ class SettingsApi {
     return UserSettings.fromJson(json);
   }
 
-  /// The server's reminder table, for the «متى يصلك» lines; null when the
-  /// phone cannot read it whole (another version).
-  Future<ReminderSchedule?> getReminderSchedule() async {
-    return ReminderSchedule.fromResponse(
-      await _reads.blob('/api/v1/notifications/schedule', metaKey: _scheduleKey),
+  /// The server's reminder table and what each switch covers, for the
+  /// settings' «يشمل» and «متى يصلك» lines; a part the phone cannot read
+  /// whole (another version) is null.
+  Future<NotificationSchedule> getNotificationSchedule() async {
+    return NotificationSchedule.fromResponse(
+      await _reads.blob(
+        '/api/v1/notifications/schedule',
+        metaKey: _scheduleKey,
+      ),
     );
   }
 
-  /// The phone's copy of the table, or null before the first answer.
-  Future<ReminderSchedule?> cachedReminderSchedule() async {
+  /// The phone's copy of the answer, or null before the first one.
+  Future<NotificationSchedule?> cachedNotificationSchedule() async {
     final json = await _reads.cachedBlob(_scheduleKey);
-    return json == null ? null : ReminderSchedule.fromResponse(json);
+    return json == null ? null : NotificationSchedule.fromResponse(json);
   }
 
   /// D63 (w05): what deleting the account takes with it.

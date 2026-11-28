@@ -1,114 +1,46 @@
 part of 'provider_marketplace_screen.dart';
 
-String? _activeCategoryName(
-  BuildContext context,
-  ProviderMarketplaceProvider provider,
-) {
-  final id = provider.categoryId;
-  if (id == null) return null;
-  for (final category in provider.categories) {
-    if (category.id == id) return providerKindName(context, category);
-  }
-  return null;
-}
-
-/// A kind of provider as the plan says it (Rashad 2026-11-18, the groom
-/// and the bride alike): the catalog has one hall kind, «صالة», for both,
-/// while the groom's app says «قاعة» everywhere else (the search, «نبدأ
-/// بالقاعة», the next step). The hall is named by the plan's word; every
-/// other kind by the catalog's.
-String providerKindName(BuildContext context, ProviderCategory? category) {
-  if (category == null) return '';
-  if (category.slug == venueCategorySlug) {
-    return context.planWord('قاعة', 'صالة');
-  }
-  return category.nameAr.trim();
-}
-
-String _emptyProvidersMessage({
-  required ProviderBudgetMatchIntent? budgetIntent,
-  required WeddingLocationDraft? location,
-  required JourneyProfile profile,
-  // G17: the plan's own amount follows «أخفِ المبالغ».
-  required String Function(String text) shownAmount,
+/// The category a typed word names, so a search that found nobody by name
+/// offers the category instead (REFINEMENT_SPEC 2.7: «مصور» → «تصوير»): the
+/// typed word and the category's name (or the plan's word for the venue)
+/// share their first three root letters. Null when none does.
+ProviderCategory? providerCategoryNamedBy(
+  String typed,
+  List<ProviderCategory> categories, {
+  required bool bridePlan,
 }) {
-  final say = profile.say;
-  if (budgetIntent != null) {
-    // The same figure as the item chip on this screen.
-    final amount = budgetIntent.hasBudget
-        ? ' على قد ${shownAmount(fullMoneyParts(budgetIntent.allocatedValue, currencyCode: defaultCurrencyCode).plainText)}'
-        : '';
-    return 'ما ظهر أحد لبند ${budgetIntent.budgetCategoryName}$amount بهذا الفلتر. '
-        '${say('امسح الفلتر أو غيّر المدينة.', 'امسحي الفلتر أو غيّري المدينة.')}';
+  final asked = _searchRoots(typed);
+  if (asked.isEmpty) return null;
+  for (final category in categories) {
+    for (final name in {
+      category.nameAr,
+      providerKindNameFor(category, bridePlan: bridePlan),
+    }) {
+      final roots = _searchRoots(name);
+      if (roots.any(asked.contains)) return category;
+    }
   }
-
-  if (location?.hasRequiredLocation == true) {
-    return say(
-      'غيّر المدينة أو القسم، أو امسح الفلتر.',
-      'غيّري المدينة أو القسم، أو امسحي الفلتر.',
-    );
-  }
-
-  return say(
-    'امسح الفلتر وشوف كل المزودين.',
-    'امسحي الفلتر وشوفي كل المزودين.',
-  );
-}
-
-_ServiceBudgetStatus _serviceBudgetStatus(
-  ProviderBudgetMatchIntent intent,
-  double? price,
-) {
-  if (price == null) return _ServiceBudgetStatus.unknown;
-  if (!intent.hasBudget) return _ServiceBudgetStatus.categoryOnly;
-  if (price >= intent.minPrice! && price <= intent.maxPrice!) {
-    return _ServiceBudgetStatus.inRange;
-  }
-  if (price <= intent.allocatedValue) return _ServiceBudgetStatus.underBudget;
-  return _ServiceBudgetStatus.nearby;
-}
-
-String _serviceBudgetStatusLabel(_ServiceBudgetStatus status) {
-  return switch (status) {
-    _ServiceBudgetStatus.inRange => 'ضمن بندك',
-    _ServiceBudgetStatus.underBudget => 'أقل من بندك',
-    _ServiceBudgetStatus.nearby => 'أعلى من بندك',
-    _ServiceBudgetStatus.categoryOnly => 'نفس القسم',
-    _ServiceBudgetStatus.unknown => 'السعر بالعرض',
-  };
-}
-
-Color _serviceBudgetStatusColor(
-  BuildContext context,
-  _ServiceBudgetStatus status,
-) {
-  return switch (status) {
-    _ServiceBudgetStatus.inRange => AarastV3Color.mint,
-    _ServiceBudgetStatus.underBudget => AarastV3Color.mint,
-    _ServiceBudgetStatus.nearby => AarastV3Color.brandAccentStrong,
-    _ServiceBudgetStatus.categoryOnly => context.accent.primary,
-    _ServiceBudgetStatus.unknown => AarastV3Color.textMuted,
-  };
-}
-
-double? _moneyValueOrNull(String? value) {
-  final raw = value?.replaceAll(',', '').trim();
-  if (raw == null || raw.isEmpty) return null;
-  return double.tryParse(raw);
-}
-
-enum _ServiceBudgetStatus {
-  inRange,
-  underBudget,
-  nearby,
-  categoryOnly,
-  unknown,
-}
-
-String? _providerLocationLabel(MarketplaceProvider provider) {
-  final city = provider.city?.nameAr.trim();
-  if (city != null && city.isNotEmpty) return city;
-  final address = provider.address?.trim();
-  if (address != null && address.isNotEmpty) return address;
   return null;
+}
+
+/// The first three letters of a word's root, with and without a leading
+/// pattern letter: «ال» goes, the shadda and the long vowels «ا» «ي» go, a
+/// final «ة» reads as «ت», and a leading «م» or «ت» may be the pattern's
+/// (مصوّر، تصوير) or the root's own (مكياج). Matching letters, not words
+/// the reader sees.
+Set<String> _searchRoots(String text) {
+  final words = text.trim().split(RegExp(r'\s+'));
+  var word = words.isEmpty ? '' : words.first;
+  if (word.startsWith('ال')) word = word.substring(2);
+  word = word
+      .replaceAll(RegExp('[ً-ْ]'), '')
+      .replaceAll(RegExp('[اي]'), '')
+      .replaceAll('ة', 'ت');
+  return {
+    for (final candidate in [
+      word,
+      if (word.startsWith('م') || word.startsWith('ت')) word.substring(1),
+    ])
+      if (candidate.length >= 3) candidate.substring(0, 3),
+  };
 }

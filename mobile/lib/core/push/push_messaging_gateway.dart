@@ -116,6 +116,13 @@ abstract final class PlayServicesCheck {
   /// turns back on what they turned off; false when it would not open.
   static Future<bool> openNotificationSettings() async =>
       await _channel.invokeMethod<bool>('openNotificationSettings') ?? false;
+
+  /// Opens one of the app's channels in the phone's settings.
+  static Future<bool> openChannelSettings(String channelId) async =>
+      await _channel.invokeMethod<bool>('openChannelSettings', {
+        'channelId': channelId,
+      }) ??
+      false;
 }
 
 abstract interface class PushMessagingGateway {

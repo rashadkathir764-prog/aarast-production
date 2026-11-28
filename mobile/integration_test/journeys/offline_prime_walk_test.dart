@@ -16,7 +16,13 @@ void main() {
       await walk.boot();
       await walk.signIn('+967777000101', pickContext: 'عرس محمد');
 
-      for (final tab in ['المال', 'المهام', 'الضيوف', 'المزودين', 'الرئيسية']) {
+      for (final tab in [
+        'المال',
+        'المهام',
+        'الضيوف',
+        'المزوّدون',
+        'الرئيسية',
+      ]) {
         await walk.step('p_$tab', 'فتح $tab', () async {
           await walk.tab(tab, wait: 4);
           if (tab == 'المال') await walk.rememberMoneyHero();

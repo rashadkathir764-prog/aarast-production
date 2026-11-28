@@ -268,7 +268,8 @@ void main() {
       final tabs = tester.widget<JourneyTabSwitch>(
         find.byKey(const ValueKey('providers-tabs')),
       );
-      expect(tabs.labels[tabs.selected], 'استكشف');
+      // 2026-11-26: «استكشف» is «الدليل» (REFINEMENT_SPEC 2.8 glossary).
+      expect(tabs.labels[tabs.selected], 'الدليل');
     });
 
     testWidgets('a request opened a day ago without a reply is named', (
@@ -539,7 +540,8 @@ void main() {
 
     await _pump(tester, openRequests: true, state, finance: finance);
 
-    expect(find.text('ما طلبت من أحد بعد'), findsOneWidget);
+    // 2026-11-26: the header's status in MSA.
+    expect(find.text('لم تطلب من أحد بعد'), findsOneWidget);
     expect(find.text('نبدأ بالقاعة'), findsOneWidget);
     // The wedding's day and guests, read alike by the owner and a helper.
     expect(
@@ -551,7 +553,8 @@ void main() {
     expect(find.text('قاعات لعرسك'), findsOneWidget);
     expect(find.text('على قد بندك في صنعاء'), findsOneWidget);
     expect(find.text('حجزت برا اعّرست'), findsOneWidget);
-    expect(find.text('استكشف كل الخدمات'), findsOneWidget);
+    // 2026-11-26: «استكشف» is «الدليل».
+    expect(find.text('تصفّح الدليل'), findsOneWidget);
     // Nothing knows which halls are free on a day, and an empty board or
     // the tabs would say "nothing yet" a second time.
     expect(find.textContaining('فاضية'), findsNothing);
@@ -622,7 +625,7 @@ void main() {
       finance: _LoadedFinance(),
     );
 
-    await tester.tap(find.text('استكشف كل الخدمات'));
+    await tester.tap(find.text('تصفّح الدليل'));
     await tester.pumpAndSettle();
 
     expect(find.text('نبدأ بالقاعة'), findsNothing);
@@ -758,8 +761,9 @@ void main() {
     final tabs = tester.widget<JourneyTabSwitch>(
       find.byKey(const ValueKey('providers-tabs')),
     );
-    expect(tabs.labels, ['استكشف', 'طلباتي', 'المحادثات', 'المفضلة']);
-    expect(tabs.labels[tabs.selected], 'استكشف');
+    // 2026-11-26: «استكشف» is «الدليل» (REFINEMENT_SPEC 2.8 glossary).
+    expect(tabs.labels, ['الدليل', 'طلباتي', 'المحادثات', 'المفضلة']);
+    expect(tabs.labels[tabs.selected], 'الدليل');
   });
 
   // RA-MO-256 (batch 7): a plan on the phone, without an account, showed
@@ -772,7 +776,7 @@ void main() {
     final tabs = tester.widget<JourneyTabSwitch>(
       find.byKey(const ValueKey('providers-tabs')),
     );
-    expect(tabs.labels, ['استكشف', 'طلباتي']);
+    expect(tabs.labels, ['الدليل', 'طلباتي']);
   });
 
   testWidgets('D72: a request under way opens on «طلباتي»', (tester) async {
@@ -829,7 +833,8 @@ void main() {
       find.byKey(const ValueKey('providers-favorites-empty')),
       findsNothing,
     );
-    expect(find.textContaining('مرة ثانية'), findsWidgets);
+    // 2026-11-26: the favourites' own error state, in MSA.
+    expect(find.text('أعد المحاولة'), findsWidgets);
   });
 
   testWidgets('f09 picks two saved providers and compares them', (
@@ -882,9 +887,13 @@ void main() {
 
     expect(find.text('فرقة الأفراح'), findsOneWidget);
     expect(find.text('ضوء صنعاء'), findsOneWidget);
-    expect(find.text('350,000\u00a0-\u00a0450,000\u00a0ر.ي'), findsOneWidget);
-    // «حسب الطلب» only where nothing is priced, never while unknown.
-    expect(find.text('حسب الطلب'), findsOneWidget);
+    expect(find.text('\u0645\u0646\u00a0350,000\u00a0ر.ي'), findsNothing);
+    expect(find.text('من 350 ألفًا'), findsOneWidget);
+    // Changed on purpose (2026-11-26, one row anatomy): a saved row says
+    // its price as every row does, short when nothing is lost («من 350
+    // ألفًا», not the whole figure above), or «السعر عند الطلب» only where
+    // nothing is priced, never while unknown.
+    expect(find.text('السعر عند الطلب'), findsOneWidget);
     expect(marketplace.pageLoads, ['p3']);
     // «قارن الاثنين» compared profiles under the offers' name (C47).
     expect(find.text('قارن الاثنين'), findsNothing);
@@ -893,7 +902,8 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('providers-favorite-pick-p3')));
     await tester.pump();
     // Changed on purpose (UX critique): «قارن بينهم», not «الملفين».
-    await tester.tap(find.text('قارن بينهم'));
+    // 2026-11-26: «قارن بين الاثنين» (two are compared, in MSA).
+    await tester.tap(find.text('قارن بين الاثنين'));
     await tester.pumpAndSettle();
 
     expect(find.text('compare p2,p3'), findsOneWidget);
@@ -939,7 +949,8 @@ void main() {
       find.byKey(const ValueKey('providers-favorites-same-kind')),
       findsNothing,
     );
-    await tester.tap(find.text('قارن بينهم'));
+    // 2026-11-26: «قارن بين الاثنين» (two are compared, in MSA).
+    await tester.tap(find.text('قارن بين الاثنين'));
     await tester.pumpAndSettle();
     expect(find.text('compare p1,p2'), findsOneWidget);
   });
@@ -1103,9 +1114,10 @@ void main() {
     await pressSpoken(
       tester,
       find.byKey(const ValueKey('providers-favorite-pick-p3')),
-      label: 'اختره للمقارنة',
+      label: 'اختيار للمقارنة',
     );
-    await tester.tap(find.text('قارن بينهم'));
+    // 2026-11-26: «قارن بين الاثنين» (two are compared, in MSA).
+    await tester.tap(find.text('قارن بين الاثنين'));
     await tester.pumpAndSettle();
     expect(find.text('compare p2,p3'), findsOneWidget);
     semantics.dispose();

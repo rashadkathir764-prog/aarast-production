@@ -1,370 +1,372 @@
+import 'dart:math' as math;
+
 import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
+import 'package:aarast_mobile/core/l10n/aarast_text.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
-import 'package:aarast_mobile/features/marketplace/models/marketplace_models.dart'
-    show ProviderDayStatus;
+import 'package:aarast_mobile/features/marketplace/models/marketplace_models.dart';
+import 'package:aarast_mobile/features/marketplace/models/provider_budget_match_intent.dart';
 import 'package:aarast_mobile/features/marketplace/widgets/provider_result_card.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter_test/flutter_test.dart';
 import '../../support/app_text_scale.dart';
+import '../../support/preview_fonts.dart';
 
-void main() {
-  group('w33 how old a published price is', () {
-    final now = DateTime(2026, 10, 23);
+// Changed on purpose (2026-11-26, REFINEMENT_SPEC 2.7, the final providers
+// proposal): the card is one row anatomy built from the server's row
+// (ProviderRow over providerCardFacts), so these tests give it a provider,
+// not loose labels. What changed and why:
+// - the picture is 4:3, 120 wide, not a 72 square: the work photo is the
+//   one bold thing of the screen;
+// - the line under the name is the city alone (with the category he was
+//   found under when it is not his), not «القاعات · صنعاء»;
+// - with no review: «جديد» only in a listing's first 30 days, else «لا
+//   تقييمات بعد» (it used to be «جديد» forever);
+// - the day's status is «مغلق يوم عرسك» / «محجوز يوم عرسك», a line with its
+//   mark, not «محجوز يوم 21» in a tag;
+// - an unclaimed listing's line is «لا يستقبل طلبات العروض بعد».
+//
+// Changed again on purpose (2026-11-26, the merge of the two proposals,
+// docs/project/refinement/COMPARISON.md «صف القائمة»): the picture is 112
+// wide (4:3, 84 tall), and the heart left the picture for the row's end, as
+// in the first proposal: on a 4:3 thumbnail it crowded the photo. The row
+// pins both: the picture at the start, the heart at the end in 48.
 
-    test('a price from this month says so', () {
-      expect(
-        providerPriceAgeLabel(DateTime(2026, 10, 2), now: now),
-        'محدّث هذا الشهر',
-      );
-    });
+const _halls = ProviderCategory(
+  id: 'cat-halls',
+  nameAr: 'صالة',
+  slug: 'wedding-halls',
+);
+const _sanaa = MarketplaceCity(id: 'city-sanaa', nameAr: 'صنعاء');
+final _now = DateTime(2026, 10, 26, 12);
+final _day = DateTime(2027, 1, 21);
 
-    test('an older price counts the months', () {
-      expect(
-        providerPriceAgeLabel(DateTime(2026, 2, 20), now: now),
-        'محدّث قبل 8 شهور',
-      );
-      expect(
-        providerPriceAgeLabel(DateTime(2026, 8, 20), now: now),
-        'محدّث قبل شهرين',
-      );
-    });
+MarketplaceProvider _provider({
+  String name = 'قاعة السعادة للأفراح',
+  bool claimed = true,
+  bool verified = false,
+  bool featured = false,
+  String? minPrice,
+  ProviderDayStatus? day,
+  int reviews = 63,
+  DateTime? created,
+  String? photo,
+  String? logo,
+}) => MarketplaceProvider(
+  id: 'p1',
+  businessName: name,
+  ownerName: '',
+  ratingAverage: reviews == 0 ? 0 : 4.8,
+  ratingCount: reviews,
+  primaryCategory: _halls,
+  primaryCategoryId: _halls.id,
+  city: _sanaa,
+  isClaimed: claimed,
+  verifiedAt: verified ? DateTime(2026) : null,
+  featuredUntil: featured ? DateTime(2030) : null,
+  dayStatus: day,
+  createdAt: created ?? DateTime(2025),
+  cardPhotoUrl: photo,
+  logoUrl: logo,
+  serviceSummary: MarketplaceProviderServiceSummary(
+    activeCount: 1,
+    minPrice: minPrice,
+    maxPrice: minPrice,
+    currency: minPrice == null ? null : 'YER',
+  ),
+);
 
-    test('no date means no claim about its age', () {
-      expect(providerPriceAgeLabel(null, now: now), isNull);
-    });
+Future<void> _pump(
+  WidgetTester tester,
+  MarketplaceProvider provider, {
+  double width = 320,
+  double textScale = 1.3,
+  DateTime? askedDay,
+}) async {
+  tester.view.physicalSize = Size(width, 800);
+  tester.view.devicePixelRatio = 1;
+  tester.platformDispatcher.textScaleFactorTestValue = appTextScaler(
+    textScale,
+  ).scale(1);
+  addTearDown(() {
+    tester.view.reset();
+    tester.platformDispatcher.clearTextScaleFactorTestValue();
   });
-
-  Future<void> pumpCard(
-    WidgetTester tester, {
-    required bool isClaimed,
-    bool isVerified = false,
-    bool isFeatured = false,
-    String? priceLabel,
-    String? priceAgeLabel,
-    String? dayLabel,
-  }) async {
-    tester.view.physicalSize = const Size(320, 640);
-    tester.view.devicePixelRatio = 1;
-    tester.platformDispatcher.textScaleFactorTestValue = appTextScaler(
-      1.3,
-    ).scale(1);
-    addTearDown(() {
-      tester.view.reset();
-      tester.platformDispatcher.clearTextScaleFactorTestValue();
-    });
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: AppTheme.light(),
-        home: Directionality(
-          textDirection: TextDirection.rtl,
-          child: Scaffold(
-            body: SingleChildScrollView(
-              child: ProviderResultCard(
-                businessName: 'قاعة السعادة للأفراح',
-                isFeatured: isFeatured,
-                ratingAverage: 4.8,
-                ratingCount: 63,
+  await tester.pumpWidget(
+    MaterialApp(
+      theme: AppTheme.light(),
+      home: Directionality(
+        textDirection: TextDirection.rtl,
+        child: Scaffold(
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Builder(
+              builder: (context) => ProviderRow(
+                key: const Key('card'),
+                facts: providerCardFacts(
+                  provider,
+                  bridePlan: false,
+                  now: _now,
+                  askedDay: askedDay,
+                ),
                 isFavorite: false,
                 onFavorite: () {},
-                onDetails: () {},
-                isClaimed: isClaimed,
-                isVerified: isVerified,
-                categoryLabel: 'القاعات',
-                locationLabel: 'صنعاء',
-                priceLabel: priceLabel,
-                priceAgeLabel: priceAgeLabel,
-                dayLabel: dayLabel,
+                onOpen: () {},
+                minHeight: providerRowHeight(context),
               ),
             ),
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+  await tester.pump();
+}
 
-  testWidgets('f02 a verified provider shows its price and how old it is', (
+void main() {
+  // The room a figure takes is the app's font's, not the test font's
+  // one-em boxes: with the heart at the row's end (the merge) a price at 320
+  // and 1.3 is judged by the glyphs the phone draws.
+  setUpAll(loadPreviewAppFonts);
+
+  testWidgets('f02 a verified provider: its facts in the card order', (
     tester,
   ) async {
-    await pumpCard(
-      tester,
-      isClaimed: true,
-      isVerified: true,
-      priceLabel: '450,000 ر.ي',
-      priceAgeLabel: 'محدّث هذا الشهر',
-    );
-
-    // Changed on purpose (UX critique, explore.png): the age's words hold
-    // together, so «الشهر» never falls to a line of its own.
-    expect(find.text('450,000 ر.ي · محدّث هذا الشهر'), findsOneWidget);
+    await _pump(tester, _provider(verified: true, minPrice: '450000'));
+    final price = aarastText.providersPriceFrom('450 ألفًا');
+    expect(find.text('صنعاء'), findsOneWidget);
+    expect(find.byKey(const Key('provider-rating')), findsOneWidget);
+    expect(find.text(price), findsOneWidget);
     expect(find.byKey(const Key('provider-card-verified')), findsOneWidget);
-    expect(find.byKey(const Key('provider-card-unclaimed-note')), findsNothing);
+    expect(find.byKey(const Key('provider-card-status')), findsNothing);
+    double top(Finder finder) => tester.getTopLeft(finder).dy;
+    expect(
+      top(find.text('صنعاء')),
+      lessThan(top(find.byKey(const Key('provider-rating')))),
+    );
+    expect(
+      top(find.byKey(const Key('provider-rating'))),
+      lessThan(top(find.text(price))),
+    );
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets(
-    'w33 an unclaimed listing says it takes no requests, even with a price',
-    (tester) async {
-      await pumpCard(tester, isClaimed: false, priceLabel: '450,000 ر.ي');
+  testWidgets('no review: «جديد» in the first 30 days, «لا تقييمات بعد» '
+      'after, never empty stars', (tester) async {
+    await _pump(tester, _provider(reviews: 0, created: DateTime(2026, 10, 1)));
+    expect(find.text(aarastText.providersNew), findsOneWidget);
+    expect(find.byKey(const Key('provider-rating')), findsNothing);
+    await _pump(tester, _provider(reviews: 0, created: DateTime(2026, 6, 1)));
+    expect(find.text(aarastText.providersNoReviews), findsOneWidget);
+    expect(find.text(aarastText.providersNew), findsNothing);
+  });
 
-      expect(find.text('450,000 ر.ي'), findsOneWidget);
-      expect(find.byKey(const Key('provider-card-unclaimed')), findsOneWidget);
-      expect(
-        find.byKey(const Key('provider-card-unclaimed-note')),
-        findsOneWidget,
-      );
-      expect(find.text('ما يستقبل طلبات لين يستلم صاحبه ملفه'), findsOneWidget);
-      // A listing nobody answers for is never «موثّق».
-      expect(find.byKey(const Key('provider-card-verified')), findsNothing);
-      expect(tester.takeException(), isNull);
-    },
-  );
+  testWidgets('w33 an unclaimed listing says it takes no requests, even '
+      'with a price', (tester) async {
+    await _pump(tester, _provider(claimed: false, minPrice: '450000'));
+    expect(find.text(aarastText.providersUnclaimedLine), findsOneWidget);
+    // A listing nobody answers for is never «موثّق».
+    expect(find.byKey(const Key('provider-card-verified')), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('an unclaimed listing without a price says no price at all', (
+    tester,
+  ) async {
+    await _pump(tester, _provider(claimed: false));
+    expect(find.text(aarastText.providersPriceOnRequest), findsNothing);
+    expect(find.text(aarastText.providersUnclaimedLine), findsOneWidget);
+  });
 
   // D131: the plan's wedding day, said on the row only with proof.
   testWidgets('a row says the wedding day only when he is known not to take '
       'it, never that he is free', (tester) async {
-    final day = DateTime(2027, 1, 21);
-    expect(providerDayLabel(day, ProviderDayStatus.full), 'محجوز يوم 21');
     expect(
-      providerDayLabel(day, ProviderDayStatus.closed),
-      'لا يستقبل حجوزات يوم 21',
+      providerDayLine(_day, ProviderDayStatus.full, now: _now),
+      aarastText.providersDayFull,
     );
-    expect(providerDayLabel(day, null), isNull, reason: 'nothing known');
-    expect(providerDayLabel(null, ProviderDayStatus.full), isNull);
+    expect(
+      providerDayLine(_day, ProviderDayStatus.closed, now: _now),
+      aarastText.providersDayClosed,
+    );
+    expect(providerDayLine(_day, null, now: _now), isNull);
+    expect(providerDayLine(null, ProviderDayStatus.full, now: _now), isNull);
 
-    await pumpCard(
-      tester,
-      isClaimed: true,
-      dayLabel: providerDayLabel(day, ProviderDayStatus.full),
-    );
-    expect(find.text('محجوز يوم 21'), findsOneWidget);
-    expect(find.byKey(const Key('provider-card-day')), findsOneWidget);
+    await _pump(tester, _provider(day: ProviderDayStatus.full), askedDay: _day);
+    expect(find.text(aarastText.providersDayFull), findsOneWidget);
+    expect(find.byKey(const Key('provider-card-status')), findsOneWidget);
     expect(tester.takeException(), isNull);
 
-    await pumpCard(
-      tester,
-      isClaimed: true,
-      dayLabel: providerDayLabel(day, null),
-    );
-    await tester.pump();
-    expect(find.byKey(const Key('provider-card-day')), findsNothing);
+    await _pump(tester, _provider(), askedDay: _day);
+    expect(find.byKey(const Key('provider-card-status')), findsNothing);
   });
 
-  testWidgets('with no day asked the row says nothing about days', (
-    tester,
-  ) async {
-    await pumpCard(tester, isClaimed: true);
-    expect(find.byKey(const Key('provider-card-day')), findsNothing);
+  // One rule with his page (`priceFitsItem`): the row said «ضمن بندك» of a
+  // price up to a fifth OVER the item, and «أقل من بندك» of a provider whose
+  // page said «ضمن بندك».
+  test('«ضمن بندك» is a price that does not pass the item, on the row as on '
+      'his page', () {
+    String? status(String price) => providerCardFacts(
+      _provider(minPrice: price),
+      bridePlan: false,
+      now: _now,
+      budget: const ProviderBudgetMatchIntent(
+        budgetCategoryName: 'القاعة',
+        allocatedAmount: '1000000',
+      ),
+    ).status?.text;
+
+    expect(status('500000'), aarastText.providersBudgetWithin);
+    expect(status('1000000'), aarastText.providersBudgetWithin);
+    // Ten percent over the item is over it.
+    expect(status('1100000'), aarastText.providersBudgetAbove);
+    expect(priceFitsItem(1000000, 1000000), isTrue);
+    expect(priceFitsItem(1000001, 1000000), isFalse);
+    // An item with no amount fits nothing: nothing is said.
+    expect(priceFitsItem(100, 0), isFalse);
   });
 
-  testWidgets('a claimed provider without a price asks for an offer', (
+  // The real app (bride walk, 2026-11-28): the hall she booked herself read
+  // «محجوز يوم عرسك» in the danger's colour, as if someone else took it. The
+  // day's count holds her own booking.
+  test('a provider the reader booked for the day is said as theirs', () {
+    ProviderStatusLine? status({required bool mine, DateTime? day}) =>
+        providerCardFacts(
+          _provider(day: ProviderDayStatus.full),
+          bridePlan: true,
+          now: _now,
+          askedDay: day ?? _day,
+          bookedByReader: mine,
+        ).status;
+
+    expect(status(mine: true)!.text, aarastText.providersDayYours);
+    expect(status(mine: true)!.color, AarastV3Color.mint);
+    expect(status(mine: false)!.text, aarastText.providersDayFull);
+    expect(status(mine: false)!.color, AarastV3Color.danger);
+    // A day already past says nothing of the calendar, theirs or not.
+    final past = _now.subtract(const Duration(days: 3));
+    expect(status(mine: true, day: past), isNull);
+  });
+
+  testWidgets('a claimed provider without a price: «السعر عند الطلب»', (
     tester,
   ) async {
-    await pumpCard(tester, isClaimed: true);
-
-    expect(find.text('اطلب عرض تعرف السعر'), findsOneWidget);
-    expect(find.byKey(const Key('provider-card-unclaimed-note')), findsNothing);
+    await _pump(tester, _provider());
+    expect(find.text(aarastText.providersPriceOnRequest), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets(
-    'B-43 the drawn «مميز» says, when tapped, that he paid and it is no recommendation',
-    (tester) async {
-      await pumpCard(tester, isClaimed: true, isFeatured: true);
-
-      expect(find.text('مميز'), findsOneWidget);
-      await tester.tap(find.byKey(const Key('provider-card-featured')));
-      await tester.pumpAndSettle();
-      expect(find.byKey(const Key('provider-featured-sheet')), findsOneWidget);
-      expect(
-        find.text('هذا المزود دفع عشان يطلع أول. مش ترشيح من اعّرست.'),
-        findsOneWidget,
-      );
-      await tester.tap(find.text('فهمت'));
-      await tester.pumpAndSettle();
-      expect(find.byKey(const Key('provider-featured-sheet')), findsNothing);
-      expect(tester.takeException(), isNull);
-    },
-  );
+  testWidgets('B-43 «مميز» on the picture says, when tapped, that he paid', (
+    tester,
+  ) async {
+    await _pump(tester, _provider(featured: true), textScale: 1);
+    expect(find.text(aarastText.providersFeatured), findsOneWidget);
+    await tester.tap(find.byKey(const Key('provider-card-featured')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('provider-featured-sheet')), findsOneWidget);
+    expect(find.text(aarastText.providersFeaturedWhy), findsOneWidget);
+    await tester.tap(find.text(aarastText.providersGotIt));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('provider-featured-sheet')), findsNothing);
+  });
 
   testWidgets('a provider that is not featured carries no «مميز»', (
     tester,
   ) async {
-    await pumpCard(tester, isClaimed: true);
+    await _pump(tester, _provider());
     expect(find.byKey(const Key('provider-card-featured')), findsNothing);
-    expect(find.text('مميز'), findsNothing);
   });
 
-  // RA-MO-316: the photo filled a strip as wide as the card and 120 high,
-  // so a provider's portrait showed a nose and a mouth, and a provider
-  // without a photo showed an empty band over a card that was half blank.
-  group('the photo and the room it takes', () {
-    Future<void> pumpAt(
-      WidgetTester tester, {
-      required double width,
-      double textScale = 1,
-      String? imageUrl,
-    }) async {
-      tester.view.physicalSize = Size(width, 800);
-      tester.view.devicePixelRatio = 1;
-      tester.platformDispatcher.textScaleFactorTestValue = appTextScaler(
-        textScale,
-      ).scale(1);
-      addTearDown(() {
-        tester.view.reset();
-        tester.platformDispatcher.clearTextScaleFactorTestValue();
-      });
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.light(),
-          home: Directionality(
-            textDirection: TextDirection.rtl,
-            child: Scaffold(
-              body: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: ProviderResultCard(
-                  key: const Key('card'),
-                  businessName: 'الفنان علي عنبه',
-                  isFeatured: false,
-                  ratingAverage: 4.8,
-                  ratingCount: 12,
-                  isFavorite: false,
-                  onFavorite: () {},
-                  onDetails: () {},
-                  categoryLabel: 'فنان',
-                  locationLabel: 'صنعاء',
-                  priceLabel: '1,000,000 ر.ي',
-                  priceAgeLabel: 'محدّث هذا الشهر',
-                  imageUrl: imageUrl,
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-      await tester.pump();
-    }
-
-    // Changed on purpose (Rashad 2026-11-19, «شكل الكروت سيء»): a provider
-    // is a row. The photo is a square at its start, as tall as three lines
-    // of words, never a strip and never half the screen.
-    testWidgets('the photo is a square at the row start', (tester) async {
+  group('the picture and the room it takes', () {
+    testWidgets('4:3 at the row start, 112 wide; the heart at its end', (
+      tester,
+    ) async {
       for (final width in [320.0, 360.0, 420.0]) {
-        await pumpAt(
+        await _pump(
           tester,
+          _provider(photo: 'https://media.example/work/a.jpg'),
           width: width,
-          imageUrl: 'https://media.example/provider-cover/a.jpg',
+          textScale: 1,
         );
         final card = tester.getRect(find.byKey(const Key('card')));
         final photo = tester.getRect(
           find.byKey(const Key('provider-card-photo')),
         );
-        expect(photo.width, photo.height, reason: 'at $width');
-        expect(photo.width, AarastV3Size.markHero, reason: 'at $width');
-        // RTL: the row starts at the right.
+        // 112, or 5/16 of the narrowest phone (100 of 320), so a name and
+        // a whole price keep their room between it and the heart at the
+        // largest text.
+        expect(
+          photo.width,
+          closeTo(math.min(112, width * 0.3125), 0.01),
+          reason: 'at $width',
+        );
+        expect(photo.width / photo.height, closeTo(4 / 3, 0.01));
+        // RTL: the row starts at the right, and the heart closes it at the
+        // left, off the picture.
         expect(photo.right, greaterThan(card.center.dx), reason: 'at $width');
-        expect(card.height, lessThan(card.width * 0.6), reason: 'at $width');
+        final heart = tester.getRect(
+          find.bySemanticsLabel(aarastText.providersFavoriteAdd),
+        );
+        expect(heart.right, lessThan(card.center.dx), reason: 'at $width');
+        expect(photo.overlaps(heart), isFalse, reason: 'at $width');
       }
     });
 
     testWidgets('a photo is fitted from its top, where a face is', (
       tester,
     ) async {
-      await pumpAt(
-        tester,
-        width: 360,
-        imageUrl: 'https://media.example/provider-cover/a.jpg',
-      );
+      await _pump(tester, _provider(photo: 'https://media.example/w/a.jpg'));
       final image = tester.widget<Image>(find.byType(Image));
       expect(image.fit, BoxFit.cover);
       expect((image.alignment as Alignment).y, lessThan(0));
-      expect((image.alignment as Alignment).x, 0);
     });
 
-    // With the photo on top, the words under it take the card's width: the
-    // price and its age keep one line, and nothing overflows at 1.3.
-    testWidgets('the words under the photo take the card width', (
+    testWidgets('the price keeps its line whole at 320 and 1.3', (
       tester,
     ) async {
-      for (final (width, scale) in [(360.0, 1.0), (320.0, 1.3)]) {
-        await pumpAt(
-          tester,
-          width: width,
-          textScale: scale,
-          imageUrl: 'https://media.example/provider-cover/a.jpg',
-        );
-        expect(
-          find.text('1,000,000 ر.ي · محدّث هذا الشهر'),
-          findsOneWidget,
-          reason: 'at $width × $scale',
-        );
-        expect(tester.takeException(), isNull);
-      }
+      await _pump(tester, _provider(minPrice: '1850000'));
+      final price = find.byKey(const Key('provider-card-price'));
+      expect(
+        tester.renderObject<RenderParagraph>(price).didExceedMaxLines,
+        isFalse,
+      );
+      expect(tester.takeException(), isNull);
     });
 
-    // Rashad 2026-11-17: without a photo a quarter of every card was a
-    // tinted band holding one letter. Without a photo or a logo the letter
-    // fills the row's small square, the same square a photo takes.
-    testWidgets('without a photo: the letter in the row square', (
+    testWidgets('without a photo or a logo: the initial in the picture', (
       tester,
     ) async {
-      await pumpAt(tester, width: 360);
+      await _pump(tester, _provider(name: 'الفنان علي عنبه'));
       expect(find.byKey(const Key('provider-card-photo')), findsNothing);
       final letter = tester.getSize(
         find.byKey(const Key('provider-card-letter')),
       );
-      expect(letter.width, AarastV3Size.markHero);
-      expect(letter.height, AarastV3Size.markHero);
-      // «الفنان علي عنبه» is «ف», not the «ا» of the article.
+      // The picture's own room: 5/16 of the 320 phone.
+      expect(letter.width, closeTo(320 * 0.3125, 0.01));
       expect(providerInitial('الفنان علي عنبه'), 'ف');
       expect(providerInitial('استوديو ضوء'), 'ا');
       expect(providerInitial('قاعة سبأ'), 'ق');
     });
 
-    // Rashad's phone 2026-11-18: a logo stretched over the card's top was a
-    // face cut at the mouth. A logo alone fills the row's square whole, the
-    // same size as a photo, so a row without a cover is not lesser.
-    testWidgets('a logo alone takes the row square', (tester) async {
-      tester.view.physicalSize = const Size(360, 800);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.reset);
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.light(),
-          home: Directionality(
-            textDirection: TextDirection.rtl,
-            child: Scaffold(
-              body: ProviderResultCard(
-                key: const Key('card'),
-                businessName: 'الفنان علي عنبه',
-                isFeatured: false,
-                ratingAverage: 1,
-                ratingCount: 1,
-                isFavorite: false,
-                onFavorite: () {},
-                onDetails: () {},
-                logoUrl: 'https://media.example/provider-logo/a.jpg',
-              ),
-            ),
-          ),
-        ),
+    testWidgets('a logo alone sits whole on a quiet tint', (tester) async {
+      await _pump(
+        tester,
+        _provider(logo: 'https://media.example/provider-logo/a.jpg'),
       );
-      await tester.pump();
       expect(find.byKey(const Key('provider-card-photo')), findsNothing);
-      final logo = tester.getSize(find.byKey(const Key('provider-card-logo')));
-      expect(logo.width, logo.height);
-      expect(logo.width, AarastV3Size.markHero);
-      expect(tester.takeException(), isNull);
+      expect(find.byKey(const Key('provider-card-logo')), findsOneWidget);
+      expect(tester.widget<Image>(find.byType(Image)).fit, BoxFit.contain);
     });
 
-    testWidgets('nothing overflows at 320 with the largest text', (
-      tester,
-    ) async {
-      await pumpAt(tester, width: 320, textScale: 1.3);
+    testWidgets('nothing overflows at 320 with the largest text; the heart '
+        'keeps a 48 target', (tester) async {
+      await _pump(tester, _provider(minPrice: '12500000'));
       expect(tester.takeException(), isNull);
-      // The heart keeps a full touch target.
-      final heart = tester.getSize(find.bySemanticsLabel('حفظ المزود'));
-      expect(heart.width, greaterThanOrEqualTo(48));
-      expect(heart.height, greaterThanOrEqualTo(48));
+      final heart = tester.getSize(
+        find.bySemanticsLabel(aarastText.providersFavoriteAdd),
+      );
+      expect(heart.width, greaterThanOrEqualTo(AarastV3Size.touch));
+      expect(heart.height, greaterThanOrEqualTo(AarastV3Size.touch));
     });
   });
 }

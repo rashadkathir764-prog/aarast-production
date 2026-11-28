@@ -1767,7 +1767,17 @@ const r19ProviderPortalApi = Object.freeze({
 // -2 (D130, 2026-11-26): the wedding week's and day's celebration pages
 // (y06, y07) are gone with their two imports (the auth and wedding-day
 // owner APIs); the home carries the week and the day itself.
-const r19LegalRecordCount = 274;
+// +2 (2026-11-26 REFINEMENT_SPEC (D130–D132)): a money item's screen answers
+// an essential from the home's summary (wedding plans owner API); the
+// settings page says what each notification switch covers for its reader
+// (account contexts owner API).
+// +1 (D134, 2026-11-27): «أسبوع العرس», the page the home's card opens,
+// reads the plan's events (wedding-day owner API). The two imports the
+// rejected home added on 2026-11-26 (home_zones.dart, and the phone plan's
+// home reading the finance headline) went with it.
+// +1 (2026-11-28): a provider's page reads the plan's wedding day when it
+// is opened before the directory (wedding plans owner API).
+const r19LegalRecordCount = 278;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -2251,9 +2261,28 @@ const trackedOwnerApiContracts = [
       },
       { uri: 'screens/privacy_screen.dart', show: ['PrivacyScreen'] },
       { uri: 'screens/settings_screen.dart', show: ['SettingsScreen'] },
+      // 2026-11-26 REFINEMENT_SPEC (D130–D132, §2.5): one notification
+      // settings design for both sides. p40 (the provider's settings) shows
+      // the couple's own parts: «هذا الجوال» first, then his one switch with
+      // what it covers for a provider (NoticeReader.provider) and what
+      // always comes, from the server's coverage.
+      { uri: 'models/preference_coverage.dart', show: ['NotificationSwitch'] },
+      {
+        uri: 'utils/notice_coverage.dart',
+        show: ['NoticeReader', 'coverageAlwaysLine', 'coverageIncludesLine'],
+      },
       {
         uri: 'widgets/change_phone_sheet.dart',
         show: ['showChangePhoneSheet'],
+      },
+      {
+        uri: 'widgets/notification_settings_parts.dart',
+        show: [
+          'NotificationPreferencesSection',
+          'NotificationSwitchRow',
+          'PhoneNotificationsSection',
+          'saveNotificationSwitch',
+        ],
       },
       {
         uri: 'widgets/set_password_sheet.dart',
@@ -2466,6 +2495,8 @@ const trackedOwnerApiContracts = [
         uri: 'screens/wedding_plan_dashboard_screen.dart',
         show: ['WeddingPlanDashboardScreen'],
       },
+      // D134: «أسبوع العرس», the page the home's card opens.
+      { uri: 'screens/wedding_week_screen.dart', show: ['WeddingWeekScreen'] },
       // D63 (w40): the assistant's consent, shown and taken back.
       { uri: 'utils/assistant_consent.dart', show: ['AssistantConsent'] },
       {
@@ -2592,6 +2623,15 @@ const trackedCollaborationBatchContracts = [
     target: 'mobile/lib/features/finance/finance_api.dart',
     show: ['FinanceProvider'],
   },
+  // 2026-11-28: a provider's page opened first (from an agreement in the
+  // money tab, a link) reads the plan's wedding day itself, as the
+  // directory does; without it the day line stayed out and «اطلب عرض سعر»
+  // was open on a day he had closed.
+  {
+    source: 'mobile/lib/features/marketplace/screens/provider_details_screen.dart',
+    target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
+    show: ['WeddingPlansProvider'],
+  },
   {
     source: 'mobile/lib/features/marketplace/screens/provider_marketplace_screen.dart',
     target: 'mobile/lib/features/account_contexts/account_contexts_api.dart',
@@ -2683,7 +2723,20 @@ const trackedCollaborationBatchContracts = [
   {
     source: 'mobile/lib/features/provider_portal/screens/provider_settings_screen.dart',
     target: 'mobile/lib/features/settings/settings_api.dart',
-    show: ['SettingsProvider'],
+    // 2026-11-26 REFINEMENT_SPEC (D130–D132, §2.5): p40's notifications are
+    // the couple's page's design, read from the settings owner API's shared
+    // parts instead of its own copy.
+    show: [
+      'NoticeReader',
+      'NotificationPreferencesSection',
+      'NotificationSwitch',
+      'NotificationSwitchRow',
+      'PhoneNotificationsSection',
+      'SettingsProvider',
+      'coverageAlwaysLine',
+      'coverageIncludesLine',
+      'saveNotificationSwitch',
+    ],
   },
   {
     source: 'mobile/lib/features/settings/widgets/set_password_sheet.dart',
@@ -2800,6 +2853,15 @@ const trackedCollaborationBatchContracts = [
     target: 'mobile/lib/features/finance/finance_api.dart',
     show: ['FinanceProvider'],
   },
+  // 2026-11-26 REFINEMENT_SPEC (D130–D132, §2.5): what each notification
+  // switch covers is said for its reader, so the settings page reads which
+  // accounts the person holds (owner, contributor, provider) for its
+  // NoticeReader.
+  {
+    source: 'mobile/lib/features/settings/screens/settings_screen.dart',
+    target: 'mobile/lib/features/account_contexts/account_contexts_api.dart',
+    show: ['AccountContextController', 'AccountContextRole'],
+  },
   {
     source: 'mobile/lib/features/settings/screens/settings_screen.dart',
     target: 'mobile/lib/features/auth/auth_api.dart',
@@ -2876,6 +2938,14 @@ const trackedPlanningBatchContracts = [
     source: 'mobile/lib/features/finance/screens/budget_category_details_screen.dart',
     target: 'mobile/lib/features/marketplace/marketplace_api.dart',
     show: ['ProviderBoardRow'],
+  },
+  // 2026-11-26 REFINEMENT_SPEC (D130–D132): a money item's own screen offers
+  // the home's two answers (D72) while the item is one of the plan's
+  // essentials from the home's summary, and reloads the home after one.
+  {
+    source: 'mobile/lib/features/finance/screens/budget_category_details_screen.dart',
+    target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
+    show: ['DashboardSummaryProvider'],
   },
   {
     source: 'mobile/lib/features/finance/screens/cost_form_screen.dart',
@@ -3211,6 +3281,13 @@ const trackedPlanningBatchContracts = [
     target: 'mobile/lib/features/wedding_day/wedding_day_api.dart',
     show: ['PlanEventsProvider'],
   },
+  // D134: «أسبوع العرس» reads the plan's events itself, so it opens from a
+  // link as it opens from the home's card.
+  {
+    source: 'mobile/lib/features/wedding_plans/screens/wedding_week_screen.dart',
+    target: 'mobile/lib/features/wedding_day/wedding_day_api.dart',
+    show: ['PlanEventsProvider', 'PlanEventsView'],
+  },
   {
     source: 'mobile/lib/features/wedding_plans/utils/plan_pulse_sync.dart',
     target: 'mobile/lib/features/guests/guests_api.dart',
@@ -3222,10 +3299,12 @@ const trackedPlanningBatchContracts = [
     show: ['TaskSummary'],
   },
   {
-    // D114: the home's money card says the money tab's own words.
+    // D114: the home's money card says the money tab's own words. D113
+    // (2026-11-27): it keeps one row of them; the mahr's own line
+    // (mahrOnItsOwnWords) is the money tab's alone.
     source: 'mobile/lib/features/wedding_plans/widgets/dashboard/aarast_dashboard_view.dart',
     target: 'mobile/lib/features/finance/finance_api.dart',
-    show: ['mahrOnItsOwnWords', 'moneyBudgetCells'],
+    show: ['moneyBudgetCells'],
   },
   {
     source: 'mobile/lib/features/wedding_plans/widgets/dashboard/aarast_dashboard_view.dart',
@@ -3663,6 +3742,8 @@ const trackedCompositionRootContracts = [
           'PlanAssistantScreen',
           'PlanCenterScreen',
           'WeddingPlanDashboardScreen',
+          // D134: «أسبوع العرس», the page the home's card opens.
+          'WeddingWeekScreen',
         ],
       },
       {
@@ -4075,9 +4156,18 @@ function assertTrackedPlanningBatch({
   // Re-pinned (2026-11-21 verification): full and sum-safe display preserves
   // stored Q25-era fractions. money_formatters_test proves 700.25 and 0.25;
   // money_detail_screens_test still proves exact legacy settlement.
+  // Re-pinned (2026-11-26, D129 simplified MSA, REFINEMENT_SPEC §2.8): the
+  // short way counts its unit by the number shown («مليون، مليونان، 3
+  // ملايين، 15 مليونًا، 100 مليون، 1.5 مليون», countedScaleWords); the
+  // figures themselves are unchanged. money_formatters_test and
+  // compact_money_figure_test prove the table.
+  // Re-pinned (2026-11-28, D136, by Rashad's word «انت المسئول على المشروع
+  // بالكامل»): a short figure always opens with its digits («1 مليون»، «2
+  // مليون»). The word dual «مليونان» read wrong after every preposition
+  // («اتفقت على مليونان»); the amounts themselves are unchanged.
   assert.equal(
     createHash('sha256').update(coreFormatterText).digest('hex'),
-    '8021779809aece8a0f4d935d732f2bbf8d2b80b75c0cce9e4dc174e475de1e38',
+    '0ec501c32d7750c65da0d73ebc6b3ef35c72a85bbeb433659026acf171940966',
     'Planning batch Core money formatter normalized hash mismatch',
   );
   const restoredFinanceFormatterText = coreFormatterText.replace(
@@ -4087,9 +4177,9 @@ function assertTrackedPlanningBatch({
   assert.notEqual(restoredFinanceFormatterText, coreFormatterText);
   assert.equal(
     createHash('sha256').update(restoredFinanceFormatterText).digest('hex'),
-    // Re-pinned with the one above (2026-11-18): the same file, read back
-    // under its old name.
-    '31c062eda09062518bdf6a9b4a85b5245ec622209495e3ae7321c250ba8a4bd1',
+    // Re-pinned with the one above (2026-11-18, 2026-11-26, 2026-11-28): the
+    // same file, read back under its old name.
+    'a8c3ceb94cf681aa19f4c6baa99c9d5e5cea7a71e85cba2afccf9e4c256df9e3',
     'Planning batch original Finance money formatter hash mismatch',
   );
 

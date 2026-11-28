@@ -1,91 +1,184 @@
+import 'package:aarast_mobile/core/network/api_client.dart';
+import 'package:aarast_mobile/features/marketplace/data/marketplace_api.dart';
 import 'package:aarast_mobile/features/marketplace/models/marketplace_models.dart';
 import 'package:aarast_mobile/features/marketplace/models/provider_shelves.dart';
+import 'package:aarast_mobile/features/marketplace/providers/marketplace_provider.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-// Rashad 2026-11-19, the staged layout: while browsing everything, each kind
-// is a section; one with more than five providers is a sideways row, a
-// smaller one a short list.
-MarketplaceProvider _provider(String id, String? kind) => MarketplaceProvider(
-  id: id,
-  businessName: id,
-  ownerName: 'owner',
-  ratingAverage: 0,
-  ratingCount: 0,
-  primaryCategory: kind == null
-      ? null
-      : ProviderCategory(id: kind, nameAr: kind),
+// Changed on purpose (2026-11-26, REFINEMENT_SPEC 2.7 «رفوف التصفح تُجلب من
+// الخادم لكل فئة بعددها»): browsing everything, each category is one shelf
+// read from the server under that category with the list's filter, so a
+// shelf lists whom its chip counts. The sections used to be cut out of the
+// whole directory's first page (more than five made a sideways row, fewer a
+// short list), which showed a few of a category the chip counted many in.
+
+const _halls = ProviderCategory(id: 'cat-halls', nameAr: 'صالة');
+const _photo = ProviderCategory(id: 'cat-photo', nameAr: 'تصوير');
+const _bands = ProviderCategory(id: 'cat-bands', nameAr: 'فرق');
+const _brideOnly = ProviderCategory(
+  id: 'cat-makeup',
+  nameAr: 'مكياج',
+  showForGroom: false,
 );
 
-List<MarketplaceProvider> _many(String kind, int count) => [
-  for (var i = 0; i < count; i++) _provider('$kind-$i', kind),
+MarketplaceProvider _provider(String id, ProviderCategory kind) =>
+    MarketplaceProvider(
+      id: id,
+      businessName: id,
+      ownerName: '',
+      ratingAverage: 0,
+      ratingCount: 0,
+      primaryCategory: kind,
+      primaryCategoryId: kind.id,
+    );
+
+typedef _Ask = ({
+  String? categoryId,
+  String? cityId,
+  DateTime? day,
+  bool hideBusy,
+  int limit,
+});
+
+class _Api extends MarketplaceApi {
+  _Api(this.rows, {this.counts = true})
+    : super(ApiClient(tokenProvider: () async => null));
+
+  final List<MarketplaceProvider> rows;
+
+  /// Whether the counts answer (they do not on the phone's copy).
+  final bool counts;
+  final asks = <_Ask>[];
+
+  @override
+  Future<List<MarketplaceCity>> getCities() async => const [];
+
+  @override
+  Future<List<ProviderCategory>> getCategories() async => const [
+    _halls,
+    _photo,
+    _bands,
+    _brideOnly,
+  ];
+
+  @override
+  Future<MarketplaceProviderPage> getProvidersPage({
+    String? search,
+    String? cityId,
+    String? categoryId,
+    List<String>? categoryIds,
+    bool? featured,
+    DateTime? eventDate,
+    ProviderSort? sort,
+    bool hideBusy = false,
+    int page = 1,
+    int limit = 30,
+  }) async {
+    asks.add((
+      categoryId: categoryId,
+      cityId: cityId,
+      day: eventDate,
+      hideBusy: hideBusy,
+      limit: limit,
+    ));
+    final items = [
+      for (final row in rows)
+        if (categoryId == null || row.primaryCategoryId == categoryId) row,
+    ];
+    return MarketplaceProviderPage(
+      items: items.take(limit).toList(),
+      currentPage: 1,
+      total: items.length,
+      totalPages: 1,
+      hasMore: false,
+    );
+  }
+
+  @override
+  Future<ProviderCategoryCounts> getCategoryCounts({
+    String? search,
+    String? cityId,
+    DateTime? eventDate,
+    bool hideBusy = false,
+  }) async {
+    if (!counts) throw const ApiException('offline');
+    return ProviderCategoryCounts(
+      total: rows.length,
+      byCategory: {
+        for (final kind in [_halls, _photo, _bands, _brideOnly])
+          kind.id: rows.where((row) => row.primaryCategoryId == kind.id).length,
+      },
+    );
+  }
+}
+
+List<String> _shelfIds(ProviderMarketplaceProvider directory) => [
+  for (final shelf in directory.shelves) shelf.categoryId,
 ];
 
 void main() {
-  test('every kind with providers is a section, in the catalog order', () {
-    final sections = providerSections(
-      [
-        _provider('photo-1', 'photo'),
-        _provider('hall-1', 'hall'),
-        _provider('photo-2', 'photo'),
-        _provider('band-1', 'band'),
-      ],
-      ['hall', 'band', 'photo'],
+  test('one shelf per category the counts show, in the catalog\'s order, '
+      'each its own read of at most providerShelfLimit', () async {
+    final api = _Api([
+      for (var i = 0; i < 12; i++) _provider('h$i', _halls),
+      _provider('p0', _photo),
+    ]);
+    final directory = ProviderMarketplaceProvider(
+      api,
+      catalogAudience: 'GROOM',
     );
-    expect([for (final s in sections) s.categoryId], ['hall', 'band', 'photo']);
-    // Each keeps the directory's own order.
-    expect(
-      [for (final provider in sections.last.providers) provider.id],
-      ['photo-1', 'photo-2'],
-    );
-  });
-
-  test('a kind makes a row from six providers, not five', () {
-    final shelves = providerShelves(
-      [..._many('photo', 6), ..._many('hall', 5)],
-      ['hall', 'photo'],
-    );
-    expect([for (final shelf in shelves) shelf.categoryId], ['photo']);
-    expect(providerShelfMinimum, 6);
-  });
-
-  test('a provider without a named kind is in no section', () {
-    final sections = providerSections(
-      [_provider('band-1', 'band'), _provider('lost', null)],
-      ['band'],
-    );
-    expect([for (final s in sections) s.categoryId], ['band']);
-    expect(sections.single.providers.single.id, 'band-1');
-  });
-
-  test('no provider sits in two sections', () {
-    final sections = providerSections(
-      [..._many('hall', 7), ..._many('photo', 2)],
-      ['hall', 'photo'],
-    );
-    final ids = [
-      for (final section in sections)
-        for (final provider in section.providers) provider.id,
+    await directory.loadMarketplace();
+    expect(_shelfIds(directory), ['cat-halls', 'cat-photo']);
+    expect(directory.shelves.first.providers, hasLength(providerShelfLimit));
+    final shelfAsks = [
+      for (final ask in api.asks)
+        if (ask.categoryId != null) ask,
     ];
-    expect(ids.toSet().length, ids.length);
-    expect(ids.length, 9);
+    // «فرق» counts nobody and «مكياج» is not shown to a groom: not asked.
+    expect(
+      [for (final ask in shelfAsks) ask.categoryId],
+      ['cat-halls', 'cat-photo'],
+    );
+    expect(shelfAsks.every((ask) => ask.limit == providerShelfLimit), isTrue);
   });
 
-  test('only the allowed kinds make sections: a later page adds none', () {
-    final sections = providerSections(
-      [..._many('hall', 6), ..._many('photo', 6)],
-      ['hall', 'photo'],
-      allowedKinds: {'hall'},
-    );
-    expect([for (final s in sections) s.categoryId], ['hall']);
+  test('a shelf reads under the list\'s own filter: the city, the day and '
+      'hiding the busy', () async {
+    final api = _Api([_provider('h0', _halls)]);
+    final directory = ProviderMarketplaceProvider(api)
+      ..setEventDate(DateTime(2027, 1, 21));
+    await directory.setCity('city-sanaa');
+    await directory.setHideBusy(true);
+    final shelfAsk = api.asks.lastWhere((ask) => ask.categoryId != null);
+    expect(shelfAsk.cityId, 'city-sanaa');
+    expect(shelfAsk.day, DateTime(2027, 1, 21));
+    expect(shelfAsk.hideBusy, isTrue);
   });
 
-  // Changed on purpose (review 2026-11-18): an unlisted kind had no name
-  // for its title; its providers stay with the rest.
-  test('a kind the catalog does not list makes no section', () {
-    final sections = providerSections(
-      [_provider('x-1', 'unlisted'), _provider('hall-1', 'hall')],
-      ['hall'],
+  test('without counts (the phone\'s copy) every category is asked and the '
+      'empty ones dropped', () async {
+    final api = _Api([_provider('p0', _photo)], counts: false);
+    final directory = ProviderMarketplaceProvider(api);
+    await directory.loadMarketplace();
+    expect(
+      {
+        for (final ask in api.asks)
+          if (ask.categoryId != null) ask.categoryId,
+      },
+      {'cat-halls', 'cat-photo', 'cat-bands', 'cat-makeup'},
     );
-    expect([for (final s in sections) s.categoryId], ['hall']);
+    expect(_shelfIds(directory), ['cat-photo']);
+  });
+
+  test('a category, a search or an order picked by hand shows rows, and '
+      'reads no shelf', () async {
+    final api = _Api([_provider('h0', _halls)]);
+    final directory = ProviderMarketplaceProvider(api);
+    await directory.setCategory('cat-halls');
+    expect(directory.showsWholeDirectory, isFalse);
+    expect(api.asks.where((ask) => ask.limit == providerShelfLimit), isEmpty);
+    await directory.setCategory(null);
+    await directory.setSort(ProviderSort.rating);
+    expect(directory.showsWholeDirectory, isFalse);
   });
 }

@@ -358,12 +358,12 @@ class _DueRow extends StatelessWidget {
     final when = day == null
         ? 'بدون موعد'
         : late
-        ? 'متأخرة ${arabicCount(-days!, one: 'يوم', two: 'يومين', few: 'أيام', many: 'يوم')}'
+        ? 'متأخرة ${arabicDays(-days!)}'
         : days == 0
         ? 'اليوم'
         : days == 1
         ? 'بكرة'
-        : '${formatArabicDayMonth(day)} · بعد ${arabicCount(days!, one: 'يوم', two: 'يومين', few: 'أيام', many: 'يوم')}';
+        : '${formatArabicDayMonth(day)} · بعد ${arabicDays(days!)}';
     return JourneyListRow(
       icon: day == null ? LucideIcons.calendarX : LucideIcons.calendarClock,
       color: late

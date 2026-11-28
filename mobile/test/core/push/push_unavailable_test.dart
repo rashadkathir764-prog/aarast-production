@@ -49,16 +49,20 @@ void main() {
     expect(told, greaterThan(0), reason: 'the home card is told');
   });
 
-  test('a registration that fails says push does not work here, and a '
-      'later success takes it back', () async {
+  // A registration with Google fails without a network on any phone
+  // («SERVICE_NOT_AVAILABLE»): it used to be read as «no push on this
+  // phone», and a phone with Google services was told so while offline.
+  test('a registration that fails is «not linked yet», not «no push here», '
+      'and a later success links it', () async {
     final (push, gateway) = await controller(registrationFails: true);
     await push.initialize();
     await push.bindAuthenticatedUser('user-1');
-    expect(push.unavailableOnThisPhone, isTrue);
+    expect(push.unavailableOnThisPhone, isFalse);
+    expect(await push.phoneState(), PushPhoneState.notLinked);
 
     gateway.registrationFails = false;
     await push.refreshCurrentRegistration();
-    expect(push.unavailableOnThisPhone, isFalse);
+    expect(await push.phoneState(), PushPhoneState.on);
   });
 
   test(
@@ -69,6 +73,8 @@ void main() {
       // The phone registered with Google; only the server said no.
       await push.bindAuthenticatedUser('user-1');
       expect(push.unavailableOnThisPhone, isFalse);
+      // Allowed is not enough: the server does not know this phone.
+      expect(await push.phoneState(), PushPhoneState.notLinked);
     },
   );
 

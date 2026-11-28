@@ -350,6 +350,8 @@ void main() {
         'lib/features/guests/screens/participant_guests_screen.dart',
         'lib/features/marketplace/screens/participant_providers_screen.dart',
         'lib/features/wedding_day/screens/plan_events_screen.dart',
+        // D134: «أسبوع العرس», the page the home's card opens.
+        'lib/features/wedding_plans/screens/wedding_week_screen.dart',
         'lib/features/sharing/screens/sharing_screen.dart',
         'lib/features/sharing/screens/contribution_history_screen.dart',
         'lib/features/sharing/screens/edit_shared_member_screen.dart',

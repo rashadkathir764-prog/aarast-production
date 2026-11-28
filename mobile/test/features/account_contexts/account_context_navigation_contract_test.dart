@@ -102,9 +102,11 @@ void main() {
           name: 'ProviderSettingsScreen._logout',
           path:
               'lib/features/provider_portal/screens/provider_settings_screen.dart',
-          startMarker: 'Future<String?> _logout()',
-          // D63: deleting opens w05; _logout is the class's last method.
-          endMarker: 'bool _devicePushAvailable(BuildContext context)',
+          // The page's notifications became the shared settings sections
+          // (REFINEMENT_SPEC 2.5): its own push helper went, and _logout
+          // now sits right before _exitWorkspace, which ends it.
+          startMarker: 'Future<void> _logout()',
+          endMarker: 'Future<void> _exitWorkspace()',
         ),
         (
           name: 'MoreScreen._logout',

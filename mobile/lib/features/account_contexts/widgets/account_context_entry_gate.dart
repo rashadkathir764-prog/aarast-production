@@ -247,6 +247,12 @@ String? compatibleAccountContextResume(
   final path = _safePath(location);
   if (path == null || path == AppRouter.home) return null;
 
+  // The couple's alert switches are not the provider's: a provider resumed
+  // on «/settings» lands on his own (one switch, his customers' messages).
+  if (selected.isProvider && path == AppRouter.settings) {
+    return AppRouter.providerSettings;
+  }
+
   const accountCommonPaths = {
     AppRouter.notifications,
     AppRouter.inviteAccess,

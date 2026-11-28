@@ -19,7 +19,7 @@ void main() {
       await walk.signIn('777000101', pickContext: 'عرس محمد');
 
       await walk.step('f01_board', 'المزودين: طلباتي', () async {
-        await walk.tab('المزودين');
+        await walk.tab('المزوّدون');
         walk.expectSee('عرضين وصلوا');
       });
 

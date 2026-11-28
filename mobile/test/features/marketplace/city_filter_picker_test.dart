@@ -98,7 +98,9 @@ void main() {
     await _pump(tester, state);
     expectEveryButtonActs();
 
-    tester.semantics.tap(find.semantics.byLabel('فلتر: صنعاء'));
+    // 2026-11-26: the button is «التصفية (n)», n the filters on (the
+    // city here); its city is read in the sheet it opens.
+    tester.semantics.tap(find.semantics.byLabel('التصفية (1)'));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('city-pill-all')), findsOneWidget);
     semantics.dispose();

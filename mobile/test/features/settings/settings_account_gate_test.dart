@@ -1,4 +1,8 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
+import 'package:aarast_mobile/features/settings/models/preference_coverage.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
@@ -51,7 +55,7 @@ void main() {
       await tester.binding.setSurfaceSize(const Size(320, 820));
       addTearDown(() => tester.binding.setSurfaceSize(null));
 
-      await _pumpSignedInSettings(tester, fakeApi, devicePushAvailable: true);
+      await _pumpSignedInSettings(tester, fakeApi);
 
       expect(find.byType(JourneyToggle), findsNWidgets(4));
       expect(
@@ -74,19 +78,31 @@ void main() {
       expect(find.text('واتساب'), findsNothing);
       expect(find.text('رسائل SMS'), findsNothing);
       expect(find.text('البريد الإلكتروني'), findsNothing);
-      // g07 (D24): the server's three reminders, and the lock-screen note
-      // (push copy carries no names or amounts).
+      // g07 (D24): the server's reminders, each with when it comes from the
+      // server's own table. Changed on purpose (REFINEMENT_SPEC 2.5): the
+      // titles say what each switch governs («المال»، «تذكير بموعد الحجز»،
+      // «المزوّدون والحجوزات»), the offers' «فور وصولها» went (they wait for
+      // the morning at night), and the lock-screen note went. The phone's
+      // rows and the coverage lines are notification_settings_test.dart's.
       expect(find.text('المهام'), findsOneWidget);
-      expect(find.text('الدفعات'), findsOneWidget);
-      expect(find.text('قبل موعدها بأسبوع'), findsOneWidget);
-      // RA-BE-190: the booking reminders are their own switch.
-      expect(find.text('الحجوزات'), findsOneWidget);
-      expect(find.text('قبل موعدها بأسبوع وبيوم'), findsOneWidget);
-      expect(find.text('العروض والمحادثات'), findsOneWidget);
       expect(
-        find.text('على شاشة القفل ما تطلع أسماء ولا مبالغ.'),
+        find.text(
+          'قبل موعدها بأسبوع وبيوم، وفي يومها، ومرة إن تأخرت، '
+          'وفي الوقت الذي تختاره لها، وإن كان ليلًا وصل جوالك صباحًا',
+        ),
         findsOneWidget,
       );
+      expect(find.text('المال'), findsOneWidget);
+      expect(
+        find.textContaining('قبل موعدها بأسبوع أو في يوم التذكير'),
+        findsOneWidget,
+      );
+      // RA-BE-190: the booking reminders are their own switch.
+      expect(find.text('تذكير بموعد الحجز'), findsOneWidget);
+      expect(find.text('قبل موعدها بأسبوع وبيوم'), findsOneWidget);
+      expect(find.text('المزوّدون والحجوزات'), findsOneWidget);
+      expect(find.textContaining('فور وصولها'), findsNothing);
+      expect(find.textContaining('شاشة القفل'), findsNothing);
       expect(find.text('ملخص الجمعة'), findsNothing);
 
       for (final key in const [
@@ -126,13 +142,29 @@ void main() {
     tester,
   ) async {
     final fakeApi = _FakeSettingsApi();
-    await _pumpSignedInSettings(tester, fakeApi, devicePushAvailable: false);
+    // No push on this build: the shared «هذا الجوال» row says so (MSA,
+    // REFINEMENT_SPEC 2.5), and the night line, the phone's, never shows.
+    await _pumpSignedInSettings(tester, fakeApi);
 
     expect(
-      find.text('هذي النسخة ما توصلها تنبيهات الجوال، تلقاها داخل التطبيق.'),
+      find.text('هذا الجوال لا يستقبل إشعارات خارج التطبيق'),
       findsOneWidget,
     );
     expect(find.textContaining('شاشة القفل'), findsNothing);
+    expect(find.byKey(const Key('settings-night-line')), findsNothing);
+  });
+
+  testWidgets('without the server\'s table the switches say no timing', (
+    tester,
+  ) async {
+    final fakeApi = _FakeSettingsApi(withSchedule: false);
+    await _pumpSignedInSettings(tester, fakeApi);
+
+    expect(find.text('المهام'), findsOneWidget);
+    expect(find.textContaining('قبل موعدها'), findsNothing);
+    expect(find.textContaining('يشمل'), findsNothing);
+    expect(find.byKey(const Key('settings-night-line')), findsNothing);
+    expect(tester.takeException(), isNull);
   });
 }
 
@@ -165,9 +197,8 @@ Future<void> _pumpSettings(
 
 Future<void> _pumpSignedInSettings(
   WidgetTester tester,
-  _FakeSettingsApi fakeApi, {
-  required bool devicePushAvailable,
-}) async {
+  _FakeSettingsApi fakeApi,
+) async {
   SharedPreferences.setMockInitialValues({});
   final preferences = await SharedPreferences.getInstance();
   final authStorage = AuthStorage(preferences);
@@ -193,9 +224,7 @@ Future<void> _pumpSignedInSettings(
         theme: AppTheme.light(),
         home: Directionality(
           textDirection: TextDirection.rtl,
-          child: SettingsScreen(
-            devicePushAvailableOverride: devicePushAvailable,
-          ),
+          child: SettingsScreen(),
         ),
       ),
     ),
@@ -204,7 +233,24 @@ Future<void> _pumpSignedInSettings(
 }
 
 class _FakeSettingsApi extends SettingsApi {
-  _FakeSettingsApi() : super(ApiClient(tokenProvider: () async => null));
+  _FakeSettingsApi({this.withSchedule = true})
+    : super(ApiClient(tokenProvider: () async => null));
+
+  final bool withSchedule;
+
+  /// The server's own answer, kept by the backend's reminder-schedule test.
+  @override
+  Future<NotificationSchedule> getNotificationSchedule() async {
+    if (!withSchedule) throw StateError('no network');
+    return NotificationSchedule.fromResponse(
+      jsonDecode(
+        File('test/fixtures/reminder_schedule.json').readAsStringSync(),
+      ),
+    );
+  }
+
+  @override
+  Future<NotificationSchedule?> cachedNotificationSchedule() async => null;
 
   int getSettingsCalls = 0;
   int updateSettingsCalls = 0;

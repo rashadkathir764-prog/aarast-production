@@ -311,8 +311,8 @@ String providerDaysLeftLabel(DateTime until, {DateTime? now}) {
     <= 0 => 'آخر يوم اليوم',
     1 => 'باقي يوم',
     2 => 'باقي يومين',
-    <= 10 => 'باقي $days أيام',
-    _ => 'باقي $days يوم',
+    // The one counting rule: «3 أيام», «14 يومًا», «103 أيام».
+    _ => 'باقي ${arabicDays(days)}',
   };
 }
 

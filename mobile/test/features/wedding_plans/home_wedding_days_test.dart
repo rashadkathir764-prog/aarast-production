@@ -5,12 +5,14 @@ import 'package:aarast_mobile/features/wedding_day/models/plan_event.dart';
 import 'package:aarast_mobile/features/wedding_plans/models/dashboard_summary.dart';
 import 'package:aarast_mobile/features/wedding_plans/widgets/dashboard/aarast_dashboard_view.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
-// The home on the wedding's week, its day and after it, read on Sana'a's day
-// and clock whatever zone the phone is in (RA-MO-354), with the events after
-// the day (RA-MO-352) and the way to the memories (RA-MO-356).
+// The home and «أسبوع العرس» (D134) on the wedding's week, its day and after
+// it, read on Sana'a's day and clock whatever zone the phone is in
+// (RA-MO-354), with the events after the day (RA-MO-352) and the way to the
+// memories (RA-MO-356).
 
 final _wedding = DateTime(2027, 1, 21);
 
@@ -28,10 +30,12 @@ Future<void> _pump(
   required PlanEventsView events,
   VoidCallback? onArchivePlan,
   VoidCallback? onOpenEvents,
+  VoidCallback? onOpenWeek,
   JourneyProfile profile = JourneyProfile.groom,
+  Size size = const Size(420, 2200),
 }) async {
   tester.view.devicePixelRatio = 1;
-  tester.view.physicalSize = const Size(420, 2200);
+  tester.view.physicalSize = size;
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
     MaterialApp(
@@ -47,6 +51,7 @@ Future<void> _pump(
               bottomPadding: 24,
               now: now,
               events: events,
+              onOpenWeek: onOpenWeek,
               onArchivePlan: onArchivePlan,
               onNotifications: () {},
               onProfile: () {},
@@ -68,21 +73,259 @@ Future<void> _pump(
   await tester.pumpAndSettle();
 }
 
+/// «أسبوع العرس», the page the home's card opens (D134).
+Future<void> _pumpWeek(
+  WidgetTester tester, {
+  required DateTime now,
+  required PlanEventsView events,
+  VoidCallback? onOpenEvents,
+  JourneyProfile profile = JourneyProfile.groom,
+}) async {
+  tester.view.devicePixelRatio = 1;
+  tester.view.physicalSize = const Size(420, 2200);
+  addTearDown(tester.view.reset);
+  await tester.pumpWidget(
+    MaterialApp(
+      theme: AppTheme.light(),
+      home: JourneyProfileScope(
+        profile: profile,
+        child: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Scaffold(
+            body: SingleChildScrollView(
+              child: WeddingWeekView(
+                weddingDate: _wedding,
+                events: events,
+                summary: _summary(),
+                now: now,
+                onOpenPlan: () {},
+                onOpenTasks: () {},
+                onOpenEvents: onOpenEvents,
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
 Finder _rowOf(String name) =>
     find.ancestor(of: find.text(name), matching: find.byType(Row)).first;
 
+const _weekCard = ValueKey('aarast-dashboard-week-card');
+
+final _threeNights = _events([
+  {'id': 's', 'type': 'SAMRA', 'date': '2027-01-17'},
+  {'id': 'm', 'type': 'MAQEEL', 'date': '2027-01-18'},
+  {'id': 'w', 'type': 'WEDDING', 'date': '2027-01-21'},
+]);
+
 void main() {
-  // 22:00 UTC on the 17th is 01:00 on the 18th in Sana'a: the phone (here
-  // on UTC) still read the 17th, so the night past was «الليلة».
-  testWidgets('the week\'s «الليلة» is Sana\'a\'s night', (tester) async {
+  // D134 (Rashad, 2026-11-27): the home is the approved home in every stage.
+  // The wedding week is one card under the next step, and its sky and
+  // program are the card's own page.
+  testWidgets('D134: in the wedding week the home keeps its layout, and the '
+      'week is one card that opens its page', (tester) async {
+    var opened = 0;
     await _pump(
       tester,
       now: DateTime.utc(2027, 1, 17, 22),
+      events: _threeNights,
+      onOpenWeek: () => opened += 1,
+    );
+
+    // The home did not turn into the week: its money and its tiles stay,
+    // and no program is drawn on it.
+    expect(
+      find.byKey(const ValueKey('aarast-dashboard-money-card')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('aarast-dashboard-countdown')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('aarast-dashboard-week-program')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('aarast-dashboard-week-hero')),
+      findsNothing,
+    );
+
+    // The card says tonight's event, in Sana'a's night.
+    final card = find.byKey(_weekCard);
+    expect(card, findsOneWidget);
+    expect(
+      find.descendant(of: card, matching: find.text('أسبوع العرس')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: card, matching: find.text('الليلة')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: card, matching: find.textContaining('المقيل')),
+      findsOneWidget,
+    );
+
+    // It sits right under the next step, above the money.
+    final cardTop = tester.getTopLeft(card).dy;
+    expect(
+      cardTop,
+      lessThan(
+        tester
+            .getTopLeft(
+              find.byKey(const ValueKey('aarast-dashboard-money-card')),
+            )
+            .dy,
+      ),
+    );
+
+    await tester.tap(card);
+    expect(opened, 1);
+  });
+
+  // The first picture at 320 and text 1.3 cut the title to «أسبوع الـ…»
+  // beside its tag: the tag takes the line under it there.
+  testWidgets('D134: on a narrow phone at a large text the card\'s title is '
+      'whole, its tag under it', (tester) async {
+    tester.platformDispatcher.textScaleFactorTestValue = 1.3;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    await _pump(
+      tester,
+      now: DateTime.utc(2027, 1, 1, 9),
+      events: _threeNights,
+      onOpenWeek: () {},
+      size: const Size(320, 2600),
+    );
+
+    final card = find.byKey(_weekCard);
+    final title = find.descendant(of: card, matching: find.text('أسبوع العرس'));
+    final tag = find.byKey(const ValueKey('aarast-dashboard-week-tag'));
+    expect(
+      tester.renderObject<RenderParagraph>(title).didExceedMaxLines,
+      isFalse,
+    );
+    expect(
+      tester.getTopLeft(tag).dy,
+      greaterThanOrEqualTo(tester.getBottomLeft(title).dy),
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('D134: before the week the card says when it starts and what '
+      'it holds', (tester) async {
+    await _pump(
+      tester,
+      now: DateTime.utc(2027, 1, 1, 9),
+      events: _threeNights,
+      onOpenWeek: () {},
+    );
+
+    final card = find.byKey(_weekCard);
+    // Twenty days to the wedding: the week opens in thirteen.
+    expect(
+      find.descendant(of: card, matching: find.text('بعد 13 يومًا')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: card,
+        matching: find.textContaining('3 مناسبات · أولها السمرة'),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  // The real app's demo plan has the wedding alone in its week: the card
+  // said «مناسبة واحدة · أولها الزفاف», one thing called the first of them.
+  testWidgets('D134: a week with one event names it alone', (tester) async {
+    await _pump(
+      tester,
+      now: DateTime.utc(2027, 1, 1, 9),
       events: _events([
-        {'id': 's', 'type': 'SAMRA', 'date': '2027-01-17'},
-        {'id': 'm', 'type': 'MAQEEL', 'date': '2027-01-18'},
         {'id': 'w', 'type': 'WEDDING', 'date': '2027-01-21'},
       ]),
+      onOpenWeek: () {},
+    );
+
+    final card = find.byKey(_weekCard);
+    expect(
+      find.descendant(of: card, matching: find.text('الزفاف، الخميس 21 يناير')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: card, matching: find.textContaining('أولها')),
+      findsNothing,
+    );
+  });
+
+  testWidgets('D134: a week with no events asks for them, in the reader\'s '
+      'form', (tester) async {
+    await _pump(
+      tester,
+      now: DateTime.utc(2027, 1, 1, 9),
+      events: _events(const []),
+      onOpenWeek: () {},
+      profile: JourneyProfile.bride,
+    );
+
+    expect(
+      find.descendant(
+        of: find.byKey(_weekCard),
+        matching: find.text('سجّلي مناسبات أسبوعك'),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('D134: no card without a page to open, nor after the wedding', (
+    tester,
+  ) async {
+    // A plan kept on the phone has no events and no page.
+    await _pump(
+      tester,
+      now: DateTime.utc(2027, 1, 17, 22),
+      events: _threeNights,
+    );
+    expect(find.byKey(_weekCard), findsNothing);
+
+    await _pump(
+      tester,
+      now: DateTime.utc(2027, 2, 10, 6),
+      events: _threeNights,
+      onOpenWeek: () {},
+    );
+    expect(find.byKey(_weekCard), findsNothing);
+  });
+
+  testWidgets('D134: before the week, its page shows the program that is '
+      'coming', (tester) async {
+    await _pumpWeek(
+      tester,
+      now: DateTime.utc(2027, 1, 1, 9),
+      events: _threeNights,
+    );
+
+    expect(find.text('الأسبوع يبدأ بعد 13 يومًا'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('aarast-dashboard-week-program')),
+      findsOneWidget,
+    );
+    expect(find.text('الليلة'), findsNothing);
+    expect(find.byIcon(LucideIcons.checkCircle), findsNothing);
+  });
+
+  // 22:00 UTC on the 17th is 01:00 on the 18th in Sana'a: the phone (here
+  // on UTC) still read the 17th, so the night past was «الليلة».
+  testWidgets('the week\'s «الليلة» is Sana\'a\'s night', (tester) async {
+    await _pumpWeek(
+      tester,
+      now: DateTime.utc(2027, 1, 17, 22),
+      events: _threeNights,
     );
 
     expect(
@@ -105,7 +348,7 @@ void main() {
   ]) {
     testWidgets('an empty wedding week asks for ${profile.plan('his', 'her')} '
         'occasions', (tester) async {
-      await _pump(
+      await _pumpWeek(
         tester,
         now: DateTime.utc(2027, 1, 18, 9),
         events: _events(const []),
@@ -120,7 +363,7 @@ void main() {
   // 13:00 UTC is 16:00 in Sana'a: the wedding (after the asr) is under
   // way, not the lunch the phone's own hour pointed at.
   testWidgets('the day\'s «الحين» is the hour in Sana\'a', (tester) async {
-    await _pump(
+    await _pumpWeek(
       tester,
       now: DateTime.utc(2027, 1, 21, 13),
       events: _events([

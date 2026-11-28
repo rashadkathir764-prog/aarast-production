@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/utils/app_clock.dart';
+import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_toast.dart';
@@ -23,7 +24,7 @@ import '../../finance/finance_api.dart' show MoneyInputFormatter;
 const _offerValidityDays = [7, 10, 14];
 const _defaultOfferValidityDays = 10;
 
-String _validityLabel(int days) => days <= 10 ? '$days أيام' : '$days يوم';
+String _validityLabel(int days) => arabicDays(days);
 
 /// p17 «عرضك لمحمد»: a package fills the title and the price, the price in
 /// the plan's currency, what it includes and leaves out in his own words,
@@ -513,7 +514,7 @@ class _OfferPreviewSheetState extends State<_OfferPreviewSheet> {
                   key: const ValueKey('provider-offer-preview-delivery'),
                   padding: const EdgeInsets.only(top: AarastV3Space.x1),
                   child: Text(
-                    'التسليم خلال $days يوم بعد العرس',
+                    'التسليم خلال ${arabicDays(days)} بعد العرس',
                     style: JourneyType.of(JourneyType.small),
                   ),
                 ),

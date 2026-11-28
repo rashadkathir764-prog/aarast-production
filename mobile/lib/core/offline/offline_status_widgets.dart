@@ -583,7 +583,7 @@ class _PendingChangeRow extends StatelessWidget {
         ? 'قبل ${arabicCount(minutes, one: 'دقيقة', two: 'دقيقتين', few: 'دقائق', many: 'دقيقة')}'
         : minutes < 60 * 24
         ? 'قبل ${arabicCount(minutes ~/ 60, one: 'ساعة', two: 'ساعتين', few: 'ساعات', many: 'ساعة')}'
-        : 'قبل ${arabicCount(minutes ~/ (60 * 24), one: 'يوم', two: 'يومين', few: 'أيام', many: 'يوم')}';
+        : 'قبل ${arabicDays(minutes ~/ (60 * 24))}';
     final (icon, color, soft) = change.blocked
         ? (
             LucideIcons.alertCircle,

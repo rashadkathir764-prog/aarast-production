@@ -420,14 +420,15 @@ void main() {
         find.descendant(of: reviews, matching: find.byIcon(LucideIcons.star)),
         findsOneWidget,
       );
-      expect(find.text('يرد عادة خلال 3 ساعات'), findsOneWidget);
+      // D129: the response line is MSA now, with its shadda (providers.arb).
+      expect(find.text('يردّ عادة خلال 3 ساعات'), findsOneWidget);
       expect(find.text('كيف يشوفك العرسان'), findsOneWidget);
       expect(find.text('خدماتك وباقاتك'), findsOneWidget);
       expect(find.text('خدمة · باقة · من 550,000'), findsOneWidget);
       expect(find.text('صورتين'), findsOneWidget);
       expect(find.text('التغطية'), findsOneWidget);
       expect(find.text('موثّق من أسبوعين'), findsOneWidget);
-      expect(find.text('آخر 30 يوم'), findsOneWidget);
+      expect(find.text('آخر 30 يومًا'), findsOneWidget);
       expect(find.textContaining('تيك توك'), findsNothing);
       expect(find.textContaining('فرق'), findsNothing);
       expect(find.textContaining('ينتظر ردك'), findsNothing);
@@ -851,19 +852,21 @@ void main() {
             ),
           ],
         ),
-        () => const ProviderSettingsScreen(devicePushAvailableOverride: true),
+        () => const ProviderSettingsScreen(),
       );
 
+      // Changed on purpose (REFINEMENT_SPEC 2.5, 2.8): the page's words are
+      // MSA from provider_settings.arb, its switch is the shared row, and
+      // the team's decisions are said by the shared «تصلك دائمًا» line from
+      // the server's coverage (tested in notification_settings_test.dart).
       expect(find.text('الإعدادات'), findsOneWidget);
-      expect(find.text('تنبيه لكل طلب ورسالة'), findsOneWidget);
+      expect(find.text('طلبات العملاء ورسائلهم'), findsOneWidget);
+      expect(find.text('هذا الجوال'), findsOneWidget);
+      expect(find.text('خطة عرسي'), findsOneWidget);
       expect(
-        find.text(
-          'قرارات الفريق على ملفك وصورك توصلك دايمًا. وتنبيهات الجوال تشتغل من إذن التنبيهات في جوالك.',
-        ),
+        find.text('لديك حجزان مؤكَّدان قادمان، ألغِهما قبل حذف الحساب'),
         findsOneWidget,
       );
-      expect(find.text('خطة عرسي'), findsOneWidget);
-      expect(find.text('عندك حجزين جاية، الغها قبل ما تحذف'), findsOneWidget);
       for (final dropped in [
         'رقمك يظهر للعرسان',
         'ملخص يومي',
@@ -887,14 +890,15 @@ void main() {
     testWidgets('with no booking ahead, deleting says it waits 30 days (D63)', (
       tester,
     ) async {
-      await _pump(
-        tester,
-        ProfileApi(),
-        () => const ProviderSettingsScreen(devicePushAvailableOverride: false),
-      );
-      expect(find.text('بعد 30 يوم، وتقدر تتراجع'), findsOneWidget);
+      await _pump(tester, ProfileApi(), () => const ProviderSettingsScreen());
+      // MSA (REFINEMENT_SPEC 2.8); with no push on the phone, the shared
+      // «هذا الجوال» row says so.
       expect(
-        find.text('هذي النسخة ما توصلها تنبيهات الجوال، تلقاها داخل التطبيق.'),
+        find.text('يُحذف بعد 30 يومًا، ويمكنك التراجع قبلها'),
+        findsOneWidget,
+      );
+      expect(
+        find.text('هذا الجوال لا يستقبل إشعارات خارج التطبيق'),
         findsOneWidget,
       );
     });
@@ -973,7 +977,7 @@ void main() {
       // Changed on purpose (critique ب3): the steps named, said for any
       // provider.
       expect(find.text('نبذة عن شغلك'), findsOneWidget);
-      expect(find.text('انفتح ملفك 14 مرة في آخر 30 يوم'), findsOneWidget);
+      expect(find.text('انفتح ملفك 14 مرة في آخر 30 يومًا'), findsOneWidget);
       expect(find.textContaining('وثّق'), findsNothing);
       expect(find.textContaining('شارك'), findsNothing);
       expect(find.textContaining('تجيها طلبات'), findsNothing);

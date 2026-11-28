@@ -1,11 +1,12 @@
 part of 'aarast_dashboard_view.dart';
 
-// b02 «المال» on the home: the plan's soft fill, «المال» with the eye that
-// hides the amounts, what is left to pay on the reading side and the money
-// tab's own verdict (D102, D103, RA-MO-53), in hand and promised on the far
-// side, the dues strip or the bar under them; then the budget's figures
-// (D114): the budget, what is left of it, what was agreed and paid, and the
-// mahr in its place. Every number is a server field (C2).
+// b02 «المال» on the home: «المال» with the eye that hides the amounts, what
+// is left to pay on the reading side and the money tab's own verdict (D102,
+// D103, RA-MO-53), in hand and promised on the far side; then one bar and
+// one row of two figures (D114): the budget and what is free of it, or with
+// no budget what was agreed and paid. The card is one height whatever the
+// plan holds (D113; Rashad 2026-11-27): the dues by month, the mahr's place
+// and who paid are the money tab's. Every number is a server field (C2).
 // «حط 450 ألف كل شهر» is dropped (b02 row).
 // Every figure is written one way, with its unit («3 مليون», «250 ألف»,
 // «0 ر.ي»), never the design's bare «5.4» beside a full figure (V-01).
@@ -20,12 +21,7 @@ class DashboardHomeFunding {
     required this.sourcesCount,
     this.ownerLeft,
     this.verdict,
-    this.dues = const [],
   });
-
-  /// D102: what falls on the owner next ([dashboardHomeDues]); empty when
-  /// the server names none.
-  final List<DashboardHomeDue> dues;
 
   /// D102: what is on the owner, the money tab's «باقي عليك» (his share,
   /// the mahr with it); null from a server before D102.
@@ -46,59 +42,6 @@ class DashboardHomeFunding {
 
   /// The server knows the money in only once a source is recorded.
   bool get isKnown => sourcesCount > 0 || shortfall != null;
-}
-
-/// One piece of the home's dues strip: what is late, a coming month, or
-/// everything after the wedding.
-class DashboardHomeDue {
-  const DashboardHomeDue({
-    required this.label,
-    required this.amount,
-    this.overdue = false,
-  });
-
-  final String label;
-  final double amount;
-  final bool overdue;
-}
-
-/// The pieces the strip shows at most.
-const _homeDuesShown = 3;
-
-/// D102: what falls on the owner next, named as the money tab's «الدفعات»
-/// names it: what is late first, then each coming month (with its year
-/// when it is not this one), and everything after the wedding as one
-/// piece. The nearest [_homeDuesShown].
-List<DashboardHomeDue> dashboardHomeDues({
-  required double overdue,
-  required List<({DateTime month, double amount})> months,
-  required DateTime? weddingDate,
-  required DateTime today,
-}) {
-  int order(DateTime day) => day.year * 12 + day.month;
-  final weddingMonth = weddingDate == null ? null : order(weddingDate);
-  var afterWedding = 0.0;
-  final dues = <DashboardHomeDue>[
-    if (overdue > 0)
-      DashboardHomeDue(label: 'متأخرة', amount: overdue, overdue: true),
-  ];
-  for (final due in months) {
-    if (due.amount <= 0) continue;
-    if (weddingMonth != null && order(due.month) > weddingMonth) {
-      afterWedding += due.amount;
-      continue;
-    }
-    dues.add(
-      DashboardHomeDue(
-        label: arabicMonthInYear(due.month, thisYear: today.year),
-        amount: due.amount,
-      ),
-    );
-  }
-  if (afterWedding > 0) {
-    dues.add(DashboardHomeDue(label: 'بعد العرس', amount: afterWedding));
-  }
-  return dues.take(_homeDuesShown).toList(growable: false);
 }
 
 class _DashboardMoneyCard extends StatefulWidget {
@@ -160,7 +103,6 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
         (unpaid < 0 ? 0.0 : unpaid);
     final funding = widget.funding;
     final known = funding != null && funding.isKnown;
-    final gap = known ? funding.shortfall : null;
 
     // RA-MO-334: one writer for the whole card. Its figures are read
     // together and add up (the lead, what is in hand, what was agreed and
@@ -231,19 +173,6 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
           joined: cell.joined,
         ),
     ];
-    // Where the mahr's own card stands over this one, its line here said the
-    // same thing twice on one screen (Rashad 2026-11-17).
-    String? mahrLine(String Function(double) write) =>
-        withMahr && !mahrInside && !widget.mahrCardShown
-        ? mahrOnItsOwnWords(
-            context,
-            total: mahr.total,
-            settled: mahr.settled,
-            left: mahr.total - mahr.settled,
-            hasBudget: budget > 0,
-            figure: (value) => write(value.toDouble()),
-          )
-        : null;
     // The screen reader reads the cells as the screen writes them (sum-safe),
     // not rounded: it said «3.4 مليون» where the card showed 3,440,000.
     String spoken(double value) => _sumFigure(
@@ -343,14 +272,33 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
       ],
     ];
 
-    final pieces = known
-        ? [
-            (paid, context.accent.primary),
-            (funding.inHand, context.accent.primaryMid),
-            (funding.pledged, AarastV3Color.lilac.withValues(alpha: 0.5)),
-            (gap ?? 0, AarastV3Color.danger),
-          ]
-        : [(paid, context.accent.primary), (left, context.accent.primaryMid)];
+    // D113, and Rashad on 2026-11-27 («لا نريده يكبر مع امتلاء البيانات»):
+    // the card is one height whatever the plan holds. Under the lead it draws
+    // one bar and one row of two figures, never more: the budget and what is
+    // free of it (or how far over it), or with no budget what was agreed and
+    // paid. The dues by month, the mahr's place and who paid are the money
+    // tab's, one tap away, in the same words (D59).
+    List<_MoneyCellData> rowCells(String Function(double) write) => [
+      for (final cell in cells(write).take(2))
+        _MoneyCellData(
+          cell.label,
+          cell.value,
+          danger: cell.danger,
+          joined: cell.joined,
+        ),
+    ];
+    // The bar says what the row under it says, and nothing else.
+    final used = budgetLeft == null
+        ? agreed.clamp(0.0, budget).toDouble()
+        : (budget - budgetLeft).clamp(0.0, budget).toDouble();
+    final pieces = budget <= 0
+        ? [(paid, context.accent.primary), (left, context.accent.primaryMid)]
+        : over
+        ? [(budget, AarastV3Color.danger)]
+        : [
+            (used, context.accent.primary),
+            (budget - used, context.accent.primaryMid),
+          ];
 
     // RA-MO-361: the card's words join the pressable's own node, the one
     // that holds its tap; a label over the pressable was a button of its own
@@ -374,13 +322,8 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
                 if (known) 'معك ${_spoken(funding.inHand, currency)}',
                 if (known && funding.pledged > 0)
                   'موعود ${_spoken(funding.pledged, currency)}',
-                if (agreedAny) ...[
-                  for (final cell in cells(spoken)) ...[
-                    cell.words(spoken),
-                    ?cell.note,
-                  ],
-                  ?mahrLine(spoken),
-                ],
+                if (agreedAny)
+                  for (final cell in rowCells(spoken)) cell.words(spoken),
               ].join('، '),
         child: JourneyBox(
           borderColor: AarastV3Color.line,
@@ -489,28 +432,18 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
                     ],
                   ),
                 ),
-              if (known && funding.dues.isNotEmpty) ...[
-                const SizedBox(height: AarastV3Space.x3),
-                _DuesStrip(
-                  dues: funding.dues,
-                  figure: figure,
-                  hidden: amountsHidden,
-                  color: context.accent.primary,
-                  soft: context.accent.primarySoft,
-                ),
-              ] else if (pieces.any((piece) => piece.$1 > 0)) ...[
-                const SizedBox(height: AarastV3Space.x2),
-                _MoneySplitBar(pieces: pieces),
-              ],
-              // Before any agreement the lead is the budget itself. No rule
-              // between them: the gap says it, in less height.
+              // Before any agreement the lead is the budget itself, and it
+              // stands alone.
               if (agreedAny) ...[
+                if (pieces.any((piece) => piece.$1 > 0)) ...[
+                  const SizedBox(height: AarastV3Space.x2),
+                  _MoneySplitBar(pieces: pieces),
+                ],
                 const SizedBox(height: AarastV3Space.x2),
                 ExcludeSemantics(
                   child: _MoneyFigures(
-                    cells: cells(sumFigure),
+                    cells: rowCells(sumFigure),
                     figure: sumFigure,
-                    mahrLine: mahrLine(sumFigure),
                   ),
                 ),
               ],

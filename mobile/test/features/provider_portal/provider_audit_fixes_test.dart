@@ -145,7 +145,7 @@ void main() {
         expect(find.text('صالح لـ'), findsOneWidget);
         expect(find.text('7 أيام'), findsOneWidget);
         expect(find.text('10 أيام'), findsOneWidget);
-        expect(find.text('14 يوم'), findsOneWidget);
+        expect(find.text('14 يومًا'), findsOneWidget);
 
         await tester.enterText(
           find.byKey(const Key('provider-offer-amount')),

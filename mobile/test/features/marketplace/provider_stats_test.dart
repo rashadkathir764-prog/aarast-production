@@ -66,7 +66,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('آخر 30 يوم'), findsOneWidget);
+    expect(find.text('آخر 30 يومًا'), findsOneWidget);
     expect(find.text('42'), findsOneWidget);
     expect(find.text('مشاهدة لملفك'), findsOneWidget);
     expect(find.text('6'), findsOneWidget);

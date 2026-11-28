@@ -177,7 +177,10 @@ void main() {
     await tester.tap(find.text('افتح الإعدادات'));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('من إعدادات الجوال › التطبيقات'), findsOneWidget);
+    expect(
+      find.textContaining('من إعدادات الجوال › التطبيقات'),
+      findsOneWidget,
+    );
   });
 }
 

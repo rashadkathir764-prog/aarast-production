@@ -26,7 +26,7 @@ class ConversationListView extends StatefulWidget {
 
   final bool embedded;
 
-  /// Where an empty list starts her: «استكشف». The providers tab passes its
+  /// Where an empty list starts her: «الدليل». The providers tab passes its
   /// own tab; alone, the list opens the providers page.
   final VoidCallback? onExplore;
 
@@ -115,7 +115,7 @@ class _ConversationListViewState extends State<ConversationListView> {
                 'أول ما تطلبين عرض من مزود، تبدأ محادثتكم هنا.',
               ),
               // An empty list names where to start, with the way there.
-              emptyAction: context.say('دوّر في استكشف', 'دوّري في استكشف'),
+              emptyAction: context.say('دوّر في الدليل', 'دوّري في الدليل'),
               onEmptyAction:
                   widget.onExplore ??
                   () => context.go(AppRouter.providerMarketplace),

@@ -299,6 +299,17 @@ abstract final class AarastV3Density {
     AarastV3Space.x8,
   );
 
+  /// Inside every card (REFINEMENT_SPEC 2.6): one inset, so cards on one
+  /// screen never drift between x2, x3 and x4.
+  static const cardInsets = EdgeInsets.all(AarastV3Space.x4);
+
+  /// Inside a row of a list held in one card: the card's side inset, a
+  /// smaller step above and below, so rows stack at the row height.
+  static const rowInsets = EdgeInsets.symmetric(
+    horizontal: AarastV3Space.x4,
+    vertical: AarastV3Space.x3,
+  );
+
   /// Inside a chip or a choice pill.
   static const chipInsets = EdgeInsets.symmetric(
     horizontal: AarastV3Space.x3,

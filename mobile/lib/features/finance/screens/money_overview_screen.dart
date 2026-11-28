@@ -7,7 +7,6 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/routing/root_tab_back_scope.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/currency_label.dart';
 import '../../../core/utils/keep_currency_on_line.dart';
 import '../../../core/utils/money_formatters.dart';
@@ -387,9 +386,6 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
         const SizedBox(height: AarastV3Space.x5),
         _ComingDues(
           lines: coming.take(3).toList(),
-          all: coming,
-          weddingDate: _weddingDay(context),
-          coverage: summary.coverage,
           currency: currency,
           onAll: () => _openTab(2),
           onOpen: (line) => manage ? _payDue(line) : _openDue(line),

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:aarast_mobile/core/l10n/aarast_text.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/features/marketplace/data/marketplace_api.dart';
 import 'package:aarast_mobile/features/marketplace/models/marketplace_models.dart';
@@ -152,13 +153,14 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('قاعة الأمل'), findsOneWidget);
-      // f03 discloses the old copy with the journey notice (D13).
+      expect(find.textContaining('قاعة الأمل'), findsWidgets);
+      // f03 discloses the old copy (D13). Changed on purpose (2026-11-26):
+      // a plain line in the page's MSA, with its retry.
       expect(
-        find.byKey(const ValueKey('journey-list-notice-error')),
+        find.byKey(const ValueKey('provider-details-stale')),
         findsOneWidget,
       );
-      expect(find.textContaining('وهذي آخر نسخة'), findsOneWidget);
+      expect(find.text(aarastText.providersDetailsStale), findsOneWidget);
       expect(find.textContaining('Internal server error'), findsNothing);
       expect(tester.takeException(), isNull);
     },
@@ -167,6 +169,41 @@ void main() {
   // F03: a provider that cannot be opened (unknown, or not public yet) must
   // not offer a quote request it cannot accept.
   testWidgets('a provider that fails to load offers no quote action', (
+    tester,
+  ) async {
+    final api = _MarketplaceLoadingTruthApi()
+      ..providerError = const ApiException(
+        'ما فيه نت',
+        isNetworkFailure: true,
+      );
+    final marketplace = ProviderMarketplaceProvider(api);
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider<ProviderMarketplaceProvider>.value(
+        value: marketplace,
+        child: const MaterialApp(
+          home: ProviderDetailsScreen(providerId: 'provider-1'),
+        ),
+      ),
+    );
+    // The read starts after the first frame: until it answers the page is
+    // loading. It said «لم نجد هذا المزوّد» for that frame, on every open.
+    expect(find.text(aarastText.providersDetailsMissingTitle), findsNothing);
+    await tester.pumpAndSettle();
+
+    // 2026-11-26: the page's own error state, in MSA.
+    expect(
+      find.byKey(const ValueKey('provider-details-error')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('provider-details-quote')), findsNothing);
+    expect(api.viewedProviders, isEmpty);
+    expect(tester.takeException(), isNull);
+  });
+
+  // A listing taken down: the server answers 404. The page read «لم تصل
+  // صفحة المزوّد، تحقّق من الاتصال» with a retry that could never work.
+  testWidgets('a provider the server does not have is said to be missing', (
     tester,
   ) async {
     final api = _MarketplaceLoadingTruthApi()
@@ -183,9 +220,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const ValueKey('journey-list-error')), findsOneWidget);
-    expect(find.text('اطلب عرض سعر'), findsNothing);
-    expect(api.viewedProviders, isEmpty);
+    expect(find.text(aarastText.providersDetailsMissingTitle), findsOneWidget);
+    expect(find.byKey(const ValueKey('provider-details-error')), findsNothing);
+    expect(find.byKey(const Key('provider-details-quote')), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -212,9 +249,14 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // w33's wording, the same as on the f02 card.
-    expect(find.text('ما يستقبل طلبات لين يستلم صاحبه ملفه'), findsOneWidget);
-    expect(find.text('اطلب عرض سعر'), findsNothing);
+    // w33. Changed on purpose (2026-11-26, REFINEMENT_SPEC 2.7): the footer
+    // offers «اتصل» and «واتساب» with why, no quote request.
+    expect(
+      find.text(aarastText.providersUnclaimedFooter('male')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('provider-details-call')), findsOneWidget);
+    expect(find.byKey(const Key('provider-details-quote')), findsNothing);
     expect(MarketplaceProvider.fromJson({'id': 'p'}).isClaimed, isTrue);
     expect(tester.takeException(), isNull);
   });
@@ -347,6 +389,8 @@ class _MarketplaceLoadingTruthApi extends MarketplaceApi {
     List<String>? categoryIds,
     bool? featured,
     DateTime? eventDate,
+    ProviderSort? sort,
+    bool hideBusy = false,
     int page = 1,
     int limit = 30,
   }) async {
@@ -381,7 +425,10 @@ class _MarketplaceLoadingTruthApi extends MarketplaceApi {
   }
 
   @override
-  Future<MarketplaceProvider> getProvider(String providerId) async {
+  Future<MarketplaceProvider> getProvider(
+    String providerId, {
+    DateTime? eventDate,
+  }) async {
     providerCalls += 1;
     final error = providerError;
     if (error != null) throw error;
@@ -418,6 +465,28 @@ class _MarketplaceLoadingTruthApi extends MarketplaceApi {
         isActive: true,
       ),
     ];
+  }
+
+  // Changed on purpose (2026-11-26): the provider's page reads its reviews a
+  // page at a time with their summary; a failure is the same failure.
+  @override
+  Future<ProviderReviewsPage> getProviderReviewsPage(
+    String providerId, {
+    int page = 1,
+    int limit = 10,
+  }) async {
+    final reviews = await getProviderReviews(providerId);
+    return ProviderReviewsPage(
+      items: reviews,
+      currentPage: 1,
+      total: reviews.length,
+      totalPages: 1,
+      summary: ProviderReviewSummary(
+        count: reviews.length,
+        average: 5,
+        distribution: {1: 0, 2: 0, 3: 0, 4: 0, 5: reviews.length},
+      ),
+    );
   }
 
   @override

@@ -1,3 +1,4 @@
+import 'arabic_count.dart';
 import 'arabic_date_formatter.dart';
 import 'currency_label.dart';
 
@@ -63,7 +64,7 @@ String? quoteOfferChangeLine({
     final days = int.tryParse(delivery.to ?? '');
     return days == null
         ? (own ? 'شلت موعد التسليم' : 'شالوا موعد التسليم')
-        : 'التسليم صار خلال $days يوم';
+        : 'التسليم صار خلال ${arabicDays(days)}';
   }
   return own ? 'عدّلت العرض' : 'عدّلوا العرض';
 }

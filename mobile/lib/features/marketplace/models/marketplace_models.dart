@@ -86,6 +86,61 @@ enum ProviderDayStatus {
   full,
 }
 
+/// D131 (docs/project/PROVIDER_RANKING.md): the directory's order, as the
+/// reader picks it under «رتّب حسب».
+enum ProviderSort {
+  /// «الأنسب», the server's default: verified first, then featured, then
+  /// quality.
+  best('best'),
+
+  /// «الأعلى تقييمًا»: the corrected rating, no featured lift.
+  rating('rating'),
+
+  /// «الأقل سعرًا»: the lowest price in riyals; no price in riyals last.
+  price('price');
+
+  const ProviderSort(this.wire);
+
+  /// The value of the list's `sort` parameter.
+  final String wire;
+
+  /// The order a server answer names (`sort`); null for none it knows.
+  static ProviderSort? fromWire(Object? value) {
+    for (final sort in values) {
+      if (sort.wire == value) return sort;
+    }
+    return null;
+  }
+}
+
+/// D131 (F8): how many providers each category chip opens under the list's
+/// filter, the category aside (`GET /providers/category-counts`).
+class ProviderCategoryCounts {
+  const ProviderCategoryCounts({required this.total, required this.byCategory});
+
+  factory ProviderCategoryCounts.fromJson(Map<String, dynamic> json) {
+    final rows = json['categories'];
+    return ProviderCategoryCounts(
+      total: _intOrZero(json['total']),
+      byCategory: {
+        if (rows is List)
+          for (final row in rows)
+            if (row is Map && row['categoryId'] != null)
+              row['categoryId'].toString(): _intOrZero(row['count']),
+      },
+    );
+  }
+
+  /// Every provider the filter shows, whatever his kind («الكل»).
+  final int total;
+
+  /// A provider counts in his main kind and in each active service's, so
+  /// these may add up to more than [total]. A kind left out has none.
+  final Map<String, int> byCategory;
+
+  int countFor(String categoryId) => byCategory[categoryId] ?? 0;
+}
+
 /// The directory's `dayStatus`; a server before D131 sends only
 /// `availableOnEventDate`, whose `false` is a full day and whose `true` was
 /// no proof of anything.
@@ -93,7 +148,8 @@ ProviderDayStatus? providerDayStatusFromJson(Map<String, dynamic> json) =>
     switch (json['dayStatus']?.toString()) {
       'CLOSED' => ProviderDayStatus.closed,
       'FULL' => ProviderDayStatus.full,
-      _ => json['availableOnEventDate'] == false ? ProviderDayStatus.full : null,
+      _ =>
+        json['availableOnEventDate'] == false ? ProviderDayStatus.full : null,
     };
 
 class MarketplaceProvider {
@@ -127,6 +183,9 @@ class MarketplaceProvider {
     this.responsiveness,
     this.services = const [],
     this.serviceSummary,
+    this.cardPhotoUrl,
+    this.matchedCategory,
+    this.createdAt,
   });
 
   factory MarketplaceProvider.fromJson(Map<String, dynamic> json) {
@@ -169,6 +228,12 @@ class MarketplaceProvider {
         json['serviceSummary'],
         MarketplaceProviderServiceSummary.fromJson,
       ),
+      cardPhotoUrl: json['cardPhotoUrl']?.toString(),
+      matchedCategory: _mapOrNull(
+        json['matchedCategory'],
+        ProviderCategory.fromJson,
+      ),
+      createdAt: _dateOrNull(json['createdAt']),
     );
   }
 
@@ -232,7 +297,33 @@ class MarketplaceProvider {
   final double ratingAverage;
   final int ratingCount;
   final List<MarketplaceService> services;
+
+  /// On a list row: his services and priced packages in the asked
+  /// categories (every one when none is asked); its `minPrice` is the
+  /// card's «من X».
   final MarketplaceProviderServiceSummary? serviceSummary;
+
+  /// The card's photo (list rows only): his first approved work photo
+  /// outside the women's album, else his cover's small copy, else the
+  /// cover; null with neither.
+  final String? cardPhotoUrl;
+
+  /// The asked category he was found under (list rows only), so a hall
+  /// found under «تصوير» reads «تصوير»; null when no category was asked.
+  final ProviderCategory? matchedCategory;
+
+  /// When his listing was made; «جديد» stands for the rating only in its
+  /// first [newListingDays] days without a review (2026-11-26 review).
+  final DateTime? createdAt;
+
+  /// How long a listing with no review is «جديد»; after it, «لا تقييمات بعد».
+  static const newListingDays = 30;
+
+  /// No review yet, and listed less than [newListingDays] days before [now].
+  bool isNewAt(DateTime now) =>
+      ratingCount <= 0 &&
+      createdAt != null &&
+      now.difference(createdAt!).inDays < newListingDays;
 
   bool get isVerified => verifiedAt != null;
 
@@ -293,6 +384,16 @@ class ProviderResponsiveness {
   final int sampleSize;
   final int answeredPercent;
   final int? typicalResponseHours;
+
+  /// The answered share under which his answer time is not said: a fast
+  /// answer to half the requests is no fast answer (2026-11-26 review).
+  static const responseTimeAnsweredMinimum = 80;
+
+  /// Whether his usual answer time may be said; otherwise only «يردّ على
+  /// [answeredPercent]% من الطلبات».
+  bool get saysResponseTime =>
+      typicalResponseHours != null &&
+      answeredPercent >= responseTimeAnsweredMinimum;
 }
 
 class MarketplaceProviderServiceSummary {
@@ -584,6 +685,73 @@ class ProviderReviewReply {
   final String status;
 
   bool get isHidden => status == 'HIDDEN';
+}
+
+/// What a provider's published reviews add up to (2026-11-26 review), all
+/// of them, not one page.
+class ProviderReviewSummary {
+  const ProviderReviewSummary({
+    required this.count,
+    required this.distribution,
+    this.average,
+  });
+
+  factory ProviderReviewSummary.fromJson(Map<String, dynamic> json) {
+    final stars = json['distribution'];
+    return ProviderReviewSummary(
+      average: _doubleOrNull(json['average']),
+      count: _intOrZero(json['count']),
+      distribution: {
+        for (var star = 1; star <= 5; star++)
+          star: stars is Map ? _intOrZero(stars['$star']) : 0,
+      },
+    );
+  }
+
+  /// Null with no review.
+  final double? average;
+  final int count;
+
+  /// How many reviews gave each number of stars, 1 to 5 (every key there).
+  final Map<int, int> distribution;
+}
+
+/// One page of a provider's published reviews, newest first, with the
+/// summary of them all (`GET /providers/:id/reviews?page=&limit=`).
+class ProviderReviewsPage {
+  const ProviderReviewsPage({
+    required this.items,
+    required this.currentPage,
+    required this.total,
+    required this.totalPages,
+    required this.summary,
+  });
+
+  factory ProviderReviewsPage.fromJson(Map<String, dynamic> json) {
+    final summary = json['summary'];
+    final page = _intOrZero(json['page']);
+    final totalPages = _intOrZero(json['totalPages']);
+    return ProviderReviewsPage(
+      items: _listFromJson(json['items'], ProviderReview.fromJson),
+      currentPage: page == 0 ? 1 : page,
+      total: _intOrZero(json['total']),
+      totalPages: totalPages,
+      summary: summary is Map
+          ? ProviderReviewSummary.fromJson(Map<String, dynamic>.from(summary))
+          : const ProviderReviewSummary(
+              count: 0,
+              distribution: {1: 0, 2: 0, 3: 0, 4: 0, 5: 0},
+            ),
+    );
+  }
+
+  final List<ProviderReview> items;
+  final int currentPage;
+  final int total;
+  final int totalPages;
+  final ProviderReviewSummary summary;
+
+  bool get hasMore => currentPage < totalPages;
 }
 
 class FavoriteProvider {

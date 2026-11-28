@@ -4,29 +4,36 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
-import '../../../core/push/push_notifications_controller.dart';
+import '../../../core/l10n/aarast_text.dart';
 import '../../../core/routing/app_router.dart';
-import '../../../core/utils/arabic_count.dart';
-import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../account_contexts/account_contexts_api.dart'
     show AccountContextController;
 import '../../auth/auth_api.dart' show AuthController;
-import '../../settings/settings_api.dart' show SettingsProvider;
+import '../../settings/settings_api.dart'
+    show
+        NoticeReader,
+        NotificationPreferencesSection,
+        NotificationSwitch,
+        NotificationSwitchRow,
+        PhoneNotificationsSection,
+        SettingsProvider,
+        coverageAlwaysLine,
+        coverageIncludesLine,
+        saveNotificationSwitch;
 import '../providers/provider_dashboard_provider.dart';
 
-/// p40 «الإعدادات»: his notices and his account. One switch is the server's
-/// `providerMessagesEnabled`, which covers requests, offers, bookings and
-/// messages (F19); notices on the phone follow the phone's own permission
-/// (the server refuses to switch `pushEnabled` on), so they get a line, not
-/// a switch. The drawn «رقمك يظهر», «تعهّد…», «ملخص يومي» and «مين يدير
-/// الحساب» have nothing behind them (B-31, B-32, B-37). Deleting opens w05
-/// (D63): the account waits 30 days, and a provider with confirmed bookings
-/// ahead is refused until they are handed over (B-33).
+/// p40 «الإعدادات»: his notifications and his account. The notifications
+/// are the couple's page's design (REFINEMENT_SPEC 2.5): «هذا الجوال» first,
+/// then his one switch, the server's `providerMessagesEnabled` (F19), with
+/// what it covers for a provider from the server's coverage, and what
+/// always comes (the team's decisions, Q-60, D127). The drawn «رقمك يظهر»,
+/// «تعهّد…», «ملخص يومي» and «مين يدير الحساب» have nothing behind them
+/// (B-31, B-32, B-37). Deleting opens w05 (D63): the account waits 30 days,
+/// and a provider with confirmed bookings ahead is refused until they are
+/// handed over (B-33).
 class ProviderSettingsScreen extends StatefulWidget {
-  const ProviderSettingsScreen({this.devicePushAvailableOverride, super.key});
-
-  final bool? devicePushAvailableOverride;
+  const ProviderSettingsScreen({super.key});
 
   @override
   State<ProviderSettingsScreen> createState() => _ProviderSettingsScreenState();
@@ -34,7 +41,7 @@ class ProviderSettingsScreen extends StatefulWidget {
 
 class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
   bool _working = false;
-  String? _error;
+  bool _failed = false;
 
   @override
   void initState() {
@@ -46,11 +53,12 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final words = context.text;
     final settings = context.watch<SettingsProvider>();
     final dashboard = context.watch<ProviderDashboardProvider>();
     final draft = settings.draft;
-    final pushAvailable =
-        widget.devicePushAvailableOverride ?? _devicePushAvailable(context);
+    final coverage = settings.coverage;
+    const reader = NoticeReader.provider;
     final ahead = dashboard.bookingsLoadFailed
         ? null
         : dashboard.upcomingConfirmedBookings;
@@ -63,43 +71,39 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
           physics: const AlwaysScrollableScrollPhysics(),
           padding: AarastV3Density.pageInsets,
           children: [
-            const JourneySubHeader(title: 'الإعدادات'),
-            if (draft == null)
-              settings.isLoading
-                  ? const JourneyListState(
-                      phase: JourneyListPhase.loading,
-                      section: JourneySection.home,
-                    )
-                  : JourneyListState(
-                      phase: JourneyListPhase.error,
-                      section: JourneySection.home,
-                      onRetry: settings.loadSettings,
-                    )
-            else
-              JourneyList(
-                dividers: false,
-                children: [
-                  _ToggleRow(
-                    key: const Key('provider-settings-messages'),
-                    title: 'تنبيه لكل طلب ورسالة',
-                    subtitle: 'الطلبات والعروض والحجوزات والرسائل',
-                    value: draft.providerMessagesEnabled,
-                    onChanged: settings.isSubmitting
-                        ? null
-                        : (value) => _saveMessages(settings, value),
-                  ),
-                ],
-              ),
-            const SizedBox(height: AarastV3Space.x3),
-            JourneyNote(
-              icon: LucideIcons.smartphone,
-              // Q-60 (D127): the team's decisions on his profile, his claim
-              // and his photos come whatever this switch says.
-              text: pushAvailable
-                  ? 'قرارات الفريق على ملفك وصورك توصلك دايمًا. وتنبيهات الجوال تشتغل من إذن التنبيهات في جوالك.'
-                  : 'هذي النسخة ما توصلها تنبيهات الجوال، تلقاها داخل التطبيق.',
+            JourneySubHeader(title: words.providerSettingsTitle),
+            const PhoneNotificationsSection(weddingNews: false),
+            NotificationPreferencesSection(
+              loadingRows: 1,
+              alwaysLine: coverage == null
+                  ? null
+                  : coverageAlwaysLine(coverage.always, reader),
+              rows: draft == null
+                  ? null
+                  : [
+                      // His requests and messages come as they happen: no
+                      // timing line; the night line says what waits.
+                      NotificationSwitchRow(
+                        key: const Key('provider-settings-messages'),
+                        title: words.providerSwitchCustomers,
+                        includes: coverage == null
+                            ? null
+                            : coverageIncludesLine(
+                                coverage.switches[NotificationSwitch
+                                    .providers]!,
+                                reader,
+                              ),
+                        value: draft.providerMessagesEnabled,
+                        onChanged: settings.isSubmitting
+                            ? null
+                            : (value) => saveNotificationSwitch(
+                                context,
+                                draft.copyWith(providerMessagesEnabled: value),
+                              ),
+                      ),
+                    ],
             ),
-            const SizedBox(height: AarastV3Space.x3),
+            JourneySectionTitle(words.providerAccountTitle),
             JourneyList(
               children: [
                 JourneyListRow(
@@ -107,8 +111,8 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
                   icon: LucideIcons.repeat,
                   color: AarastV3Color.primary,
                   soft: AarastV3Color.primarySoft,
-                  title: 'خطة عرسي',
-                  subtitle: 'بنفس الرقم',
+                  title: words.providerOpenPlanRow,
+                  subtitle: words.providerOpenPlanSub,
                   onTap: _working ? null : _confirmExitWorkspace,
                 ),
                 JourneyListRow(
@@ -116,8 +120,8 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
                   icon: LucideIcons.logOut,
                   color: AarastV3Color.textMuted,
                   soft: AarastV3Color.line,
-                  title: 'تسجيل الخروج',
-                  subtitle: 'من هذا الجوال',
+                  title: words.providerSignOutRow,
+                  subtitle: words.providerSignOutSub,
                   onTap: _working ? null : _confirmLogout,
                 ),
                 JourneyListRow(
@@ -125,10 +129,10 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
                   icon: LucideIcons.trash2,
                   color: AarastV3Color.danger,
                   soft: AarastV3Color.dangerSoft,
-                  title: 'حذف الحساب',
+                  title: words.providerDeleteRow,
                   subtitle: ahead != null && ahead > 0
-                      ? 'عندك ${arabicCount(ahead, one: 'حجز جاي', two: 'حجزين جاية', few: 'حجوزات جاية', many: 'حجز جاي')}، الغها قبل ما تحذف'
-                      : 'بعد 30 يوم، وتقدر تتراجع',
+                      ? words.providerDeleteBlockedSub(ahead)
+                      : words.providerDeleteSub,
                   // w05 (D63): one deletion for every account.
                   onTap: _working
                       ? null
@@ -136,11 +140,11 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
                 ),
               ],
             ),
-            if (_error case final error?) ...[
+            if (_failed) ...[
               const SizedBox(height: AarastV3Space.x2),
               JourneyNote(
                 key: const Key('provider-settings-error'),
-                text: error,
+                text: words.providerSettingsActionFailed,
                 icon: LucideIcons.alertCircle,
                 color: AarastV3Color.danger,
                 soft: AarastV3Color.dangerSoft,
@@ -152,21 +156,6 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
     );
   }
 
-  /// Saves at once; a failed save puts the switch back.
-  Future<void> _saveMessages(SettingsProvider settings, bool value) async {
-    final before = settings.settings;
-    final draft = settings.draft;
-    if (draft == null) return;
-    settings.updateDraft(draft.copyWith(providerMessagesEnabled: value));
-    final ok = await settings.saveSettings();
-    if (!mounted || ok) return;
-    if (before != null) settings.updateDraft(before);
-    AarastToast.showError(
-      context,
-      settings.errorMessage ?? 'ما قدرنا نحفظ، ومرة ثانية غالبًا تمشي.',
-    );
-  }
-
   Future<bool> _confirm({
     required String title,
     required String subtitle,
@@ -174,6 +163,7 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
     required Key actionKey,
     Color background = AarastV3Color.primary,
   }) async {
+    final words = context.text;
     final confirmed = await showJourneySheet<bool>(
       context: context,
       builder: (sheetContext) => JourneySheetBody(
@@ -190,7 +180,7 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
           ),
           const SizedBox(height: AarastV3Space.x2),
           JourneyButton.quiet(
-            label: 'لا، خلّيني',
+            label: words.providerConfirmCancel,
             expand: true,
             onPressed: () => Navigator.of(sheetContext).pop(false),
           ),
@@ -200,30 +190,31 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
     return confirmed == true && mounted;
   }
 
-  Future<void> _run(Future<String?> Function() action) async {
+  Future<void> _run(Future<void> Function() action) async {
     setState(() {
       _working = true;
-      _error = null;
+      _failed = false;
     });
-    String? error;
+    var failed = false;
     try {
-      error = await action();
+      await action();
     } on Object {
-      error = 'ما قدرنا نكمّل، ومرة ثانية غالبًا تمشي.';
+      failed = true;
     }
     if (!mounted) return;
     setState(() {
       _working = false;
-      _error = error;
+      _failed = failed;
     });
   }
 
   Future<void> _confirmExitWorkspace() async {
+    final words = context.text;
     final ok = await _confirm(
       // Critique ب6: no «المسار»; said for any provider.
-      title: 'فتح خطة عرسك؟',
-      subtitle: 'حساب المزود يتسكّر، والدخول باقي بنفس الرقم.',
-      action: 'فتح خطة عرسي',
+      title: words.providerOpenPlanConfirmTitle,
+      subtitle: words.providerOpenPlanConfirmBody,
+      action: words.providerOpenPlanConfirm,
       actionKey: const Key('provider-exit-workspace-confirm'),
     );
     if (!ok) return;
@@ -231,10 +222,11 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
   }
 
   Future<void> _confirmLogout() async {
+    final words = context.text;
     final ok = await _confirm(
-      title: 'تسجّل خروج؟',
-      subtitle: 'تحتاج تدخل من جديد عشان توصل لحساب المزود.',
-      action: 'تسجيل الخروج',
+      title: words.providerSignOutConfirmTitle,
+      subtitle: words.providerSignOutConfirmBody,
+      action: words.providerSignOutRow,
       actionKey: const Key('provider-logout-confirm'),
       background: AarastV3Color.danger,
     );
@@ -242,83 +234,16 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
     await _run(_logout);
   }
 
-  Future<String?> _exitWorkspace() async {
+  /// Publishes the sign out only: the app's router takes it to the login.
+  Future<void> _logout() async {
+    await context.read<AuthController>().logout();
+  }
+
+  Future<void> _exitWorkspace() async {
     final router = GoRouter.of(context);
     final accountContexts = context.read<AccountContextController>();
     await accountContexts.exitWorkspace();
     await accountContexts.refresh();
     router.go(AppRouter.home);
-    return null;
-  }
-
-  Future<String?> _logout() async {
-    await context.read<AuthController>().logout();
-    return null;
-  }
-}
-
-bool _devicePushAvailable(BuildContext context) {
-  try {
-    return context.watch<PushNotificationsController>().isAvailable;
-  } on ProviderNotFoundException {
-    return false;
-  }
-}
-
-/// A switch row (prototype p40 `r`): the title, a muted line, the switch;
-/// the whole row flips it.
-class _ToggleRow extends StatelessWidget {
-  const _ToggleRow({
-    required this.title,
-    required this.subtitle,
-    required this.value,
-    required this.onChanged,
-    super.key,
-  });
-
-  final String title;
-  final String subtitle;
-  final bool value;
-  final ValueChanged<bool>? onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return AarastPressable(
-      onTap: onChanged == null ? null : () => onChanged!(!value),
-      child: Padding(
-        padding: const EdgeInsets.all(AarastV3Space.x3),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: JourneyType.of(
-                      JourneyType.body,
-                      weight: JourneyType.bold,
-                    ),
-                  ),
-                  Text(
-                    subtitle,
-                    style: JourneyType.of(
-                      JourneyType.small,
-                      color: AarastV3Color.textMuted,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: AarastV3Space.x2),
-            JourneyToggle(
-              value: value,
-              onChanged: onChanged,
-              semanticLabel: title,
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }

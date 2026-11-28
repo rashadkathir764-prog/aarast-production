@@ -250,7 +250,7 @@ void main() {
     );
     expect(find.byKey(const Key('old-provider-dashboard')), findsNothing);
     expect(find.byKey(const Key('deletion-pending-screen')), findsOneWidget);
-    expect(find.text('حسابك ينحذف بعد 30 يوم'), findsOneWidget);
+    expect(find.text('حسابك ينحذف بعد 30 يومًا'), findsOneWidget);
   });
 
   testWidgets('w06 «تراجعت، رجّع حسابي» brings the account back', (

@@ -27,7 +27,16 @@ abstract interface class PushSystemNotifications {
   /// Removes every notification of the app from the phone's tray (an
   /// account signing out takes its notices with it).
   Future<void> cancelAll();
+
+  /// The app's channels the person turned off in the phone's settings
+  /// (importance «none»), while the app's notifications as a whole stay on:
+  /// a push on one of them never shows. Empty when none, or unknown.
+  Future<Set<String>> blockedChannels();
 }
+
+/// The app's channels (`AarastNotificationChannels.kt`), as the settings
+/// page names a turned-off one.
+const pushChannelIds = ['aarast_messages', 'aarast_tasks', 'aarast_money'];
 
 /// No phone notifications: a test, or a platform without them.
 class NoPushSystemNotifications implements PushSystemNotifications {
@@ -48,6 +57,9 @@ class NoPushSystemNotifications implements PushSystemNotifications {
 
   @override
   Future<void> cancelAll() async {}
+
+  @override
+  Future<Set<String>> blockedChannels() async => const {};
 }
 
 /// The names the channels were made with (`AarastNotificationChannels.kt`),
@@ -111,11 +123,34 @@ class LocalPushSystemNotifications implements PushSystemNotifications {
   }
 
   @override
+  Future<Set<String>> blockedChannels() async {
+    if (!await _initialized()) return const {};
+    try {
+      final android = _plugin
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
+      final channels = await android?.getNotificationChannels() ?? const [];
+      return {
+        for (final channel in channels)
+          if (_channelNames.containsKey(channel.id) &&
+              channel.importance == Importance.none)
+            channel.id,
+      };
+    } on Object {
+      return const {};
+    }
+  }
+
+  @override
   Future<bool> show(PushForegroundNotification notification) async {
     if (!await _initialized()) return false;
     final channelId = _channelNames.containsKey(notification.androidChannelId)
         ? notification.androidChannelId!
         : pushAndroidChannelFor(notification.type);
+    // A channel the person turned off shows nothing, though the plugin
+    // reports the notice shown: the in-app line says it instead.
+    if ((await blockedChannels()).contains(channelId)) return false;
     final tag = notification.tag;
     try {
       await _plugin.show(

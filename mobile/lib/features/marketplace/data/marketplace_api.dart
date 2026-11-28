@@ -131,20 +131,9 @@ class MarketplaceApi {
         categoryId.trim().isNotEmpty) {
       categories.add(categoryId.trim());
     }
-    final items = _filterProviders(
-      rows,
-      search,
-      cityId,
-      categories,
-    ).map(MarketplaceProvider.fromJson).toList();
+    final items = _savedCopyOf(rows, search, cityId, categories);
     if (items.isEmpty) return null;
-    return MarketplaceProviderPage(
-      items: items,
-      currentPage: 1,
-      total: items.length,
-      totalPages: 1,
-      hasMore: false,
-    );
+    return MarketplaceProviderPage.savedCopy(items);
   }
 
   Future<List<MarketplaceCity>> cachedCities() async {
@@ -173,8 +162,16 @@ class MarketplaceApi {
     bool? featured,
 
     /// RA-BE-150 (Q-36): the wedding's day; each row then says whether the
-    /// provider takes it. It annotates the list, it does not filter it.
+    /// provider takes it. It annotates the list, it does not filter it,
+    /// unless [hideBusy] asks.
     DateTime? eventDate,
+
+    /// D131: the order the reader picked; the server's «الأنسب» when null.
+    ProviderSort? sort,
+
+    /// D131 «أخفِ المشغولين يوم عرسي»: leaves out who is known to take
+    /// nothing on [eventDate]; ignored without a day.
+    bool hideBusy = false,
     int page = 1,
     int limit = 30,
   }) async {
@@ -201,18 +198,28 @@ class MarketplaceApi {
             'categoryIds': categories.join(','),
           if (featured != null) 'featured': featured.toString(),
           if (eventDate != null) 'eventDate': planDayToJson(eventDate),
+          if (eventDate != null && hideBusy) 'hideBusy': 'true',
+          if (sort != null && sort != ProviderSort.best) 'sort': sort.wire,
         }),
       );
 
       final items = _itemsFromPagedJson(json);
+      final scope = _priceScopeOf(categories);
       // A day's answer belongs to that day: the phone's copy keeps none.
+      // The price and the matched kind belong to the asked categories: the
+      // copy remembers which (2026-11-26 review).
       final cacheable = [
         for (final item in items)
-          {...item}
+          {...item, _priceScopeKey: scope}
             ..remove('availableOnEventDate')
             ..remove('dayStatus'),
       ];
-      if (_isUnfiltered(search, cityId, categories, featured)) {
+      // The whole directory's first page replaces the copy; a later page
+      // adds to it, so reading on never wipes the first (2026-11-26
+      // review). A list without the busy is not the whole directory either.
+      if (page == 1 &&
+          _isUnfiltered(search, cityId, categories, featured) &&
+          !(eventDate != null && hideBusy)) {
         await _offline?.database.replaceCachedList(
           table: OfflineTables.cachedProviders,
           items: cacheable,
@@ -237,6 +244,11 @@ class MarketplaceApi {
         total: total,
         totalPages: totalPages,
         hasMore: currentPage < totalPages,
+        // The order and the hiding as the server applied them: «الأقل
+        // سعرًا» needs a category, «أخفِ المشغولين» a day still to come.
+        appliedSort:
+            ProviderSort.fromWire(json['sort']) ?? sort ?? ProviderSort.best,
+        hideBusyApplied: json['hideBusyApplied'] == true,
       );
     } on Object catch (error) {
       if (!CachePolicy.shouldUseCache(error) || _offline == null) rethrow;
@@ -245,25 +257,93 @@ class MarketplaceApi {
       final cached = await _offline.database.readCachedList(
         table: OfflineTables.cachedProviders,
       );
-      final filtered = _filterProviders(cached, search, cityId, categories);
-      if (filtered.isEmpty) rethrow;
-      final items = filtered.map(MarketplaceProvider.fromJson).toList();
-      return MarketplaceProviderPage(
-        items: items,
-        currentPage: 1,
-        total: items.length,
-        totalPages: items.isEmpty ? 0 : 1,
-        hasMore: false,
-      );
+      final items = _savedCopyOf(cached, search, cityId, categories);
+      if (items.isEmpty) rethrow;
+      return MarketplaceProviderPage.savedCopy(items);
     }
   }
 
-  Future<MarketplaceProvider> getProvider(String id) async {
+  /// The copy's key of the price scope a row was answered in: the asked
+  /// categories, sorted; empty for every category.
+  static const _priceScopeKey = '_priceScope';
+
+  String _priceScopeOf(Set<String> categories) =>
+      (categories.toList()..sort()).join(',');
+
+  /// The phone's copy filtered as asked. A row kept from another category's
+  /// answer carries that category's price and matched kind (2026-11-26
+  /// review), so here it says neither rather than a wrong one.
+  List<MarketplaceProvider> _savedCopyOf(
+    List<Map<String, dynamic>> rows,
+    String? search,
+    String? cityId,
+    Set<String> categories,
+  ) {
+    final scope = _priceScopeOf(categories);
+    return [
+      for (final row in _filterProviders(rows, search, cityId, categories))
+        MarketplaceProvider.fromJson(
+          (row[_priceScopeKey] ?? '') == scope ? row : _withoutScopedPrice(row),
+        ),
+    ];
+  }
+
+  Map<String, dynamic> _withoutScopedPrice(Map<String, dynamic> row) {
+    final summary = row['serviceSummary'];
+    return {
+      ...row,
+      'matchedCategory': null,
+      if (summary is Map)
+        'serviceSummary': {
+          ...Map<String, dynamic>.from(summary),
+          'minPrice': null,
+          'maxPrice': null,
+          'currency': null,
+          'pricesUpdatedAt': null,
+        },
+    };
+  }
+
+  /// D131 (F8): how many providers each category chip opens under the
+  /// list's filter, the category aside. The phone keeps the last answer of
+  /// each filter, so the chips keep their counts offline.
+  Future<ProviderCategoryCounts> getCategoryCounts({
+    String? search,
+    String? cityId,
+    DateTime? eventDate,
+    bool hideBusy = false,
+  }) async {
+    final path = _path('/api/v1/providers/category-counts', {
+      if (search != null && search.trim().isNotEmpty) 'search': search.trim(),
+      if (cityId != null && cityId.trim().isNotEmpty) 'cityId': cityId,
+      if (eventDate != null) 'eventDate': planDayToJson(eventDate),
+      if (eventDate != null && hideBusy) 'hideBusy': 'true',
+    });
+    return ProviderCategoryCounts.fromJson(
+      await _reads.blob(path, metaKey: 'provider-category-counts:$path'),
+    );
+  }
+
+  /// [eventDate] (2026-11-26 review): the plan's wedding day, which the page
+  /// answers with `dayStatus` as the list does. The phone's copy keeps no
+  /// day's answer.
+  Future<MarketplaceProvider> getProvider(
+    String id, {
+    DateTime? eventDate,
+  }) async {
     try {
-      final json = await _apiClient.getJson('/api/v1/providers/$id');
+      final json = await _apiClient.getJson(
+        eventDate == null
+            ? '/api/v1/providers/$id'
+            : _path('/api/v1/providers/$id', {
+                'eventDate': planDayToJson(eventDate),
+              }),
+      );
       await _offline?.database.saveCachedItem(
         table: OfflineTables.cachedProviders,
-        json: json,
+        json: {...json}
+          ..remove('dayStatus')
+          ..remove('availableOnEventDate'),
       );
       return MarketplaceProvider.fromJson(json);
     } on Object catch (error) {
@@ -390,6 +470,23 @@ class MarketplaceApi {
           )
           .toList();
     }
+  }
+
+  /// One page of his published reviews, newest first, with the summary of
+  /// them all (2026-11-26 review). Each page read is kept on the phone and
+  /// served when the server is out of reach.
+  Future<ProviderReviewsPage> getProviderReviewsPage(
+    String providerId, {
+    int page = 1,
+    int limit = 10,
+  }) async {
+    final path = _path('/api/v1/providers/$providerId/reviews', {
+      'page': '$page',
+      'limit': '$limit',
+    });
+    return ProviderReviewsPage.fromJson(
+      await _reads.blob(path, metaKey: 'provider-reviews-page:$path'),
+    );
   }
 
   Future<List<FavoriteProvider>> getFavoriteProviders() async {
@@ -864,13 +961,38 @@ class MarketplaceProviderPage {
     required this.total,
     required this.totalPages,
     required this.hasMore,
+    this.appliedSort = ProviderSort.best,
+    this.hideBusyApplied = false,
+    this.isSavedCopy = false,
   });
+
+  /// The phone's copy, filtered on the phone (2026-11-26 review): in the
+  /// order it was kept, nobody left out for the wedding day, one page.
+  MarketplaceProviderPage.savedCopy(this.items)
+    : currentPage = 1,
+      total = items.length,
+      totalPages = items.isEmpty ? 0 : 1,
+      hasMore = false,
+      appliedSort = null,
+      hideBusyApplied = false,
+      isSavedCopy = true;
 
   final List<MarketplaceProvider> items;
   final int currentPage;
   final int total;
   final int totalPages;
   final bool hasMore;
+
+  /// The order the rows are in; null for the phone's copy, which is in no
+  /// order the reader picked, so «رتّب حسب» names none.
+  final ProviderSort? appliedSort;
+
+  /// Whether those known busy on the wedding day were left out; false for
+  /// a day already past and for the phone's copy.
+  final bool hideBusyApplied;
+
+  /// The phone's saved copy, not the server's answer: «نسخة محفوظة».
+  final bool isSavedCopy;
 }
 
 /// The provider's own portal.

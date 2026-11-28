@@ -61,7 +61,7 @@ void main() {
           'المال',
           'المهام',
           'الضيوف',
-          'المزودين',
+          'المزوّدون',
         ]) {
           await walk.tab(tab, wait: 2);
           if (find.byType(ErrorWidget).evaluate().isNotEmpty) {

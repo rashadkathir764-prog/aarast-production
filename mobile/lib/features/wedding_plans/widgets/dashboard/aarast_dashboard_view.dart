@@ -16,8 +16,7 @@ import '../../../../core/utils/plan_day.dart';
 import '../../../../core/utils/money_formatters.dart'
     show compactMoneyParts, sumSafeMoneyParts;
 import '../../../../core/widgets/aarast_pressable.dart';
-import '../../../finance/finance_api.dart'
-    show mahrOnItsOwnWords, moneyBudgetCells;
+import '../../../finance/finance_api.dart' show moneyBudgetCells;
 import '../../../wedding_day/wedding_day_api.dart'
     show PlanEvent, PlanEventMoment, PlanEventsView, programMoments;
 import '../../models/dashboard_summary.dart';
@@ -25,6 +24,7 @@ import '../../models/wedding_plan_stage.dart';
 import 'aarast_dashboard_focus.dart';
 
 part 'aarast_dashboard_week.dart';
+part 'aarast_dashboard_week_page.dart';
 part 'aarast_dashboard_money_card.dart';
 part 'aarast_dashboard_money_card_parts.dart';
 part 'aarast_dashboard_states.dart';
@@ -69,21 +69,24 @@ class AarastDashboardView extends StatelessWidget {
     this.onAnswerSuggestion,
     this.showHijri = true,
     this.events,
-    this.weekBookings,
     this.onOpenEvents,
+    this.onOpenWeek,
     this.onArchivePlan,
     super.key,
   });
 
-  /// D65: the plan's events, the wedding week (b04) and day (b05) are built
-  /// from; null until read (or for a plan kept on the phone).
+  /// D65: the plan's events, which the «أسبوع العرس» card and the program
+  /// after the wedding are built from; null until read (or for a plan kept
+  /// on the phone).
   final PlanEventsView? events;
-
-  /// b04 «المزودين»: the plan's bookings for the coming days, once read.
-  final List<DashboardWeekBooking>? weekBookings;
 
   /// b12 «مناسبات عرسك», for whoever may edit the plan's events.
   final VoidCallback? onOpenEvents;
+
+  /// D134: opens «أسبوع العرس». The home shows its card under the next step
+  /// from the day the date is set; null (a plan kept on the phone, which has
+  /// no events) leaves the card out.
+  final VoidCallback? onOpenWeek;
 
   final DashboardSummary summary;
   final String userName;
@@ -163,7 +166,8 @@ class AarastDashboardView extends StatelessWidget {
       profile: context.journeyProfile,
     );
     final planStage = resolveWeddingPlanStage(summary.weddingDate, now: now);
-    // b04 and b05: the seven days before the wedding and its day.
+    // The seven days before the wedding and its day. D134: the home keeps
+    // its own layout through them; only the day's greeting reads this.
     final weddingDate = summary.weddingDate;
     final window = weddingDate != null && planStage.isWeddingWindow
         ? planStage.daysUntilWedding ?? 0
@@ -179,24 +183,6 @@ class AarastDashboardView extends StatelessWidget {
         : null;
     // b07: after the day the home is the debt, the next repayment and the
     // providers to rate; the planning cards are done with.
-    // D112 (Q-20): in the wedding's week and on its day, what is due. RA-MO-326:
-    // not today's only. A payment already late, or one that falls before the
-    // wedding, is the money of the week: the line said none of it while the
-    // next step was an item. One due after the day is not this week's.
-    // The payment is left out where the next step already names it.
-    final dueSoon = window != null && summary.canViewMoney
-        ? summary.nextPaymentScheduleDue
-        : null;
-    final dueDays = dueSoon == null
-        ? null
-        : daysUntilPlanDay(dueSoon.dueDate, now: now ?? appNow());
-    final payDue =
-        dueSoon != null &&
-            dueDays! <= window! &&
-            !(window > 0 && identical(payment, dueSoon))
-        ? dueSoon
-        : null;
-    final tasksToday = window != null ? summary.todayTasks : 0;
     final married = planStage.stage == WeddingPlanStage.wrapUp;
     final debt = married ? afterWedding : null;
     // After the day no step of the server's is drawn, so the payment still
@@ -245,14 +231,7 @@ class AarastDashboardView extends StatelessWidget {
                   ],
                   ?assistantEntry,
                   const SizedBox(height: AarastV3Space.x3),
-                  if (window != null)
-                    _WeddingSkyHero(
-                      days: window,
-                      date: weddingDate!,
-                      showHijri: showHijri,
-                      onTap: onOpenPlan,
-                    )
-                  else if (debt != null && debt.left > 0)
+                  if (debt != null && debt.left > 0)
                     _AfterWeddingHero(
                       debt: debt,
                       currency: summary.currency,
@@ -267,66 +246,7 @@ class AarastDashboardView extends StatelessWidget {
                       onTap: onOpenPlan,
                       showHijri: showHijri,
                     ),
-                  if (window != null) ...[
-                    if (payDue != null || tasksToday > 0) ...[
-                      const SizedBox(height: AarastV3Space.x3),
-                      _TodayDue(
-                        payment: payDue,
-                        paymentDays: dueDays,
-                        tasks: tasksToday,
-                        currency: summary.currency,
-                        amountsHidden: amountsHidden,
-                        onOpenPayment: payDue == null || onOpenPayment == null
-                            ? null
-                            : () => onOpenPayment!(payDue),
-                        onOpenTasks: onOpenTasks,
-                      ),
-                    ],
-                    if (window > 0) ...[
-                      const SizedBox(height: AarastV3Space.x3),
-                      _JourneyNextStep(
-                        focus: focus,
-                        payment: payment,
-                        currency: summary.currency,
-                        now: now ?? appNow(),
-                        amountsHidden: amountsHidden,
-                        onOpen: () {
-                          final due = payment;
-                          final pay = onOpenPayment;
-                          if (due != null && pay != null) {
-                            pay(due);
-                          } else {
-                            _openFocus(focus);
-                          }
-                        },
-                      ),
-                      if (events case final events?) ...[
-                        const SizedBox(height: AarastV3Space.x2),
-                        _WeekProgram(
-                          events: events.weekOf(weddingDate!),
-                          planEvents: events.items,
-                          today: today,
-                          onEdit: events.canEdit ? onOpenEvents : null,
-                        ),
-                      ],
-                      if (weekBookings case final bookings?
-                          when bookings.isNotEmpty) ...[
-                        const SizedBox(height: AarastV3Space.x2),
-                        _WeekProviders(
-                          bookings: bookings,
-                          onTap: onOpenProviders,
-                        ),
-                      ],
-                    ] else if (events case final events?) ...[
-                      const SizedBox(height: AarastV3Space.x2),
-                      _DayProgram(
-                        events: events.dayOf(weddingDate!),
-                        planEvents: events.items,
-                        now: now ?? appNow(),
-                        onEdit: events.canEdit ? onOpenEvents : null,
-                      ),
-                    ],
-                  ] else if (married) ...[
+                  if (married) ...[
                     // After the wedding the debt is the home's figure: when
                     // the money could not be read it says so, as before it.
                     if (moneyReadFailed) ...[
@@ -447,6 +367,19 @@ class AarastDashboardView extends StatelessWidget {
                         }
                       },
                     ),
+                    // D134 (Rashad 2026-11-27): the wedding week is one card
+                    // under the next step, from the day the date is set; it
+                    // opens «أسبوع العرس» and the home keeps its layout.
+                    if (weddingDate != null && onOpenWeek != null) ...[
+                      const SizedBox(height: AarastV3Space.x3),
+                      _WeekCard(
+                        days: planStage.daysUntilWedding ?? 0,
+                        weddingDate: weddingDate,
+                        events: events,
+                        today: today,
+                        onTap: onOpenWeek!,
+                      ),
+                    ],
                     // Rashad 2026-11-17: the next step, the money under it,
                     // then the three tiles; the rest follows.
                     if (summary.canViewMoney) ...[

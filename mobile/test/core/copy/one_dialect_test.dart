@@ -1,55 +1,51 @@
-import 'dart:io';
-
 import 'package:flutter_test/flutter_test.dart';
 
-// One Yemeni dialect, the Sana'ani, in everything the person reads (Q-35,
-// D124). The app had mixed «وين / مو / تبي» with «فين / مش / تشتي», and
-// «الآن» beside «الحين», so one screen spoke Gulf and the next Yemeni. Each
-// banned word has the app's own word; the list is held like «أقساط».
+import 'copy_sources.dart';
 
-/// The banned word and the app's word for it.
-const _banned = <String, String>{
-  'وين': 'فين',
-  'مو': 'مش',
-  'تبي': 'تشتي',
-  'تبين': 'تشتين',
-  'تبغى': 'تشتي',
-  'تبغي': 'تشتي',
-  'تبغين': 'تشتين',
-  'ابي': 'أشتي',
-  'أبي': 'أشتي',
-  'ابغى': 'أشتي',
-  'أبغى': 'أشتي',
-  'الآن': 'الحين',
-  'الان': 'الحين',
-};
+// D129 (docs/project/LANGUAGE.md): the app speaks simplified Modern Standard
+// Arabic, no longer the Sana'ani dialect (Q-35, D124 before it). The dialect
+// words (§6, `dialectWords` and `dialectPatterns` in copy_sources.dart) are
+// held two ways:
+// - in the arb parts, the language's one source, none at all;
+// - in the strings still typed in the Dart code, a pinned count that may
+//   only go down, as each screen moves into the arb parts in MSA.
 
-const _arabic = 'ء-ي\u064b-\u0652';
+/// The dialect words still in the Dart code's string literals (lib/ outside
+/// lib/l10n). It may only go down: a change that moves or rewrites strings
+/// lowers it to the number this test prints, in the same change.
+///
+/// D134 (Rashad, 2026-11-27): the approved home stays in its own voice until
+/// its turn in D129's migration; 1757 counted the rejected home, which had
+/// been rewritten in MSA.
+const _dialectLeftInCode = 1882;
 
 void main() {
-  test('every string the person reads is in the one dialect', () {
-    final patterns = {
-      for (final word in _banned.keys)
-        word: RegExp('(?<![$_arabic])$word(?![$_arabic])'),
-    };
-    final offenders = <String>[];
-    for (final entity in Directory('lib').listSync(recursive: true)) {
-      if (entity is! File || !entity.path.endsWith('.dart')) continue;
-      final lines = entity.readAsLinesSync();
-      for (var index = 0; index < lines.length; index++) {
-        final code = lines[index].trimLeft();
-        // A comment is not read by the person.
-        if (code.startsWith('//')) continue;
-        for (final entry in patterns.entries) {
-          if (entry.value.hasMatch(code)) {
-            offenders.add(
-              '${entity.path}:${index + 1}: «${entry.key}» is '
-              '«${_banned[entry.key]}»: ${code.trim()}',
-            );
-          }
-        }
-      }
-    }
-    expect(offenders, isEmpty, reason: offenders.join('\n'));
+  test('no arb part carries a dialect word', () {
+    final offenders = <String>[
+      for (final word in arbWords())
+        for (final banned in matchesIn(word.text, dialectPatterns))
+          '$word: «$banned» in ${word.text.trim()}',
+    ];
+    expect(
+      offenders,
+      isEmpty,
+      reason: 'write it in MSA (LANGUAGE.md §6):\n${offenders.join('\n')}',
+    );
+  });
+
+  test('the dialect words still typed in the code only go down', () {
+    final count = countIn(codeLiterals(), dialectPatterns);
+    expect(
+      count,
+      lessThanOrEqualTo(_dialectLeftInCode),
+      reason:
+          'a new dialect word in the code: new words go in lib/l10n/parts, '
+          'in MSA (LANGUAGE.md §6)',
+    );
+    expect(
+      count,
+      _dialectLeftInCode,
+      reason: 'fewer are left: lower _dialectLeftInCode to $count',
+    );
   });
 }

@@ -1,11 +1,11 @@
 {
-  "settingsAlertsTitle": "إعدادات التنبيهات",
-  "@settingsAlertsTitle": {
-    "description": "Header of the alerts settings page (features/settings/screens/settings_screen.dart), opened from «المزيد». The list itself is «التنبيهات»; this is its settings."
+  "notificationSettingsTitle": "إعدادات الإشعارات",
+  "@notificationSettingsTitle": {
+    "description": "Header of the couple's notification settings page (features/settings/screens/settings_screen.dart), opened from «المزيد». Read by a groom, a bride or a member of a plan."
   },
   "settingsSignInTitle": "{gender, select, female{سجّلي الدخول لإدارة الإعدادات} other{سجّل الدخول لإدارة الإعدادات}}",
   "@settingsSignInTitle": {
-    "description": "Title of the sign-in panel on the alerts settings page, shown to someone without an account.",
+    "description": "Title of the sign-in panel on the notification settings page, shown to someone without an account.",
     "placeholders": {
       "gender": {
         "type": "String",
@@ -13,27 +13,361 @@
       }
     }
   },
-  "settingsSignInBody": "ترتبط التنبيهات بحسابك لنحفظها لك.",
+  "settingsSignInBody": "ترتبط الإشعارات بحسابك لنحفظ اختياراتك.",
   "@settingsSignInBody": {
-    "description": "Line under settingsSignInTitle: why the settings need an account."
+    "description": "Line under settingsSignInTitle: why the notification settings need an account."
   },
-  "settingsRowTasks": "المهام",
-  "@settingsRowTasks": {
-    "description": "Switch on the alerts settings page: task reminders, a task given to the reader, and the countdown to the wedding (the server's taskRemindersEnabled)."
+  "phoneSectionTitle": "هذا الجوال",
+  "@phoneSectionTitle": {
+    "description": "Title of the first section of the notification settings (couple's and provider's pages, features/settings/widgets/notification_settings_parts.dart): what this phone does with notifications, apart from the account's choices below it."
   },
-  "settingsRowPayments": "الدفعات",
-  "@settingsRowPayments": {
-    "description": "Switch: payment, loan and promised-money reminders, and a budget item gone over (paymentRemindersEnabled)."
+  "phoneStateOn": "إشعارات الجوال تعمل",
+  "@phoneStateOn": {
+    "description": "The phone section's line when notifications reach this phone: allowed, every channel on, the phone linked to the account."
   },
-  "settingsRowBookings": "الحجوزات",
-  "@settingsRowBookings": {
+  "phoneStateNotAsked": "إشعارات الجوال غير مفعّلة",
+  "@phoneStateNotAsked": {
+    "description": "The phone section's line when the app never asked the phone for notifications; the button under it is pushPermissionAllow."
+  },
+  "phoneStateOff": "إشعارات الجوال متوقفة من إعدادات الجوال",
+  "@phoneStateOff": {
+    "description": "The phone section's line when the person turned this app's notifications off in the phone; the button under it is phoneOpenSettings."
+  },
+  "phoneStateChannelsOff": "إشعارات {channels} متوقفة في الجوال",
+  "@phoneStateChannelsOff": {
+    "description": "The phone section's line when one or two of the app's notification channels are off in the phone while the rest work; the button under it is phoneOpenChannel.",
+    "placeholders": {
+      "channels": {
+        "type": "String",
+        "description": "phoneChannelMessages, phoneChannelTasks or phoneChannelMoney, two joined by phoneChannelPair."
+      }
+    }
+  },
+  "phoneChannelMessages": "الرسائل",
+  "@phoneChannelMessages": {
+    "description": "The phone's «رسائل» channel (aarast_messages), named in phoneStateChannelsOff."
+  },
+  "phoneChannelTasks": "المهام والتذكيرات",
+  "@phoneChannelTasks": {
+    "description": "The phone's «مهام وتذكيرات» channel (aarast_tasks), named in phoneStateChannelsOff."
+  },
+  "phoneChannelMoney": "المال",
+  "@phoneChannelMoney": {
+    "description": "The phone's «المال» channel (aarast_money), named in phoneStateChannelsOff."
+  },
+  "phoneChannelPair": "{first} و{second}",
+  "@phoneChannelPair": {
+    "description": "Two turned-off channels joined in phoneStateChannelsOff: «الرسائل والمال». Folded for three.",
+    "placeholders": {
+      "first": {
+        "type": "String",
+        "description": "A channel's name, or the names so far."
+      },
+      "second": {
+        "type": "String",
+        "description": "The next channel's name."
+      }
+    }
+  },
+  "phoneStateNotLinked": "لم يكتمل ربط هذا الجوال، وسنعيد المحاولة",
+  "@phoneStateNotLinked": {
+    "description": "The phone section's line when notifications are allowed but this phone is not registered with the account yet (no network, most often); the app tries again by itself, so there is no button."
+  },
+  "phoneStateUnavailable": "هذا الجوال لا يستقبل إشعارات خارج التطبيق",
+  "@phoneStateUnavailable": {
+    "description": "The phone section's line when this phone cannot get phone notifications at all (no Google services, or a build without them); they still come inside the app."
+  },
+  "phoneOpenSettings": "{gender, select, female{افتحي إعدادات الجوال} other{افتح إعدادات الجوال}}",
+  "@phoneOpenSettings": {
+    "description": "Text button in the phone section when notifications are off: opens this app's notification settings in the phone.",
+    "placeholders": {
+      "gender": {
+        "type": "String",
+        "description": "The reader's form: female or male."
+      }
+    }
+  },
+  "phoneOpenChannel": "{gender, select, female{افتحي إعداداتها} other{افتح إعداداتها}}",
+  "@phoneOpenChannel": {
+    "description": "Text button in the phone section when a channel is off: opens that channel's page in the phone's settings.",
+    "placeholders": {
+      "gender": {
+        "type": "String",
+        "description": "The reader's form: female or male."
+      }
+    }
+  },
+  "phoneSettingsByHand": "{gender, select, female{لم تُفتح الإعدادات. افتحيها بنفسك: الإعدادات، ثم التطبيقات، ثم اعّرست، ثم الإشعارات.} other{لم تُفتح الإعدادات. افتحها بنفسك: الإعدادات، ثم التطبيقات، ثم اعّرست، ثم الإشعارات.}}",
+  "@phoneSettingsByHand": {
+    "description": "Line under the phone section when the phone would not open its settings from the app: the path to take by hand.",
+    "placeholders": {
+      "gender": {
+        "type": "String",
+        "description": "The reader's form: female or male."
+      }
+    }
+  },
+  "phoneTurnedOn": "فُعّلت إشعارات الجوال.",
+  "@phoneTurnedOn": {
+    "description": "Toast when phone notifications start working: after the reader allowed them, or came back from the phone's settings with them on."
+  },
+  "nightHoldLine": "بين {start} و{end} نؤجّل إشعارات الجوال إلى {end}، إلا الرسائل وطلبات الحجز.",
+  "@nightHoldLine": {
+    "description": "Faint line under the phone section, shown only while phone notifications work: the quiet hours from the server's table, and what comes through them.",
+    "placeholders": {
+      "start": {
+        "type": "String",
+        "description": "clockHour of the start."
+      },
+      "end": {
+        "type": "String",
+        "description": "clockHour of the end."
+      }
+    }
+  },
+  "nightHoldAllLine": "بين {start} و{end} نؤجّل إشعارات الجوال إلى {end}.",
+  "@nightHoldAllLine": {
+    "description": "nightHoldLine when the server lets nothing through the quiet hours.",
+    "placeholders": {
+      "start": {
+        "type": "String",
+        "description": "clockHour of the start."
+      },
+      "end": {
+        "type": "String",
+        "description": "clockHour of the end."
+      }
+    }
+  },
+  "nightWeddingWeekLine": "وفي آخر أسبوع قبل العرس ويوم العرس يصلك ما يغيّر عرسك في أي وقت.",
+  "@nightWeddingWeekLine": {
+    "description": "Second sentence of the night line on the couple's page: in the last seven days before the wedding and on its day, news that changes it comes at night too (the server's weddingWeek rule). Other spans use nightWeddingDaysLine."
+  },
+  "nightWeddingDaysLine": "{days, plural, few{وفي آخر {days} أيام قبل العرس ويوم العرس يصلك ما يغيّر عرسك في أي وقت.} many{وفي آخر {days} يومًا قبل العرس ويوم العرس يصلك ما يغيّر عرسك في أي وقت.} other{وفي آخر {days} يوم قبل العرس ويوم العرس يصلك ما يغيّر عرسك في أي وقت.}}",
+  "@nightWeddingDaysLine": {
+    "description": "nightWeddingWeekLine for a span other than seven days.",
+    "placeholders": {
+      "days": {
+        "type": "int",
+        "description": "Days before the wedding the rule starts, 3 or more."
+      }
+    }
+  },
+  "clockHour": "{period, select, morning{{hour} صباحًا} noon{{hour} ظهرًا} evening{{hour} مساءً} other{منتصف الليل}}",
+  "@clockHour": {
+    "description": "An hour of the day in Sana'a, said as people say it: «9 مساءً». other is midnight.",
+    "placeholders": {
+      "period": {
+        "type": "String",
+        "description": "morning (1-11), noon (12-16), evening (17-23) or midnight (0)."
+      },
+      "hour": {
+        "type": "int",
+        "description": "The hour on a 12-hour clock."
+      }
+    }
+  },
+  "preferencesTitle": "ما يصلك منّا",
+  "@preferencesTitle": {
+    "description": "Title of the account's notification switches on the couple's and the provider's settings pages: what the app sends, apart from what the phone allows."
+  },
+  "preferencesWhere": "داخل التطبيق وعلى الجوال",
+  "@preferencesWhere": {
+    "description": "Line under preferencesTitle: a switch turned off stops its notices in the app's inbox as well as on the phone."
+  },
+  "switchTasks": "المهام",
+  "@switchTasks": {
+    "description": "Switch on the couple's notification settings: tasks given to the reader, their reminders, and the countdown to the wedding (the server's taskRemindersEnabled)."
+  },
+  "switchMoney": "المال",
+  "@switchMoney": {
+    "description": "Switch: payments' reminders; for a plan's owner also loans, promised money and a budget item gone over (paymentRemindersEnabled)."
+  },
+  "switchBookingReminders": "تذكير بموعد الحجز",
+  "@switchBookingReminders": {
     "description": "Switch: reminders of a confirmed booking's day (bookingRemindersEnabled)."
   },
-  "settingsRowOffers": "العروض والمحادثات",
-  "@settingsRowOffers": {
-    "description": "Switch: providers' offers, messages, booking answers and reviews (providerMessagesEnabled)."
+  "switchProviders": "المزوّدون والحجوزات",
+  "@switchProviders": {
+    "description": "Switch: providers' offers and answers, conversations, a booking changed or cancelled (providerMessagesEnabled)."
   },
-  "settingsSaveFailed": "{gender, select, female{لم يُحفظ التغيير، حاولي مرة ثانية.} other{لم يُحفظ التغيير، حاول مرة ثانية.}}",
+  "switchOffLine": "لا يصلك شيء من هذا، لا داخل التطبيق ولا على الجوال.",
+  "@switchOffLine": {
+    "description": "Line in a switch's row while it is off, in place of its timing line: nothing of it comes, in the app or on the phone."
+  },
+  "coverageIncludes": "يشمل {parts}.",
+  "@coverageIncludes": {
+    "description": "Line under a switch's title: what it covers, from the server's preferenceCoverage, as the reader receives it.",
+    "placeholders": {
+      "parts": {
+        "type": "String",
+        "description": "The coverage phrases joined by coveragePair or coverageNext."
+      }
+    }
+  },
+  "coverageAlways": "تصلك دائمًا: {parts}.",
+  "@coverageAlways": {
+    "description": "Faint line under the switches: the notices no switch governs, from the server's preferenceCoverage.always.",
+    "placeholders": {
+      "parts": {
+        "type": "String",
+        "description": "The coverage phrases joined by coveragePair or coverageNext."
+      }
+    }
+  },
+  "coveragePair": "{first} و{second}",
+  "@coveragePair": {
+    "description": "Two coverage phrases joined: «الدعوات وملخص ردود الضيوف».",
+    "placeholders": {
+      "first": {
+        "type": "String",
+        "description": "The first phrase."
+      },
+      "second": {
+        "type": "String",
+        "description": "The second phrase."
+      }
+    }
+  },
+  "coverageNext": "{first}، و{next}",
+  "@coverageNext": {
+    "description": "Three or more coverage phrases joined one by one: «أ، وب، وج».",
+    "placeholders": {
+      "first": {
+        "type": "String",
+        "description": "The phrases so far."
+      },
+      "next": {
+        "type": "String",
+        "description": "The next phrase."
+      }
+    }
+  },
+  "coverageTaskAssigned": "إسناد مهمة إليك",
+  "@coverageTaskAssigned": {
+    "description": "Coverage phrase after «يشمل»: TASK_ASSIGNED."
+  },
+  "coverageTaskReminders": "تذكيرات المهام",
+  "@coverageTaskReminders": {
+    "description": "Coverage phrase after «يشمل»: TASK_DUE_SOON and TASK_OVERDUE."
+  },
+  "coverageCountdown": "العدّ إلى العرس",
+  "@coverageCountdown": {
+    "description": "Coverage phrase after «يشمل»: WEDDING_COUNTDOWN."
+  },
+  "coveragePayments": "مواعيد الدفعات",
+  "@coveragePayments": {
+    "description": "Coverage phrase after «يشمل»: PAYMENT_SCHEDULE_DUE_SOON and PAYMENT_SCHEDULE_OVERDUE."
+  },
+  "coverageLoans": "سداد السُّلف",
+  "@coverageLoans": {
+    "description": "Coverage phrase after «يشمل», for a plan's owner only: LOAN_REPAYMENT_DUE_SOON and LOAN_REPAYMENT_OVERDUE."
+  },
+  "coveragePromised": "المال الموعود",
+  "@coveragePromised": {
+    "description": "Coverage phrase after «يشمل», for a plan's owner only: FUNDING_EXPECTED."
+  },
+  "coverageBudget": "تجاوز الميزانية في بند",
+  "@coverageBudget": {
+    "description": "Coverage phrase after «يشمل», for a plan's owner only: BUDGET_CATEGORY_EXCEEDED."
+  },
+  "coverageBookingReminder": "الحجوزات المؤكَّدة",
+  "@coverageBookingReminder": {
+    "description": "Coverage phrase after «يشمل»: BOOKING_REMINDER, the reminder of a confirmed booking's day."
+  },
+  "coverageOffers": "عروض المزوّدين وردودهم",
+  "@coverageOffers": {
+    "description": "Coverage phrase after «يشمل», for the couple's side: QUOTE_OFFER_RECEIVED, and a request received, an offer accepted, declined or withdrawn."
+  },
+  "coverageChats": "المحادثات",
+  "@coverageChats": {
+    "description": "Coverage phrase after «يشمل», for the couple's side: CHAT_MESSAGE_RECEIVED and CONVERSATION_REPORT_CLOSED."
+  },
+  "coverageBookingNews": "تغيّر الحجز أو إلغاءه",
+  "@coverageBookingNews": {
+    "description": "Coverage phrase after «يشمل» (accusative), for the couple's side: BOOKING_NEWS, every booking notice but the day's reminder."
+  },
+  "coverageReviewReply": "الردّ على تقييمك",
+  "@coverageReviewReply": {
+    "description": "Coverage phrase after «يشمل», for the couple's side: REVIEW_REPLIED."
+  },
+  "coverageYourCustomers": "طلبات عملائك ورسائلهم",
+  "@coverageYourCustomers": {
+    "description": "Coverage phrase added to the providers' switch on the couple's page for an account that also has a provider profile: his customers' notices are under the same switch."
+  },
+  "coverageCustomerRequests": "طلبات العرض والحجز",
+  "@coverageCustomerRequests": {
+    "description": "Coverage phrase after «يشمل», on the provider's page: QUOTE_REQUEST_SUBMITTED, BOOKING_REQUESTED, QUOTE_REQUEST_EXPIRING."
+  },
+  "coverageCustomerChats": "رسائل العملاء",
+  "@coverageCustomerChats": {
+    "description": "Coverage phrase after «يشمل», on the provider's page: CHAT_MESSAGE_RECEIVED and CONVERSATION_REPORT_CLOSED."
+  },
+  "coverageOfferAnswers": "قبول عروضك أو رفضها",
+  "@coverageOfferAnswers": {
+    "description": "Coverage phrase after «يشمل», on the provider's page: QUOTE_ACCEPTED and QUOTE_REJECTED."
+  },
+  "coverageCustomerBookings": "تغيّر الحجوزات أو إلغاءها",
+  "@coverageCustomerBookings": {
+    "description": "Coverage phrase after «يشمل» (accusative), on the provider's page: BOOKING_NEWS."
+  },
+  "coverageReviews": "التقييمات الجديدة",
+  "@coverageReviews": {
+    "description": "Coverage phrase after «يشمل», on the provider's page: REVIEW_RECEIVED."
+  },
+  "coverageInvitations": "الدعوات",
+  "@coverageInvitations": {
+    "description": "Coverage phrase after «تصلك دائمًا:»: SHARING_INVITATION and its answers (SHARING_INVITE_ACCEPTED, SHARING_INVITE_DECLINED)."
+  },
+  "coverageGuestReplies": "{plan, select, bride{ملخص ردود الضيفات} other{ملخص ردود الضيوف}}",
+  "@coverageGuestReplies": {
+    "description": "Coverage phrase after «تصلك دائمًا:»: GUEST_RESPONDED, sent as one digest. The guests follow the plan's side (planWord), not the reader.",
+    "placeholders": {
+      "plan": {
+        "type": "String",
+        "description": "bride for a bride's plan, groom otherwise."
+      }
+    }
+  },
+  "coverageMemberAccess": "تغيّر صلاحياتك في الخطة",
+  "@coverageMemberAccess": {
+    "description": "Coverage phrase after «تصلك دائمًا:», for a member of someone else's plan: SHARING_UPDATED."
+  },
+  "coveragePlanStatus": "توقّف الخطة أو عودتها",
+  "@coveragePlanStatus": {
+    "description": "Coverage phrase after «تصلك دائمًا:», for a member of someone else's plan: PLAN_UPDATED (the plan closed for deletion, or opened again)."
+  },
+  "coverageTeamDecisions": "قرارات الفريق على ملفك وصورك",
+  "@coverageTeamDecisions": {
+    "description": "Coverage phrase after «تصلك دائمًا:», on the provider's page: the team's decisions on his profile, his claim, his photos and his changes."
+  },
+  "coverageFeatured": "تغيّر ظهورك المميّز",
+  "@coverageFeatured": {
+    "description": "Coverage phrase after «تصلك دائمًا:», on the provider's page: LISTING_PLAN_CHANGED (a featured period starts or ends)."
+  },
+  "coverageAppNews": "أخبار اعّرست",
+  "@coverageAppNews": {
+    "description": "Words of SYNC_REQUIRED and GENERAL, types no server writer makes today; kept so every type has words, and not shown."
+  },
+  "settingsOfflineLine": "آخر نسخة محفوظة، وتغييراتك تُرسل عند الاتصال",
+  "@settingsOfflineLine": {
+    "description": "Faint line under preferencesTitle when the switches are the phone's copy because the server is out of reach; a change is kept and sent when the connection returns."
+  },
+  "settingsLoadFailed": "لم نتمكن من تحميل اختياراتك.",
+  "@settingsLoadFailed": {
+    "description": "Line in place of the switches when they could not be loaded and the phone has no copy; settingsRetry follows it."
+  },
+  "settingsRetry": "{gender, select, female{أعيدي المحاولة} other{أعد المحاولة}}",
+  "@settingsRetry": {
+    "description": "Text button after settingsLoadFailed: loads the switches again.",
+    "placeholders": {
+      "gender": {
+        "type": "String",
+        "description": "The reader's form: female or male."
+      }
+    }
+  },
+  "settingsSaveFailed": "{gender, select, female{لم يُحفظ التغيير، فأعدنا المفتاح كما كان. أعيدي المحاولة.} other{لم يُحفظ التغيير، فأعدنا المفتاح كما كان. أعد المحاولة.}}",
   "@settingsSaveFailed": {
     "description": "Toast when a switch could not be saved; the switch goes back to what it was.",
     "placeholders": {
@@ -93,7 +427,7 @@
       }
     }
   },
-  "timingBefore":"{owner, select, masculine{قبل موعده {when}} other{قبل موعدها {when}}}",
+  "timingBefore": "{owner, select, masculine{قبل موعده {when}} other{قبل موعدها {when}}}",
   "@timingBefore": {
     "description": "First part of a settings timing line: «قبل موعدها بأسبوع وبيوم». The owner is the thing reminded of: feminine for tasks, payments and bookings (non-human plural), masculine for promised money.",
     "placeholders": {
@@ -131,9 +465,9 @@
   "@timingOverdueOnce": {
     "description": "Added to a timing line: a late task or payment is told once."
   },
-  "timingOwnTime": "{gender, select, female{وفي الوقت الذي تختارينه لها} other{وفي الوقت الذي تختاره لها}}",
+  "timingOwnTime": "{gender, select, female{وفي الوقت الذي تختارينه لها، وإن كان ليلًا وصل جوالك صباحًا} other{وفي الوقت الذي تختاره لها، وإن كان ليلًا وصل جوالك صباحًا}}",
   "@timingOwnTime": {
-    "description": "Added to the tasks line: a task's own «ذكّرني» time is honoured.",
+    "description": "Added to the tasks line: a task's own «ذكّرني» time is honoured in the app, and on the phone a time in the quiet hours waits for the morning.",
     "placeholders": {
       "gender": {
         "type": "String",
@@ -153,7 +487,7 @@
   },
   "timingPromised": "والمال الموعود {when}",
   "@timingPromised": {
-    "description": "Second sentence of the payments line: when promised money (the mahr's rest, every promised source) is reminded of.",
+    "description": "Second sentence of the money line, for a plan's owner only: when promised money (the mahr's rest, every promised source) is reminded of.",
     "placeholders": {
       "when": {
         "type": "String",
@@ -161,119 +495,9 @@
       }
     }
   },
-  "timingOnArrival": "فور وصولها",
-  "@timingOnArrival": {
-    "description": "Timing line of the offers and conversations switch: they are sent as they arrive."
-  },
-  "clockHour": "{period, select, morning{{hour} صباحًا} noon{{hour} ظهرًا} evening{{hour} مساءً} other{منتصف الليل}}",
-  "@clockHour": {
-    "description": "An hour of the day in Sana'a, said as people say it: «9 مساءً». other is midnight.",
-    "placeholders": {
-      "period": {
-        "type": "String",
-        "description": "morning (1-11), noon (12-16), evening (17-23) or midnight (0)."
-      },
-      "hour": {
-        "type": "int",
-        "description": "The hour on a 12-hour clock."
-      }
-    }
-  },
-  "quietHoursLine": "من {start} إلى {end} لا نرسل إلى جوالك، إلا الرسائل وطلبات الحجز فتصلك في أي وقت.",
-  "@quietHoursLine": {
-    "description": "Note under the switches: the quiet hours, from the server's table, and what still comes through them.",
-    "placeholders": {
-      "start": {
-        "type": "String",
-        "description": "clockHour of the start."
-      },
-      "end": {
-        "type": "String",
-        "description": "clockHour of the end."
-      }
-    }
-  },
-  "quietHoursPlainLine": "من {start} إلى {end} لا نرسل إلى جوالك، وتصلك التنبيهات بعدها.",
-  "@quietHoursPlainLine": {
-    "description": "quietHoursLine when the server lets nothing through at night but the wedding-week news.",
-    "placeholders": {
-      "start": {
-        "type": "String",
-        "description": "clockHour of the start."
-      },
-      "end": {
-        "type": "String",
-        "description": "clockHour of the end."
-      }
-    }
-  },
-  "weddingWeekLine": "وفي الأسبوع الأخير قبل العرس يصلك ليلًا ما يغيّر عرسك، مثل إلغاء حجز أو دفعة تستحق اليوم.",
-  "@weddingWeekLine": {
-    "description": "Second quiet-hours sentence: in the last seven days before the wedding, news that changes it comes at night too (the server's weddingWeek rule). Other spans use weddingDaysLine."
-  },
-  "weddingDaysLine": "{days, plural, few{وفي آخر {days} أيام قبل العرس يصلك ليلًا ما يغيّر عرسك، مثل إلغاء حجز أو دفعة تستحق اليوم.} other{وفي آخر {days} يومًا قبل العرس يصلك ليلًا ما يغيّر عرسك، مثل إلغاء حجز أو دفعة تستحق اليوم.}}",
-  "@weddingDaysLine": {
-    "description": "weddingWeekLine for a span other than seven days.",
-    "placeholders": {
-      "days": {
-        "type": "int",
-        "description": "Days before the wedding the rule starts, 3 or more."
-      }
-    }
-  },
-  "lockScreenNote": "لا تظهر على شاشة القفل أسماء ولا مبالغ.",
-  "@lockScreenNote": {
-    "description": "Note on the alerts settings page: what a phone alert never shows on the lock screen."
-  },
-  "pushNotAskedTitle": "لم نسألك بعد عن تنبيهات الجوال",
-  "@pushNotAskedTitle": {
-    "description": "Banner at the top of the alerts settings page when the app has never asked the phone for notifications."
-  },
-  "pushNotAskedBody": "{gender, select, female{اسمحي بها لتصلك التذكيرات حتى لو كان التطبيق مغلقًا.} other{اسمح بها لتصلك التذكيرات حتى لو كان التطبيق مغلقًا.}}",
-  "@pushNotAskedBody": {
-    "description": "Line under pushNotAskedTitle; the button under it is pushPermissionAllow.",
-    "placeholders": {
-      "gender": {
-        "type": "String",
-        "description": "The reader's form: female or male."
-      }
-    }
-  },
-  "pushOffTitle": "تنبيهات الجوال مقفلة",
-  "@pushOffTitle": {
-    "description": "Banner at the top of the alerts settings page when the phone has this app's notifications off."
-  },
-  "pushOffBody": "{gender, select, female{تصلك التنبيهات داخل التطبيق فقط. افتحي إعدادات الجوال وفعّلي تنبيهات اعّرست.} other{تصلك التنبيهات داخل التطبيق فقط. افتح إعدادات الجوال وفعّل تنبيهات اعّرست.}}",
-  "@pushOffBody": {
-    "description": "Line under pushOffTitle: what happens now, and how to turn them on.",
-    "placeholders": {
-      "gender": {
-        "type": "String",
-        "description": "The reader's form: female or male."
-      }
-    }
-  },
-  "pushOpenPhoneSettings": "{gender, select, female{افتحي إعدادات الجوال} other{افتح إعدادات الجوال}}",
-  "@pushOpenPhoneSettings": {
-    "description": "Button on the notifications-off banner: opens this app's notification settings in the phone.",
-    "placeholders": {
-      "gender": {
-        "type": "String",
-        "description": "The reader's form: female or male."
-      }
-    }
-  },
-  "pushUnavailableLine": "لا تصل تنبيهات الجوال إلى هذا الجهاز، فتجد تنبيهاتك داخل التطبيق.",
-  "@pushUnavailableLine": {
-    "description": "Note on the alerts settings page when this phone cannot get phone alerts (no Google services, or a build without them)."
-  },
-  "pushTurnedOn": "فُعّلت تنبيهات الجوال.",
-  "@pushTurnedOn": {
-    "description": "Toast after the reader allowed notifications from the banner."
-  },
   "taskMessageTitle": "{gender, select, female{حين تسندين مهمة إلى أحد} other{حين تسند مهمة إلى أحد}}",
   "@taskMessageTitle": {
-    "description": "Box on the alerts settings page: what happens right after a task is given to someone with a phone number. A choice of this phone.",
+    "description": "Section title on the couple's notification settings page, below the notifications: what happens right after a task is given to someone with a phone number. A choice of this phone, not a notification.",
     "placeholders": {
       "gender": {
         "type": "String",
@@ -283,7 +507,7 @@
   },
   "taskMessageBody": "{gender, select, female{نجهّز له رسالة فيها المهمة وموعدها، تُرسل من جوالك أنتِ.} other{نجهّز له رسالة فيها المهمة وموعدها، تُرسل من جوالك أنت.}}",
   "@taskMessageBody": {
-    "description": "Line under taskMessageTitle.",
+    "description": "Line under taskMessageTitle, above the three choices.",
     "placeholders": {
       "gender": {
         "type": "String",
@@ -291,28 +515,16 @@
       }
     }
   },
-  "taskMessageAsk": "اسألني",
+  "taskMessageAsk": "اسألني كل مرة",
   "@taskMessageAsk": {
     "description": "Choice: ask each time whether to send the task message."
   },
-  "taskMessageWhatsApp": "{gender, select, female{افتحي واتساب مباشرة} other{افتح واتساب مباشرة}}",
+  "taskMessageWhatsApp": "فتح واتساب مباشرة",
   "@taskMessageWhatsApp": {
-    "description": "Choice: open WhatsApp with the message right away.",
-    "placeholders": {
-      "gender": {
-        "type": "String",
-        "description": "The reader's form: female or male."
-      }
-    }
+    "description": "Choice (a short fixed label, so a verbal noun): open WhatsApp with the message right away."
   },
-  "taskMessageOff": "{gender, select, female{لا ترسلي} other{لا ترسل}}",
+  "taskMessageOff": "بلا رسالة",
   "@taskMessageOff": {
-    "description": "Choice: never prepare the task message.",
-    "placeholders": {
-      "gender": {
-        "type": "String",
-        "description": "The reader's form: female or male."
-      }
-    }
+    "description": "Choice: never prepare the task message."
   }
 }

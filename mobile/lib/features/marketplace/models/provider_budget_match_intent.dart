@@ -7,21 +7,23 @@ class ProviderBudgetMatchIntent {
     required this.budgetCategoryName,
     required this.allocatedAmount,
     this.providerCategoryIds = const [],
-    this.tolerance = 0.20,
   });
 
   final String budgetCategoryName;
   final String? allocatedAmount;
   final List<String> providerCategoryIds;
-  final double tolerance;
 
   double get allocatedValue => _moneyValue(allocatedAmount);
   bool get hasBudget => allocatedValue > 0;
-  double? get minPrice => hasBudget ? allocatedValue * (1 - tolerance) : null;
-  double? get maxPrice => hasBudget ? allocatedValue * (1 + tolerance) : null;
   double? get requestMin => hasBudget ? allocatedValue * 0.80 : null;
   double? get requestMax => hasBudget ? allocatedValue : null;
 }
+
+/// «ضمن بندك»: a provider's lowest price does not pass the item's amount.
+/// The one rule the directory's row and his page read; over it the row says
+/// «أعلى من بندك» and the page says nothing.
+bool priceFitsItem(num lowestPrice, num itemAmount) =>
+    itemAmount > 0 && lowestPrice <= itemAmount;
 
 /// The catalog's slugs for the wedding venue (the server's
 /// `VENUE_PROVIDER_CATEGORY_SLUG`) and for meals (C45: both are told how

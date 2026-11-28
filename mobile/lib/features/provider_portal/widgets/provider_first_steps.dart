@@ -125,8 +125,8 @@ class ProviderFirstSteps extends StatelessWidget {
                 Expanded(
                   child: Text(
                     views == 0
-                        ? 'ما انفتح ملفك في آخر 30 يوم'
-                        : 'انفتح ملفك ${arabicCount(views, one: 'مرة وحدة', two: 'مرتين', few: 'مرات', many: 'مرة')} في آخر 30 يوم',
+                        ? 'ما انفتح ملفك في آخر 30 يومًا'
+                        : 'انفتح ملفك ${arabicCount(views, one: 'مرة وحدة', two: 'مرتين', few: 'مرات', many: 'مرة')} في آخر 30 يومًا',
                     style: JourneyType.of(
                       JourneyType.body,
                       weight: JourneyType.bold,

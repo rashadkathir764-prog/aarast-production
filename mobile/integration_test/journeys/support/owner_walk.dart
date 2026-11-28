@@ -10,7 +10,6 @@
 // so the seed stays as it was and the walk can be rerun.
 import 'package:aarast_mobile/core/utils/arabic_date_formatter.dart';
 import 'package:aarast_mobile/core/utils/plan_day.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'journey_harness.dart';
@@ -159,7 +158,8 @@ const groomPersona = OwnerPersona(
   familyPayer: 'الوالد',
   mahr: MahrWalkWords(
     homeCard: 'الاتفاق مع أهل العروسة',
-    homeLine: 'سلّمت 2 من 3 مليون · الباقي',
+    // D129: the shared money tool counts by Arabic's forms.
+    homeLine: 'سلّمت 2 من 3 ملايين · الباقي',
     moneyTitle: 'فين تروح الفلوس',
     moneyCard: 'الاتفاق مع أهل العروسة',
     itemsSection: 'الاتفاق مع أهل العروسة',
@@ -202,7 +202,7 @@ const bridePersona = OwnerPersona(
   familyPayer: 'أبوي',
   mahr: MahrWalkWords(
     homeCard: 'الاتفاق مع العريس',
-    homeLine: 'استلمتِ 2 من 3 مليون · الباقي',
+    homeLine: 'استلمتِ 2 من 3 ملايين · الباقي',
     moneyTitle: 'المهر وعرسك',
     moneyCard: 'المهر يوصلك',
     itemsSection: 'المهر يوصلك من العريس',
@@ -250,7 +250,10 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
   // ------------------------------------------------------------- home
   var homeBooked = '';
   await walk.step('b02_home', 'الرئيسية: العدّاد والمال والأقسام', () async {
-    if (!await walk.waitFor(walk.text('يوم على عرس'), seconds: 12)) {
+    // D134 (2026-11-27): the approved home, in its own words.
+    // The counted word changes with the count («يومًا», «أيام», «يوم»); the
+    // line's own end does not.
+    if (!await walk.waitFor(walk.text('على عرسك'), seconds: 12)) {
       walk.fail('ما ظهر عدّاد الأيام على الرئيسية');
     }
     walk.expectSee('أهلًا ${p.firstName}');
@@ -275,6 +278,15 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
       homeBooked = texts[tile + 1];
     }
   });
+  // D134: the wedding week is one card under the next step, from the day
+  // the date is set, and it opens its own page.
+  await walk.step('b04_week_card', 'الرئيسية: بطاقة أسبوع العرس', () async {
+    walk.expectSee('أسبوع العرس', why: 'البطاقة تحت الخطوة الجاية');
+    if (!await walk.tapText('أسبوع العرس', wait: 3)) return;
+    walk.expectSee('برنامج الأسبوع', why: 'شاشة أسبوع العرس وبرنامجه');
+    walk.expectSee('الأسبوع يبدأ بعد', why: 'العرس بعد أكثر من أسبوع');
+  });
+  await walk.back();
   await walk.step('b02_home_mahr', 'الرئيسية: كرت المهر', () async {
     // B5: the mahr agreement stays on the home until it is complete.
     if (!walk.sees(p.mahr.homeCard)) await walk.scroll(pixels: 300);
@@ -284,7 +296,7 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
     final whole = '${p.mahr.homeLine} $mahrRestDay';
     if (!walk.sees(whole)) {
       for (final half in whole.split(' · ')) {
-        walk.expectSee(half, why: 'سلّم 2 من 3 مليون والباقي يوم العقد');
+        walk.expectSee(half, why: 'سلّم 2 من 3 والباقي يوم العقد');
       }
     }
   });
@@ -297,6 +309,7 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
 
   await walk.step('b08_notifications', 'التنبيهات من الجرس', () async {
     await walk.scroll(pixels: -1200);
+    // D134: the approved home's bell, in its own word.
     if (!await walk.tapTooltip('التنبيهات', wait: 3)) return;
     walk.expectSee('التنبيهات');
     // B-38: a notice reads as the app speaks: no raw amount, no numeric or
@@ -454,9 +467,11 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
   await walk.back();
 
   await walk.step('c06_pay_sheet', 'فتح «سجّل» على دفعة (بدون حفظ)', () async {
-    // The first due is the hall's second payment, 500 thousand.
+    // The first due by its date is the rest of the outfit, 100 thousand
+    // (1 December); the hall's second payment is the day after.
     if (!await walk.tapText(p.say('سجّل', 'سجّلي'), wait: 3)) return;
-    walk.expectSee('500,000', why: 'الدفعة المستحقة بمبلغها');
+    walk.expectSee(p.say('دفعة بدلة العريس', 'دفعة فستان الزفة'));
+    walk.expectSee('100,000', why: 'الدفعة المستحقة بمبلغها');
     walk.expectSee('حفظ الدفعة');
   });
   await walk.back();
@@ -621,7 +636,7 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
 
   // -------------------------------------------------------- providers
   await walk.step('f01_prov_requests', 'المزودين: طلباتي', () async {
-    await walk.tab('المزودين');
+    await walk.tab('المزوّدون');
     walk.expectSee(p.hallProvider);
     walk.expectSee('ضيافة الأصالة');
     walk.expectSee('التصوير');
@@ -636,7 +651,9 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
       );
     }
     if (p.bride) {
-      walk.expectSee('صالة الياسمين · أكّد', why: 'البيانات: الصالة محجوزة');
+      // The provider confirmed: «أكدوا», never «أكّدي» said to her.
+      walk.expectSee('صالة الياسمين · أكدوا', why: 'البيانات: الصالة محجوزة');
+      walk.expectNotSee('أكّدي', why: 'المزوّد هو الذي أكّد، لا العروسة');
       walk.expectNotSee('اطلب الحجز', why: 'كلام مذكّر للعروسة');
       walk.expectNotSee('اخترت ضيافة', why: 'البيانات: الضيافة محجوزة لها');
       // G40: her items are services too (the server lists their kinds).
@@ -658,30 +675,27 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
   }
 
   await walk.step('f05_booked', 'خدمة محجوزة: ${p.hallProvider}', () async {
-    await walk.tab('المزودين');
+    await walk.tab('المزوّدون');
     if (!await walk.tapText(p.hallProvider, wait: 3.5)) return;
     walk.expectSee('محجوز');
     walk.expectSee('21 يناير');
   });
   await walk.back();
 
-  await walk.step('f02_prov_explore', 'المزودين: استكشف', () async {
-    await walk.tab('المزودين');
-    await walk.tapText('استكشف', wait: 3.5);
+  await walk.step('f02_prov_explore', 'المزوّدون: الدليل', () async {
+    await walk.tab('المزوّدون');
+    await walk.tapText('الدليل', wait: 3.5);
     walk.expectSee('استوديو ضوء صنعاء');
     if (!walk.sees('قاعة سبأ')) await walk.scroll(pixels: 700);
     walk.expectSee('قاعة سبأ', why: 'مزود نشط وموثّق في البيانات');
-    if (p.bride) {
-      walk.expectNotSee(
-        'غير مفعّل',
-        within: find.byWidgetPredicate(
-          (widget) =>
-              widget is Semantics &&
-              widget.properties.label == 'عرض تفاصيل ${p.hallProvider}',
-        ),
-        why: 'الصالة المحجوزة لها لا تظهر «غير مفعّل» داخل صفها',
-      );
-    }
+    // The hall this plan booked itself fills its own day: its row says it
+    // is theirs. It read «محجوز يوم عرسك», as if someone else had taken it.
+    if (!walk.sees(p.hallProvider)) await walk.scroll(pixels: 400);
+    walk.expectSee(p.hallProvider);
+    walk.expectSee(
+      'محجوز لك يوم عرسك',
+      why: 'المزوّد الذي حجزته الخطة نفسها يُقال إنه محجوز لها',
+    );
   });
 
   await walk.step('f03_prov_page', 'صفحة مزود: استوديو ضوء صنعاء', () async {
@@ -695,8 +709,8 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
     'زر صفحة المزود يكمل الطلب القائم',
     () async {
       // Both plans already asked this studio, so its page leads to that request
-      // («شوف العرض» for him, «تابعي طلبك» for her), not to a new one.
-      final follow = p.say('شوف العرض', 'تابعي طلبك');
+      // («افتح العرض» for him, «تابعي طلبك» for her), not to a new one.
+      final follow = p.say('افتح العرض', 'تابعي طلبك');
       if (!await walk.tapText(follow, wait: 3.5)) return;
       if (walk.sees('الباقات')) walk.fail('الزر «$follow» ما فتح شي');
     },
@@ -707,7 +721,7 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
   // The demo's provider of that kind with an account (f02 draws them).
   final itemProvider = p.say('فرقة الأفراح', 'المزينة أم فهد');
   await walk.step('f02_item_search', 'ابحث من بند لم يبدأ', () async {
-    await walk.tab('المزودين');
+    await walk.tab('المزوّدون');
     await walk.tapText('طلباتي', wait: 2.5);
     // «الفنان والفرقة · ما بدأت · ابحث» (hers «المزينة والنقاشة»): the way
     // to a provider not asked yet. G40: it searches every kind the server
@@ -739,7 +753,7 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
   await walk.back();
 
   await walk.step('f08_chats', 'المزودين: المحادثات', () async {
-    await walk.tab('المزودين');
+    await walk.tab('المزوّدون');
     await walk.tapText('المحادثات', wait: 3);
     walk.expectSee(p.hallProvider);
   });

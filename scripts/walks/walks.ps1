@@ -16,7 +16,12 @@ $repo = Resolve-Path (Join-Path $S '..\..')
 $mobile = Join-Path $repo 'mobile'
 
 # The Windows build cannot link flutter_secure_storage_windows; drop it from
-# the generated plugin files for the run. A Flutter build can also regenerate
+# the generated plugin files for the run. flutter_local_notifications_windows
+# goes with it (2026-11-27): it needs Visual Studio's ATL headers
+# ('atlbase.h'), which this machine does not have, and the app shows system
+# notifications on Android only, so the walk never calls it. Since the push
+# work added it (04529ca8f) every walk stopped at «Build process failed».
+# A Flutter build can also regenerate
 # the Linux plugin files. Only these files are snapshotted and put back at the
 # end, byte for byte, so any other work in mobile/windows or mobile/linux stays.
 $generated = @(
@@ -34,7 +39,7 @@ foreach ($f in $generated) {
 }
 foreach ($f in 'windows\flutter\generated_plugins.cmake', 'windows\flutter\generated_plugin_registrant.cc') {
   $path = Join-Path $mobile $f
-  $kept = Get-Content $path | Where-Object { $_ -notmatch 'flutter_secure_storage_windows|FlutterSecureStorageWindows' }
+  $kept = Get-Content $path | Where-Object { $_ -notmatch 'flutter_secure_storage_windows|FlutterSecureStorageWindows|flutter_local_notifications_windows' }
   [IO.File]::WriteAllLines($path, $kept)
 }
 

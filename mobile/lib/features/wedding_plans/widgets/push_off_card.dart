@@ -27,8 +27,7 @@ class PushOffCard extends StatefulWidget {
   State<PushOffCard> createState() => _PushOffCardState();
 }
 
-class _PushOffCardState extends State<PushOffCard>
-    with WidgetsBindingObserver {
+class _PushOffCardState extends State<PushOffCard> with WidgetsBindingObserver {
   bool _off = false;
 
   /// The phone's settings were opened from here: coming back, the card

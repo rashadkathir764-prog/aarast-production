@@ -79,7 +79,7 @@ enum JourneySection {
   money('المال', 'المال', LucideIcons.wallet),
   tasks('المهام', 'المهام', LucideIcons.listChecks),
   guests('الضيوف', 'الضيفات', LucideIcons.users),
-  providers('المزودين', 'المزودين', LucideIcons.store);
+  providers('المزوّدون', 'المزوّدون', LucideIcons.store);
 
   const JourneySection(this._groomLabel, this._brideLabel, this.icon);
 
@@ -2554,9 +2554,12 @@ class JourneyNote extends StatelessWidget {
 }
 
 /// The design's on/off switch: a 44×26 track with a 20-point thumb that sits
-/// on the right when on (as drawn, D25). A row that carries it should flip
-/// it from anywhere on the row too, so the tap target is the row's full
-/// height; without [onChanged] it rests.
+/// on the right when on (as drawn, D25). Off, the track is the page's paper
+/// inside a [AarastV3Color.fieldEdge] edge with a thumb of the same colour
+/// (REFINEMENT_SPEC 2.6): the pale grey track it had read 1.2:1 on a white
+/// card and an off switch looked like no switch. A row that carries it
+/// should flip it from anywhere on the row too, so the tap target is the
+/// row's full height; without [onChanged] it rests.
 class JourneyToggle extends StatelessWidget {
   const JourneyToggle({
     required this.value,
@@ -2594,14 +2597,25 @@ class JourneyToggle extends StatelessWidget {
             padding: const EdgeInsets.all(AarastV3Space.x1),
             alignment: value ? Alignment.centerRight : Alignment.centerLeft,
             decoration: BoxDecoration(
-              color: value ? color : AarastV3Color.line,
+              color: value ? color : AarastV3Color.paper,
               borderRadius: BorderRadius.circular(AarastV3Radius.surface),
             ),
-            child: const SizedBox.square(
+            // Drawn over the track, so the edge takes no room from the
+            // thumb and the switch keeps one size on and off.
+            foregroundDecoration: value
+                ? null
+                : BoxDecoration(
+                    borderRadius: BorderRadius.circular(AarastV3Radius.surface),
+                    border: Border.all(
+                      color: AarastV3Color.fieldEdge,
+                      width: AarastV3Size.lineStrong,
+                    ),
+                  ),
+            child: SizedBox.square(
               dimension: AarastV3Space.x5,
               child: DecoratedBox(
                 decoration: BoxDecoration(
-                  color: AarastV3Color.paper,
+                  color: value ? AarastV3Color.paper : AarastV3Color.fieldEdge,
                   shape: BoxShape.circle,
                 ),
               ),

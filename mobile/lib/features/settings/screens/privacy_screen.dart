@@ -235,7 +235,7 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
                 color: AarastV3Color.danger,
                 soft: AarastV3Color.dangerSoft,
                 title: 'حذف الحساب',
-                subtitle: 'بعد 30 يوم',
+                subtitle: 'بعد 30 يومًا',
                 onTap: () => context.push(AppRouter.deleteAccount),
               ),
             ],

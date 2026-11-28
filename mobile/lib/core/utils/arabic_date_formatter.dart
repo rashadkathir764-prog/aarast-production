@@ -23,11 +23,14 @@ const _arabicWeekdays = <String>[
   'الأحد',
 ];
 
+/// «الخميس 21 يناير 2027», or «21 يناير 2027» without [includeWeekday]:
+/// the one date format (LANGUAGE.md §4.7), the weekday before the day with
+/// no comma between them.
 String formatArabicDate(DateTime date, {bool includeWeekday = true}) {
   final month = _arabicMonths[date.month - 1];
   final core = '${date.day} $month ${date.year}';
   if (!includeWeekday) return core;
-  return '${_arabicWeekdays[date.weekday - 1]}، $core';
+  return '${_arabicWeekdays[date.weekday - 1]} $core';
 }
 
 String formatArabicCompactDate(DateTime date) {

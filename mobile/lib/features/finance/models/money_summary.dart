@@ -558,6 +558,8 @@ class MoneyCategorySummary {
     this.expectedCost,
     this.estimateLeft,
     this.costKnown,
+    this.suggestion,
+    this.suggestionHidden = false,
   });
 
   factory MoneyCategorySummary.fromJson(Map<String, dynamic> json) {
@@ -581,8 +583,22 @@ class MoneyCategorySummary {
       expectedCost: _nullableString(json['expectedCost']),
       estimateLeft: _nullableString(json['estimateLeft']),
       costKnown: json['costKnown'] is bool ? json['costKnown'] as bool : null,
+      suggestion: switch (json['suggestion']) {
+        'NOT_NEEDED' => 'NOT_NEEDED',
+        'LATER' => 'LATER',
+        _ => null,
+      },
+      suggestionHidden: json['suggestionHidden'] == true,
     );
   }
+
+  /// D72: the owner's answer to the home's suggestion of this item,
+  /// `NOT_NEEDED` («لا أحتاجه») or `LATER` («لاحقًا»); null: not answered.
+  final String? suggestion;
+
+  /// The answer keeps it off the home now (a LATER past its week does
+  /// not).
+  final bool suggestionHidden;
 
   final String categoryId;
   final String name;

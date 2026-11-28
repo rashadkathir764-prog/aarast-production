@@ -1,16 +1,17 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/l10n/aarast_text.dart';
+import '../../../core/phone/phone_links.dart';
 import '../../../core/preferences/device_preferences.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/routing/pop_or_go.dart';
+import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
@@ -18,12 +19,14 @@ import '../../account_contexts/account_contexts_api.dart'
     show AccountContext, AccountContextController;
 import '../../auth/auth_api.dart' show AuthActionGuard, AuthController;
 import '../../finance/finance_api.dart' show FinanceProvider;
+import '../../wedding_plans/wedding_plans_api.dart' show WeddingPlansProvider;
 import '../data/provider_contact_links.dart';
 import '../models/marketplace_models.dart';
 import '../models/provider_budget_match_intent.dart'
-    show budgetItemForCategories;
+    show budgetItemForCategories, priceFitsItem;
 import '../providers/marketplace_provider.dart';
 import '../widgets/provider_details_view.dart';
+import '../widgets/provider_result_card.dart' show planDayIsPast;
 import '../widgets/review_report_sheet.dart' show reportProviderReview;
 
 part 'provider_details_screen.widgets.dart';
@@ -53,11 +56,7 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (!mounted) return;
-      await _loadDetails();
-      if (mounted) setState(() => _quoteContextReady = true);
-    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _open());
   }
 
   @override
@@ -66,12 +65,14 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
     if (oldWidget.providerId != widget.providerId ||
         oldWidget.weddingPlanId != widget.weddingPlanId) {
       _quoteContextReady = false;
-      WidgetsBinding.instance.addPostFrameCallback((_) async {
-        if (!mounted) return;
-        await _loadDetails();
-        if (mounted) setState(() => _quoteContextReady = true);
-      });
+      WidgetsBinding.instance.addPostFrameCallback((_) => _open());
     }
+  }
+
+  Future<void> _open() async {
+    if (!mounted) return;
+    await _loadDetails();
+    if (mounted) setState(() => _quoteContextReady = true);
   }
 
   @override
@@ -98,73 +99,58 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
         }
       });
     }
+    // No provider on the page (still read, not reached, or not there): no
+    // footer asks him for a quote.
     final providerFailedToLoad = context
         .select<ProviderMarketplaceProvider, bool>(
           (marketplace) =>
-              marketplace.providerDetails(widget.providerId) == null &&
-              marketplace.detailsErrorFor(widget.providerId) != null,
+              marketplace.providerDetails(widget.providerId) == null,
         );
     return AarastScreenFrame(
       safeAreaBottom: false,
       backgroundColor: AarastV3Color.canvas,
-      // A provider that failed to load has nothing to ask a quote from.
       bottomNavigationBar: providerFailedToLoad
           ? null
           : _quoteFooter(selectedPlanId),
       child: Consumer<ProviderMarketplaceProvider>(
         builder: (context, state, _) {
-          final provider = state.providerDetails(widget.providerId);
-          final services = state.servicesFor(widget.providerId);
-          final detailsError = state.detailsErrorFor(widget.providerId);
-          final detailsLoading = state.isProviderQuoteContextLoading(
-            widget.providerId,
-          );
-          void retry() => state.loadProviderDetails(
-            widget.providerId,
-            weddingPlanId: selectedPlanId,
-          );
+          final id = widget.providerId;
+          final provider = state.providerDetails(id);
+          final services = state.servicesFor(id);
+          final detailsError = state.detailsErrorFor(id);
+          final detailsLoading = state.isProviderQuoteContextLoading(id);
+          void retry() =>
+              state.loadProviderDetails(id, weddingPlanId: selectedPlanId);
 
-          if (detailsLoading && provider == null) {
-            return _DetailsFrame(
-              onBack: back,
-              child: JourneyListState(
-                phase: JourneyListPhase.loading,
-                section: JourneySection.providers,
-              ),
-            );
-          }
-          if (detailsError != null && provider == null) {
-            return _DetailsFrame(
-              onBack: back,
-              child: JourneyListState(
-                phase: JourneyListPhase.error,
-                section: JourneySection.providers,
-                onRetry: retry,
-              ),
-            );
-          }
           if (provider == null) {
             return _DetailsFrame(
               onBack: back,
-              child: JourneyListState(
-                phase: JourneyListPhase.empty,
-                section: JourneySection.providers,
-                emptyTitle: 'المزود هذا مش موجود',
-                emptyMessage: 'ما لقينا صفحته، يمكن انشالت من الدليل.',
-              ),
+              // The read starts after the first frame: until it has run,
+              // nothing is known, and «لم نجد هذا المزوّد» is not said (it
+              // flashed on every open of a provider the list had not read).
+              phase: detailsLoading || !_quoteContextReady
+                  ? JourneyListPhase.loading
+                  : detailsError != null
+                  ? JourneyListPhase.error
+                  : JourneyListPhase.empty,
+              onRetry: retry,
             );
           }
-
           return ProviderDetailsView(
             eventDate: state.eventDate,
-            dayStatus: _dayStatus(state, provider),
+            bookedByReader: state.providersBookedByReader.contains(provider.id),
             provider: provider,
             services: services,
-            packages: state.packagesFor(widget.providerId),
-            reviews: state.reviewsFor(widget.providerId),
-            portfolio: state.portfolioFor(widget.providerId),
+            packages: state.packagesFor(id),
+            reviews: state.reviewsFor(id),
+            reviewSummary: state.reviewSummaryFor(id),
+            hasMoreReviews: state.hasMoreReviews(id),
+            loadingMoreReviews: state.isLoadingMoreReviews(id),
+            onLoadMoreReviews: () => _loadMoreReviews(state, id),
+            portfolio: state.portfolioFor(id),
             onBack: back,
-            onOpenOffer: provider.isClaimed
+            onOpenOffer:
+                provider.isClaimed && _dayBlock(state, provider) == null
                 ? (serviceId) => _pushOnce(
                     AppRouter.providerQuote(provider.id),
                     extra: serviceId,
@@ -172,51 +158,21 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
                 : null,
             withinBudget: _withinBudget(provider, services, selectedPlanId),
             dataSaver: context.watch<DevicePreferences?>()?.dataSaver ?? false,
-            // The page or one of its sections (services, packages,
-            // reviews, photos) failed to refresh (RA-MO-254).
+            // The page or one of its sections did not refresh (RA-MO-254).
             detailsErrorMessage:
                 detailsError ??
-                state.detailSectionsErrorFor(widget.providerId) ??
-                state.servicesErrorFor(widget.providerId) ??
-                state.packagesErrorFor(widget.providerId),
+                state.detailSectionsErrorFor(id) ??
+                state.servicesErrorFor(id) ??
+                state.packagesErrorFor(id),
             onRetryDetails: detailsLoading ? null : retry,
             onReportReview: _reportReview,
             readerUserId: context.watch<AuthController?>()?.user?.id,
+            isFavorite: state.favoriteProviderIds.contains(provider.id),
+            onFavorite: () => _toggleFavorite(state, provider.id),
           );
         },
       ),
     );
-  }
-
-  /// «ضمن بندك» on f03: the plan's item for this kind of service has an
-  /// amount, and the provider's lowest price in riyals fits it.
-  bool _withinBudget(
-    MarketplaceProvider provider,
-    List<MarketplaceService> services,
-    String? planId,
-  ) {
-    final finance = context.read<FinanceProvider?>();
-    if (planId == null || finance?.loadedPlanId != planId) return false;
-    // G40: the item this provider's offers land in, as the server lists it.
-    final item = budgetItemForCategories(
-      finance!.categories,
-      (item) => finance.providerCategoryIdsFor(item.id),
-      [
-        provider.primaryCategory?.id ?? provider.primaryCategoryId,
-        for (final service in services) service.category?.id,
-      ],
-    );
-    final allocated = num.tryParse(item?.allocatedAmount ?? '') ?? 0;
-    if (allocated <= 0) return false;
-    final prices = [
-      for (final service in services)
-        if (currencyCodeFromDisplayInput(service.currency) ==
-            defaultCurrencyCode)
-          ?num.tryParse(service.basePrice?.replaceAll(',', '') ?? ''),
-    ];
-    if (prices.isEmpty) return false;
-    final lowest = prices.reduce((a, b) => a < b ? a : b);
-    return lowest <= allocated;
   }
 
   Future<void> _loadDetails() async {
@@ -231,6 +187,26 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
       includeAccountData: hasAccount,
       weddingPlanId: selectedPlanId,
     );
+    // The page opened first (from an agreement in the money tab, a link):
+    // the directory has not told the list the plan's wedding day nor read
+    // the saved providers. The heart then drew empty on a saved provider,
+    // and the day line stayed out with «اطلب عرض سعر» open on a closed day.
+    if (selectedPlanId != null && marketplace.eventDate == null) {
+      final plans = context.read<WeddingPlansProvider?>();
+      if (plans != null && plans.selectedPlan?.id != selectedPlanId) {
+        await plans.loadWeddingPlan(selectedPlanId);
+        if (!mounted) return;
+      }
+      final plan = plans?.selectedPlan;
+      if (plan != null &&
+          plan.id == selectedPlanId &&
+          plan.status.toUpperCase() != 'ARCHIVED') {
+        marketplace.setEventDate(plan.weddingDate);
+      }
+    }
+    if (hasAccount && !marketplace.accountDataRead) {
+      unawaited(marketplace.loadFavoriteProviders());
+    }
     await marketplace.loadProviderDetails(
       widget.providerId,
       weddingPlanId: selectedPlanId,
@@ -238,8 +214,7 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
     _countView(marketplace);
   }
 
-  /// Once per opened provider, and never the provider's own preview of
-  /// their listing (V1 checklist 4.19).
+  /// Once per opened provider, never the provider's own preview (4.19).
   void _countView(ProviderMarketplaceProvider marketplace) {
     if (!mounted || _countedViewProviderId == widget.providerId) return;
     if (marketplace.providerDetails(widget.providerId) == null) return;
@@ -250,14 +225,27 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
     marketplace.recordProviderView(widget.providerId);
   }
 
+  /// The heart: the favourites are kept in an account, as on the cards.
+  Future<void> _toggleFavorite(
+    ProviderMarketplaceProvider marketplace,
+    String providerId,
+  ) async {
+    final blocked = await AuthActionGuard.blockProtectedSubmitWithoutAccount(
+      context,
+      message: aarastText.providersFavoriteNeedsAccount(context.gender),
+    );
+    if (blocked || !mounted) return;
+    final failure = await marketplace.toggleFavorite(providerId);
+    if (failure != null && mounted) {
+      AarastToast.showError(context, aarastText.providersFavoriteFailed);
+    }
+  }
+
   /// RA-ST-05 (D94): a report is from an account, and reaches the team.
   Future<void> _reportReview(ProviderReview review) async {
     final allowed = await AuthActionGuard.requireAccount(
       context,
-      reason: context.say(
-        'ادخل حسابك أول عشان تبلّغ عن التقييم.',
-        'ادخلي حسابك أول عشان تبلّغين عن التقييم.',
-      ),
+      reason: aarastText.providersReviewNeedsAccount(context.gender),
     );
     if (allowed && mounted) await reportProviderReview(context, review.id);
   }
@@ -266,9 +254,8 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
     try {
       return await AuthActionGuard.hasAccount(context);
     } on ProviderNotFoundException {
-      // Public provider previews and isolated route tests do not mount the
-      // account storage. They may browse public details, but never receive
-      // account-scoped quotes.
+      // Public previews and isolated tests mount no account storage: they
+      // browse public details and never receive account-scoped quotes.
       return false;
     }
   }
@@ -313,10 +300,7 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
         (quotePlanId != null &&
             quotePlanId.isNotEmpty &&
             quotePlanId != selectedPlanId)) {
-      AarastToast.showError(
-        context,
-        'هذا العرض لخطة ثانية غير المفتوحة الحين.',
-      );
+      AarastToast.showError(context, aarastText.providersOtherPlanOffer);
       return;
     }
     if (_returnQuoteToMarketplace(

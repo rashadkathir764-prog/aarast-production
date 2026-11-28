@@ -1,4 +1,7 @@
 import 'package:aarast_mobile/core/push/push_notifications_controller.dart';
+import 'package:aarast_mobile/core/push/push_registration_api.dart';
+import 'package:aarast_mobile/core/push/push_system_notifications.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -66,6 +69,36 @@ void main() {
     expect(await push.phoneState(), PushPhoneState.unavailable);
   });
 
+  test('a channel turned off in the phone is named, not taken for «on»', () async {
+    SharedPreferences.setMockInitialValues({});
+    final system = _BlockingSystem({'aarast_messages'});
+    final push = PushNotificationsController(
+      preferences: await SharedPreferences.getInstance(),
+      gateway: PluginLikePushGateway(granted: true),
+      registrationApi: RecordingPushRegistry(),
+      systemNotifications: system,
+    );
+    await push.initialize();
+
+    expect(await push.phoneState(), PushPhoneState.channelsOff);
+    expect(push.blockedChannels, {'aarast_messages'});
+
+    system.blocked = {};
+    expect(await push.phoneState(), PushPhoneState.on);
+  });
+
+  test('allowed but not registered with the server is «not linked»', () async {
+    SharedPreferences.setMockInitialValues({});
+    final push = PushNotificationsController(
+      preferences: await SharedPreferences.getInstance(),
+      gateway: PluginLikePushGateway(granted: true),
+      registrationApi: _RefusingRegistry(),
+    );
+    await push.initialize();
+    await push.bindAuthenticatedUser('user-1');
+    expect(await push.phoneState(), PushPhoneState.notLinked);
+  });
+
   test('opening the phone\'s settings says whether they opened', () async {
     var opened = 0;
     final push = await _controller(
@@ -85,4 +118,27 @@ void main() {
     );
     expect(await failing.openPhoneSettings(), isFalse);
   });
+}
+
+class _BlockingSystem extends NoPushSystemNotifications {
+  _BlockingSystem(this.blocked);
+
+  Set<String> blocked;
+
+  @override
+  Future<Set<String>> blockedChannels() async => blocked;
+}
+
+class _RefusingRegistry implements PushInstallationRegistry {
+  @override
+  Future<void> registerAndroid(String fid, {CancelToken? cancelToken}) async {
+    throw StateError('server unreachable');
+  }
+
+  @override
+  Future<void> unregisterAndroid(
+    String fid, {
+    CancelToken? cancelToken,
+    String? bearerToken,
+  }) async {}
 }

@@ -463,7 +463,7 @@ void main() {
     expect(find.textContaining('مش منها'), findsNothing);
     await tester.enterText(find.byType(TextField).first, '7000000');
     await tester.pumpAndSettle();
-    expect(find.text('سبعة مليون ر.ي'), findsOneWidget);
+    expect(find.text('سبعة ملايين ر.ي'), findsOneWidget);
     // No city: «التالي» waits; the link says what is missing and stays.
     expect(_button(tester, 'التالي').onPressed, isNull);
     await _tap(tester, 'أكمل بدون ميزانية');
@@ -539,13 +539,13 @@ void main() {
       '2000000',
     );
     await tester.pumpAndSettle();
-    expect(find.text('ثلاثة مليون ر.ي'), findsOneWidget);
+    expect(find.text('ثلاثة ملايين ر.ي'), findsOneWidget);
     expect(find.text('سلّمت منه'), findsOneWidget);
-    expect(find.text('باقي مليون'), findsOneWidget);
+    expect(find.text('باقي 1 مليون'), findsOneWidget);
     expect(find.text('موعد تسليم الباقي'), findsOneWidget);
     await _tap(tester, 'التالي');
     expect(
-      find.text('الميزانية 7 مليون · المهر 3 مليون، باقي مليون'),
+      find.text('الميزانية 7 ملايين · المهر 3 ملايين، باقي 1 مليون'),
       findsOneWidget,
     );
     await _tap(tester, 'افتح خطتك');
@@ -596,13 +596,11 @@ void main() {
       await typeMahr(tester);
       expect(find.text('المهر من الميزانية؟'), findsOneWidget);
       expect(
-        find.text('الميزانية 7 مليون كلها للعرس، والمهر مليونين فوقها'),
+        find.text('الميزانية 7 ملايين كلها للعرس، والمهر 2 مليون فوقها'),
         findsOneWidget,
       );
       expect(
-        find.text(
-          'من الميزانية 7 مليون يروح مليونين للمهر، ويبقى للعرس 5 مليون',
-        ),
+        find.text('من الميزانية 7 ملايين: 2 مليون للمهر، و5 ملايين للعرس'),
         findsOneWidget,
       );
       await _tapKey(tester, 'mahr-budget-inside');
@@ -610,7 +608,7 @@ void main() {
 
       expect(
         find.text(
-          'الميزانية 7 مليون، فيها المهر · المهر مليونين، باقي 1.5 مليون',
+          'الميزانية 7 ملايين، فيها المهر · المهر 2 مليون، باقي 1.5 مليون',
         ),
         findsOneWidget,
       );
@@ -626,7 +624,7 @@ void main() {
       await _tap(tester, 'التالي');
 
       expect(
-        find.text('الميزانية 7 مليون · المهر مليونين، باقي 1.5 مليون'),
+        find.text('الميزانية 7 ملايين · المهر 2 مليون، باقي 1.5 مليون'),
         findsOneWidget,
       );
       await _tap(tester, 'افتح خطتك');
@@ -942,7 +940,7 @@ void main() {
 
     expect(find.text('خطتك جاهزة يا محمد'), findsOneWidget);
     expect(find.text('عرس محمد · صنعاء'), findsOneWidget);
-    expect(find.text('الميزانية 7 مليون'), findsOneWidget);
+    expect(find.text('الميزانية 7 ملايين'), findsOneWidget);
     expect(find.textContaining('بند لعرسك'), findsOneWidget);
     // This plan has no date yet (x01), so nothing claims to sit on one.
     expect(find.textContaining('مقترحة'), findsOneWidget);
@@ -1585,6 +1583,8 @@ class _CountingMarketplace extends MarketplaceApi {
     List<String>? categoryIds,
     bool? featured,
     DateTime? eventDate,
+    ProviderSort? sort,
+    bool hideBusy = false,
     int page = 1,
     int limit = 30,
   }) async {

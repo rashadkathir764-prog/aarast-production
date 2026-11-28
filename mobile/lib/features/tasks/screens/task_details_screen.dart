@@ -301,7 +301,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
             else if (late)
               JourneyTag(
                 label:
-                    'متأخرة ${arabicCount(lateDays, one: 'يوم', two: 'يومين', few: 'أيام', many: 'يوم')}',
+                    'متأخرة ${arabicDays(lateDays)}',
                 color: AarastV3Color.danger,
                 soft: AarastV3Color.dangerSoft,
               ),

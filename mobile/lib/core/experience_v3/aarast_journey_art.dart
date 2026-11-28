@@ -220,11 +220,25 @@ class JourneyWeddingSky extends StatelessWidget {
 /// colours, melting into the kit's solid [base] at the bottom. The asset
 /// is the sky alone, cut to what is drawn, so nothing is decoded to be hidden.
 class JourneyCelebrationSky extends StatelessWidget {
-  const JourneyCelebrationSky({required this.base, super.key});
+  const JourneyCelebrationSky({
+    required this.base,
+    this.alignment = Alignment.topCenter,
+    this.fadeFrom = 0.55,
+    super.key,
+  });
 
   static const asset = 'assets/images/journey/celebration_sky.jpg';
 
   final Color base;
+
+  /// Which part of the photo a frame shorter than it keeps: the opening's
+  /// tall sky keeps its top; a short hero keeps its middle, where the
+  /// bursts are.
+  final Alignment alignment;
+
+  /// Where the melt into [base] starts, as a share of the height: lower in
+  /// a short hero whose words take only its foot.
+  final double fadeFrom;
 
   @override
   Widget build(BuildContext context) {
@@ -237,7 +251,7 @@ class JourneyCelebrationSky extends StatelessWidget {
             Image.asset(
               asset,
               fit: BoxFit.cover,
-              alignment: Alignment.topCenter,
+              alignment: alignment,
               excludeFromSemantics: true,
               // On a cold start the photo decodes a frame or two after the
               // night is drawn: it comes in softly, not with a jump.
@@ -250,7 +264,7 @@ class JourneyCelebrationSky extends StatelessWidget {
                       child: child,
                     ),
             ),
-            CustomPaint(painter: _FadeIntoPainter(base)),
+            CustomPaint(painter: _FadeIntoPainter(base, from: fadeFrom)),
           ],
         ),
       ),
@@ -260,13 +274,16 @@ class JourneyCelebrationSky extends StatelessWidget {
 
 /// A solid band at the bottom, softened by blur so the sky melts into it.
 class _FadeIntoPainter extends CustomPainter {
-  const _FadeIntoPainter(this.color);
+  const _FadeIntoPainter(this.color, {this.from = 0.55});
 
   final Color color;
 
+  /// Where the melt starts, as a share of the height.
+  final double from;
+
   @override
   void paint(Canvas canvas, Size size) {
-    final top = size.height * 0.55;
+    final top = size.height * from;
     // Reach four blur radii past every other edge, so only the top fades.
     final reach = size.height * 0.32;
     canvas.drawRect(
@@ -278,11 +295,12 @@ class _FadeIntoPainter extends CustomPainter {
     // The solid floor starts only where the blur is already opaque (more
     // than three blur radii below its edge), so no seam shows.
     canvas.drawRect(
-      Rect.fromLTRB(0, size.height * 0.80, size.width, size.height),
+      Rect.fromLTRB(0, size.height * (from + 0.25), size.width, size.height),
       Paint()..color = color,
     );
   }
 
   @override
-  bool shouldRepaint(covariant _FadeIntoPainter old) => old.color != color;
+  bool shouldRepaint(covariant _FadeIntoPainter old) =>
+      old.color != color || old.from != from;
 }

@@ -329,7 +329,7 @@ Future<_PhotoChoice?> _showPhotoSheet(
                 color: AarastV3Color.danger,
                 soft: AarastV3Color.dangerSoft,
                 title: context.say('شيل الصورة', 'شيلي الصورة'),
-                subtitle: 'تنرسل البطاقة اللي يرسمها أعرست بدون صورة',
+                subtitle: 'تنرسل البطاقة اللي يرسمها اعّرست بدون صورة',
                 onTap: () =>
                     Navigator.of(sheetContext).pop(_PhotoChoice.remove),
               ),

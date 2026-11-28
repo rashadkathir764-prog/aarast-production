@@ -349,6 +349,21 @@ void main() {
     );
   });
 
+  // The couple's alert switches are not a provider's: resumed on
+  // «/settings», a provider used to see the couple's four switches.
+  test('a provider resumed on the alerts settings lands on his own', () {
+    final provider = accountContext(role: AccountContextRole.provider);
+    expect(
+      compatibleAccountContextResume(provider, AppRouter.settings),
+      AppRouter.providerSettings,
+    );
+    final owner = accountContext(role: AccountContextRole.owner);
+    expect(
+      compatibleAccountContextResume(owner, AppRouter.settings),
+      AppRouter.settings,
+    );
+  });
+
   test('post-auth resume is carried through the central home entry', () {
     final location = AppRouter.authenticatedEntry('/providers/provider-1');
     final uri = Uri.parse(location);

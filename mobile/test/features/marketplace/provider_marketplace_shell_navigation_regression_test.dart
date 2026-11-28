@@ -121,14 +121,15 @@ void main() {
       // MainShell starts on Home, whose production FAB has a repeating
       // animation. Move to Providers before pumpAndSettle so the test follows
       // the real tab transition without waiting on that perpetual animation.
-      await tester.tap(find.text('المزودين'));
+      await tester.tap(find.text('المزوّدون'));
       await tester.pump();
       await tester.pumpAndSettle();
       // The plan lands on «طلباتي»; the directory is «استكشف».
       await tester.tap(
         find.descendant(
           of: find.byKey(const ValueKey('providers-tabs')),
-          matching: find.text('استكشف'),
+          // 2026-11-26: «استكشف» is «الدليل» (REFINEMENT_SPEC 2.8).
+          matching: find.text('الدليل'),
         ),
       );
       await tester.pumpAndSettle();
@@ -153,9 +154,8 @@ void main() {
       );
 
       for (var launch = 0; launch < 2; launch += 1) {
-        final details = find.byKey(
-          const Key('super5-provider-details-$_providerId'),
-        );
+        // 2026-11-26: the row itself opens the provider (one anatomy).
+        final details = find.byKey(const Key('provider-row-$_providerId'));
         await tester.scrollUntilVisible(
           details,
           260,
@@ -186,9 +186,7 @@ void main() {
         );
       }
 
-      final details = find.byKey(
-        const Key('super5-provider-details-$_providerId'),
-      );
+      final details = find.byKey(const Key('provider-row-$_providerId'));
       await tester.scrollUntilVisible(
         details,
         260,
@@ -200,7 +198,8 @@ void main() {
       await tester.pumpAndSettle();
       final reviewButton = tester.widget<JourneyButton>(
         find.ancestor(
-          of: find.text('شوف العرض'),
+          // 2026-11-26: the footer's words in MSA.
+          of: find.text('افتح العرض'),
           matching: find.byType(JourneyButton),
         ),
       );
@@ -299,7 +298,7 @@ void _expectMarketplaceBodyActive(
   expect(screen, findsOneWidget);
   expect(identical(tester.element(screen), originalElement), isTrue);
   expect(tester.getSize(screen).height, greaterThan(200));
-  expect(find.byKey(const ValueKey('المزودين-true')), findsOneWidget);
+  expect(find.byKey(const ValueKey('المزوّدون-true')), findsOneWidget);
 
   final scrollable = find
       .descendant(of: screen, matching: find.byType(Scrollable))

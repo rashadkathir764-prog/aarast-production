@@ -70,7 +70,10 @@ void main() {
         find.text('الحجوزات المؤكدة تنلغي، ونبلّغ المزودين'),
         findsOneWidget,
       );
-      expect(find.text('عندك 30 يوم ترجع فيها لو غيّرت رأيك'), findsOneWidget);
+      expect(
+        find.text('عندك 30 يومًا ترجع فيها لو غيّرت رأيك'),
+        findsOneWidget,
+      );
 
       await tester.tap(find.byKey(const ValueKey('delete-account-download')));
       await tester.pumpAndSettle();
@@ -307,7 +310,7 @@ void _pendingScreenTests() {
     await tester.pumpWidget(world.app(const DeletionPendingScreen()));
     await tester.pumpAndSettle();
 
-    expect(find.text('حسابك ينحذف بعد 27 يوم'), findsOneWidget);
+    expect(find.text('حسابك ينحذف بعد 27 يومًا'), findsOneWidget);
     expect(
       find.text(
         'طلبت الحذف 19 أكتوبر. لين 18 نوفمبر تقدر ترجع وكل شيء كما هو.',

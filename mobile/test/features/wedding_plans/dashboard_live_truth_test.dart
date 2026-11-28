@@ -167,8 +167,11 @@ void main() {
     // dashboard_money_card_figures_test).
     expect(find.text('500\u00a0ألف\u00a0ر.ي'), findsOneWidget);
     // V-01: the far side writes every figure short, with its unit.
-    expect(find.text('اتفقت على 900 ألف'), findsOneWidget);
-    expect(find.text('دفعت 400 ألف'), findsOneWidget);
+    // Changed on purpose (D113, Rashad 2026-11-27): the card is one height
+    // and keeps one row of two figures, the budget's first; what was paid
+    // is the money tab's.
+    expect(find.textContaining('الميزانية'), findsOneWidget);
+    expect(find.textContaining('دفعت'), findsNothing);
     expect(find.byKey(const ValueKey('dashboard-money-bar')), findsOneWidget);
     // The budget is not on b02's card.
     expect(find.text('المتاح من الميزانية'), findsNothing);
@@ -188,8 +191,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('••••'), findsOneWidget);
-    expect(find.text('اتفقت على ••••'), findsOneWidget);
-    expect(find.text('دفعت ••••'), findsOneWidget);
+    // D113: the one row's figures are hidden with the lead.
+    expect(find.text('الميزانية ••••'), findsOneWidget);
+    expect(find.textContaining('دفعت'), findsNothing);
     expect(find.text('500\u00a0ألف\u00a0ر.ي'), findsNothing);
     expect(
       tester

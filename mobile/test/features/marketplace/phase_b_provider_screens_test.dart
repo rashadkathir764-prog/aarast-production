@@ -124,7 +124,9 @@ void main() {
         find.byKey(const ValueKey('provider-details-day')),
         findsOneWidget,
       );
-      expect(find.text('محجوز يوم 21'), findsOneWidget);
+      // Changed on purpose (2026-11-26): the page reads the day from its
+      // own call (GET /providers/:id?eventDate=), in the card's words.
+      expect(find.text('محجوز يوم عرسك'), findsOneWidget);
     });
 
     testWidgets('provider details stay safe at 320px RTL and 1.3 scale', (
@@ -152,7 +154,12 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const Key('provider-media-fallback')), findsOneWidget);
+      // 2026-11-26: no photo, no photo block: a slim head with the way back.
+      expect(find.byKey(const ValueKey('provider-details-back')), findsOne);
+      expect(
+        find.byKey(const ValueKey('provider-details-photos')),
+        findsNothing,
+      );
       expect(find.text('اطلب عرض سعر'), findsOneWidget);
       expect(find.textContaining('YER'), findsNothing);
       expect(tester.takeException(), isNull);
@@ -178,11 +185,12 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
 
-      final retry = find.widgetWithText(JourneyTextAction, 'جرّب مرة ثانية');
+      // 2026-11-26: the page's own line, in MSA.
+      final retry = find.widgetWithText(JourneyTextAction, 'أعد المحاولة');
       expect(retry, findsNothing);
       // The notice stays, but its retry waits for the running refresh.
       expect(
-        find.byKey(const ValueKey('journey-list-notice-error')),
+        find.byKey(const ValueKey('provider-details-stale')),
         findsOneWidget,
       );
       expect(tester.takeException(), isNull);
@@ -229,12 +237,16 @@ void main() {
           );
           await tester.pumpAndSettle();
 
+          // 2026-11-26: the services' range left the page for one «من X».
+          expect(find.textContaining('من 450,000'), findsOneWidget);
           expect(
             find.text('450,000\u00a0-\u00a0600,000\u00a0ر.ي'),
-            findsOneWidget,
+            findsNothing,
           );
+          // Changed on purpose (2026-11-26): one price line, «من X», with
+          // «ضمن بندك» on it when the lowest price fits.
           expect(
-            find.text('ضمن بندك'),
+            find.textContaining('ضمن بندك'),
             shown ? findsOneWidget : findsNothing,
             reason: 'item $allocated',
           );
@@ -251,10 +263,11 @@ void main() {
       final cases = <QuoteRequest?, String>{
         null: 'اطلب عرض سعر',
         _quote(status: 'SENT'): 'تابع طلبك',
+        // 2026-11-26: the footer's words in MSA.
         _quote(
           status: 'RESPONDED',
           offers: const [QuoteOffer(id: 'offer-live', status: 'PENDING')],
-        ): 'شوف العرض',
+        ): 'افتح العرض',
         _quote(
           status: 'RESPONDED',
           offers: const [
@@ -264,9 +277,9 @@ void main() {
               serverIsExpired: true,
             ),
           ],
-        ): 'اطلب عرض جديد',
-        _quote(status: 'ACCEPTED'): 'شوفه في طلباتي',
-        _quote(status: 'CANCELLED'): 'اطلب عرض جديد',
+        ): 'اطلب عرضًا جديدًا',
+        _quote(status: 'ACCEPTED'): 'افتحه في طلباتي',
+        _quote(status: 'CANCELLED'): 'اطلب عرضًا جديدًا',
       };
 
       for (final entry in cases.entries) {
@@ -339,7 +352,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('اطلب عرض جديد'), findsOneWidget);
+      expect(find.text('اطلب عرضًا جديدًا'), findsOneWidget);
       await tester.tap(find.byKey(const Key('provider-details-quote')));
       await tester.pumpAndSettle();
 
@@ -446,7 +459,7 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        await tester.tap(find.text('شوف العرض'));
+        await tester.tap(find.text('افتح العرض'));
         await tester.pumpAndSettle();
 
         expect(find.text('offer-route:plan-1:${quote.id}'), findsOneWidget);
@@ -504,7 +517,7 @@ void main() {
       await tester.pumpAndSettle();
 
       final actionButton = find.byWidgetPredicate(
-        (widget) => widget is JourneyButton && widget.label == 'شوف العرض',
+        (widget) => widget is JourneyButton && widget.label == 'افتح العرض',
       );
       final onPressed = tester.widget<JourneyButton>(actionButton).onPressed!;
 
@@ -560,12 +573,17 @@ void main() {
       // Each in its own currency, never the raw code.
       expect(find.text('1,200\u00a0ر.س'), findsOneWidget);
       expect(find.text('باقة استقبال · 3,500\u00a0ر.ي'), findsNWidgets(2));
-      expect(find.text('حسب الطلب'), findsOneWidget);
+      // The second provider is priced in his package: the column says that
+      // price. It read «السعر عند الطلب» over «باقة استقبال · 3,500 ر.ي».
+      expect(find.text('السعر عند الطلب'), findsNothing);
+      expect(find.text('3,500 ر.ي'), findsOneWidget);
       expect(find.textContaining('YER'), findsNothing);
       // Neither is marked better (C47, «أنسب لك» dropped).
       expect(find.text('أنسب لك'), findsNothing);
       expect(find.text('اطلب عرض سعر'), findsOneWidget);
-      expect(find.text('ما يستقبل طلبات لين يستلم صاحبه ملفه'), findsOneWidget);
+      // 2026-11-26: the unclaimed line's MSA (one constant, the cards'
+      // and the comparison's).
+      expect(find.text('لا يستقبل طلبات العروض بعد'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
@@ -757,22 +775,20 @@ class _TwoSaved extends _FakeMarketplaceProvider {
   List<ProviderPackage> packagesFor(String id) => [_package()];
 }
 
-/// The directory listed the hall for the wedding day, and it is free.
+/// The page answered the wedding day: Aarast's bookings filled it.
 class _DayAnswered extends _FakeMarketplaceProvider {
   @override
   DateTime? get eventDate => DateTime(2027, 1, 21);
 
   @override
-  List<MarketplaceProvider> get providers => const [
-    MarketplaceProvider(
-      id: _providerId,
-      businessName: 'قاعة السلام',
-      ownerName: 'مالك القاعة',
-      ratingAverage: 4.7,
-      ratingCount: 12,
-      dayStatus: ProviderDayStatus.full,
-    ),
-  ];
+  MarketplaceProvider? providerDetails(String id) => const MarketplaceProvider(
+    id: _providerId,
+    businessName: 'قاعة السلام',
+    ownerName: 'مالك القاعة',
+    ratingAverage: 4.7,
+    ratingCount: 12,
+    dayStatus: ProviderDayStatus.full,
+  );
 }
 
 /// A hall and a band saved together.
@@ -790,8 +806,12 @@ class _HallAndBand extends _TwoSaved {
       : super.providerDetails(id);
 }
 
-/// The fixture hall, priced in riyals.
+/// The fixture hall, priced in riyals; no package (a package would join the
+/// page's one «من X» since 2026-11-26).
 class _RiyalMarketplace extends _FakeMarketplaceProvider {
+  @override
+  List<ProviderPackage> packagesFor(String id) => const [];
+
   @override
   List<MarketplaceService> servicesFor(String id) => [
     for (final (index, price) in ['450000', '600000'].indexed)
@@ -953,9 +973,12 @@ String _phaseBSource(String relativePath) {
           'lib/features/marketplace/screens/favorite_providers_screen.dart') {
     return _readSource(relativePath);
   }
+  // 2026-11-26: the one reading of a provider's prices left the view for
+  // its own file (provider_prices.dart), read with it.
   return [
     _readSource(relativePath),
     _readSource('lib/features/marketplace/widgets/provider_details_view.dart'),
+    _readSource('lib/features/marketplace/widgets/provider_prices.dart'),
   ].join('\n');
 }
 

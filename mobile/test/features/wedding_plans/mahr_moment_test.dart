@@ -75,7 +75,7 @@ void main() {
     expect(find.text('سلّمت المهر كامل'), findsOneWidget);
     expect(
       find.text(
-        'ثلاثة مليون ريال، وصلت كلها.\nهذا الجزء من عرسك خلص، ألف مبروك.',
+        'ثلاثة ملايين ريال، وصلت كلها.\nهذا الجزء من عرسك خلص، ألف مبروك.',
       ),
       findsOneWidget,
     );
@@ -108,6 +108,7 @@ void main() {
     expect(find.text('2,000,000'), findsNothing);
     expect(find.text('••••'), findsNWidgets(2));
     expect(find.textContaining('مليون'), findsNothing);
+    expect(find.textContaining('ملايين'), findsNothing);
     expect(find.text('هذا الجزء من عرسك خلص، ألف مبروك.'), findsOneWidget);
   });
 }

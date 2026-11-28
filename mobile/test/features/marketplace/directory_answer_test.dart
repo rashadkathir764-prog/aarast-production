@@ -43,6 +43,12 @@ class _DirectoryApi extends MarketplaceApi {
   /// The day each page was asked about (RA-BE-150).
   final askedDays = <DateTime?>[];
 
+  /// The reader's own requests.
+  List<QuoteRequest> quotes = const [];
+
+  @override
+  Future<List<QuoteRequest>> getMyQuoteRequests() async => quotes;
+
   @override
   Future<List<MarketplaceCity>> getCities() async => const [];
 
@@ -57,6 +63,8 @@ class _DirectoryApi extends MarketplaceApi {
     List<String>? categoryIds,
     bool? featured,
     DateTime? eventDate,
+    ProviderSort? sort,
+    bool hideBusy = false,
     int page = 1,
     int limit = 30,
   }) async {
@@ -84,32 +92,41 @@ class _DirectoryApi extends MarketplaceApi {
 void main() {
   // RA-BE-150 (Q-36): the plan's wedding day goes with the list, so each row
   // can say whether the provider takes it; it filters nobody.
-  test('the wedding day is asked with every page, and a row reads its answer', () async {
-    final api = _DirectoryApi(firstPage: [_hall('a')], secondPage: [_hall('b')]);
-    final directory = ProviderMarketplaceProvider(api);
-    expect(directory.setEventDate(DateTime(2027, 2, 18)), isTrue);
-    expect(directory.setEventDate(DateTime(2027, 2, 18)), isFalse);
-    await directory.loadMarketplace(includeAccountData: false);
-    await directory.loadMoreProviders();
-    expect(api.askedDays, [DateTime(2027, 2, 18), DateTime(2027, 2, 18)]);
-    expect(directory.setEventDate(null), isTrue);
+  test(
+    'the wedding day is asked with every page, and a row reads its answer',
+    () async {
+      final api = _DirectoryApi(
+        firstPage: [_hall('a')],
+        secondPage: [_hall('b')],
+      );
+      final directory = ProviderMarketplaceProvider(api);
+      expect(directory.setEventDate(DateTime(2027, 2, 18)), isTrue);
+      expect(directory.setEventDate(DateTime(2027, 2, 18)), isFalse);
+      await directory.loadMarketplace(includeAccountData: false);
+      await directory.loadMoreProviders();
+      // Changed on purpose (2026-11-26): browsing everything also reads one
+      // shelf per category, each asked about the same day.
+      expect(api.askedDays, hasLength(greaterThanOrEqualTo(2)));
+      expect(api.askedDays, everyElement(DateTime(2027, 2, 18)));
+      expect(directory.setEventDate(null), isTrue);
 
-    // D131: only what is proven is read; «free» is never a state.
-    ProviderDayStatus? status(Map<String, dynamic> json) =>
-        MarketplaceProvider.fromJson({
-          'id': 'p',
-          'businessName': 'قاعة',
-          ...json,
-        }).dayStatus;
-    expect(status({'dayStatus': 'FULL'}), ProviderDayStatus.full);
-    expect(status({'dayStatus': 'CLOSED'}), ProviderDayStatus.closed);
-    expect(status({'dayStatus': null}), isNull);
-    expect(status({}), isNull);
-    // A server before D131: its «false» is a full day; its «true» proved
-    // nothing, so it says nothing.
-    expect(status({'availableOnEventDate': false}), ProviderDayStatus.full);
-    expect(status({'availableOnEventDate': true}), isNull);
-  });
+      // D131: only what is proven is read; «free» is never a state.
+      ProviderDayStatus? status(Map<String, dynamic> json) =>
+          MarketplaceProvider.fromJson({
+            'id': 'p',
+            'businessName': 'قاعة',
+            ...json,
+          }).dayStatus;
+      expect(status({'dayStatus': 'FULL'}), ProviderDayStatus.full);
+      expect(status({'dayStatus': 'CLOSED'}), ProviderDayStatus.closed);
+      expect(status({'dayStatus': null}), isNull);
+      expect(status({}), isNull);
+      // A server before D131: its «false» is a full day; its «true» proved
+      // nothing, so it says nothing.
+      expect(status({'availableOnEventDate': false}), ProviderDayStatus.full);
+      expect(status({'availableOnEventDate': true}), isNull);
+    },
+  );
 
   test(
     'a search that could not load is not answered by the old page',
@@ -150,26 +167,58 @@ void main() {
     expect(directory.providersAnswerFilters, isTrue);
   });
 
-  test(
-    'the row kinds are fixed on the first page, not by a later one',
-    () async {
-      final api = _DirectoryApi(
-        firstPage: [for (var i = 0; i < 3; i++) _hall('h$i')],
-        secondPage: [for (var i = 3; i < 9; i++) _hall('h$i')],
-      );
-      final directory = ProviderMarketplaceProvider(api);
-      await directory.loadMarketplace(includeAccountData: false);
-      expect(directory.browseSectionKinds, {'cat-venue'});
-      expect(
-        directory.browseShelfKinds,
-        isEmpty,
-        reason: 'three: a short list',
-      );
+  // Changed on purpose (2026-11-26, REFINEMENT_SPEC 2.7): the shelves are
+  // no longer cut out of the first page (a shelf showed three of a kind its
+  // chip counted twelve in); each is the server's own answer under its
+  // category, so reading on through the whole list leaves them as they are.
+  test('the shelves are their own read, not a later page\'s', () async {
+    final api = _DirectoryApi(
+      firstPage: [for (var i = 0; i < 3; i++) _hall('h$i')],
+      secondPage: [for (var i = 3; i < 9; i++) _hall('h$i')],
+    );
+    final directory = ProviderMarketplaceProvider(api);
+    await directory.loadMarketplace(includeAccountData: false);
+    expect(
+      [for (final shelf in directory.shelves) shelf.categoryId],
+      ['cat-venue'],
+    );
+    final before = directory.shelves.single.providers.length;
 
-      await directory.loadMoreProviders();
-      expect(directory.providers, hasLength(9));
-      // Held by the directory, so a screen built again reads the same.
-      expect(directory.browseShelfKinds, isEmpty);
-    },
-  );
+    await directory.loadMoreProviders();
+    expect(directory.providers, hasLength(9));
+    expect(directory.shelves.single.providers, hasLength(before));
+  });
+
+  // The day's `dayStatus` counts every confirmed booking, the reader's own
+  // too: the phone knows which providers its own bookings hold that day, so
+  // their rows read «محجوز لك» and not «محجوز يوم عرسك».
+  test('the reader\'s own confirmed bookings on the wedding day', () async {
+    QuoteRequest quote(String provider, String day, String status) =>
+        QuoteRequest.fromJson({
+          'id': 'q-$provider',
+          'providerId': provider,
+          'status': 'ACCEPTED',
+          'lifecycleStatus': 'ACCEPTED',
+          'booking': {
+            'id': 'b-$provider',
+            'quoteRequestId': 'q-$provider',
+            'providerId': provider,
+            'eventDate': day,
+            'status': status,
+            'lifecycleStatus': status,
+          },
+        });
+    final api = _DirectoryApi(firstPage: [_hall('a')])
+      ..quotes = [
+        quote('mine', '2027-01-21', 'CONFIRMED'),
+        quote('asked-only', '2027-01-21', 'REQUESTED'),
+        quote('another-day', '2027-01-19', 'CONFIRMED'),
+      ];
+    final directory = ProviderMarketplaceProvider(api);
+    await directory.loadMyQuoteRequests();
+
+    expect(directory.providersBookedByReader, isEmpty, reason: 'no day asked');
+    directory.setEventDate(DateTime(2027, 1, 21));
+    expect(directory.providersBookedByReader, {'mine'});
+  });
 }

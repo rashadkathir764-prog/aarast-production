@@ -16,7 +16,7 @@ void main() {
       'ينتهي بعد يوم واحد',
     );
     expect(offerEndsLabel(DateTime(2026, 10, 26, 8), now), 'ينتهي بعد يومين');
-    expect(offerEndsLabel(DateTime(2026, 11, 4, 8), now), 'ينتهي بعد 11 يوم');
+    expect(offerEndsLabel(DateTime(2026, 11, 4, 8), now), 'ينتهي بعد 11 يومًا');
   });
 
   test('the last day reads today, and an ended offer has no line', () {

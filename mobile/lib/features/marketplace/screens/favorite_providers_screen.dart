@@ -10,6 +10,8 @@ import '../models/marketplace_models.dart';
 import '../providers/marketplace_provider.dart';
 import '../widgets/provider_details_view.dart'
     show providerMoneyLabel, providerPriceRange;
+import '../widgets/provider_result_card.dart'
+    show ProviderRating, providerPriceOnRequest, providerUnclaimedMessage;
 
 /// «قارن الملفين» from f09: two saved providers side by side, laid out as
 /// f04 compares offers, with neither marked better («أنسب لك» is dropped).
@@ -143,7 +145,7 @@ class _FavoriteProvidersScreenState extends State<FavoriteProvidersScreen> {
                 'احفظ مزود ثاني من نفس خدمة واحد من مفضلتك، وقارن بينهم.',
                 'احفظي مزود ثاني من نفس خدمة واحد من مفضلتك، وقارني بينهم.',
               ),
-              emptyAction: context.say('افتح استكشف', 'افتحي استكشف'),
+              emptyAction: context.say('افتح الدليل', 'افتحي الدليل'),
               onEmptyAction: () => context.go(AppRouter.providerMarketplace),
             )
           else
@@ -155,11 +157,11 @@ class _FavoriteProvidersScreenState extends State<FavoriteProvidersScreen> {
                 'احفظي مزودين تقارنين بينهم',
               ),
               emptyMessage: context.say(
-                'اضغط القلب على مزودين في «استكشف»، ويجون هنا.',
-                'اضغطي القلب على مزودين في «استكشف»، ويجون هنا.',
+                'اضغط القلب على مزودين في «الدليل»، ويجون هنا.',
+                'اضغطي القلب على مزودين في «الدليل»، ويجون هنا.',
               ),
-              // Critique ط5: the way to «استكشف» it names.
-              emptyAction: context.say('افتح استكشف', 'افتحي استكشف'),
+              // Critique ط5: the way to «الدليل» it names.
+              emptyAction: context.say('افتح الدليل', 'افتحي الدليل'),
               onEmptyAction: () => context.go(AppRouter.providerMarketplace),
             ),
         ],
@@ -196,7 +198,7 @@ class _CompareColumn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final price = providerPriceRange(services);
+    final price = providerPriceRange(services, packages: packages);
     final city = provider.city?.nameAr.trim();
     final active = packages.where((item) => item.isActive).toList();
     return JourneyBox(
@@ -226,7 +228,7 @@ class _CompareColumn extends StatelessWidget {
           ),
           const SizedBox(height: AarastV3Space.x2),
           Text(
-            price ?? 'حسب الطلب',
+            price ?? providerPriceOnRequest,
             style: JourneyType.of(
               JourneyType.lead,
               weight: JourneyType.bold,
@@ -261,29 +263,11 @@ class _CompareColumn extends StatelessWidget {
                 ],
               ),
             ),
-          if (provider.ratingCount > 0) ...[
-            const SizedBox(height: AarastV3Space.x1),
-            Row(
-              children: [
-                const Icon(
-                  LucideIcons.star,
-                  size: AarastV3Icon.sm,
-                  color: AarastV3Color.brandAccentStrong,
-                ),
-                const SizedBox(width: AarastV3Space.x1),
-                Flexible(
-                  child: Text(
-                    '${provider.ratingAverage.toStringAsFixed(1)} '
-                    '(${provider.ratingCount})',
-                    style: JourneyType.of(
-                      JourneyType.small,
-                      weight: JourneyType.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
+          const SizedBox(height: AarastV3Space.x1),
+          ProviderRating(
+            average: provider.ratingAverage,
+            count: provider.ratingCount,
+          ),
           if (city != null && city.isNotEmpty)
             Text(
               city,
@@ -305,7 +289,7 @@ class _CompareColumn extends StatelessWidget {
             )
           else
             Text(
-              'ما يستقبل طلبات لين يستلم صاحبه ملفه',
+              providerUnclaimedMessage,
               style: JourneyType.of(
                 JourneyType.caption,
                 color: AarastV3Color.textMuted,

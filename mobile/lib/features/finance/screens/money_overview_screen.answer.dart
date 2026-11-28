@@ -455,9 +455,6 @@ class _ComingDues extends StatelessWidget {
     required this.currency,
     required this.onAll,
     required this.onOpen,
-    this.all = const [],
-    this.weddingDate,
-    this.coverage,
   });
 
   final List<MoneyObligation> lines;
@@ -465,29 +462,18 @@ class _ComingDues extends StatelessWidget {
   final VoidCallback onAll;
   final void Function(MoneyObligation line) onOpen;
 
-  /// Every coming due, for the line over the list.
-  final List<MoneyObligation> all;
-  final DateTime? weddingDate;
-  final MoneyCoverage? coverage;
-
   @override
   Widget build(BuildContext context) {
-    // A due the money in hand does not reach (D103): its step leaves less
-    // than nothing.
-    final short = <String>{
-      for (final step in coverage?.steps ?? const <MoneyCoverageStep>[])
-        if (moneyValue(step.balance) < 0) step.id,
-    };
     return Column(
       key: const ValueKey('money-coming-dues'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // D114: the mahr's dates are among them.
+        // D114: the mahr's dates are among them. «خط الفلوس», the dotted
+        // line from today to the wedding that stood over the list (Rashad
+        // 2026-11-17), is gone by his word on 2026-11-27 («ما له داعي»):
+        // the verdict above says when the money runs short, and the list
+        // says each due.
         JourneySectionTitle('الدفعات الجاية', action: 'كلها', onAction: onAll),
-        if (all.length > 1) ...[
-          _MoneyLine(dues: all, weddingDate: weddingDate, short: short),
-          const SizedBox(height: AarastV3Space.x2),
-        ],
         JourneyList(
           children: [
             for (final line in lines)
@@ -524,166 +510,6 @@ class _ComingDues extends StatelessWidget {
       ],
     );
   }
-}
-
-/// «خط الفلوس» (Rashad 2026-11-17): from today to the wedding, each coming
-/// due a dot on its day. A dot the money in hand does not reach is red, one
-/// within the week saffron; the rest the plan's colour. When the money runs
-/// short and how crowded the weeks are, at a glance; the list under it says
-/// what each one is.
-class _MoneyLine extends StatelessWidget {
-  const _MoneyLine({
-    required this.dues,
-    required this.weddingDate,
-    required this.short,
-  });
-
-  final List<MoneyObligation> dues;
-  final DateTime? weddingDate;
-  final Set<String> short;
-
-  @override
-  Widget build(BuildContext context) {
-    final today = DateUtils.dateOnly(appNow());
-    final days = [
-      for (final line in dues) daysUntilPlanDay(line.dueDate!).clamp(0, 9999),
-    ];
-    final toWedding = weddingDate == null
-        ? null
-        : daysUntilPlanDay(weddingDate!).clamp(0, 9999);
-    final span = [
-      ...days,
-      ?toWedding,
-      1,
-    ].reduce((a, b) => a > b ? a : b).toDouble();
-    final dots = [
-      for (final (index, line) in dues.indexed)
-        (
-          at: days[index] / span,
-          colour: short.contains(line.id)
-              ? AarastV3Color.danger
-              : days[index] <= 7
-              ? AarastV3Color.amber
-              : context.accent.primary,
-        ),
-    ];
-    final anyShort = dues.any((line) => short.contains(line.id));
-    final endDay = toWedding != null
-        ? weddingDate!
-        : addPlanDays(today, span.round());
-    return Semantics(
-      label:
-          '${arabicCount(dues.length, one: 'دفعة وحدة', two: 'دفعتين', few: 'دفعات', many: 'دفعة')} من اليوم لين ${toWedding != null ? 'العرس' : _dayWords(endDay)}'
-          '${anyShort ? '، وفيها دفعات ما تكفيها فلوسك' : ''}',
-      excludeSemantics: true,
-      child: JourneyBox(
-        key: const ValueKey('money-line'),
-        padding: const EdgeInsets.fromLTRB(
-          AarastV3Space.x4,
-          AarastV3Space.x3,
-          AarastV3Space.x4,
-          AarastV3Space.x3,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            SizedBox(
-              height: AarastV3Space.x4,
-              child: CustomPaint(
-                painter: _MoneyLinePainter(
-                  dots: dots,
-                  track: AarastV3Color.line,
-                  rtl: Directionality.of(context) == TextDirection.rtl,
-                ),
-              ),
-            ),
-            const SizedBox(height: AarastV3Space.x1),
-            Row(
-              children: [
-                Text(
-                  'اليوم',
-                  style: JourneyType.of(
-                    JourneyType.caption,
-                    color: AarastV3Color.textMuted,
-                  ),
-                ),
-                const SizedBox(width: AarastV3Space.x2),
-                // The middle gives way first; nothing leaves the card.
-                Expanded(
-                  child: anyShort
-                      ? Text(
-                          'الأحمر ما تكفيه فلوسك',
-                          key: const ValueKey('money-line-short'),
-                          textAlign: TextAlign.center,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: JourneyType.of(
-                            JourneyType.caption,
-                            weight: JourneyType.bold,
-                            color: AarastV3Color.danger,
-                          ),
-                        )
-                      : const SizedBox.shrink(),
-                ),
-                const SizedBox(width: AarastV3Space.x2),
-                Text(
-                  toWedding != null ? 'العرس' : _dayWords(endDay),
-                  maxLines: 1,
-                  style: JourneyType.of(
-                    JourneyType.caption,
-                    weight: JourneyType.bold,
-                    color: context.accent.primary,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _MoneyLinePainter extends CustomPainter {
-  const _MoneyLinePainter({
-    required this.dots,
-    required this.track,
-    required this.rtl,
-  });
-
-  final List<({double at, Color colour})> dots;
-  final Color track;
-  final bool rtl;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final mid = size.height / 2;
-    const radius = 5.0;
-    double x(double at) {
-      final along = radius + at * (size.width - radius * 2);
-      return rtl ? size.width - along : along;
-    }
-
-    canvas.drawLine(
-      Offset(0, mid),
-      Offset(size.width, mid),
-      Paint()
-        ..color = track
-        ..strokeWidth = 3
-        ..strokeCap = StrokeCap.round,
-    );
-    // Today, where the line starts.
-    canvas.drawCircle(Offset(x(0), mid), 3, Paint()..color = track);
-    for (final dot in dots) {
-      final centre = Offset(x(dot.at), mid);
-      canvas.drawCircle(centre, radius + 2, Paint()..color = Colors.white);
-      canvas.drawCircle(centre, radius, Paint()..color = dot.colour);
-    }
-  }
-
-  @override
-  bool shouldRepaint(_MoneyLinePainter old) =>
-      old.dots != dots || old.track != track || old.rtl != rtl;
 }
 
 /// 5. What needs the owner, apart from paying.

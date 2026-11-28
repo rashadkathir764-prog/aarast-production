@@ -96,7 +96,7 @@ void main() {
       );
 
       expect(text, startsWith('ملخص ميزانية «عرس أحمد»'));
-      expect(text, contains('الميزانية: 5\u00a0مليون'));
+      expect(text, contains('الميزانية: 5\u00a0ملايين'));
       expect(text, contains('• تكلفة العرس المتوقعة: 3.2\u00a0مليون'));
       expect(text, contains('(64٪ من الميزانية)'));
       expect(text, contains('• باقي من الميزانية: 1.8\u00a0مليون'));
@@ -109,7 +109,7 @@ void main() {
         expect(text, isNot(contains(formal)), reason: formal);
       }
       expect(text, isNot(contains('777')));
-      expect(text, isNot(contains('9\u00a0مليون')));
+      expect(text, isNot(contains('9\u00a0ملايين')));
     },
   );
 
@@ -124,6 +124,7 @@ void main() {
     expect(text, contains('اندفع 31٪ من الاتفاقات'));
     expect(text, contains('• الذهب'));
     expect(text, isNot(contains('مليون')));
+    expect(text, isNot(contains('ملايين')));
     expect(text, isNot(contains('ر.ي')));
   });
 
@@ -194,11 +195,22 @@ void main() {
       expect(
         text,
         contains(
-          '• المهر (برا الميزانية): 3\u00a0مليون\u00a0ر.ي، انسلّم منه 2\u00a0مليون\u00a0ر.ي',
+          '• المهر (برا الميزانية): 3\u{00a0}ملايين\u{00a0}ر.ي، انسلّم منه 2\u{00a0}مليون\u{00a0}ر.ي',
+        ),
+      );
+      // D129: the count follows the number shown.
+      expect(
+        text,
+        isNot(
+          contains(
+            '• المهر (برا الميزانية): 3\u00a0مليون\u00a0ر.ي، انسلّم منه 2\u00a0مليون\u00a0ر.ي',
+          ),
         ),
       );
       // Never among the biggest items.
       expect(text, isNot(contains('• المهر: ')));
+      // D136: the digits lead; the word dual is gone.
+      expect(text, isNot(contains('مليونان')));
       expect(text, contains('• القاعة: 2\u00a0مليون\u00a0ر.ي'));
 
       final hidden = moneyShareText(
@@ -230,7 +242,7 @@ void main() {
       bridePlan: true,
     );
     expect(text, isNot(contains('المهر')));
-    expect(text, isNot(contains('3\u00a0مليون')));
+    expect(text, isNot(contains('3\u00a0ملايين')));
   });
 
   test('the task summary counts progress and lists the next open tasks', () {
@@ -315,6 +327,7 @@ void main() {
     await tester.tap(find.byKey(const Key('share-sheet-switch')));
     await tester.pumpAndSettle();
     expect(preview(), isNot(contains('مليون')));
+    expect(preview(), isNot(contains('ملايين')));
     // RA-MO-206: in the reader's own words, not «إرسال عبر».
     expect(find.text('أرسل بالواتساب'), findsOneWidget);
   });

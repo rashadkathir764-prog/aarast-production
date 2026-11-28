@@ -2,7 +2,7 @@ import 'keep_currency_on_line.dart';
 import 'money_formatters.dart';
 
 /// [compactMoneyFigure] when shortening loses nothing («1.5 مليون», «250
-/// ألف»), else the amount in full («1,450,000 ر.ي»): for figures read
+/// ألفًا»), else the amount in full («1,450,000 ر.ي»): for figures read
 /// together that add up (critique م2: «اتفقت 3.4، دفعت 1.5، باقي 2», and
 /// 1.5 + 2 is not 3.4). The rule is [shortensWithoutLoss]; for millions it
 /// is [sumSafeMoneyParts]'s own (a tenth of a million), which sits in the
@@ -27,17 +27,22 @@ bool shortensWithoutLoss(num value) {
   return abs == abs.truncateToDouble();
 }
 
-/// A short money figure that always carries its unit (V-01): «3 مليون»,
-/// «250 ألف», and below a thousand the currency itself («750 ر.ي»). One
+/// A short money figure that always carries its unit (V-01): «3 ملايين»,
+/// «250 ألفًا», and below a thousand the currency itself («750 ر.ي»). One
 /// convention for every figure in a column, so no line reads a bare number
 /// beside another with its currency. The space before the unit never breaks.
+/// The unit follows the number shown ([countedScaleWords]): «1 مليون»,
+/// «2 مليون», «15 مليونًا», «1.5 مليون», «2 ألف», «800 ألف».
 ///
 /// Millions come from [compactMoneyParts] (one decimal); thousands follow
 /// the same rule.
 String compactMoneyFigure(num value, {required String currencyCode}) {
   final parts = compactMoneyParts(value, currencyCode: currencyCode);
-  final million = parts.millionUnit;
-  if (million != null) return keepCurrencyOnLine('${parts.number} $million');
+  if (parts.millionUnit != null) {
+    return keepCurrencyOnLine(
+      countedScaleWords(parts.number, scale: CompactScale.million),
+    );
+  }
   final abs = value.abs();
   if (abs >= 1000) {
     final thousands = compactTenths(abs, 1000);
@@ -49,7 +54,9 @@ String compactMoneyFigure(num value, {required String currencyCode}) {
       );
     }
     final sign = value.isNegative ? '-' : '';
-    return keepCurrencyOnLine('$sign$thousands ألف');
+    return keepCurrencyOnLine(
+      countedScaleWords('$sign$thousands', scale: CompactScale.thousand),
+    );
   }
   return keepCurrencyOnLine(parts.plainText);
 }

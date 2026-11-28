@@ -275,7 +275,21 @@ void main() {
       );
       final photo = rows.firstWhere((row) => row.key == 'photo');
       expect(photo.stage, 4);
-      expect(photo.detail, startsWith('ضوء صنعاء · أكّد'));
+      expect(photo.detail, startsWith('ضوء صنعاء · أكدوا '));
+      // The provider confirmed, not the reader: the bride reads the same
+      // line. It read «أكّدي» to her, an order, and `startsWith('… أكّد')`
+      // passed on it.
+      final hers = buildProviderBoard(
+        items: items,
+        costs: const [],
+        costItemById: const {'cost-q1': 'photo'},
+        quotes: [_accepted(booking: _booking('CONFIRMED'))],
+        reader: JourneyProfile.bride,
+      );
+      expect(
+        hers.firstWhere((row) => row.key == 'photo').detail,
+        photo.detail,
+      );
       // A request whose service matches no item gets its own row; here the
       // photo service matched, so the waiting one joined the photo row.
       expect(rows.where((row) => row.key.startsWith('category:')), isEmpty);
@@ -329,7 +343,7 @@ void main() {
     expect(find.textContaining('تختار ضوء صنعاء بـ550,000'), findsOneWidget);
     expect(
       find.text(
-        'السعر يدخل مالك لما تطلب الحجز، وما تقدر تختار عرض ثاني لهذي الخدمة.',
+        'السعر يدخل في المال لما تطلب الحجز، وما تقدر تختار عرض ثاني لهذي الخدمة.',
       ),
       findsOneWidget,
     );
@@ -371,7 +385,7 @@ void main() {
     expect(find.textContaining('تختارين عدسة سبأ بـ480,000'), findsOneWidget);
     expect(
       find.text(
-        'السعر يدخل مالك لما تطلبين الحجز، وما تقدرين تختارين عرض ثاني لهذي الخدمة.',
+        'السعر يدخل في المال لما تطلبين الحجز، وما تقدرين تختارين عرض ثاني لهذي الخدمة.',
       ),
       findsOneWidget,
     );

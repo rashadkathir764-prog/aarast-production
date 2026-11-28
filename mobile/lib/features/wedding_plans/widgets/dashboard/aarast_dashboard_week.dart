@@ -14,15 +14,18 @@ const _weekDayLabelWidth = 84.0;
 String? _weddingDayGreeting(BuildContext context, {required int days}) =>
     days <= 0 ? context.planWord('مبروك يا عريس', 'مبروك يا عروسة') : null;
 
-/// b04/b05's hero: the wedding lights over the plan's night, a strand lit
-/// for every night that has passed («كل ليلة تنوّر حبل · 5 من 7»), the
-/// fireworks full on the day.
+/// «أسبوع العرس»'s hero: the real fireworks photo of the opening
+/// ([JourneyCelebrationSky]), melting into the plan's colour, with the
+/// countdown over it. Rashad, 2026-11-27: the drawn lights and strands that
+/// stood here («كل ليلة تنوّر حبل») were not good enough, and their line
+/// went with them, since the photo lights no strand.
 class _WeddingSkyHero extends StatelessWidget {
   const _WeddingSkyHero({
     required this.days,
     required this.date,
     required this.showHijri,
     required this.onTap,
+    this.moment = 1,
   });
 
   final int days;
@@ -30,14 +33,23 @@ class _WeddingSkyHero extends StatelessWidget {
   final bool showHijri;
   final VoidCallback onTap;
 
+  /// Before the week opens (D134: the week's page is read from the day the
+  /// date is set), the plan's own moment on the path; in the week and on
+  /// the day the path is theirs.
+  final int moment;
+
   @override
   Widget build(BuildContext context) {
     final day = days <= 0;
-    final lit = day ? 7 : (7 - days).clamp(0, 7);
+    // D134: the week has not opened yet, and the line says when it starts;
+    // inside it, the wedding's day as the home's hero writes it.
+    final ahead = days > weddingWeekDays;
     final hijri = showHijri ? HijriDate.fromGregorian(date) : null;
     final line = day
         ? [?hijri?.dayAndMonth, formatArabicWeekday(date)].join(' · ')
-        : 'كل ليلة تنوّر حبل · $lit من 7';
+        : ahead
+        ? 'الأسبوع يبدأ بعد ${arabicDays(days - weddingWeekDays)}'
+        : [formatArabicWeekdayDayMonth(date), ?hijri?.dayAndMonth].join(' · ');
     // b04's countdown reads by the same rule as b01/b02's, from the same
     // homeCountdownWords: this hero wrote its own and so said «4 يوم على
     // عرسك» where the greeting above it said «باقي 4 أيام».
@@ -67,22 +79,12 @@ class _WeddingSkyHero extends StatelessWidget {
           // need it; it was 330 on every phone.
           child: JourneyArtFrame(
             ratio: AarastV3Media.feature,
-            art: JourneyWeddingSky(
-              strands: 7,
-              lit: lit,
-              fireAlpha: day ? 0.9 : 0.45,
-              bursts: day
-                  ? [
-                      (const Offset(0.15, 0.14), AarastV3Color.saffron, 46.0),
-                      (const Offset(0.85, 0.12), JourneyArt.warm, 52.0),
-                      (const Offset(0.50, 0.34), accent.primaryMid, 34.0),
-                      (const Offset(0.88, 0.45), AarastV3Color.saffron, 30.0),
-                    ]
-                  : const [
-                      (Offset(0.16, 0.16), AarastV3Color.saffron, 34.0),
-                      (Offset(0.84, 0.13), JourneyArt.warm, 38.0),
-                    ],
+            // The hero is shorter than the photo: its middle holds the
+            // bursts, and the melt starts where the words begin.
+            art: JourneyCelebrationSky(
               base: accent.primaryDark,
+              alignment: Alignment.center,
+              fadeFrom: 0.62,
             ),
             child: LayoutBuilder(
               builder: (context, constraints) {
@@ -165,7 +167,13 @@ class _WeddingSkyHero extends StatelessWidget {
                       ),
                     ],
                     const SizedBox(height: AarastV3Space.x3),
-                    _StagePath(current: day ? 3 : 2),
+                    _StagePath(
+                      current: day
+                          ? 3
+                          : ahead
+                          ? moment
+                          : 2,
+                    ),
                   ],
                 );
               },
@@ -413,7 +421,7 @@ class _WeekProviders extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const JourneySectionTitle('المزودين'),
+        const JourneySectionTitle('المزوّدون'),
         AarastPressable(
           key: const ValueKey('aarast-dashboard-week-providers'),
           onTap: onTap,

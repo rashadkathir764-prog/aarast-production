@@ -8,9 +8,14 @@ void main() {
     });
 
     test('formats full Arabic date with weekday by default', () {
+      // LANGUAGE.md §4.7: «الخميس 21 يناير», no comma after the weekday.
       expect(
         formatArabicDate(DateTime(2026, 12, 28)),
-        'الاثنين، 28 ديسمبر 2026',
+        'الاثنين 28 ديسمبر 2026',
+      );
+      expect(
+        formatArabicWeekdayDayMonth(DateTime(2027, 1, 21)),
+        'الخميس 21 يناير',
       );
     });
 

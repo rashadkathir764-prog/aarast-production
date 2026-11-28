@@ -58,7 +58,9 @@ const viewerFather = ParticipantPersona(
 const _privateMoney = [
   '4.9 مليون',
   '2.6 مليون',
-  '7 مليون',
+  // The budget as the app writes it since D129; «7 مليون» matched nothing
+  // any more, so this line guarded nothing.
+  '7 ملايين',
   '1.6 مليون',
   '3.3 مليون',
   'باقي عليك',
@@ -108,7 +110,9 @@ Future<void> runParticipantWalk(
   }
 
   await walk.step('x06_participant_home', 'رئيسية المشارك', () async {
-    if (!await walk.waitFor(walk.text('يوم على العرس'), seconds: 12)) {
+    // D134 (2026-11-27): the approved participant home, in its own words.
+    // The counted word changes with the count («يومًا», «أيام», «يوم»).
+    if (!await walk.waitFor(walk.text('على العرس'), seconds: 12)) {
       walk.fail('ما ظهر عدّاد الأيام');
     }
     // A kin word is not a name (greetingName): «الوالد» is greeted
@@ -210,8 +214,8 @@ Future<void> runParticipantWalk(
     noPrivateMoney();
   });
 
-  await walk.step('q16_providers', 'المزودين', () async {
-    await walk.tab('المزودين');
+  await walk.step('q16_providers', 'المزوّدون', () async {
+    await walk.tab('المزوّدون');
     if (p.managesProviders) {
       walk.expectNotSee(
         'ما طلبت من أحد بعد',

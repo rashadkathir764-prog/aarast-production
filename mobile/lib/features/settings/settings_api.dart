@@ -7,5 +7,14 @@ export 'screens/deletion_pending_screen.dart' show DeletionPendingScreen;
 export 'screens/lock_settings_screen.dart' show LockSettingsScreen;
 export 'screens/privacy_screen.dart' show PrivacyScreen;
 export 'screens/settings_screen.dart' show SettingsScreen;
+export 'models/preference_coverage.dart' show NotificationSwitch;
+export 'utils/notice_coverage.dart'
+    show NoticeReader, coverageAlwaysLine, coverageIncludesLine;
 export 'widgets/change_phone_sheet.dart' show showChangePhoneSheet;
+export 'widgets/notification_settings_parts.dart'
+    show
+        NotificationPreferencesSection,
+        NotificationSwitchRow,
+        PhoneNotificationsSection,
+        saveNotificationSwitch;
 export 'widgets/set_password_sheet.dart' show showSetPasswordSheet;

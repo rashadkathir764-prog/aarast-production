@@ -694,7 +694,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('ما في محادثات بعد'), findsOneWidget);
-    await tester.tap(find.text('دوّر في استكشف'));
+    await tester.tap(find.text('دوّر في الدليل'));
     expect(explored, 1);
   });
 

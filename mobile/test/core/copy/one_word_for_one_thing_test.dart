@@ -2,10 +2,23 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
+import 'copy_sources.dart';
+
 // One thing has one name in what the person reads. The app's word for the
 // phone and its number is «الجوال»; «الهاتف» had come back in ten messages
 // (the reset-password form, the wrong-number errors of guests, sharing and
 // the market), so one screen said «رقم جوالك» and its error «رقم الهاتف».
+
+/// «تنبيه» in any form («التنبيهات»، «تنبيهاتك»، «بالتنبيهات»).
+final _alertWord = <String, RegExp>{'تنبيه': RegExp('تنبيه')};
+
+/// «تنبيه» still in the Dart code's string literals (lib/ outside
+/// lib/l10n). It may only go down: lower it to the number this test prints
+/// in the change that rewrites them to «إشعار».
+///
+/// D134 (Rashad, 2026-11-27): the approved home stays in its own words until
+/// its turn in D129's migration; 39 counted the rejected home.
+const _alertWordLeftInCode = 44;
 
 void main() {
   test('the phone is «الجوال» in every string the person reads', () {
@@ -66,36 +79,33 @@ void main() {
     expect(offenders, isEmpty, reason: offenders.join('\n'));
   });
 
-  // The app's word is «التنبيهات» (the bell, the screen, the settings row).
-  // «إشعار» had stayed in the delete-account warning, the tab badge's spoken
-  // label and the fallback title of a push (RA-MO-133).
-  test('a notification is «تنبيه» in every string the person reads', () {
-    // Android's own settings page is named «الإشعارات»; the line that sends
-    // the person there says the system's word so they find it.
-    const androidSettingsPath = 'push_off_card.dart';
-    final offenders = <String>[];
-    var androidPathSeen = false;
-    for (final entity in Directory('lib').listSync(recursive: true)) {
-      if (entity is! File || !entity.path.endsWith('.dart')) continue;
-      final lines = entity.readAsLinesSync();
-      for (var index = 0; index < lines.length; index++) {
-        final line = lines[index];
-        final code = line.trimLeft();
-        if (code.startsWith('//')) continue;
-        if (!line.contains('إشعار')) continue;
-        if (entity.path.endsWith(androidSettingsPath) &&
-            line.contains('اعّرست › الإشعارات')) {
-          androidPathSeen = true;
-          continue;
-        }
-        offenders.add('${entity.path}:${index + 1}: ${code.trim()}');
-      }
-    }
-    expect(offenders, isEmpty, reason: offenders.join('\n'));
+  // LANGUAGE.md §3 and REFINEMENT_SPEC §2.8: what reaches the phone is
+  // «الإشعار/الإشعارات», the name the person finds in the phone's own
+  // settings, in the bell, the inbox, the settings and the permission sheet.
+  // «التنبيه» was the app's word before D129.
+  test('no arb part calls a notification «تنبيه»', () {
+    final offenders = <String>[
+      for (final word in arbWords())
+        if (word.text.contains('تنبيه')) '$word: ${word.text.trim()}',
+    ];
     expect(
-      androidPathSeen,
-      isTrue,
-      reason: 'the allowance for the Android settings path is stale',
+      offenders,
+      isEmpty,
+      reason: 'the word is «الإشعار/الإشعارات»:\n${offenders.join('\n')}',
+    );
+  });
+
+  test('«تنبيه» still typed in the code only goes down', () {
+    final count = countIn(codeLiterals(), _alertWord);
+    expect(
+      count,
+      lessThanOrEqualTo(_alertWordLeftInCode),
+      reason: 'a new «تنبيه» in the code: the word is «الإشعار/الإشعارات»',
+    );
+    expect(
+      count,
+      _alertWordLeftInCode,
+      reason: 'fewer are left: lower _alertWordLeftInCode to $count',
     );
   });
 }

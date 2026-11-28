@@ -150,10 +150,9 @@ class _CountHero extends StatelessWidget {
       line = 'الموعد لسا ما ثبت';
       figure = null;
     } else if (count > 2) {
-      // «7 أيام», «11 يوم», «105 أيام»: the app's one counting rule
+      // «7 أيام», «11 يومًا», «105 أيام»: the app's one counting rule
       // (RA-MO-63, RA-MO-67).
-      line =
-          '${arabicCountWord(count, one: 'يوم', two: 'يومين', few: 'أيام', many: 'يوم')} على العرس';
+      line = '${arabicDayWord(count)} على العرس';
       figure = '$count';
     } else if (count == 2) {
       line = 'يومين على العرس';
@@ -216,8 +215,13 @@ class _DayHero extends StatelessWidget {
         // it; it was 300 on every phone.
         child: JourneyArtFrame(
           ratio: AarastV3Media.feature,
-          art: JourneyWeddingSky(
+          // The real celebration photo, as on the owner's «أسبوع العرس»
+          // (Rashad, 2026-11-27: the drawn sky «مش حلوه»); its middle holds
+          // the bursts, and it melts into the plan's colour under the words.
+          art: JourneyCelebrationSky(
             base: voice.bride ? AarastV3Color.rose : AarastV3Color.primaryDark,
+            alignment: Alignment.center,
+            fadeFrom: 0.62,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,

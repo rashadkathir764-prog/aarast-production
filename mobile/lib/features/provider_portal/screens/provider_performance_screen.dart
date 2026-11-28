@@ -85,7 +85,7 @@ class _ProviderPerformanceScreenState extends State<ProviderPerformanceScreen> {
           children: [
             JourneySubHeader(
               title: 'أداؤك',
-              subtitle: 'آخر ${stats?.windowDays ?? 30} يوم',
+              subtitle: 'آخر ${arabicDays(stats?.windowDays ?? 30)}',
             ),
             if (stats == null)
               dashboard.isLoading

@@ -54,6 +54,9 @@ class MainActivity : FlutterActivity() {
                 // Turned off by the person, the notifications come back on
                 // in the phone's settings only: this app's page there.
                 "openNotificationSettings" -> result.success(openNotificationSettings())
+                // One channel turned off: its own page in the phone's settings.
+                "openChannelSettings" ->
+                    result.success(openChannelSettings(call.argument<String>("channelId")))
                 else -> result.notImplemented()
             }
         }
@@ -109,6 +112,26 @@ class MainActivity : FlutterActivity() {
             }
         }
         return false
+    }
+
+    /**
+     * One of the app's channels in the phone's settings (Android 8+), else
+     * the app's notification settings. False when nothing opens.
+     */
+    private fun openChannelSettings(channelId: String?): Boolean {
+        if (channelId == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            return openNotificationSettings()
+        }
+        val intent = Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS).apply {
+            putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+            putExtra(Settings.EXTRA_CHANNEL_ID, channelId)
+        }
+        return try {
+            startActivity(intent)
+            true
+        } catch (_: ActivityNotFoundException) {
+            openNotificationSettings()
+        }
     }
 
     /** WhatsApp, else WhatsApp Business; null when neither is installed. */

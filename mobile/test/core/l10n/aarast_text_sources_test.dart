@@ -4,19 +4,25 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../../tool/merge_arb.dart';
+import '../copy/copy_sources.dart' show dialectWords;
 
 // D129 (docs/project/LANGUAGE.md): the app's words have one source. These
 // hold it: the joined file is the parts' join, every word says where it
 // shows, every word keeps the language's rules, and the words still typed
 // inside the code only ever go down.
 
-/// Words the language never writes (LANGUAGE.md §2, §6): dialect, heavy
-/// officialese. Matched as whole words.
+/// Words the language never writes (LANGUAGE.md §2, §6): dialect (the one
+/// list, test/core/copy/copy_sources.dart), heavy officialese. Matched as
+/// whole words.
 const _banned = [
-  'الحين', 'اللي', 'ايش', 'إيش', 'فين', 'مش', 'مو', 'تشتي', 'تشتين',
-  'أشتي', 'تبي', 'عشان', 'لسا', 'لسّا', 'بكرة', 'برّا', 'الجاي', 'الجاية',
-  'كمان', 'شوي', 'بعدين', 'لين', 'مين', 'يرجى', 'الرجاء', 'نرجو', 'تعذّر',
-  'تعذر', 'مسكّر',
+  ...dialectWords,
+  'تبي',
+  'يرجى',
+  'الرجاء',
+  'نرجو',
+  'تعذّر',
+  'تعذر',
+  'مسكّر',
 ];
 
 /// Latin letters allowed in a word the user reads (LANGUAGE.md §7).
@@ -31,7 +37,13 @@ const _dataFiles = {
 /// The Arabic string literals still typed in lib/ outside lib/l10n. It may
 /// only go down: each feature moved into lib/l10n/parts lowers it, and the
 /// number is lowered with it in the same change.
-const _literalsLeft = 7517;
+///
+/// D134 (Rashad, 2026-11-27): the approved home stays, so the home's own
+/// words came back into the code (6872 before it, with the rejected home in
+/// the arb parts). Still under the committed 7517. The home moves into the
+/// arb parts when its turn comes (D129), and this goes down with it.
+/// 2026-11-28: the day counts moved to the one tool (`arabicDays`).
+const _literalsLeft = 7307;
 
 void main() {
   test('app_ar.arb is the join of lib/l10n/parts', () {
@@ -58,8 +70,7 @@ void main() {
           .replaceAll(RegExp(r'\{\s*\w+\s*,\s*(select|plural)\s*,'), '')
           .replaceAll(RegExp(r'(=\d+|\b[A-Za-z]+)\{'), '');
       for (final word in _banned) {
-        if (RegExp('(^|[^؀-ۿ])$word(\$|[^؀-ۿ])')
-            .hasMatch(words)) {
+        if (RegExp('(^|[^؀-ۿ])$word(\$|[^؀-ۿ])').hasMatch(words)) {
           problems.add('${entry.key}: «$word»');
         }
       }
@@ -114,7 +125,9 @@ void main() {
 /// files, on lines that are not comments.
 int arabicLiteralsLeft(Directory lib) {
   final literal = RegExp(
-    "'([^'\\\\\\n]|\\\\.)*'" '|' '"([^"\\\\\\n]|\\\\.)*"',
+    "'([^'\\\\\\n]|\\\\.)*'"
+    '|'
+    '"([^"\\\\\\n]|\\\\.)*"',
   );
   final arabic = RegExp('[؀-ۿ]');
   var count = 0;

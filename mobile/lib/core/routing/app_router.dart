@@ -118,7 +118,8 @@ import '../../features/wedding_plans/wedding_plans_api.dart'
         MyWeddingPlansScreen,
         PlanAssistantScreen,
         PlanCenterScreen,
-        WeddingPlanDashboardScreen;
+        WeddingPlanDashboardScreen,
+        WeddingWeekScreen;
 import '../../features/welcome_gateway/welcome_gateway_api.dart'
     show SmartWelcomeScreen;
 import '../config/app_feature_flags.dart';
@@ -294,6 +295,11 @@ class AppRouter {
   /// b12 «مناسبات عرسك» (D65).
   static String planEvents(String id) {
     return '/wedding-plans/$id/events';
+  }
+
+  /// «أسبوع العرس» (D134): the page the home's card opens.
+  static String weddingWeek(String id) {
+    return '/wedding-plans/$id/week';
   }
 
   static String planCenter(String id) {
@@ -592,6 +598,7 @@ WeddingPlanRouteAccess weddingPlanRouteAccessForPath(String path) {
     'dashboard' ||
     'plan-center' ||
     'events' ||
+    'week' ||
     'notifications' ||
     'contributions' => WeddingPlanRouteAccess.viewPlan,
     'timeline' => WeddingPlanRouteAccess.manageTasks,

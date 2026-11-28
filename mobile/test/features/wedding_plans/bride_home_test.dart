@@ -420,9 +420,15 @@ void main() {
     // (the money tab's read, the owner's); every agreement left, her
     // father's share in it, no longer stands in as «باقي على العروسة».
     expect(find.textContaining('باقي على العروسة'), findsNothing);
+    // Changed on purpose (D113, Rashad 2026-11-27): the home's card is one
+    // height and keeps one row of two figures, here the budget and what she
+    // agreed (this plan's summary names no free part); what she paid and
+    // what her father paid for her (D59) are said on the money tab, in the
+    // same words (money_budget_words), not on the home.
+    expect(find.textContaining('الميزانية'), findsOneWidget);
     expect(find.textContaining('اتفقت العروسة على 4.5'), findsOneWidget);
-    expect(find.textContaining('العروسة دفعت 1.3'), findsOneWidget);
-    expect(find.textContaining('دفع عنها 1.3'), findsOneWidget);
+    expect(find.textContaining('العروسة دفعت'), findsNothing);
+    expect(find.textContaining('دفع عنها'), findsNothing);
     expect(find.textContaining('باقي تدفع'), findsNothing);
     expect(find.textContaining('دفعت 2.6'), findsNothing);
   });
@@ -451,7 +457,8 @@ void main() {
     expect(find.text('ومع الموعود ناقصك'), findsNothing);
     // Nothing promised: no «موعود» line on the far side.
     expect(find.textContaining(RegExp('^موعود ')), findsNothing);
-    expect(find.text('معك 5 مليون'), findsOneWidget);
+    // D129: the shared money tool counts by Arabic's forms.
+    expect(find.text('معك 5 ملايين'), findsOneWidget);
   });
 
   testWidgets('a failed load asks her «جرّبي مرة ثانية»', (tester) async {

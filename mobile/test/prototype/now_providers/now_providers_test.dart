@@ -896,7 +896,7 @@ void main() {
       _market,
       await _session(m),
       h: 1900,
-      act: () => _openTab(tester, 'استكشف'),
+      act: () => _openTab(tester, 'الدليل'),
     );
   });
 
@@ -914,7 +914,7 @@ void main() {
       _market,
       await _session(m),
       act: () async {
-        await _openTab(tester, 'استكشف');
+        await _openTab(tester, 'الدليل');
         await tester.tap(find.byKey(const Key('city-filter-trigger')));
         await tester.pump(const Duration(milliseconds: 500));
         await tester.pump(const Duration(milliseconds: 500));

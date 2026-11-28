@@ -1,30 +1,69 @@
-/// Spells an amount in spoken Yemeni Arabic, under amount fields, so a zero
-/// too many or too few is seen before saving: 350000 is
-/// «ثلاثمية وخمسين ألف ريال».
+/// Spells an amount in Modern Standard Arabic (D129), under amount fields,
+/// so a zero too many or too few is seen before saving: 350000 is
+/// «ثلاثمئة وخمسون ألف ريال», 3000000 «ثلاثة ملايين ريال».
+///
+/// The last scale word is joined to the currency, the way MSA counts a
+/// noun: «خمسة وعشرون ألف ريال», «مليونا ريال», «مئتا ريال»; a scale word
+/// that more follows is counted on its own: «خمسة عشر مليونًا ومئتان
+/// وخمسون ألف ريال». A rest below a thousand keeps the currency as a label.
 String amountInWords(int amount, {String currency = 'ريال'}) {
   if (amount <= 0) return 'صفر $currency';
   final parts = <String>[];
   final millions = amount ~/ 1000000;
   final thousands = (amount % 1000000) ~/ 1000;
   final rest = amount % 1000;
-  if (millions > 0) parts.add(_scaled(millions, 'مليون', 'مليونين', 'مليون'));
-  if (thousands > 0) parts.add(_scaled(thousands, 'ألف', 'ألفين', 'آلاف'));
-  if (rest > 0) parts.add(_below1000(rest));
+  if (millions > 0) {
+    parts.add(_scaled(millions, _million, last: thousands == 0 && rest == 0));
+  }
+  if (thousands > 0) parts.add(_scaled(thousands, _thousand, last: rest == 0));
+  if (rest > 0) parts.add(_below1000(rest, beforeNoun: true));
   return '${parts.join(' و')} $currency';
 }
 
-/// «ألف», «ألفين», «ثلاثة آلاف», «مية ألف»; millions say «ثلاثة مليون».
-String _scaled(int n, String one, String two, String few) {
-  if (n == 1) return one;
-  if (n == 2) return two;
-  if (n <= 10) return '${_below1000(n)} $few';
-  return '${_below1000(n)} $one';
+typedef _Scale = ({
+  String one,
+  String two,
+  String twoJoined,
+  String few,
+  String many,
+});
+
+const _thousand = (
+  one: 'ألف',
+  two: 'ألفان',
+  twoJoined: 'ألفا',
+  few: 'آلاف',
+  many: 'ألفًا',
+);
+const _million = (
+  one: 'مليون',
+  two: 'مليونان',
+  twoJoined: 'مليونا',
+  few: 'ملايين',
+  many: 'مليونًا',
+);
+
+/// [n] of [scale]: «ألف», «ألفان», «ثلاثة آلاف», «خمسة عشر ألفًا», «مئة
+/// ألف». [last] joins it to the currency that follows: «ألفا ريال»,
+/// «خمسة عشر ألف ريال».
+String _scaled(int n, _Scale scale, {required bool last}) {
+  if (n == 1) return scale.one;
+  if (n == 2) return last ? scale.twoJoined : scale.two;
+  final lastTwo = n % 100;
+  // 101,000 is «مئة ألف وألف», not «مئة وواحد ألف».
+  if (lastTwo == 1 || lastTwo == 2) {
+    return '${_scaled(n - lastTwo, scale, last: false)} و'
+        '${_scaled(lastTwo, scale, last: last)}';
+  }
+  if (lastTwo >= 3 && lastTwo <= 10) return '${_below1000(n)} ${scale.few}';
+  if (lastTwo >= 11) return '${_below1000(n)} ${last ? scale.one : scale.many}';
+  return '${_below1000(n, beforeNoun: true)} ${scale.one}';
 }
 
 const _units = [
   '',
   'واحد',
-  'اثنين',
+  'اثنان',
   'ثلاثة',
   'أربعة',
   'خمسة',
@@ -48,32 +87,35 @@ const _teens = [
 const _tens = [
   '',
   '',
-  'عشرين',
-  'ثلاثين',
-  'أربعين',
-  'خمسين',
-  'ستين',
-  'سبعين',
-  'ثمانين',
-  'تسعين',
+  'عشرون',
+  'ثلاثون',
+  'أربعون',
+  'خمسون',
+  'ستون',
+  'سبعون',
+  'ثمانون',
+  'تسعون',
 ];
 const _hundreds = [
   '',
-  'مية',
-  'ميتين',
-  'ثلاثمية',
-  'أربعمية',
-  'خمسمية',
-  'ستمية',
-  'سبعمية',
-  'ثمانمية',
-  'تسعمية',
+  'مئة',
+  'مئتان',
+  'ثلاثمئة',
+  'أربعمئة',
+  'خمسمئة',
+  'ستمئة',
+  'سبعمئة',
+  'ثمانمئة',
+  'تسعمئة',
 ];
 
-String _below1000(int n) {
+/// [n] below a thousand. [beforeNoun]: a noun follows it directly, so a
+/// closing «مئتان» joins it: «مئتا ألف», «مئتا ريال».
+String _below1000(int n, {bool beforeNoun = false}) {
   final words = <String>[];
-  if (n >= 100) words.add(_hundreds[n ~/ 100]);
+  final h = n ~/ 100;
   final r = n % 100;
+  if (h > 0) words.add(h == 2 && r == 0 && beforeNoun ? 'مئتا' : _hundreds[h]);
   if (r >= 10 && r < 20) {
     words.add(_teens[r - 10]);
   } else if (r > 0) {

@@ -44,7 +44,7 @@ class _JourneyNextStep extends StatelessWidget {
           ? 'بكرة'
           : days == 0
           ? 'اليوم'
-          : 'متأخرة ${arabicCount(-days, one: 'يوم', two: 'يومين', few: 'أيام', many: 'يوم')}';
+          : 'متأخرة ${arabicDays(-days)}';
       if (days > 2) daysLeft = days;
       eyebrow = when == null ? 'الخطوة الجاية' : 'الخطوة الجاية · $when';
       title = due.title;
@@ -142,7 +142,7 @@ class _JourneyNextStep extends StatelessWidget {
       label: [
         days == null
             ? eyebrow
-            : '$eyebrow · بعد ${arabicCount(days, one: 'يوم', two: 'يومين', few: 'أيام', many: 'يوم')}',
+            : '$eyebrow · بعد ${arabicDays(days)}',
         title,
         ?dueAmount,
         reason,
@@ -219,13 +219,7 @@ class _DaysTile extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  arabicCountWord(
-                    days,
-                    one: 'يوم',
-                    two: 'يومين',
-                    few: 'أيام',
-                    many: 'يوم',
-                  ),
+                  arabicDayWord(days),
                   style: JourneyType.of(
                     JourneyType.caption,
                     weight: JourneyType.bold,

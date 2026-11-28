@@ -42,7 +42,11 @@ mixin _MarketplaceProviderDetails on _MarketplaceProviderCore {
     notifyListeners();
 
     try {
-      _details[providerId] = await _api.getProvider(providerId);
+      // 2026-11-26 review: the page says what is known of the plan's day.
+      _details[providerId] = await _api.getProvider(
+        providerId,
+        eventDate: _eventDate,
+      );
       _detailsErrors.remove(providerId);
       final results = await Future.wait<Object?>([
         _loadProviderServices(providerId),
@@ -62,7 +66,7 @@ mixin _MarketplaceProviderDetails on _MarketplaceProviderCore {
       final packagesResult =
           results[1] as _MarketplaceLoadResult<List<ProviderPackage>>;
       final reviewsResult =
-          results[2] as _MarketplaceLoadResult<List<ProviderReview>>;
+          results[2] as _MarketplaceLoadResult<ProviderReviewsPage>;
       final portfolioResult =
           results[3] as _MarketplaceLoadResult<PublicPortfolio>?;
       final portfolio = portfolioResult?.data;
@@ -79,12 +83,12 @@ mixin _MarketplaceProviderDetails on _MarketplaceProviderCore {
         providerId: providerId,
         result: packagesResult,
       );
-      _applyProviderDetailSection(
-        values: _reviews,
-        errors: _reviewsErrors,
-        providerId: providerId,
-        result: reviewsResult,
-      );
+      if (reviewsResult.data case final page?) {
+        _applyReviewsPage(providerId, page, append: false);
+        _reviewsErrors.remove(providerId);
+      } else {
+        _reviewsErrors[providerId] = reviewsResult.errorMessage!;
+      }
       final failedSections = <String>[
         if (!servicesResult.isSuccess) 'الخدمات',
         if (!packagesResult.isSuccess) 'الباقات',
@@ -103,10 +107,17 @@ mixin _MarketplaceProviderDetails on _MarketplaceProviderCore {
         _mergeQuotes(results[4] as List<QuoteRequest>);
       }
     } on ApiException catch (error) {
-      final message = providerDirectoryErrorMessage(error);
-      _detailsErrors[providerId] = _details.containsKey(providerId)
-          ? providerDetailsStaleErrorMessage
-          : message;
+      // The server says he is not there (a listing taken down, a link to
+      // one removed): the page says «لم نجد هذا المزوّد». It read «لم تصل
+      // صفحة المزوّد، تحقّق من الاتصال» with a retry that could never work.
+      if (error.statusCode == 404 && !_details.containsKey(providerId)) {
+        _detailsErrors.remove(providerId);
+      } else {
+        final message = providerDirectoryErrorMessage(error);
+        _detailsErrors[providerId] = _details.containsKey(providerId)
+            ? providerDetailsStaleErrorMessage
+            : message;
+      }
     } catch (error) {
       final message = providerDirectoryErrorMessage(error);
       _detailsErrors[providerId] = _details.containsKey(providerId)
@@ -198,6 +209,7 @@ mixin _MarketplaceProviderDetails on _MarketplaceProviderCore {
     } catch (_) {
       _favoriteProvidersErrorMessage = aarastBackendConnectionErrorMessage;
     } finally {
+      _accountDataAnswered = true;
       _isLoading = false;
       notifyListeners();
     }
@@ -230,18 +242,68 @@ mixin _MarketplaceProviderDetails on _MarketplaceProviderCore {
     }
   }
 
-  Future<_MarketplaceLoadResult<List<ProviderReview>>> _loadProviderReviews(
+  /// The first page of his published reviews with the summary of them all
+  /// (2026-11-26 review: the page shows the summary and the newest three).
+  Future<_MarketplaceLoadResult<ProviderReviewsPage>> _loadProviderReviews(
     String providerId,
   ) async {
     try {
       return _MarketplaceLoadResult.success(
-        await _api.getProviderReviews(providerId),
+        await _api.getProviderReviewsPage(
+          providerId,
+          limit: providerReviewsPageSize,
+        ),
       );
     } catch (error) {
       return _MarketplaceLoadResult.failure(
         providerDirectoryErrorMessage(error),
       );
     }
+  }
+
+  /// «المزيد من التقييمات»: the next page after those read. A failure keeps
+  /// what is shown and says so on the page's notice.
+  Future<void> loadMoreReviews(String providerId) async {
+    final paging = _reviewPaging[providerId];
+    if (paging == null ||
+        paging.page >= paging.totalPages ||
+        !_reviewsLoadingMore.add(providerId)) {
+      return;
+    }
+    notifyListeners();
+    try {
+      final page = await _api.getProviderReviewsPage(
+        providerId,
+        page: paging.page + 1,
+        limit: providerReviewsPageSize,
+      );
+      _applyReviewsPage(providerId, page, append: true);
+      _reviewsErrors.remove(providerId);
+    } catch (error) {
+      _reviewsErrors[providerId] = providerDirectoryErrorMessage(error);
+    } finally {
+      _reviewsLoadingMore.remove(providerId);
+      notifyListeners();
+    }
+  }
+
+  void _applyReviewsPage(
+    String providerId,
+    ProviderReviewsPage page, {
+    required bool append,
+  }) {
+    final read = append ? _reviews[providerId] ?? const [] : const [];
+    final ids = {for (final review in read) review.id};
+    _reviews[providerId] = [
+      ...read,
+      for (final review in page.items)
+        if (!ids.contains(review.id)) review,
+    ];
+    _reviewSummaries[providerId] = page.summary;
+    _reviewPaging[providerId] = (
+      page: page.currentPage,
+      totalPages: page.totalPages,
+    );
   }
 
   /// B-16: read for a signed-in reader only (the women's album follows who

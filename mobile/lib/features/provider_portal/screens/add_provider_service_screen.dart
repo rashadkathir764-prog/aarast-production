@@ -35,7 +35,10 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _basePriceController = TextEditingController();
-  final _priceUnitController = TextEditingController(text: 'حسب الخدمة');
+  // Empty until he writes one. It opened on «حسب الخدمة» inside a closed
+  // section, so every service published that under its price on his page:
+  // «450,000 ر.ي · حسب الخدمة», words that say nothing to the customer.
+  final _priceUnitController = TextEditingController();
   String? _categoryId;
   String? _cityId;
   AarastFormDraftBinding? _draft;
@@ -225,6 +228,7 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
                             ),
                           ],
                           label: 'ملاحظة السعر أو المدة',
+                          hint: 'مثلًا: للشخص، لليلة كاملة',
                           icon: LucideIcons.timer,
                         ),
                       ],

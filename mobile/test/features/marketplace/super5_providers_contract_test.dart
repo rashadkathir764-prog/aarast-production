@@ -12,6 +12,7 @@ import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
 import 'package:aarast_mobile/features/marketplace/data/marketplace_api.dart';
 import 'package:aarast_mobile/features/marketplace/models/marketplace_models.dart';
 import 'package:aarast_mobile/features/marketplace/models/provider_budget_match_intent.dart';
+import 'package:aarast_mobile/features/marketplace/models/provider_shelves.dart';
 import 'package:aarast_mobile/features/marketplace/providers/marketplace_provider.dart';
 import 'package:aarast_mobile/features/marketplace/screens/provider_marketplace_screen.dart';
 import 'package:aarast_mobile/features/marketplace/widgets/provider_auth_gate.dart';
@@ -213,9 +214,10 @@ void main() {
       await _pumpMarketplace(tester, state);
 
       expect(state.lastIncludeAccountData, isFalse);
-      expect(find.text('المزودين'), findsOneWidget);
+      // 2026-11-26: the tab's words in MSA (the arb part providers.arb).
+      expect(find.text('المزوّدون'), findsOneWidget);
       expect(find.byKey(const Key('marketplace-login-note')), findsOneWidget);
-      expect(find.textContaining('تحفظ خطتك برقم جوالك'), findsOneWidget);
+      expect(find.textContaining('خطتك برقم جوالك'), findsOneWidget);
       expect(find.text('طلباتك'), findsNothing);
       expect(find.text('تحتاج قرار'), findsNothing);
       expect(find.text('عروض مقبولة'), findsNothing);
@@ -225,15 +227,15 @@ void main() {
         scrollable: find.byType(Scrollable).first,
       );
       expect(find.text('قاعة السلام'), findsOneWidget);
-      expect(find.text('250,000\u00a0ر.ي'), findsOneWidget);
+      expect(find.text('\u0645\u0646\u00a0250,000 ر.ي'), findsNothing);
+      // 2026-11-26: a row's price is short when nothing is lost.
+      expect(find.text('من 250 ألفًا'), findsOneWidget);
       expect(find.text('0.0 (0)'), findsNothing);
       expect(find.textContaining('قريب منك'), findsNothing);
       expect(find.textContaining('الأفضل'), findsNothing);
       expect(find.textContaining('لوحة المزود'), findsNothing);
-      expect(
-        find.byKey(const Key('super5-provider-details-provider-1')),
-        findsOneWidget,
-      );
+      // 2026-11-26: the row itself opens the provider (one anatomy).
+      expect(find.byKey(const Key('provider-row-provider-1')), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );
@@ -283,8 +285,12 @@ void main() {
         scrollable: find.byType(Scrollable).first,
       );
 
-      expect(find.text('التصوير'), findsOneWidget);
-      expect(find.text('250,000\u00a0-\u00a0400,000\u00a0ر.ي'), findsOneWidget);
+      // Changed on purpose (2026-11-26, one row anatomy): the line under the
+      // name is his city; the category is the list's chip or shelf. Where his
+      // prices start, \u00ab\u0645\u0646 X\u00bb, not the range.
+      expect(find.text('\u0645\u0646\u00a0250,000\u00a0ر.ي'), findsNothing);
+      // ...prices start is said short when nothing is lost.
+      expect(find.text('من 250 ألفًا'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );
@@ -297,14 +303,15 @@ void main() {
     await _pumpMarketplace(tester, state, authenticated: true);
     // Nothing is filtered: the directory itself is empty, so the page says
     // so instead of sending the user to clear filters they never set.
+    // 2026-11-26: the states' words in MSA.
     await tester.scrollUntilVisible(
-      find.text('ما في مزودين في الدليل بعد'),
+      find.text('لا مزوّدين في الدليل بعد'),
       320,
       scrollable: find.byType(Scrollable).first,
     );
 
-    expect(find.text('ما في مزودين في الدليل بعد'), findsOneWidget);
-    expect(find.text('امسح الفلتر'), findsNothing);
+    expect(find.text('لا مزوّدين في الدليل بعد'), findsOneWidget);
+    expect(find.text('مسح التصفية'), findsNothing);
     expect(find.textContaining('أفضل'), findsNothing);
     expect(find.textContaining('قريب'), findsNothing);
     expect(tester.takeException(), isNull);
@@ -316,14 +323,16 @@ void main() {
     final state = _FakeMarketplaceProvider(search: 'قاعة');
 
     await _pumpMarketplace(tester, state, authenticated: true);
+    // 2026-11-26: a search that found nobody says so and offers to clear
+    // the search (or the category its word names).
     await tester.scrollUntilVisible(
-      find.text('ما لقينا مزود بهذا الاسم'),
+      find.text('لم نجد «قاعة»'),
       320,
       scrollable: find.byType(Scrollable).first,
     );
 
-    expect(find.text('امسح الفلتر'), findsOneWidget);
-    expect(find.text('ما في مزودين في الدليل بعد'), findsNothing);
+    expect(find.text('مسح البحث'), findsOneWidget);
+    expect(find.text('لا مزوّدين في الدليل بعد'), findsNothing);
   });
 
   // Rashad's phone 2026-11-18: tapping the box and opening the keyboard
@@ -391,11 +400,11 @@ void main() {
     expect(find.text('قاعة'), findsOneWidget);
 
     await tester.scrollUntilVisible(
-      find.text('امسح الفلتر'),
+      find.text('مسح البحث'),
       260,
       scrollable: find.byType(Scrollable).first,
     );
-    await tester.tap(find.text('امسح الفلتر'));
+    await tester.tap(find.text('مسح البحث'));
     await tester.pumpAndSettle();
 
     expect(state.search, isEmpty);
@@ -427,18 +436,27 @@ void main() {
 
       await _pumpMarketplace(tester, state);
 
-      expect(find.textContaining('قريبين من بند الصالة'), findsOneWidget);
+      // 2026-11-26: the item's line, «حسب بند الصالة: X».
+      expect(find.textContaining('حسب بند الصالة'), findsOneWidget);
+      // 2026-11-26: a row's price is short when nothing is lost; the whole
+      // figure is not on it.
       await tester.scrollUntilVisible(
-        find.text('450,000\u00a0ر.ي'),
+        find.text('\u0645\u0646 450\u00a0\u0623\u0644\u0641\u064b\u0627'),
         320,
         scrollable: find.byType(Scrollable).first,
       );
+      expect(find.text('\u0645\u0646\u00a0450,000 ر.ي'), findsNothing);
       expect(find.text('أعلى من بندك'), findsOneWidget);
-      // Not in the prototype: a second list of services, its fallback note,
-      // and a results count above the cards.
+      // Not in the prototype: a second list of services and its fallback
+      // note.
       expect(find.text('خدمات قريبة من بندك'), findsNothing);
       expect(find.textContaining('ما لقينا سعر منشور'), findsNothing);
-      expect(find.textContaining('مزود واحد'), findsNothing);
+      // Changed on purpose (D131, 2026-11-26): the count of what the filter
+      // shows sits under the chips, from the page's own total.
+      expect(
+        find.byKey(const ValueKey('providers-results-count')),
+        findsOneWidget,
+      );
     },
   );
 
@@ -465,11 +483,14 @@ void main() {
     );
 
     await _pumpMarketplace(tester, state);
+    // 2026-11-26: a price in another currency carries no status at all (it
+    // was «نفس القسم»): one status line at most, and only a proven one.
     await tester.scrollUntilVisible(
-      find.text('نفس القسم'),
+      find.text('قاعة السلام'),
       320,
       scrollable: find.byType(Scrollable).first,
     );
+    expect(find.byKey(const Key('provider-card-status')), findsNothing);
 
     expect(find.text('أقل من بندك'), findsNothing);
     expect(find.text('ضمن بندك'), findsNothing);
@@ -484,13 +505,11 @@ void main() {
 
     await _pumpMarketplace(tester, state, withRouter: true);
     await tester.scrollUntilVisible(
-      find.byKey(const Key('super5-provider-details-provider-1')),
+      find.byKey(const Key('provider-row-provider-1')),
       320,
       scrollable: find.byType(Scrollable).first,
     );
-    await tester.tap(
-      find.byKey(const Key('super5-provider-details-provider-1')),
-    );
+    await tester.tap(find.byKey(const Key('provider-row-provider-1')));
     await tester.pumpAndSettle();
 
     expect(find.text('details-opened'), findsOneWidget);
@@ -505,7 +524,7 @@ void main() {
     );
 
     await _pumpMarketplace(tester, state, withRouter: true);
-    final details = find.byKey(const Key('super5-provider-details-provider-1'));
+    final details = find.byKey(const Key('provider-row-provider-1'));
     await tester.scrollUntilVisible(
       details,
       320,
@@ -694,12 +713,11 @@ void main() {
     },
   );
 
-  // Rashad 2026-11-19, the staged layout: browsing everything, a kind with
-  // more than five providers is a sideways row; a smaller one is a short
-  // list of three rows, «الكل» for the rest, the kind not said again.
-  testWidgets('six of a kind make a row, fewer make a short list', (
-    tester,
-  ) async {
+  // Changed on purpose (2026-11-26, REFINEMENT_SPEC 2.7): browsing
+  // everything, every category with providers is one shelf, read from the
+  // server under it, «عرض الكل» opening it as rows; the staged layout (more
+  // than five a row, fewer a short list of three) is gone.
+  testWidgets('every category with providers is a shelf', (tester) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(392, 2400);
     addTearDown(tester.view.reset);
@@ -723,6 +741,63 @@ void main() {
     );
     await _pumpMarketplace(tester, state, authenticated: true, embedded: true);
 
+    for (final kind in ['cat-venue', 'cat-photo']) {
+      expect(
+        find.byKey(ValueKey('providers-shelf-$kind')),
+        findsOneWidget,
+        reason: kind,
+      );
+      expect(
+        find.byKey(ValueKey('providers-shelf-all-$kind')),
+        findsOneWidget,
+        reason: kind,
+      );
+    }
+    // A shelf card, not a row.
+    expect(find.byKey(const ValueKey('provider-shelf-photo-0')), findsOne);
+    expect(
+      find.byKey(const Key('provider-marketplace-card-photo-0')),
+      findsNothing,
+    );
+
+    await tester.tap(
+      find.byKey(const ValueKey('providers-shelf-all-cat-photo')),
+    );
+    await tester.pumpAndSettle();
+    expect(state.categoryId, 'cat-photo');
+    expect(tester.takeException(), isNull);
+  });
+
+  // Changed on purpose (2026-11-26): the shelves follow the directory's
+  // answer, a category with nobody left has no shelf.
+  testWidgets('a refreshed directory rebuilds its shelves', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(392, 2400);
+    addTearDown(tester.view.reset);
+    MarketplaceProvider item(int i, String kind) => MarketplaceProvider(
+      id: 'provider-$i',
+      businessName: 'provider-$i',
+      ownerName: 'owner',
+      ratingAverage: 0,
+      ratingCount: 0,
+      primaryCategory: ProviderCategory(id: kind, nameAr: kind),
+    );
+    final state = _FakeMarketplaceProvider(
+      providers: [
+        for (var i = 0; i < 6; i++) item(i, i < 3 ? 'cat-venue' : 'cat-photo'),
+      ],
+      categories: const [
+        ProviderCategory(id: 'cat-venue', nameAr: 'القاعات'),
+        ProviderCategory(id: 'cat-photo', nameAr: 'التصوير'),
+      ],
+    );
+    await _pumpMarketplace(tester, state, authenticated: true, embedded: true);
+    expect(
+      find.byKey(const ValueKey('providers-shelf-cat-photo')),
+      findsOneWidget,
+    );
+    state.replaceDirectory([for (var i = 0; i < 6; i++) item(i, 'cat-venue')]);
+    await tester.pumpAndSettle();
     expect(
       find.byKey(const ValueKey('providers-shelf-cat-venue')),
       findsOneWidget,
@@ -731,74 +806,8 @@ void main() {
       find.byKey(const ValueKey('providers-shelf-cat-photo')),
       findsNothing,
     );
-    expect(
-      find.byKey(const ValueKey('providers-section-cat-photo')),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const Key('provider-marketplace-card-photo-2')),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const Key('provider-marketplace-card-photo-3')),
-      findsNothing,
-    );
-    expect(
-      find.byKey(const ValueKey('providers-section-all-cat-photo')),
-      findsOneWidget,
-    );
     expect(tester.takeException(), isNull);
   });
-
-  testWidgets(
-    'a refreshed first page rebuilds sections with the same first ID and total',
-    (tester) async {
-      tester.view.devicePixelRatio = 1;
-      tester.view.physicalSize = const Size(392, 2400);
-      addTearDown(tester.view.reset);
-      MarketplaceProvider item(int i, String kind) => MarketplaceProvider(
-        id: 'provider-$i',
-        businessName: 'provider-$i',
-        ownerName: 'owner',
-        ratingAverage: 0,
-        ratingCount: 0,
-        primaryCategory: ProviderCategory(id: kind, nameAr: kind),
-      );
-      final state = _FakeMarketplaceProvider(
-        providers: [
-          for (var i = 0; i < 6; i++)
-            item(i, i < 3 ? 'cat-venue' : 'cat-photo'),
-        ],
-        categories: const [
-          ProviderCategory(id: 'cat-venue', nameAr: 'القاعات'),
-          ProviderCategory(id: 'cat-photo', nameAr: 'التصوير'),
-        ],
-      );
-      await _pumpMarketplace(
-        tester,
-        state,
-        authenticated: true,
-        embedded: true,
-      );
-      expect(
-        find.byKey(const ValueKey('providers-section-cat-venue')),
-        findsOneWidget,
-      );
-      state.replaceDirectory([
-        for (var i = 0; i < 6; i++) item(i, 'cat-venue'),
-      ]);
-      await tester.pumpAndSettle();
-      expect(
-        find.byKey(const ValueKey('providers-shelf-cat-venue')),
-        findsOneWidget,
-      );
-      expect(
-        find.byKey(const ValueKey('providers-section-cat-photo')),
-        findsNothing,
-      );
-      expect(tester.takeException(), isNull);
-    },
-  );
 
   testWidgets(
     'embedded providers tab keeps the approved browse-first visual',
@@ -883,7 +892,7 @@ void main() {
 
     await _pumpMarketplace(tester, state);
 
-    expect(find.textContaining('قريبين من بند'), findsOneWidget);
+    expect(find.textContaining('حسب بند'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -976,7 +985,8 @@ Future<void> _pumpMarketplace(
   bool authenticated = false,
   bool withRouter = false,
   bool embedded = false,
-  String tab = 'استكشف',
+  // 2026-11-26: «استكشف» is «الدليل» (REFINEMENT_SPEC 2.8 glossary).
+  String tab = 'الدليل',
 }) async {
   SharedPreferences.setMockInitialValues({});
   final preferences = await SharedPreferences.getInstance();
@@ -1232,6 +1242,22 @@ class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
 
   @override
   List<MarketplaceProvider> get providers => providersData;
+
+  /// 2026-11-26: browsing everything shows one shelf per category, each
+  /// the server's own read under it; here, the fixture's providers of each
+  /// listed category, as the server would answer.
+  @override
+  List<ProviderShelf> get shelves => [
+    for (final category in categoriesData)
+      if (providersData.any((p) => p.primaryCategory?.id == category.id))
+        (
+          categoryId: category.id,
+          providers: [
+            for (final p in providersData)
+              if (p.primaryCategory?.id == category.id) p,
+          ],
+        ),
+  ];
 
   @override
   int get totalProviders => providersData.length;

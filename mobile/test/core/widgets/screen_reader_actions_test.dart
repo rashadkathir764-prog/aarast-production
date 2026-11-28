@@ -20,6 +20,17 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/screen_reader.dart';
 
+/// A featured hall, as a card says it.
+const _featuredFacts = ProviderCardFacts(
+  id: 'p1',
+  name: 'قاعة السعادة',
+  verified: false,
+  ratingAverage: 4.8,
+  ratingCount: 63,
+  ratingKind: ProviderRatingKind.stars,
+  featured: true,
+);
+
 DashboardSummary _home({bool agreed = true}) => DashboardSummary.fromJson({
   'planId': 'plan-1',
   'title': 'عرس محمد',
@@ -157,7 +168,8 @@ void main() {
             find.byKey(const ValueKey('aarast-dashboard-money-card')),
           )
           .label,
-      'المال، ميزانيتك 8 مليون ريال يمني، '
+      // D129: the shared money tool counts by Arabic's forms.
+      'المال، ميزانيتك 8 ملايين ريال يمني، '
       'لسا ما سجلت اتفاقات. أول ما تتفق مع مزود، سجّله ونقول لك كم باقي.',
     );
     expectEveryButtonActs();
@@ -216,24 +228,21 @@ void main() {
                 body: Center(
                   child: SizedBox(
                     width: shelf ? 180 : 360,
+                    // 2026-11-26: both cards draw one provider's facts
+                    // (the final providers proposal's one anatomy).
                     child: shelf
                         ? ProviderShelfCard(
-                            businessName: 'قاعة السعادة',
-                            isFeatured: true,
-                            ratingAverage: 4.8,
-                            ratingCount: 63,
+                            facts: _featuredFacts,
                             isFavorite: false,
                             onFavorite: () {},
-                            onDetails: () => opened++,
+                            onOpen: () => opened++,
                           )
-                        : ProviderResultCard(
-                            businessName: 'قاعة السعادة',
-                            isFeatured: true,
-                            ratingAverage: 4.8,
-                            ratingCount: 63,
+                        : ProviderRow(
+                            facts: _featuredFacts,
                             isFavorite: false,
                             onFavorite: () {},
-                            onDetails: () => opened++,
+                            onOpen: () => opened++,
+                            minHeight: 90,
                           ),
                   ),
                 ),
@@ -244,7 +253,7 @@ void main() {
         await tester.pumpAndSettle();
         expectEveryButtonActs();
 
-        await _press(tester, 'مميز: ليش يطلع أول؟');
+        await _press(tester, 'مميز: لماذا يظهر أولًا؟');
         expect(
           find.byKey(const Key('provider-featured-sheet')),
           findsOneWidget,

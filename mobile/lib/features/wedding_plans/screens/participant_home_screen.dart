@@ -61,14 +61,31 @@ class _ParticipantHomeScreenState extends State<ParticipantHomeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
+  /// The summary's holder the last load was asked of. The plan's holders
+  /// are made again when the account's context is settled (a session
+  /// restored at the app's start): a read asked of the old one is dropped
+  /// with it, and the new one would stay empty, the home loading for ever
+  /// (the owner's home read «ما عندك خطة بعد» by the same race).
+  DashboardSummaryProvider? _askedOf;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final holder = Provider.of<DashboardSummaryProvider>(context);
+    final asked = _askedOf;
+    if (asked == null || identical(asked, holder)) return;
+    _askedOf = holder;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
   Future<void> _load() async {
     if (!mounted) return;
     final selected = context.read<AccountContextController>().selectedContext;
     final canTasks = selected?.permissions.canManageTasks == true;
+    final holder = context.read<DashboardSummaryProvider>();
+    _askedOf = holder;
     await Future.wait([
-      context.read<DashboardSummaryProvider>().loadDashboard(
-        widget.weddingPlanId,
-      ),
+      holder.loadDashboard(widget.weddingPlanId),
       if (canTasks)
         ?context.read<TaskTimelineProvider?>()?.load(widget.weddingPlanId)
       // D52: whoever only follows the plan reads the plan's tasks.
@@ -327,7 +344,7 @@ class _ParticipantHomeScreenState extends State<ParticipantHomeScreen> {
         ]);
       }
       if (weddingDay && canTasks) {
-        final todays = tasks.where((task) => _isOn(task, now)).toList();
+        final todays = tasks.where((task) => _onTheDay(task, now)).toList();
         if (todays.isNotEmpty) {
           children.addAll([
             const JourneySectionTitle('عليك اليوم'),
@@ -577,6 +594,18 @@ class _ParticipantHomeScreenState extends State<ParticipantHomeScreen> {
 bool _isOn(WeddingTask task, DateTime now) {
   final due = task.dueDate;
   return due != null && daysUntilPlanDay(due, now: now) == 0;
+}
+
+/// What «عليك اليوم» lists on the wedding day: the day's own tasks, done
+/// or not, and whatever is still open from before it or has no date. The
+/// day's home showed today's tasks alone, so a task late by a day, or one
+/// given without a date, left the home on the one day it could not wait.
+/// A task dated after the day stays in the tasks tab.
+bool _onTheDay(WeddingTask task, DateTime now) {
+  if (_isOn(task, now)) return true;
+  if (task.isDone) return false;
+  final due = task.dueDate;
+  return due == null || daysUntilPlanDay(due, now: now) < 0;
 }
 
 int _byDue(WeddingTask a, WeddingTask b) {

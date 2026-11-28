@@ -109,7 +109,7 @@ void main() {
         ),
       ),
     );
-    await tester.tap(find.text('دوّري في استكشف'));
+    await tester.tap(find.text('دوّري في الدليل'));
     expect(explored, 1);
   });
 
@@ -140,6 +140,8 @@ class _RecordingApi extends MarketplaceApi {
     List<String>? categoryIds,
     bool? featured,
     DateTime? eventDate,
+    ProviderSort? sort,
+    bool hideBusy = false,
     int page = 1,
     int limit = 30,
   }) async {

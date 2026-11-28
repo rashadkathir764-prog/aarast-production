@@ -1,8 +1,8 @@
 part of 'aarast_dashboard_view.dart';
 
 // The pieces of b02's money card ([_DashboardMoneyCard]): its lead, the
-// verdict chip, the far column, the dues strip, the bar, and the budget's
-// figures under them (D114).
+// verdict chip, the far column, the bar, and the one row of two figures
+// under it (D113, D114).
 
 /// One figure of the budget's lines: «الميزانية 7 مليون», «باقي منها 5
 /// مليون», with a note under it («منها المهر 2 مليون»). [joined] puts the
@@ -31,19 +31,15 @@ class _MoneyCellData {
   }
 }
 
-/// D114: the budget, what is left of it (or how far over it the expected
-/// cost is), what was agreed and what was paid, two to a row; then the
-/// mahr's own line when it is outside the budget.
+/// The card's one row of two figures (D113: the card is one height): the
+/// budget and what is free of it or how far over it the expected cost is
+/// (D114), or with no budget what was agreed and paid. Side by side; each on
+/// its own line only where a narrow phone at a large text would cut them.
 class _MoneyFigures extends StatelessWidget {
-  const _MoneyFigures({
-    required this.cells,
-    required this.figure,
-    this.mahrLine,
-  });
+  const _MoneyFigures({required this.cells, required this.figure});
 
   final List<_MoneyCellData> cells;
   final String Function(double) figure;
-  final String? mahrLine;
 
   @override
   Widget build(BuildContext context) {
@@ -139,17 +135,7 @@ class _MoneyFigures extends StatelessWidget {
         return Column(
           key: const ValueKey('dashboard-money-figures'),
           crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            ...rows,
-            if (mahrLine case final line?) ...[
-              const SizedBox(height: AarastV3Space.x1),
-              Text(
-                line,
-                key: const ValueKey('dashboard-money-mahr-line'),
-                style: muted,
-              ),
-            ],
-          ],
+          children: rows,
         );
       },
     );
@@ -312,121 +298,6 @@ class _SideFigure extends StatelessWidget {
         weight: JourneyType.bold,
         color: color,
       ),
-    );
-  }
-}
-
-/// When the owner pays: one bar cut by each piece's share, what is late in
-/// the warning colour and the nearest month in the plan's, and each piece
-/// named under it with its figure on a line of its own (side by side they
-/// were cut on a narrow phone, and the cut fell on the figure).
-class _DuesStrip extends StatelessWidget {
-  const _DuesStrip({
-    required this.dues,
-    required this.figure,
-    required this.hidden,
-    required this.color,
-    required this.soft,
-  });
-
-  final List<DashboardHomeDue> dues;
-  final String Function(double) figure;
-
-  /// G17: with the amounts hidden the bar is cut evenly, so the pieces'
-  /// widths say nothing of how the amounts compare.
-  final bool hidden;
-  final Color color;
-  final Color soft;
-
-  @override
-  Widget build(BuildContext context) {
-    final total = dues.fold<double>(0, (sum, due) => sum + due.amount);
-    final nearest = dues.indexWhere((due) => !due.overdue);
-    return Column(
-      key: const ValueKey('dashboard-money-dues'),
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        ExcludeSemantics(
-          child: SizedBox(
-            height: AarastV3Space.x1,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                for (var index = 0; index < dues.length; index++) ...[
-                  if (index > 0) const SizedBox(width: AarastV3Space.x1),
-                  Expanded(
-                    flex: hidden || total <= 0
-                        ? 1
-                        : (dues[index].amount / total * 1000).round().clamp(
-                            1,
-                            1000,
-                          ),
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: dues[index].overdue
-                            ? AarastV3Color.danger
-                            : index == nearest
-                            ? color
-                            : soft,
-                        borderRadius: BorderRadius.circular(AarastV3Radius.xs),
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: AarastV3Space.x1),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            for (var index = 0; index < dues.length; index++)
-              Expanded(
-                child: MergeSemantics(
-                  // A line too long for its third (a year, millions,
-                  // enlarged text) is drawn smaller, whole, like the
-                  // card's own figure; it is never cut.
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: index == 0
-                        ? AlignmentDirectional.centerStart
-                        : index == dues.length - 1
-                        ? AlignmentDirectional.centerEnd
-                        : Alignment.center,
-                    child: Column(
-                      crossAxisAlignment: index == 0
-                          ? CrossAxisAlignment.start
-                          : index == dues.length - 1
-                          ? CrossAxisAlignment.end
-                          : CrossAxisAlignment.center,
-                      children: [
-                        Text(
-                          dues[index].label,
-                          style: JourneyType.of(
-                            JourneyType.caption,
-                            color: dues[index].overdue
-                                ? AarastV3Color.danger
-                                : AarastV3Color.textMuted,
-                          ),
-                        ),
-                        Text(
-                          figure(dues[index].amount),
-                          key: ValueKey('dashboard-money-due-$index'),
-                          style: JourneyType.of(
-                            JourneyType.caption,
-                            weight: JourneyType.bold,
-                            color: AarastV3Color.textMuted,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ],
     );
   }
 }

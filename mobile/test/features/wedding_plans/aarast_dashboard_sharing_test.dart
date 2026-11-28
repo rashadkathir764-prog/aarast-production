@@ -248,25 +248,13 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('RA-MO-326: in the week a payment due before the wedding shows '
-      'beside an item as the next step', (tester) async {
+  testWidgets('RA-MO-326: in the week a payment due before the wedding shows, '
+      'and opens its recording', (tester) async {
     final taps = await _pumpWeddingDays(
       tester,
       now: DateTime(2026, 7, 4, 10),
       summary: _summary(
         weddingDate: DateTime(2026, 7, 7),
-        importantItems: const [
-          DashboardImportantItem(
-            id: 'i1',
-            type: 'QUOTE_RECEIVED',
-            title: 'قارن العروض',
-            subtitle: 'وصلك عرض',
-            icon: 'inbox',
-            tone: 'info',
-            actionLabel: 'شوف العروض',
-            data: {},
-          ),
-        ],
         nextPayment: DashboardNextPaymentSchedule(
           id: 's1',
           weddingCostId: 'c1',
@@ -278,42 +266,67 @@ void main() {
       ),
     );
 
-    expect(find.text('قارن العروض'), findsOneWidget);
     expect(find.text('دفعة بعد يومين'), findsOneWidget);
     expect(find.textContaining('قاعة سبأ'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('aarast-home-today-payment')));
     expect(taps.payments(), 1);
   });
 
-  testWidgets('RA-MO-326: a payment named as the next step is not said twice', (
-    tester,
-  ) async {
-    await _pumpWeddingDays(
-      tester,
-      now: DateTime(2026, 7, 4, 10),
-      summary: _summary(
-        weddingDate: DateTime(2026, 7, 7),
-        nextPayment: DashboardNextPaymentSchedule(
-          id: 's1',
-          weddingCostId: 'c1',
-          title: 'قاعة سبأ',
-          amount: '500000',
-          status: 'PENDING',
-          dueDate: DateTime(2026, 7, 6),
+  // D134: the home no longer turns into the week, so in the week it still
+  // names the due payment as its next step, once, with its money card.
+  testWidgets('D134: in the week the home names the due payment as its next '
+      'step, once', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(390, 1600);
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Scaffold(
+            body: AarastDashboardView(
+              summary: _summary(
+                weddingDate: DateTime(2026, 7, 7),
+                nextPayment: DashboardNextPaymentSchedule(
+                  id: 's1',
+                  weddingCostId: 'c1',
+                  title: 'قاعة سبأ',
+                  amount: '500000',
+                  status: 'PENDING',
+                  dueDate: DateTime(2026, 7, 6),
+                ),
+              ),
+              userName: 'رشاد',
+              bottomPadding: 24,
+              now: DateTime(2026, 7, 4, 10),
+              onNotifications: () {},
+              onProfile: () {},
+              onOpenPlan: () {},
+              onOpenMoney: () {},
+              onOpenTasks: () {},
+              onOpenProviders: () {},
+              onOpenGuests: () {},
+              onOpenSharing: () {},
+              onOpenNextStep: () {},
+              onOpenImportantItem: (_) {},
+            ),
+          ),
         ),
       ),
     );
+    await tester.pumpAndSettle();
 
-    expect(
-      find.byKey(const ValueKey('aarast-home-today-payment')),
-      findsNothing,
-    );
+    expect(find.byKey(const ValueKey('aarast-home-today')), findsNothing);
     expect(find.textContaining('قاعة سبأ'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('aarast-dashboard-money-card')),
+      findsOneWidget,
+    );
   });
 
-  testWidgets('the wedding day home is the day\'s programme (b05, D65)', (
-    tester,
-  ) async {
+  testWidgets('on the wedding day «أسبوع العرس» is the day\'s programme '
+      '(b05, D65), and the home greets', (tester) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(320, 1400);
     addTearDown(tester.view.reset);
@@ -346,6 +359,7 @@ void main() {
       ],
     );
 
+    // The home on the day: its own layout, and the day's greeting.
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.light(),
@@ -358,7 +372,8 @@ void main() {
               bottomPadding: 24,
               now: DateTime(2026, 7, 7, 13),
               events: events,
-              onOpenEvents: () => opens += 1,
+              onOpenEvents: () {},
+              onOpenWeek: () {},
               onNotifications: () {},
               onProfile: () {},
               onOpenPlan: () {},
@@ -374,8 +389,39 @@ void main() {
         ),
       ),
     );
-
     expect(find.text('مبروك يا عريس'), findsOneWidget);
+    expect(find.text('برنامج اليوم'), findsNothing);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('aarast-dashboard-week-card')),
+        matching: find.text('اليوم'),
+      ),
+      findsOneWidget,
+    );
+
+    // «أسبوع العرس» on the day.
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Scaffold(
+            body: SingleChildScrollView(
+              child: WeddingWeekView(
+                weddingDate: DateTime(2026, 7, 7),
+                summary: _summary(weddingDate: DateTime(2026, 7, 7)),
+                now: DateTime(2026, 7, 7, 13),
+                events: events,
+                onOpenEvents: () => opens += 1,
+                onOpenPlan: () {},
+                onOpenTasks: () {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
     expect(
       find.byKey(const ValueKey('aarast-dashboard-day-hero')),
       findsOneWidget,
@@ -392,9 +438,9 @@ void main() {
   });
 }
 
-// D112 (Q-20), the owner's word: the wedding's week and day hide the money
-// and the tasks, and a payment or a task whose day is today still shows, in
-// one line each.
+// D112 (Q-20), the owner's word: in the wedding's week and on its day, a
+// payment or a task whose day is today shows in one line each. D134: on
+// «أسبوع العرس», the week's own page; the home keeps its money and tasks.
 Future<({int Function() payments, int Function() tasks})> _pumpWeddingDays(
   WidgetTester tester, {
   required DateTime now,
@@ -411,22 +457,21 @@ Future<({int Function() payments, int Function() tasks})> _pumpWeddingDays(
       home: Directionality(
         textDirection: TextDirection.rtl,
         child: Scaffold(
-          body: AarastDashboardView(
-            summary: summary,
-            userName: 'رشاد',
-            bottomPadding: 24,
-            now: now,
-            onNotifications: () {},
-            onProfile: () {},
-            onOpenPlan: () {},
-            onOpenMoney: () {},
-            onOpenTasks: () => tasks += 1,
-            onOpenProviders: () {},
-            onOpenGuests: () {},
-            onOpenSharing: () {},
-            onOpenNextStep: () {},
-            onOpenImportantItem: (_) {},
-            onOpenPayment: (_) => payments += 1,
+          body: SingleChildScrollView(
+            child: WeddingWeekView(
+              weddingDate: summary.weddingDate!,
+              events: const PlanEventsView(
+                weddingPlanId: 'plan-1',
+                canEdit: true,
+                suggestions: [],
+                items: [],
+              ),
+              summary: summary,
+              now: now,
+              onOpenPlan: () {},
+              onOpenTasks: () => tasks += 1,
+              onOpenPayment: (_) => payments += 1,
+            ),
           ),
         ),
       ),

@@ -283,8 +283,9 @@ void main() {
       expect(inBudget(tester, 'فاضي منها 5'), findsOneWidget);
       expect(inBudget(tester, 'باقي منها'), findsNothing);
       // «منها المهر» is the note under «اتفقت على»'s figure.
-      expect(inBudget(tester, 'اتفقت على 2'), findsOneWidget);
-      expect(inBudget(tester, 'منها المهر 2'), findsOneWidget);
+      // D136: the digits lead, «2 مليون», right after «على» too.
+      expect(inBudget(tester, 'اتفقت على 2 مليون'), findsOneWidget);
+      expect(inBudget(tester, 'منها المهر 2 مليون'), findsOneWidget);
       expect(inBudget(tester, 'دفعت 500'), findsOneWidget);
       expect(inBudget(tester, 'برّا الميزانية'), findsNothing);
       // No figure that is all mahr is called the wedding's.
@@ -301,7 +302,7 @@ void main() {
       expect(inHero(tester, 'باقي عليك'), findsOneWidget);
       expect(inBudget(tester, 'الميزانية 7'), findsOneWidget);
       expect(inBudget(tester, 'فاضي منها 7'), findsOneWidget);
-      expect(inBudget(tester, 'اتفقت على 2'), findsOneWidget);
+      expect(inBudget(tester, 'اتفقت على 2 مليون'), findsOneWidget);
       expect(inBudget(tester, 'منها المهر'), findsNothing);
       // The mahr's line says where it is counted; what is left of it is
       // the green card's «باقي المهر», said once.
@@ -351,7 +352,7 @@ void main() {
     expect(find.text('التكلفة المتوقعة'), findsNothing);
     expect(find.text('تكلفة العرس المسجّلة'), findsNothing);
     // What is there instead: the cost is «اتفقت على» in the budget box.
-    expect(inBudget(tester, 'اتفقت على 2'), findsOneWidget);
+    expect(inBudget(tester, 'اتفقت على 2 مليون'), findsOneWidget);
   });
 
   group('«البنود» follows the mode', () {
@@ -372,20 +373,24 @@ void main() {
         findsOneWidget,
       );
       expect(
-        find.descendant(of: box, matching: find.textContaining('المهر 2')),
+        find.descendant(
+          of: box,
+          matching: find.textContaining('المهر 2 مليون'),
+        ),
         findsWidgets,
       );
       final status = tester
           .widget<Text>(find.byKey(const ValueKey('money-items-budget-status')))
           .data!;
-      expect(status, contains('المهر 2'));
+      expect(status, contains('المهر 2 مليون'));
       expect(status, contains('فاضي منها 5'));
       expect(find.text('من الميزانية'), findsOneWidget);
       expect(find.text('برا الميزانية'), findsNothing);
       // Changed on purpose (Rashad 2026-11-17): the recorded-cost card that
       // said «والمهر 2 …» again is gone; the box and the section say it.
       expect(find.textContaining('وهو برا الميزانية'), findsNothing);
-      expect(find.textContaining('والمهر 2'), findsNothing);
+      expect(find.textContaining('والمهر 2 مليون'), findsNothing);
+      expect(find.textContaining('والمهر 2 مليون'), findsNothing);
     });
 
     testWidgets('on its own: as before', (tester) async {
@@ -462,9 +467,7 @@ void main() {
       expect(find.text('المهر لحاله، برا الميزانية'), findsNothing);
       expect(find.text('المهر من الميزانية؟'), findsOneWidget);
       expect(
-        find.text(
-          'من الميزانية 7 مليون يروح مليونين للمهر، ويبقى للعرس 5 مليون',
-        ),
+        find.text('من الميزانية 7 ملايين: 2 مليون للمهر، و5 ملايين للعرس'),
         findsOneWidget,
       );
       await tester.tap(find.byKey(const ValueKey('mahr-budget-inside')));
@@ -608,9 +611,14 @@ void main() {
         planTitle: 'عرس محمد',
         hideAmounts: false,
       );
-      expect(text, contains('• الميزانية: 7\u00a0مليون\u00a0ر.ي، فيها المهر'));
-      expect(text, contains('• باقي من الميزانية: 5\u00a0مليون\u00a0ر.ي'));
-      expect(text, contains('• المهر (من الميزانية): 2\u00a0مليون\u00a0ر.ي'));
+      expect(text, contains('• الميزانية: 7\u00a0ملايين\u00a0ر.ي، فيها المهر'));
+      expect(text, contains('• باقي من الميزانية: 5\u00a0ملايين\u00a0ر.ي'));
+      expect(text, contains('• المهر (من الميزانية): 2\u{00a0}مليون\u{00a0}ر.ي'));
+      // Two millions are a word, never «2» beside a plural (D129).
+      expect(
+        text,
+        isNot(contains('• المهر (من الميزانية): 2\u00a0ملايين\u00a0ر.ي')),
+      );
       expect(text, isNot(contains('برا الميزانية')));
     });
 
@@ -620,10 +628,14 @@ void main() {
         planTitle: 'عرس محمد',
         hideAmounts: false,
       );
-      expect(text, contains('• الميزانية: 7\u00a0مليون\u00a0ر.ي'));
+      expect(text, contains('• الميزانية: 7\u00a0ملايين\u00a0ر.ي'));
       expect(text, isNot(contains('فيها المهر')));
-      expect(text, contains('• باقي من الميزانية: 7\u00a0مليون\u00a0ر.ي'));
-      expect(text, contains('• المهر (برا الميزانية): 2\u00a0مليون\u00a0ر.ي'));
+      expect(text, contains('• باقي من الميزانية: 7\u00a0ملايين\u00a0ر.ي'));
+      expect(text, contains('• المهر (برا الميزانية): 2\u{00a0}مليون\u{00a0}ر.ي'));
+      expect(
+        text,
+        isNot(contains('• المهر (برا الميزانية): 2\u00a0ملايين\u00a0ر.ي')),
+      );
     });
   });
 

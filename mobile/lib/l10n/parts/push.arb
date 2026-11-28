@@ -23,7 +23,7 @@
   "@pushPermissionParticipantBody": {
     "description": "Line under pushPermissionParticipantTitle: what the notifications are for a participant."
   },
-  "pushPermissionAllow": "{gender, select, female{اسمحي بالتنبيهات} other{اسمح بالتنبيهات}}",
+  "pushPermissionAllow": "{gender, select, female{اسمحي بالإشعارات} other{اسمح بالإشعارات}}",
   "@pushPermissionAllow": {
     "description": "Main button of the permission sheet; pressing it shows the phone's own permission prompt. Addressed to the reader in their gender.",
     "placeholders": {

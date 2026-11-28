@@ -153,7 +153,7 @@ class _ProviderCalendarTabState extends State<ProviderCalendarTab> {
                         key: const Key('provider-calendar-close-picked'),
                         label: picking.isEmpty
                             ? 'أقفل'
-                            : 'أقفل ${arabicCount(picking.length, one: 'يوم', two: 'يومين', few: 'أيام', many: 'يوم')}',
+                            : 'أقفل ${arabicDays(picking.length)}',
                         icon: LucideIcons.calendarX,
                         expand: true,
                         loading: _closing,
@@ -220,7 +220,7 @@ class _ProviderCalendarTabState extends State<ProviderCalendarTab> {
     if (closed == days.length) {
       AarastToast.showSuccess(
         context,
-        'قفلت ${arabicCount(closed, one: 'يوم', two: 'يومين', few: 'أيام', many: 'يوم')}.',
+        'قفلت ${arabicDays(closed)}.',
       );
     } else {
       AarastToast.showError(

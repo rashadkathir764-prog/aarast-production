@@ -77,7 +77,7 @@ class ParticipantAccessEditor extends StatelessWidget {
               ),
               _LevelRow(
                 icon: LucideIcons.store,
-                label: 'المزودين',
+                label: 'المزوّدون',
                 selected: p.canManageProviders ? 1 : 0,
                 onChanged: enabled
                     ? (i) => onChanged(p.copyWith(canManageProviders: i == 1))

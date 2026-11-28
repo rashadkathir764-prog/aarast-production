@@ -1,165 +1,76 @@
-import 'dart:io';
-
 import 'package:flutter_test/flutter_test.dart';
 
-// The app speaks one simple Yemeni voice, its failures too. Many error
-// messages had stayed formal («تعذر تحميل…», «حاول مرة أخرى», «يرجى»,
-// «حدث خطأ») while the screen around them said «ما قدرنا نجيب…» and
-// «جرّب مرة ثانية». A failure says what failed and what to do, in the same
-// words as the rest of the app.
+import 'copy_sources.dart';
 
-/// Words of the formal voice that no string the person reads may carry.
-const _formalWords = <String>[
+// A failure says what failed and what to do, in the app's one voice
+// (LANGUAGE.md §2, §5): simplified MSA (D129), not officialese and not the
+// dialect. «أعد المحاولة»، «مرة أخرى» and «مجددًا» are that voice; the
+// heavy officialese («يرجى»، «تعذّر»، «حدث خطأ»، «إعادة المحاولة») and the
+// dialect's failure lines («ما قدرنا»، «جرّب مرة ثانية»، «ما انحفظ»،
+// «ما انرسل») are not.
+
+/// Officialese no string the person reads may carry, in the arb parts or in
+/// the code.
+const _officialese = <String>[
+  'يرجى',
   'تعذر',
   'تعذّر',
-  'مرة أخرى',
-  'مجددًا',
-  'إعادة المحاولة',
-  'أعد المحاولة',
-  'يرجى',
   'حدث خطأ',
+  'إعادة المحاولة',
 ];
 
-/// Legal texts keep their own register; none lives under lib/ today (the
-/// privacy policy and the terms are served by the website). Each entry is a
-/// path under lib/ and the reason it is excluded.
-const _legalTexts = <String, String>{};
+/// The dialect's failure lines: none in the arb parts, a count that only
+/// goes down in the code.
+final _dialectFailures = <String, RegExp>{
+  'ما قدرنا': wholeWord('ما قدرنا'),
+  'جرّب مرة ثانية': wholeWord('جرّ?بي? مرة ثانية'),
+  'ما انحفظ': wholeWord('ما انحفظ(?:ت)?'),
+  'ما انرسل': wholeWord('ما انرسل(?:ت)?'),
+};
 
-/// Strings never shown to a person (logs, diagnostics) that may keep a
-/// formal word: a path under lib/ and the reason. Empty today.
-const _logOnly = <String, String>{};
+/// The dialect's failure lines still in the Dart code's string literals
+/// (lib/ outside lib/l10n). It may only go down: lower it to the number this
+/// test prints in the change that rewrites them.
+///
+/// D134 (Rashad, 2026-11-27): the approved home stays in its own voice until
+/// its turn in D129's migration; 533 counted the rejected home.
+const _dialectFailuresLeftInCode = 553;
 
 void main() {
-  test('no string under lib/ speaks in the formal voice', () {
-    final offenders = <String>[];
-    final allowedSeen = <String>{};
-    final files =
-        Directory('lib')
-            .listSync(recursive: true)
-            .whereType<File>()
-            .where((file) => file.path.endsWith('.dart'))
-            .toList()
-          ..sort((a, b) => a.path.compareTo(b.path));
-    for (final file in files) {
-      final path = file.path.replaceAll(r'\', '/');
-      if (_legalTexts.keys.any(path.endsWith)) {
-        allowedSeen.add(_legalTexts.keys.firstWhere(path.endsWith));
-        continue;
-      }
-      for (final literal in _stringLiterals(file.readAsStringSync())) {
-        final words = _formalWords.where(literal.text.contains);
-        if (words.isEmpty) continue;
-        final word = words.first;
-        final allowed = _logOnly.keys.where(path.endsWith);
-        if (allowed.isNotEmpty) {
-          allowedSeen.add(allowed.first);
-          continue;
-        }
-        offenders.add('$path:${literal.line}: «$word» in ${literal.text}');
-      }
-    }
+  test('no string the person reads speaks in officialese', () {
+    final offenders = <String>[
+      for (final word in arbWords())
+        for (final banned in _officialese.where(word.text.contains))
+          '$word: «$banned» in ${word.text.trim()}',
+      for (final literal in codeLiterals())
+        for (final banned in _officialese.where(literal.text.contains))
+          '${literal.path}:${literal.line}: «$banned» in ${literal.text}',
+    ];
     expect(offenders, isEmpty, reason: offenders.join('\n'));
-    final stale = {
-      ..._legalTexts.keys,
-      ..._logOnly.keys,
-    }.where((path) => !allowedSeen.contains(path)).toList();
+  });
+
+  test('no arb part fails in the dialect', () {
+    final offenders = <String>[
+      for (final word in arbWords())
+        for (final banned in matchesIn(word.text, _dialectFailures))
+          '$word: «$banned» in ${word.text.trim()}',
+    ];
+    expect(offenders, isEmpty, reason: offenders.join('\n'));
+  });
+
+  test('the dialect failure lines still in the code only go down', () {
+    final count = countIn(codeLiterals(), _dialectFailures);
     expect(
-      stale,
-      isEmpty,
-      reason: 'these exclusions match nothing any more: ${stale.join(', ')}',
+      count,
+      lessThanOrEqualTo(_dialectFailuresLeftInCode),
+      reason:
+          'a new dialect failure line in the code: write it in lib/l10n/parts '
+          'in MSA («لم نتمكن من…»، «لم يُحفظ…»، «أعد المحاولة»)',
+    );
+    expect(
+      count,
+      _dialectFailuresLeftInCode,
+      reason: 'fewer are left: lower _dialectFailuresLeftInCode to $count',
     );
   });
-}
-
-class _Literal {
-  const _Literal(this.line, this.text);
-  final int line;
-  final String text;
-}
-
-/// Every string literal of [source] with the line it starts on, comments
-/// stripped. Interpolations are kept inside the literal's text.
-List<_Literal> _stringLiterals(String source) {
-  final literals = <_Literal>[];
-  var line = 1;
-  var index = 0;
-  final length = source.length;
-
-  String at(int position) => position < length ? source[position] : '';
-
-  while (index < length) {
-    final char = source[index];
-    if (char == '\n') {
-      line += 1;
-      index += 1;
-      continue;
-    }
-    // A line comment (`//` and `///`) runs to the end of its line.
-    if (char == '/' && at(index + 1) == '/') {
-      while (index < length && source[index] != '\n') {
-        index += 1;
-      }
-      continue;
-    }
-    // A block comment, nested as Dart allows.
-    if (char == '/' && at(index + 1) == '*') {
-      var depth = 1;
-      index += 2;
-      while (index < length && depth > 0) {
-        if (source[index] == '\n') line += 1;
-        if (source[index] == '/' && at(index + 1) == '*') {
-          depth += 1;
-          index += 2;
-        } else if (source[index] == '*' && at(index + 1) == '/') {
-          depth -= 1;
-          index += 2;
-        } else {
-          index += 1;
-        }
-      }
-      continue;
-    }
-    if (char == "'" || char == '"') {
-      final raw = index > 0 && source[index - 1] == 'r';
-      final triple = at(index + 1) == char && at(index + 2) == char;
-      final quote = triple ? char * 3 : char;
-      final startLine = line;
-      index += quote.length;
-      final text = StringBuffer();
-      while (index < length) {
-        if (source.startsWith(quote, index)) {
-          index += quote.length;
-          break;
-        }
-        final current = source[index];
-        if (current == '\n') line += 1;
-        if (!raw && current == r'\') {
-          text.write(at(index + 1));
-          index += 2;
-          continue;
-        }
-        if (!raw && current == r'$' && at(index + 1) == '{') {
-          var depth = 0;
-          while (index < length) {
-            final inner = source[index];
-            if (inner == '\n') line += 1;
-            text.write(inner);
-            index += 1;
-            if (inner == '{') depth += 1;
-            if (inner == '}') {
-              depth -= 1;
-              if (depth == 0) break;
-            }
-          }
-          continue;
-        }
-        text.write(current);
-        index += 1;
-      }
-      literals.add(_Literal(startLine, text.toString()));
-      continue;
-    }
-    index += 1;
-  }
-  return literals;
 }

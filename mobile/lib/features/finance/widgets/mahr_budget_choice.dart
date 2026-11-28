@@ -165,7 +165,9 @@ void revealMahrChoice(GlobalKey key, {GlobalKey? near}) {
   return (
     outside: 'الميزانية $total كلها للعرس، والمهر $ofMahr فوقها',
     inside: left > 0
-        ? 'من الميزانية $total يروح $ofMahr للمهر، ويبقى للعرس ${mahrWords(left, currency)}'
+        // D129: MSA, and short enough that the choice stays whole on a
+        // 320 phone with the keyboard up.
+        ? 'من الميزانية $total: $ofMahr للمهر، و${mahrWords(left, currency)} للعرس'
         : left == 0
         ? 'المهر $ofMahr ياخذ الميزانية كلها'
         : 'المهر $ofMahr أكثر من الميزانية بـ${mahrWords(-left, currency)}',

@@ -16,11 +16,14 @@ import '../../../core/utils/plan_day.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../marketplace/marketplace_api.dart' show ProviderBoardRow;
+import '../../wedding_plans/wedding_plans_api.dart'
+    show DashboardSummaryProvider;
 import '../models/budget_category.dart';
 import '../models/money_payer_words.dart';
 import '../models/money_summary.dart';
 import '../models/wedding_cost.dart';
 import '../providers/finance_provider.dart';
+import '../widgets/budget_item_answer.dart';
 import '../widgets/money_input_formatter.dart';
 import '../widgets/money_widgets.dart' show shownMoney;
 import 'money_item_market.dart';
@@ -83,6 +86,16 @@ class _BudgetCategoryDetailsScreenState
         .toList();
     final canManage = provider.canManageMoney;
     final board = moneyItemsOnBoard(context, provider, widget.weddingPlanId);
+    // D72: one of the plan's essentials (the server's G23 reading, from the
+    // home's summary) that nothing is agreed on yet.
+    final home = context.watch<DashboardSummaryProvider?>()?.summary;
+    final essential =
+        home?.planId == widget.weddingPlanId &&
+        home!.essentials.any(
+          (entry) =>
+              entry.budgetCategoryId == widget.categoryId && !entry.isSettled,
+        );
+    final answered = item?.suggestionHidden == true ? item?.suggestion : null;
 
     final Widget body;
     if (provider.isLoading && category == null) {
@@ -202,6 +215,26 @@ class _BudgetCategoryDetailsScreenState
               onGrow: () => _grow(category, over),
               onMove: () =>
                   context.push(AppRouter.moneyBudget(widget.weddingPlanId)),
+            ),
+          ],
+          // D72: before any agreement, the home's two answers to an
+          // essential item, or what the answer did and its way back.
+          if (canManage &&
+              !category.isMahr &&
+              costs.isEmpty &&
+              (answered != null || essential)) ...[
+            const SizedBox(height: AarastV3Space.x3),
+            BudgetItemAnswer(
+              weddingPlanId: widget.weddingPlanId,
+              categoryId: category.id,
+              answer: answered,
+              onSaved: () async {
+                await _load();
+                if (!context.mounted) return;
+                await context.read<DashboardSummaryProvider?>()?.loadDashboard(
+                  widget.weddingPlanId,
+                );
+              },
             ),
           ],
           // Before any agreement: where its offers are, or where to find one.

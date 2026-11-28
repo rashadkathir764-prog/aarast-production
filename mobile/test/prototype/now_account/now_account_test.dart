@@ -303,7 +303,7 @@ void main() {
     await _shot(
       tester,
       'a05_settings',
-      const SettingsScreen(devicePushAvailableOverride: true),
+      const SettingsScreen(),
       h: 1500,
       providers: await settingsProviders(),
     );
@@ -425,7 +425,7 @@ void main() {
   }
 
   testWidgets('a11 my plans', (tester) async {
-    // «خطتك · 88 يوم» counts from today, so the day follows today.
+    // «خطتك · 88 يومًا» counts from today, so the day follows today.
     final now = appNow();
     await _shot(
       tester,
@@ -436,7 +436,7 @@ void main() {
         weddingDate: DateTime(now.year, now.month, now.day + 88),
       ),
     );
-    expect(find.text('خطتك · 88 يوم'), findsOneWidget);
+    expect(find.text('خطتك · 88 يومًا'), findsOneWidget);
   });
 
   testWidgets('a12 contexts', (tester) async {
@@ -518,7 +518,7 @@ void main() {
     // The first answer is not the last: «لا، خلّها» keeps the plan.
     await tapKey('plan-details-delete');
     expect(find.text('تحذف الخطة؟'), findsOneWidget);
-    expect(find.textContaining('بعد 30 يوم'), findsOneWidget);
+    expect(find.textContaining('بعد 30 يومًا'), findsOneWidget);
     await tapKey('plan-delete-next');
     expect(find.text('متأكد؟'), findsOneWidget);
     await tapKey('plan-delete-keep');

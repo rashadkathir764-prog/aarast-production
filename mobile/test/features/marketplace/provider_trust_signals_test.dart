@@ -77,6 +77,10 @@ void main() {
     expect(providerWhatsAppUri('not a number'), isNull);
   });
 
+  // Changed on purpose (2026-11-26, REFINEMENT_SPEC 2.7): the answer time is
+  // said only from 80% answered up, and below it the answered share is
+  // said instead (a fast answer to half the requests is no fast answer); the
+  // words are the arb part's MSA («يردّ»).
   test('f03 says how fast a provider answers, only from answers', () {
     expect(
       providerRespondsLabel(
@@ -86,7 +90,7 @@ void main() {
           typicalResponseHours: 2,
         ),
       ),
-      'يرد عادة خلال ساعتين',
+      'يردّ عادة خلال ساعتين',
     );
     expect(
       providerRespondsLabel(
@@ -96,14 +100,25 @@ void main() {
           typicalResponseHours: 30,
         ),
       ),
-      'يرد عادة خلال يومين',
+      'يردّ عادة خلال يومين',
     );
-    // Nothing answered, or nothing asked: no promise either way.
+    // Under 80%: the share, not the time.
+    expect(
+      providerRespondsLabel(
+        const ProviderResponsiveness(
+          sampleSize: 5,
+          answeredPercent: 60,
+          typicalResponseHours: 2,
+        ),
+      ),
+      'يردّ على 60% من الطلبات',
+    );
+    // Nothing answered: the share says so, and promises no time.
     expect(
       providerRespondsLabel(
         const ProviderResponsiveness(sampleSize: 3, answeredPercent: 0),
       ),
-      isNull,
+      'يردّ على 0% من الطلبات',
     );
     expect(
       providerRespondsLabel(

@@ -1,0 +1,76 @@
+{
+  "providerSettingsTitle": "الإعدادات",
+  "@providerSettingsTitle": {
+    "description": "Header of the provider's settings page (features/provider_portal/screens/provider_settings_screen.dart): his notifications and his account. Providers are addressed neutrally or with the usual masculine imperative (D70)."
+  },
+  "providerSwitchCustomers": "طلبات العملاء ورسائلهم",
+  "@providerSwitchCustomers": {
+    "description": "The provider's one notification switch (the server's providerMessagesEnabled): requests, messages, answers to his offers, bookings changed, new reviews."
+  },
+  "providerAccountTitle": "الحساب",
+  "@providerAccountTitle": {
+    "description": "Section title over the provider's account rows: his wedding plan, signing out, deleting the account."
+  },
+  "providerOpenPlanRow": "خطة عرسي",
+  "@providerOpenPlanRow": {
+    "description": "Row on the provider's settings: leave the provider's side for his own wedding plan."
+  },
+  "providerOpenPlanSub": "بالرقم نفسه",
+  "@providerOpenPlanSub": {
+    "description": "Line under providerOpenPlanRow: the same phone number signs in to both."
+  },
+  "providerSignOutRow": "تسجيل الخروج",
+  "@providerSignOutRow": {
+    "description": "Row on the provider's settings: signs out of this phone; also the confirm sheet's button."
+  },
+  "providerSignOutSub": "من هذا الجوال",
+  "@providerSignOutSub": {
+    "description": "Line under providerSignOutRow."
+  },
+  "providerDeleteRow": "حذف الحساب",
+  "@providerDeleteRow": {
+    "description": "Row on the provider's settings: opens the one account deletion page (D63)."
+  },
+  "providerDeleteSub": "يُحذف بعد 30 يومًا، ويمكنك التراجع قبلها",
+  "@providerDeleteSub": {
+    "description": "Line under providerDeleteRow when no confirmed booking is ahead: the account waits 30 days and can be restored meanwhile."
+  },
+  "providerDeleteBlockedSub": "{count, plural, =1{لديك حجز مؤكَّد قادم، ألغِه قبل حذف الحساب} =2{لديك حجزان مؤكَّدان قادمان، ألغِهما قبل حذف الحساب} few{لديك {count} حجوزات مؤكَّدة قادمة، ألغِها قبل حذف الحساب} many{لديك {count} حجزًا مؤكَّدًا قادمًا، ألغِها قبل حذف الحساب} other{لديك {count} حجز مؤكَّد قادم، ألغِها قبل حذف الحساب}}",
+  "@providerDeleteBlockedSub": {
+    "description": "Line under providerDeleteRow when confirmed bookings are ahead: the server refuses the deletion until they are handed over (B-33).",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "description": "Confirmed bookings ahead, 1 or more."
+      }
+    }
+  },
+  "providerOpenPlanConfirmTitle": "فتح خطة عرسك؟",
+  "@providerOpenPlanConfirmTitle": {
+    "description": "Title of the sheet confirming the move from the provider's side to his wedding plan."
+  },
+  "providerOpenPlanConfirmBody": "نغلق واجهة المزوّد، ويبقى دخولك إليها بالرقم نفسه.",
+  "@providerOpenPlanConfirmBody": {
+    "description": "Line of the open-plan sheet: the provider's side closes, and the same number still opens it."
+  },
+  "providerOpenPlanConfirm": "فتح خطة عرسي",
+  "@providerOpenPlanConfirm": {
+    "description": "Main button of the open-plan sheet."
+  },
+  "providerSignOutConfirmTitle": "تسجيل الخروج؟",
+  "@providerSignOutConfirmTitle": {
+    "description": "Title of the sheet confirming a provider's sign out."
+  },
+  "providerSignOutConfirmBody": "ستحتاج إلى الدخول من جديد للوصول إلى حساب المزوّد.",
+  "@providerSignOutConfirmBody": {
+    "description": "Line of the sign-out sheet: what signing out means."
+  },
+  "providerConfirmCancel": "إلغاء",
+  "@providerConfirmCancel": {
+    "description": "Second button of the provider's confirm sheets: closes the sheet and changes nothing."
+  },
+  "providerSettingsActionFailed": "لم نتمكن من إكمال ذلك. أعد المحاولة.",
+  "@providerSettingsActionFailed": {
+    "description": "Line under the provider's account rows when opening his plan or signing out failed."
+  }
+}

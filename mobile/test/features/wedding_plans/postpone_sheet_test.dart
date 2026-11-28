@@ -168,7 +168,7 @@ void main() {
 
     expect(find.text('15 أبريل'), findsOneWidget);
     // Two open dated tasks; the done one and the undated one stay.
-    expect(find.text('مهمتين تنتقل 84 يوم'), findsOneWidget);
+    expect(find.text('مهمتين تنتقل 84 يومًا'), findsOneWidget);
     expect(find.text('حجز واحد على اليوم القديم'), findsOneWidget);
     expect(find.text('الدفعات تبقى على مواعيدها'), findsOneWidget);
     expect(find.textContaining('أقساط'), findsNothing);

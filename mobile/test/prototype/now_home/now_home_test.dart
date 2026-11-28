@@ -4,6 +4,8 @@
 @Tags(['golden'])
 library;
 
+import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart'
+    show JourneyCelebrationSky, JourneyProfile, JourneyProfileScope;
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/offline/local_database.dart';
 import 'package:aarast_mobile/core/offline/local_database_json.dart';
@@ -24,7 +26,9 @@ import 'package:aarast_mobile/features/notifications/screens/notifications_scree
 import 'package:aarast_mobile/features/onboarding/data/guest_onboarding_storage.dart';
 import 'package:aarast_mobile/features/onboarding/models/guest_onboarding_draft.dart';
 import 'package:aarast_mobile/features/shell/widgets/plan_shell_chrome.dart';
+import 'package:aarast_mobile/features/wedding_day/data/plan_events_api.dart';
 import 'package:aarast_mobile/features/wedding_day/models/plan_event.dart';
+import 'package:aarast_mobile/features/wedding_day/providers/plan_events_provider.dart';
 import 'package:aarast_mobile/features/wedding_plans/data/plan_assistant_api.dart';
 import 'package:aarast_mobile/features/wedding_plans/data/wedding_plans_api.dart';
 import 'package:aarast_mobile/features/wedding_plans/models/dashboard_summary.dart';
@@ -32,6 +36,7 @@ import 'package:aarast_mobile/features/wedding_plans/models/plan_assistant.dart'
 import 'package:aarast_mobile/features/wedding_plans/providers/dashboard_summary_provider.dart';
 import 'package:aarast_mobile/features/wedding_plans/providers/wedding_plans_provider.dart';
 import 'package:aarast_mobile/features/wedding_plans/screens/plan_assistant_screen.dart';
+import 'package:aarast_mobile/features/wedding_plans/screens/wedding_week_screen.dart';
 import 'package:aarast_mobile/features/wedding_plans/widgets/dashboard/aarast_dashboard_view.dart';
 import 'package:aarast_mobile/features/wedding_plans/widgets/plan_assistant_entry.dart';
 import 'package:flutter/material.dart';
@@ -423,6 +428,16 @@ class _FakeSync extends OfflineSyncService {
   DateTime? get lastSyncedAt => DateTime(2026, 10, 20, 9, 40);
 }
 
+/// The plan's events as the server sends them, for «أسبوع العرس».
+class _WeekEventsApi extends PlanEventsApi {
+  _WeekEventsApi(this.view) : super(ApiClient(tokenProvider: () async => null));
+
+  final PlanEventsView view;
+
+  @override
+  Future<PlanEventsView> list(String weddingPlanId) async => view;
+}
+
 void main() {
   setUpAll(loadPreviewAppFonts);
 
@@ -454,6 +469,8 @@ void main() {
     assistantEntry: assistant,
     events: events,
     onOpenEvents: () {},
+    // D134: the wedding week's card, under the next step.
+    onOpenWeek: () {},
     onNotifications: () {},
     onProfile: () {},
     onOpenPlan: () {},
@@ -533,6 +550,7 @@ void main() {
         dash(
           _active,
           now,
+          events: weekEvents,
           assistant: PlanAssistantEntry(
             weddingPlanId: _planId,
             api: _FakeAssistantApi(),
@@ -544,13 +562,12 @@ void main() {
     );
   });
 
-  // The money card once the money in is known and the server names dues:
-  // the verdict chip and the strip (late, a month of next year, after the
-  // wedding), which no picture drew before.
-  testWidgets('home dues', (tester) async {
+  // The money card once the money in is known: the verdict chip, what is in
+  // hand and promised, and under them the one bar and the one row (D113).
+  testWidgets('home funding', (tester) async {
     await _shot(
       tester,
-      'home_dues',
+      'home_funding',
       shell(
         dash(
           _active,
@@ -563,11 +580,6 @@ void main() {
             ownerLeft: 3350000,
             // D113: the money tab's verdict as the home's short tag.
             verdict: (ok: true, conditional: false, words: 'تكفي'),
-            dues: [
-              DashboardHomeDue(label: 'متأخرة', amount: 400000, overdue: true),
-              DashboardHomeDue(label: 'يناير 2027', amount: 1250000),
-              DashboardHomeDue(label: 'بعد العرس', amount: 1700000),
-            ],
           ),
         ),
         stage: 'التخطيط',
@@ -650,6 +662,67 @@ void main() {
       h: 1000,
     );
   });
+
+  // D134 on the bride's plan (Rashad, 2026-11-27: everything done on the
+  // groom's path holds on hers): the same card under her next step, in her
+  // colour and her words.
+  testWidgets('bride home with the week card', (tester) async {
+    await _shot(
+      tester,
+      'bride_home_week_card',
+      JourneyProfileScope(
+        profile: JourneyProfile.bride,
+        child: shell(dash(_active, now, events: weekEvents)),
+      ),
+      h: 1000,
+    );
+    expect(
+      find.byKey(const ValueKey('aarast-dashboard-week-card')),
+      findsOneWidget,
+    );
+  });
+
+  // D134: «أسبوع العرس», the page the home's card opens: before the week
+  // opens, inside it, and on the day; and inside it on the bride's plan.
+  for (final (name, clock, profile) in [
+    ('week_page_before', DateTime(2026, 10, 20, 10), JourneyProfile.groom),
+    ('week_page', DateTime(2027, 1, 19, 10), JourneyProfile.groom),
+    ('week_page_day', DateTime(2027, 1, 21, 16), JourneyProfile.groom),
+    ('bride_week_page', DateTime(2027, 1, 19, 10), JourneyProfile.bride),
+  ]) {
+    testWidgets(name, (tester) async {
+      pinAppClock(clock);
+      addTearDown(() => pinAppClock(DateTime(2026, 10, 26, 12)));
+      await _shot(
+        tester,
+        name,
+        JourneyProfileScope(
+          profile: profile,
+          child: const WeddingWeekScreen(weddingPlanId: _planId),
+        ),
+        h: 1000,
+        // The hero's photo is the app's real asset: it is decoded here, or
+        // the picture would show the plan's colour alone.
+        act: () async {
+          await tester.runAsync(
+            () => precacheImage(
+              const AssetImage(JourneyCelebrationSky.asset),
+              tester.element(find.byType(WeddingWeekScreen)),
+            ),
+          );
+          await tester.pump(const Duration(milliseconds: 600));
+        },
+        providers: [
+          Provider<ApiClient>.value(
+            value: ApiClient(tokenProvider: () async => null),
+          ),
+          ChangeNotifierProvider<PlanEventsProvider>(
+            create: (_) => PlanEventsProvider(api: _WeekEventsApi(weekEvents)),
+          ),
+        ],
+      );
+    });
+  }
 
   testWidgets('home after', (tester) async {
     await _shot(

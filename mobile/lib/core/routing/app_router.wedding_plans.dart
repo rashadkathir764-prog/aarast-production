@@ -45,6 +45,19 @@ List<RouteBase> _weddingPlanRoutes() => [
       );
     },
   ),
+  // «أسبوع العرس» (D134): the home's card opens it; every member reads it
+  // as they read the plan's events.
+  GoRoute(
+    path: '/wedding-plans/:id/week',
+    builder: (context, state) {
+      final id = state.pathParameters['id'] ?? '';
+      return WeddingPlanContextGate(
+        weddingPlanId: id,
+        requiredAccess: WeddingPlanRouteAccess.viewPlan,
+        child: WeddingWeekScreen(weddingPlanId: id),
+      );
+    },
+  ),
   GoRoute(
     path: '/wedding-plans/:id/tasks/create',
     builder: (context, state) {

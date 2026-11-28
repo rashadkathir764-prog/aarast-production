@@ -118,7 +118,7 @@ class _JourneyHomeTiles extends StatelessWidget {
             Expanded(
               child: _HomeTile(
                 key: const ValueKey('aarast-dashboard-tile-providers'),
-                label: 'المزودين',
+                label: 'المزوّدون',
                 icon: LucideIcons.store,
                 color: context.accent.primary,
                 soft: context.accent.primarySoft,

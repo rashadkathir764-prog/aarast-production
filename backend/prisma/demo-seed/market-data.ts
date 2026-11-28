@@ -84,7 +84,7 @@ export const PROVIDERS: readonly ProviderSpec[] = [
     businessName: 'استوديو ضوء صنعاء',
     ownerName: 'علي الشامي',
     phone: '+967777000201',
-    description: 'استوديو تصوير أعراس بثلاثة فرق رجال وفريق مصوّرات لحفلات النساء. تسليم الصور والفيلم خلال 30 يوم.',
+    description: 'استوديو تصوير أعراس بثلاثة فرق رجال وفريق مصوّرات لحفلات النساء. تسليم الصور والفيلم خلال 30 يومًا.',
     address: 'شارع الزبيري، صنعاء',
     status: ProviderStatus.ACTIVE,
     verified: true,

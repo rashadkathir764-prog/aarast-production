@@ -89,8 +89,8 @@ void main() {
         await walk.tapText('لا، المهر لحاله', wait: 1);
         await walk.tapText('التالي');
         walk.expectSee('خطتك جاهزة', why: 'المهر وصّل لشاشة «جاهزة»');
-        walk.expectSee('5 مليون', why: 'الميزانية التي كُتبت تظهر');
-        walk.expectSee('المهر مليونين', why: 'المهر الذي كُتب يظهر');
+        walk.expectSee('5 ملايين', why: 'الميزانية التي كُتبت تظهر');
+        walk.expectSee('المهر 2 مليون', why: 'المهر الذي كُتب يظهر');
       });
 
       await walk.step('a08_ready', 'خطتك جاهزة', () async {
@@ -170,7 +170,7 @@ void main() {
         // D109: the budget heads «البنود»; on «الملخص» it is in the whole
         // picture at the bottom, out of the list's built rows.
         await walk.tapText('البنود', wait: 2.5);
-        walk.expectSee('5 مليون', why: 'الميزانية وصلت الخادم (C2)');
+        walk.expectSee('5 ملايين', why: 'الميزانية وصلت الخادم (C2)');
       });
 
       await walk.step('c10_add_cost', 'سجّل اتفاقًا: القاعة', () async {
@@ -286,11 +286,15 @@ void main() {
       await walk.step('b02_home_after', 'الرئيسية تعرف كل هذا', () async {
         await walk.tab('الرئيسية');
         walk.note(walk.visibleTexts().take(30).join(' · '));
-        // V-01: the home's side column is compact with its unit; the space
-        // before the unit is a non-breaking one, so the two are matched apart.
-        walk.expectSee('دفعت 250', why: 'الرئيسية تعرف الدفعة (R1)');
-        walk.expectSee('ألف', why: 'الرقم المختصر معه وحدته (V-01)');
-        // «اتفقت على» says it holds the mahr («منها المهر»), as it does with
+        // D135: the card is one height, so «اتفقت على» and «دفعت» live in
+        // the money tab. The home knows the payment by what is left on him:
+        // the mahr's 2 millions and the hall's 750 thousand after the 250.
+        walk.expectSee(
+          '2,750,000',
+          why: 'الرئيسية تعرف الاتفاق والدفعة: مهر 2 مليون وباقي القاعة 750 ألف',
+        );
+        walk.expectSee('فاضي منها 4', why: 'الاتفاق نزل من الميزانية (R1)');
+        // The lead says it holds the mahr («منها المهر»), as it does with
         // the budget holding it (2026-11-18).
         walk.expectSee('منها المهر', why: 'المجموع يقول إنه مع المهر (D79)');
         walk.expectNotSee('ابدأ قائمة الضيوف', why: 'أضفنا ضيفًا (R1)');

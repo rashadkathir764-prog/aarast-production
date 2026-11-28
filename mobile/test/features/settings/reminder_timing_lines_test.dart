@@ -20,25 +20,40 @@ void main() {
     final him = reminderTimingLines(schedule, gender: 'male');
     final her = reminderTimingLines(schedule, gender: 'female');
 
+    // Changed on purpose (REFINEMENT_SPEC 2.5): the task's own time waits
+    // for the morning on the phone when it falls in the night, so the line
+    // says so instead of promising the minute.
     expect(
       him.tasks,
       'قبل موعدها بأسبوع وبيوم، وفي يومها، ومرة إن تأخرت، '
-      'وفي الوقت الذي تختاره لها',
+      'وفي الوقت الذي تختاره لها، وإن كان ليلًا وصل جوالك صباحًا',
     );
-    expect(her.tasks, endsWith('وفي الوقت الذي تختارينه لها'));
+    expect(her.tasks, contains('وفي الوقت الذي تختارينه لها'));
+    // The promised money is the owner's alone (the server tells the owner).
     expect(
-      him.payments,
+      him.money(ownsPlan: true),
       'قبل موعدها بأسبوع أو في يوم التذكير الذي تحدده، ومرة إن تأخرت. '
       'والمال الموعود قبل موعده بيوم، وفي يومه',
     );
+    expect(
+      him.money(ownsPlan: false),
+      'قبل موعدها بأسبوع أو في يوم التذكير الذي تحدده، ومرة إن تأخرت',
+    );
     expect(her.payments, contains('الذي تحددينه'));
     expect(him.bookings, 'قبل موعدها بأسبوع وبيوم');
-    expect(him.offers, 'فور وصولها');
+    // «فور وصولها» is gone: offers wait for the morning at night. The night
+    // line (spec 2.5 §3) is the one place that says what waits.
     expect(
-      him.quietHours,
-      'من 9 مساءً إلى 9 صباحًا لا نرسل إلى جوالك، إلا الرسائل وطلبات الحجز '
-      'فتصلك في أي وقت. وفي الأسبوع الأخير قبل العرس يصلك ليلًا ما يغيّر '
-      'عرسك، مثل إلغاء حجز أو دفعة تستحق اليوم.',
+      nightLine(schedule, weddingNews: true),
+      'بين 9 مساءً و9 صباحًا نؤجّل إشعارات الجوال إلى 9 صباحًا، إلا الرسائل '
+      'وطلبات الحجز. وفي آخر أسبوع قبل العرس ويوم العرس يصلك ما يغيّر عرسك في '
+      'أي وقت.',
+    );
+    // A provider has no wedding of his own on his page.
+    expect(
+      nightLine(schedule, weddingNews: false),
+      'بين 9 مساءً و9 صباحًا نؤجّل إشعارات الجوال إلى 9 صباحًا، إلا الرسائل '
+      'وطلبات الحجز.',
     );
   });
 
@@ -60,20 +75,18 @@ void main() {
       'alwaysThrough': <String>[],
       'weddingWeek': {'daysBefore': 3, 'through': <Object>[]},
     };
-    final lines = reminderTimingLines(
-      ReminderSchedule.fromResponse(answer)!,
-      gender: 'male',
-    );
+    final schedule = ReminderSchedule.fromResponse(answer)!;
+    final lines = reminderTimingLines(schedule, gender: 'male');
     expect(
       lines.tasks,
-      'قبل موعدها بأسبوعين وبـ3 أيام، وفي يومها، وفي الوقت الذي تختاره لها',
+      'قبل موعدها بأسبوعين وبـ3 أيام، وفي يومها، وفي الوقت الذي تختاره لها، '
+      'وإن كان ليلًا وصل جوالك صباحًا',
     );
     expect(lines.bookings, 'في يومها');
     expect(
-      lines.quietHours,
-      'من 10 مساءً إلى 8 صباحًا لا نرسل إلى جوالك، وتصلك التنبيهات بعدها. '
-      'وفي آخر 3 أيام قبل العرس يصلك ليلًا ما يغيّر عرسك، مثل إلغاء حجز أو '
-      'دفعة تستحق اليوم.',
+      nightLine(schedule, weddingNews: true),
+      'بين 10 مساءً و8 صباحًا نؤجّل إشعارات الجوال إلى 8 صباحًا. وفي آخر 3 '
+      'أيام قبل العرس ويوم العرس يصلك ما يغيّر عرسك في أي وقت.',
     );
   });
 

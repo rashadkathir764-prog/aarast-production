@@ -12,7 +12,6 @@ import '../../../core/offline/local_database.dart';
 import '../../../core/preferences/device_preferences.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/compact_money_figure.dart';
 import '../../../core/utils/plan_day.dart';
 import '../../account_contexts/account_contexts_api.dart'
@@ -27,7 +26,6 @@ import '../../onboarding/onboarding_api.dart'
 import '../../sharing/sharing_api.dart' show SharedMember;
 import '../../wedding_day/wedding_day_api.dart' show PlanEventsProvider;
 import '../data/mahr_moment_ledger.dart';
-import '../data/plan_bookings_lookup.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../models/dashboard_summary.dart';
@@ -250,53 +248,47 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
     await _load();
   }
 
+  /// The summary's holder the last load was asked of. The plan's holders
+  /// are made again when the account's context is settled (a session
+  /// restored at the app's start): a load asked of the old one is dropped
+  /// with it, and the new one is empty with nothing loading and no error.
+  /// The home then told a groom with a plan «ما عندك خطة بعد · أنشئ خطتك»
+  /// (the offline_resume walk, 2026-11-28).
+  DashboardSummaryProvider? _askedOf;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_isLocalGuestPlan) return;
+    final holder = Provider.of<DashboardSummaryProvider>(context);
+    final asked = _askedOf;
+    if (asked == null || identical(asked, holder)) return;
+    // Another holder now: nothing is known of the plan until it has read.
+    _askedOf = holder;
+    _loadedOnce = false;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
   Future<void> _load() async {
     if (!mounted) return;
     if (_isLocalGuestPlan) {
       await _loadLocalDashboard();
     } else {
       final events = context.read<PlanEventsProvider?>();
+      final holder = context.read<DashboardSummaryProvider>();
+      _askedOf = holder;
       await Future.wait([
-        context.read<DashboardSummaryProvider>().loadDashboard(
+        holder.loadDashboard(
           widget.weddingPlanId,
           sharedMember: widget.sharedMember,
         ),
         ?events?.load(widget.weddingPlanId),
       ]);
-      if (mounted) await _loadWeekBookings();
+      // The holder was replaced while this read was on its way: its answer
+      // went with it, and the read asked of the new one decides the screen.
+      if (!mounted || !identical(holder, _askedOf)) return;
     }
     if (mounted && !_loadedOnce) setState(() => _loadedOnce = true);
-  }
-
-  /// b04 «المزودين»: the plan's bookings, read only in the wedding week.
-  List<DashboardWeekBooking>? _weekBookings;
-
-  Future<void> _loadWeekBookings() async {
-    final summary = context.read<DashboardSummaryProvider>().summary;
-    final stage = resolveWeddingPlanStage(summary?.weddingDate, now: appNow());
-    if (summary?.planId != widget.weddingPlanId ||
-        stage.stage != WeddingPlanStage.finalWeek) {
-      if (_weekBookings != null) setState(() => _weekBookings = null);
-      return;
-    }
-    try {
-      final bookings = await PlanBookingsLookup(
-        context.read<ApiClient>(),
-      ).list(widget.weddingPlanId);
-      if (!mounted) return;
-      setState(
-        () => _weekBookings = [
-          for (final booking in bookings)
-            DashboardWeekBooking(
-              providerName: booking.providerName,
-              confirmed: booking.confirmed,
-            ),
-        ],
-      );
-    } on ApiException {
-      // Without a reading the card stays out; the week home shows the rest.
-      if (mounted) setState(() => _weekBookings = null);
-    }
   }
 
   Future<void> _loadLocalDashboard() async {
@@ -435,7 +427,6 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
     // the money tab's.
     final tag = coverage == null ? null : moneyCoverTag(coverage, figure);
     final outstanding = money.outstanding;
-    final duesByMonth = money.duesByMonth;
     return DashboardHomeFunding(
       inHand: value(funding.availableCash),
       pledged: value(funding.pledged),
@@ -443,18 +434,6 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
       sourcesCount: funding.sourcesCount,
       ownerLeft: outstanding == null ? null : value(outstanding.owner),
       verdict: tag,
-      // D102: the owner's share of what is late and of the coming months.
-      dues: duesByMonth == null
-          ? const []
-          : dashboardHomeDues(
-              overdue: value(duesByMonth.overdue.ownerAmount),
-              months: [
-                for (final due in duesByMonth.months)
-                  (month: due.month, amount: value(due.bucket.ownerAmount)),
-              ],
-              weddingDate: summary.weddingDate,
-              today: sanaaToday(),
-            ),
     );
   }
 
@@ -728,10 +707,14 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
                   : context.watch<PlanEventsProvider?>()?.viewOf(
                       selectedPlanId,
                     ),
-              weekBookings: _weekBookings,
               onOpenEvents: _isLocalGuestPlan
                   ? null
                   : () => context.push(AppRouter.planEvents(selectedPlanId)),
+              // D134: «أسبوع العرس» is a page of its own; a plan kept on
+              // the phone has no events, so no card.
+              onOpenWeek: _isLocalGuestPlan
+                  ? null
+                  : () => context.push(AppRouter.weddingWeek(selectedPlanId)),
               onOpenImportantItem: (item) =>
                   _openDashboardItem(item, selectedPlanId),
               onOpenNextStep: () => _openNextStep(summary, selectedPlanId),

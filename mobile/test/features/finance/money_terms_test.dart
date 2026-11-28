@@ -130,10 +130,7 @@ void main() {
   test('the budget: none, no agreements, within, or over by the expected '
       'cost', () {
     expect(headline(body(budget: null)).budget, MoneyHeadlineBudget.none);
-    expect(
-      headline(body(count: 0)).budget,
-      MoneyHeadlineBudget.noAgreements,
-    );
+    expect(headline(body(count: 0)).budget, MoneyHeadlineBudget.noAgreements);
     final within = headline(body());
     expect(within.budget, MoneyHeadlineBudget.within);
     expect(within.budgetTotal, 8000000);
@@ -146,5 +143,24 @@ void main() {
 
   test('D114: the mahr counted inside the budget is said so', () {
     expect(headline(body(includesMahr: true)).mahrInsideBudget, isTrue);
+  });
+
+  test("the loans he returns are the owner's own line, never in the lead", () {
+    final json = body()
+      ..['funding'] = {
+        'total': '3000000',
+        'received': '3000000',
+        'pledged': '0',
+        'spent': '0',
+        'availableCash': '2000000',
+        'loanTotal': '1000000',
+        'loanRepaid': '0',
+        'loanOutstanding': '1000000',
+        'overdueLoanRepayments': 0,
+        'overduePledges': 0,
+        'sourcesCount': 2,
+      };
+    final owner = headline(json);
+    expect(owner.lead, 3350000, reason: 'the loans are not added to it');
   });
 }

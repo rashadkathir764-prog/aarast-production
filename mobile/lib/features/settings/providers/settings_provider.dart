@@ -1,14 +1,15 @@
-import '../../../core/experience_v3/aarast_journey_profile.dart'
-    show ReaderVoice;
 import 'package:flutter/foundation.dart';
 
-import '../../../core/network/api_client.dart';
 import '../../../core/offline/cached_first_load.dart';
 import '../../../core/session/session_scoped_change_notifier.dart';
 import '../data/settings_api.dart';
+import '../models/preference_coverage.dart';
 import '../models/reminder_schedule.dart';
 import '../models/user_settings.dart';
 
+/// The account's notification switches and the server's answer on when
+/// they come and what each covers. The pages say every word themselves
+/// (lib/l10n/parts/settings.arb); this holds the state only.
 class SettingsProvider extends ChangeNotifier with SessionScopedNotifier {
   SettingsProvider(this._api);
 
@@ -16,15 +17,17 @@ class SettingsProvider extends ChangeNotifier with SessionScopedNotifier {
 
   bool _isLoading = false;
   bool _isSubmitting = false;
-  String? _errorMessage;
-  String? _successMessage;
+  bool _loadFailed = false;
   UserSettings? _settings;
   UserSettings? _draft;
 
   bool get isLoading => _isLoading;
+
+  /// A switch is being saved: every switch rests until it is done.
   bool get isSubmitting => _isSubmitting;
-  String? get errorMessage => _errorMessage;
-  String? get successMessage => _successMessage;
+
+  /// The switches could not be read and the phone has no copy.
+  bool get loadFailed => _loadFailed;
   UserSettings? get settings => _settings;
   UserSettings? get draft => _draft;
   bool get hasChanges =>
@@ -36,23 +39,30 @@ class SettingsProvider extends ChangeNotifier with SessionScopedNotifier {
 
   /// The server's reminder table, for the «متى يصلك» lines; null while the
   /// phone has neither a copy nor an answer (the lines are left out).
-  ReminderSchedule? _schedule;
-  ReminderSchedule? get schedule => _schedule;
+  ReminderSchedule? get schedule => _notificationSchedule?.reminders;
+
+  /// What each switch covers, for the «يشمل» lines; null as [schedule].
+  PreferenceCoverage? get coverage => _notificationSchedule?.coverage;
+  NotificationSchedule? _notificationSchedule;
 
   /// D85: the phone's copy shows at once; the server's answer replaces it.
   Future<void> loadSettings() async {
-    _successMessage = null;
     await Future.wait([_loadSettings(), _loadSchedule()]);
   }
 
-  /// The table is the server's and the same for everyone: a failure leaves
-  /// the copy (or no lines), never an error on the page.
-  Future<void> _loadSchedule() => readCachedFirst<ReminderSchedule>(
-    cached: _api.cachedReminderSchedule,
-    remote: () async =>
-        await _api.getReminderSchedule() ??
-        (throw const FormatException('Unreadable reminder schedule')),
-    apply: (schedule) => _schedule = schedule,
+  /// The answer is the server's and the same for everyone: a failure
+  /// leaves the copy (or no lines), never an error on the page.
+  Future<void> _loadSchedule() => readCachedFirst<NotificationSchedule>(
+    cached: _api.cachedNotificationSchedule,
+    remote: () async {
+      final answer = await _api.getNotificationSchedule();
+      if (answer.isEmpty) {
+        throw const FormatException('Unreadable notification schedule');
+      }
+      return answer;
+    },
+    isEmpty: (answer) => answer.isEmpty,
+    apply: (answer) => _notificationSchedule = answer,
     state: ({required loading, required stale, error}) => notifyListeners(),
     describe: (error) => '',
   );
@@ -68,58 +78,39 @@ class SettingsProvider extends ChangeNotifier with SessionScopedNotifier {
       state: ({required loading, required stale, error}) {
         _isLoading = loading;
         _isStale = stale;
-        _errorMessage = error;
+        _loadFailed = error != null;
         notifyListeners();
       },
-      describe: (error) =>
-          error is ApiException ? error.message : 'ما قدرنا نجيب الإعدادات.',
+      describe: (error) => error.runtimeType.toString(),
     );
   }
 
   void updateDraft(UserSettings settings) {
     _draft = settings;
-    _successMessage = null;
     notifyListeners();
   }
 
+  /// Saves the draft; false when the server refused it or could not be
+  /// reached without a queue. Without a network the change is kept on the
+  /// phone and sent later (D85), which counts as saved.
   Future<bool> saveSettings() async {
     final draft = _draft;
     if (draft == null) return false;
-    if (!hasChanges) {
-      _successMessage = 'ما في تغييرات نحفظها.';
-      notifyListeners();
-      return true;
-    }
+    if (!hasChanges) return true;
 
     _isSubmitting = true;
-    _errorMessage = null;
-    _successMessage = null;
     notifyListeners();
 
     try {
       final saved = await _api.updateSettings(draft);
       _settings = saved;
       _draft = saved;
-      _successMessage = 'تم حفظ الإعدادات.';
       return true;
-    } on ApiException catch (error) {
-      _errorMessage = error.message;
-      return false;
-    } catch (_) {
-      _errorMessage = ReaderVoice.say(
-        'ما انحفظت الإعدادات الحين. جرّب مرة ثانية.',
-        'ما انحفظت الإعدادات الحين. جرّبي مرة ثانية.',
-      );
+    } on Object {
       return false;
     } finally {
       _isSubmitting = false;
       notifyListeners();
     }
-  }
-
-  void clearMessages() {
-    _errorMessage = null;
-    _successMessage = null;
-    notifyListeners();
   }
 }

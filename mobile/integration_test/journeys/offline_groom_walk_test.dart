@@ -77,7 +77,7 @@ void main() {
       await walk.back();
 
       await walk.step('o06_providers', 'المزودين من نسخة الجوال', () async {
-        await walk.tab('المزودين');
+        await walk.tab('المزوّدون');
         walk.expectSee('قاعة سبأ', why: 'طلبات الخطة من نسخة الجوال');
         walk.expectNotSee('أعد المحاولة');
         walk.expectNotSee('جرّب مرة ثانية');

@@ -285,9 +285,10 @@ void main() {
       await pumpHome(tester, inside: true);
 
       expect(find.text('الاتفاق مع أهل العروسة'), findsOneWidget);
-      // Changed on purpose (D127, Q-53): «باقي عليك» says the mahr left in
-      // it too, under «اتفقت على»'s own.
-      expect(find.textContaining('منها المهر'), findsNWidgets(2));
+      // D127 (Q-53): «باقي عليك» says the mahr left in it. Changed on
+      // purpose (D113, 2026-11-27): the card is one height, so the agreed
+      // figure and the line under it are the money tab's.
+      expect(find.textContaining('منها المهر'), findsOneWidget);
       expect(find.textContaining('برّا الميزانية'), findsNothing);
       // The mahr is not an agreement with a provider: the step stays.
       expect(find.text('سجّل أول اتفاق'), findsOneWidget);
@@ -299,19 +300,12 @@ void main() {
       await pumpHome(tester, inside: false);
 
       expect(find.text('الاتفاق مع أهل العروسة'), findsOneWidget);
-      // Changed on purpose (D127, Q-54): «اتفقت على» says the mahr in it is
-      // outside the budget, or the budget still all free read as wrong
-      // arithmetic.
-      expect(
-        find.textContaining('منها المهر 2 مليون، برّا الميزانية'),
-        findsOneWidget,
-      );
-      // Changed on purpose (walks 2026-11-18): «اتفقت على» holds the mahr
-      // and says so under it (D79); without it the figure read as his
-      // agreements alone. The card says what was handed and what is left.
-      // Changed on purpose (D127, Q-53): «باقي عليك» says the mahr left in
-      // it too.
-      expect(find.textContaining('منها المهر'), findsNWidgets(2));
+      // Changed on purpose (D113, Rashad 2026-11-27): the card is one
+      // height. «اتفقت على» and its «منها المهر …، برّا الميزانية» (Q-54)
+      // are the money tab's; the home says the budget's row, the mahr on
+      // its own card, and under «باقي عليك» the mahr left in it (Q-53).
+      expect(find.textContaining('برّا الميزانية'), findsNothing);
+      expect(find.textContaining('منها المهر'), findsOneWidget);
       expect(find.text('سجّل أول اتفاق'), findsOneWidget);
     });
   });

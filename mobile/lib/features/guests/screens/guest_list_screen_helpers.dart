@@ -134,7 +134,7 @@ String _lastUpdate(DateTime at) {
   if (hours < 24) {
     return 'آخر تحديث قبل ${arabicCount(hours, one: 'ساعة', two: 'ساعتين', few: 'ساعات', many: 'ساعة')}';
   }
-  return 'آخر تحديث قبل ${arabicCount(hours ~/ 24, one: 'يوم', two: 'يومين', few: 'أيام', many: 'يوم')}';
+  return 'آخر تحديث قبل ${arabicDays(hours ~/ 24)}';
 }
 
 /// A family (group) with how many of its guests confirmed.

@@ -1,7 +1,7 @@
 part of 'provider_marketplace_screen.dart';
 
-/// The four tabs of «المزودين», in the order they are drawn: استكشف (f02),
-/// طلباتي (f01), المحادثات (f08) and المفضلة (f09).
+/// «طلباتي» (f01) and «المفضلة» (f09). «الدليل» is in the results part, the
+/// conversations are the chat feature's own list.
 extension _ProviderTabs on _ProviderMarketplaceScreenState {
   List<ProviderBoardRow> _board(ProviderMarketplaceProvider marketplace) {
     final planId = _weddingLocationPlanId!;
@@ -68,19 +68,10 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
   ) {
     final planId = _weddingLocationPlanId;
     if (_firstVisitLeft || planId == null) return false;
-    // Without an account there are no requests to read and never will be
-    // until the plan is saved, so this is a first visit, not a wait. It
-    // used to return «still reading» here, and on a plan kept on the phone
-    // that left «طلباتي» on a loading skeleton for good, with the tab row
-    // hidden behind it and no way back but the bottom bar.
-    // RA-MO-19: x22 offers what the plan's money allows («حجزت برا اعّرست»
-    // needs its rights, «على قد بندك» the hall's item), so it waits for
-    // that money, which _firstVisitPending asks for; read nowhere else on a
-    // plan without an account, both were left out without a word.
+    // Without an account there are no requests to read until the plan is
+    // saved: a first visit, not a wait (RA-MO-19: it waits for the money,
+    // which x22's ways depend on).
     if (_hasAccount == false) return _moneyReadFor(planId) ? true : null;
-    // The account's own requests have not been asked for yet, so neither
-    // view is known to be the right one: say «still reading» rather than
-    // flash an empty board that then turns into «نبدأ بالقاعة».
     if (!marketplace.includesAccountData) return null;
     if (marketplace.quotesForPlan(planId).isNotEmpty ||
         marketplace.favoriteProviders.isNotEmpty ||
@@ -89,7 +80,14 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
         _participantBookings(watch: true)?.isNotEmpty == true) {
       return false;
     }
-    if (marketplace.isLoading || _participantPlanPending) return null;
+    // The phone's copy of the directory ends [isLoading] at once and holds
+    // no requests and no saved providers: the plan's first visit is decided
+    // by the server's answer, not by that copy.
+    if (marketplace.isLoading ||
+        marketplace.accountDataPending ||
+        _participantPlanPending) {
+      return null;
+    }
     if (marketplace.quoteRequestsErrorMessage != null) return false;
     return _moneyReadFor(planId) ? true : null;
   }
@@ -118,10 +116,9 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
   /// whole directory.
   Widget _firstVisitView(
     ProviderMarketplaceProvider marketplace,
-    List<String> tabs,
+    List<ProvidersTab> tabs,
   ) {
     final planId = _weddingLocationPlanId!;
-    // This plan's money only (_firstVisitOf waited for it).
     final read = context.read<FinanceProvider?>();
     final finance = read?.loadedPlanId == planId ? read : null;
     // The venue kind by the catalog's own slug, and the item it lands in by
@@ -168,8 +165,7 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
           color: context.accent.primary,
           soft: context.accent.primarySoft,
           title: context.planWord('نبدأ بالقاعة', 'نبدأ بالصالة'),
-          // The plan's words, not the reader's: a helper reads this too,
-          // and the day and the guests are the wedding's, not theirs.
+          // The plan's words, not the reader's: a helper reads this too.
           message: context.planWord(
             'لأنها تحدد يوم العرس وعدد الضيوف،\nوالقاعات تنحجز قبل بشهرين.',
             'لأنها تحدد يوم العرس وعدد الضيفات،\nوالصالات تنحجز قبل بشهرين.',
@@ -184,7 +180,7 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
                   : hallWhere,
               onTap: () async {
                 _leaveFirstVisit();
-                _selectTab('استكشف', tabs);
+                _selectTab(ProvidersTab.directory);
                 if (hallIntent != null) {
                   await marketplace.applyBudgetMatchIntent(hallIntent);
                   return;
@@ -211,14 +207,14 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
             JourneyStartWay(
               key: const ValueKey('providers-first-explore'),
               icon: LucideIcons.search,
-              title: 'استكشف كل الخدمات',
+              title: aarastText.providersFavoritesBrowse,
               subtitle: context.say(
                 'فرق، تصوير، زينة، ضيافة',
                 'مزينات، مصورات، زينة، ضيافة',
               ),
               onTap: () {
                 _leaveFirstVisit();
-                _selectTab('استكشف', tabs);
+                _selectTab(ProvidersTab.directory);
               },
             ),
           ],
@@ -230,7 +226,7 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
   Widget _boardTab(
     ProviderMarketplaceProvider marketplace,
     List<ProviderBoardRow> board,
-    List<String> tabs,
+    List<ProvidersTab> tabs,
   ) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _ensureMoneyLoaded();
@@ -262,8 +258,7 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
             ProviderHardCaseCard(
               hardCase: hardCase,
               now: appNow(),
-              onFindOthers: () =>
-                  _searchService(hardCase.row, marketplace, tabs),
+              onFindOthers: () => _searchService(hardCase.row, marketplace),
               onAnotherDay: () => _pushOnce<void>(
                 AppRouter.providerQuote(hardCase.quote.providerId),
               ),
@@ -288,8 +283,8 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
             JourneyNote(
               key: const ValueKey('participant-own-requests-empty'),
               text: context.say(
-                'اللي تطلب منهم عروض يطلعون هنا. دوّر عليهم في «استكشف».',
-                'اللي تطلبين منهم عروض يطلعون هنا. دوّري عليهم في «استكشف».',
+                'اللي تطلب منهم عروض يطلعون هنا. دوّر عليهم في «الدليل».',
+                'اللي تطلبين منهم عروض يطلعون هنا. دوّري عليهم في «الدليل».',
               ),
               icon: LucideIcons.search,
               color: context.accent.primary,
@@ -299,10 +294,8 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
             ProviderBoardView(
               rows: board,
               onOpen: _openBoardRow,
-              onSearch: (row) => _searchService(row, marketplace, tabs),
-              onExplore: tabs.contains('استكشف')
-                  ? () => _selectTab('استكشف', tabs)
-                  : null,
+              onSearch: (row) => _searchService(row, marketplace),
+              onExplore: () => _selectTab(ProvidersTab.directory),
             ),
         ],
       ),
@@ -311,22 +304,17 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
 
   /// «ابحث» (and a hard case's «شوف غيرهم»): the directory, filtered to the
   /// categories the server lists for the row's item (G40), with the item's
-  /// amount for «قريبين من بندك».
+  /// amount for how a price stands against it.
   Future<void> _searchService(
     ProviderBoardRow row,
     ProviderMarketplaceProvider marketplace,
-    List<String> tabs,
   ) async {
-    if (row.providerCategoryIds.isEmpty) {
-      // A hard case of a kind no item holds: the whole directory.
-      _selectTab('استكشف', tabs);
-      return;
-    }
+    _selectTab(ProvidersTab.directory);
+    if (row.providerCategoryIds.isEmpty) return;
     final itemId = row.budgetCategoryId;
     final item = itemId == null
         ? null
         : context.read<FinanceProvider?>()?.categoryById(itemId);
-    _selectTab('استكشف', tabs);
     await marketplace.applyBudgetMatchIntent(
       ProviderBudgetMatchIntent(
         budgetCategoryName: row.title,
@@ -334,8 +322,7 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
         providerCategoryIds: row.providerCategoryIds,
       ),
     );
-    // A new search starts at its top: the item's chip, its line and the
-    // first results, not where an earlier browse left the list.
+    // A new search starts at its top, not where an earlier browse left it.
     if (mounted && _scrollController.hasClients) _scrollController.jumpTo(0);
   }
 
@@ -343,7 +330,6 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
   /// for «شوف غيرهم»: the item it lands in, else that category alone.
   Future<void> _openBookings(
     ProviderMarketplaceProvider marketplace,
-    List<String> tabs,
     List<ProviderBoardRow> board,
   ) async {
     final planId = _weddingLocationPlanId;
@@ -354,10 +340,10 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
         .where((row) => row.providerCategoryIds.contains(categoryId))
         .firstOrNull;
     if (row != null) {
-      await _searchService(row, marketplace, tabs);
+      await _searchService(row, marketplace);
       return;
     }
-    _selectTab('استكشف', tabs);
+    _selectTab(ProvidersTab.directory);
     if (marketplace.categoryId != categoryId) {
       await marketplace.setCategory(categoryId);
     }
@@ -376,158 +362,215 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
     );
   }
 
-  /// f09 «المفضلة»: the saved providers two by two, each with a box to pick
-  /// it for «قارن الملفين» (the first two are picked to start).
-  Widget _favoritesTab(ProviderMarketplaceProvider marketplace) {
+  /// f09 «المفضلة»: two by two, the shelf's own card (the first proposal's
+  /// grid, every card one height so the grid keeps its rows), each with the
+  /// box on its picture that picks it for the comparison; the button under
+  /// them compares the two picked (of one kind only).
+  Widget _favoritesTab(ProviderMarketplaceProvider marketplace, Widget top) {
     final favorites = marketplace.favoriteProviders
         .map((favorite) => favorite.provider)
         .whereType<MarketplaceProvider>()
         .toList();
     final picked = _comparePicks(favorites);
-    final bottomGap = widget.embedded
-        ? AarastV3Density.pageBottom
-        : AarastV3Space.x8;
-    final listPadding = EdgeInsets.fromLTRB(
-      AarastV3Space.x4,
-      AarastV3Space.x3,
-      AarastV3Space.x4,
-      bottomGap,
+    final rowHeight = providerRowHeight(context);
+    final failed = marketplace.favoriteProvidersErrorMessage != null;
+    Widget box(Widget child) => SliverPadding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AarastV3Density.pageHorizontal,
+      ),
+      sliver: SliverToBoxAdapter(child: child),
     );
-    if (favorites.isEmpty) {
-      // Saved hearts that could not be read are not «nothing saved».
-      final failed = marketplace.favoriteProvidersErrorMessage != null;
-      if (failed || marketplace.isLoading) {
-        return ListView(
-          key: const PageStorageKey('providers-favorites'),
-          padding: listPadding,
-          children: [
-            JourneyListState(
-              phase: failed ? JourneyListPhase.error : JourneyListPhase.loading,
-              section: JourneySection.providers,
-              onRetry: marketplace.loadFavoriteProviders,
-            ),
-          ],
-        );
-      }
-      return ListView(
-        key: const PageStorageKey('providers-favorites'),
-        padding: listPadding,
-        children: [
-          JourneyBox(
-            key: const ValueKey('providers-favorites-empty'),
-            child: Text(
-              context.say(
-                'احفظ المزود اللي يعجبك بالقلب، ويجيك هنا تقارن بينهم.',
-                'احفظي المزود اللي يعجبك بالقلب، ويجيك هنا تقارنين بينهم.',
-              ),
-              style: JourneyType.of(
-                JourneyType.body,
-                color: AarastV3Color.textMuted,
-              ),
-            ),
+    final List<Widget> content;
+    if (favorites.isEmpty && failed) {
+      content = [
+        box(
+          _DirectoryState(
+            key: const ValueKey('providers-favorites-error'),
+            icon: LucideIcons.wifiOff,
+            title: aarastText.providersFavoritesErrorTitle,
+            body: aarastText.providersLoadErrorBody(context.gender),
+            action: aarastText.providersRetry(context.gender),
+            onAction: marketplace.loadFavoriteProviders,
           ),
-        ],
-      );
-    }
-    return Column(
-      children: [
-        Expanded(
-          // Two by two; each row as tall as its taller card, so large text
-          // grows the cards instead of cutting them.
-          child: ListView(
-            key: const PageStorageKey('providers-favorites'),
-            padding: const EdgeInsets.fromLTRB(
-              AarastV3Space.x4,
-              AarastV3Space.x3,
-              AarastV3Space.x4,
-              AarastV3Space.x3,
-            ),
-            children: [
-              for (var i = 0; i < favorites.length; i += 2) ...[
-                if (i > 0) const SizedBox(height: AarastV3Space.x2),
-                IntrinsicHeight(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      for (final provider in favorites.skip(i).take(2)) ...[
-                        if (provider != favorites[i])
-                          const SizedBox(width: AarastV3Space.x2),
-                        Expanded(
-                          child: _FavoriteCard(
-                            key: ValueKey('providers-favorite-${provider.id}'),
-                            provider: provider,
-                            price: _favoritePrice(marketplace, provider),
-                            picked: picked.contains(provider.id),
-                            onPick: () =>
-                                _togglePick(provider, picked, favorites),
-                            onOpen: () => _openProviderDetails(provider.id),
-                          ),
-                        ),
-                      ],
-                      if (i + 1 >= favorites.length) ...[
-                        const SizedBox(width: AarastV3Space.x2),
-                        const Expanded(child: SizedBox.shrink()),
-                      ],
-                    ],
+        ),
+      ];
+    } else if (favorites.isEmpty &&
+        (marketplace.isLoading || marketplace.accountDataPending)) {
+      content = [
+        _rowCard(
+          key: const ValueKey('providers-favorites-loading'),
+          count: 3,
+          row: (_) => ProviderRowSkeleton(minHeight: rowHeight),
+        ),
+      ];
+    } else if (favorites.isEmpty) {
+      content = [
+        box(
+          _DirectoryState(
+            key: const ValueKey('providers-favorites-empty'),
+            icon: LucideIcons.heart,
+            title: aarastText.providersFavoritesEmptyTitle,
+            body: aarastText.providersFavoritesEmptyBody(context.gender),
+            action: aarastText.providersFavoritesBrowse,
+            onAction: () => _selectTab(ProvidersTab.directory),
+          ),
+        ),
+      ];
+    } else {
+      final facts = [
+        for (final provider in favorites) _favoriteFacts(marketplace, provider),
+      ];
+      content = [
+        SliverPadding(
+          key: const ValueKey('providers-favorites-grid'),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AarastV3Density.pageHorizontal,
+          ),
+          sliver: SliverLayoutBuilder(
+            builder: (context, constraints) {
+              final width =
+                  (constraints.crossAxisExtent - AarastV3Space.x3) / 2;
+              return SliverGrid.builder(
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  mainAxisSpacing: AarastV3Space.x3,
+                  crossAxisSpacing: AarastV3Space.x3,
+                  mainAxisExtent: providerCardHeight(
+                    context,
+                    width: width,
+                    boxed: true,
+                    facts: facts,
                   ),
                 ),
-              ],
+                itemCount: favorites.length,
+                itemBuilder: (context, index) {
+                  final provider = favorites[index];
+                  final isPicked = picked.contains(provider.id);
+                  return ProviderShelfCard(
+                    key: ValueKey('providers-favorite-${provider.id}'),
+                    facts: facts[index],
+                    boxed: true,
+                    picked: isPicked,
+                    isFavorite: true,
+                    onFavorite: () => _toggleFavorite(marketplace, provider.id),
+                    onOpen: () => _openProviderDetails(provider.id),
+                    pick: favorites.length < 2
+                        ? null
+                        : ProviderComparePick(
+                            key: ValueKey(
+                              'providers-favorite-pick-${provider.id}',
+                            ),
+                            picked: isPicked,
+                            onTap: () =>
+                                _togglePick(provider, picked, favorites),
+                          ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ];
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: CustomScrollView(
+            key: const PageStorageKey('providers-favorites'),
+            slivers: [
+              SliverToBoxAdapter(child: top),
+              const SliverToBoxAdapter(
+                child: SizedBox(height: AarastV3Space.x3),
+              ),
+              ...content,
+              const SliverToBoxAdapter(
+                child: SizedBox(height: AarastV3Space.x4),
+              ),
             ],
           ),
         ),
         if (favorites.length >= 2)
-          Padding(
-            padding: EdgeInsets.fromLTRB(
-              AarastV3Space.x4,
-              0,
-              AarastV3Space.x4,
-              bottomGap - AarastV3Space.x4,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Why the button waits: only the same service compares.
-                if (picked.length < 2) ...[
-                  Text(
-                    'المقارنة تكون بين اثنين من نفس الخدمة.',
-                    key: const ValueKey('providers-favorites-same-kind'),
-                    textAlign: TextAlign.center,
-                    style: JourneyType.of(
-                      JourneyType.small,
-                      color: AarastV3Color.textMuted,
+          ColoredBox(
+            color: AarastV3Color.canvas,
+            child: Padding(
+              // The «+» floats at the bar's end (D33): nothing to press under
+              // it, so the button stops before its column.
+              padding: EdgeInsetsDirectional.fromSTEB(
+                AarastV3Density.pageHorizontal,
+                AarastV3Space.x2,
+                widget.embedded
+                    ? AarastV3Size.quickAction + AarastV3Space.x8
+                    : AarastV3Density.pageHorizontal,
+                AarastV3Space.x4,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (picked.length < 2) ...[
+                    Text(
+                      aarastText.providersCompareSameKind,
+                      key: const ValueKey('providers-favorites-same-kind'),
+                      style: JourneyType.of(
+                        JourneyType.small,
+                        color: AarastV3Color.textMuted,
+                      ),
                     ),
+                    const SizedBox(height: AarastV3Space.x2),
+                  ],
+                  JourneyButton(
+                    key: const ValueKey('providers-favorites-compare'),
+                    label: aarastText.providersCompare(context.gender),
+                    icon: LucideIcons.columns,
+                    large: true,
+                    expand: true,
+                    onPressed: picked.length == 2
+                        ? () => _pushOnce(
+                            AppRouter.compareProviders(
+                              picked.first,
+                              picked.last,
+                            ),
+                          )
+                        : null,
                   ),
-                  const SizedBox(height: AarastV3Space.x2),
                 ],
-                JourneyButton(
-                  key: const ValueKey('providers-favorites-compare'),
-                  label: context.say('قارن بينهم', 'قارني بينهم'),
-                  icon: LucideIcons.columns,
-                  background: context.accent.primary,
-                  large: true,
-                  expand: true,
-                  onPressed: picked.length == 2
-                      ? () => _pushOnce(
-                          AppRouter.compareProviders(picked.first, picked.last),
-                        )
-                      : null,
-                ),
-              ],
+              ),
             ),
           ),
       ],
     );
   }
 
-  /// A saved provider's prices. The saved list carries none, so they come
-  /// from the directory's summary or the provider's page, read once; null
-  /// until known, and «حسب الطلب» only when nothing is priced.
-  String? _favoritePrice(
+  /// A saved provider's card facts, with the prices and the photo his page
+  /// gives once read.
+  ProviderCardFacts _favoriteFacts(
     ProviderMarketplaceProvider marketplace,
     MarketplaceProvider provider,
   ) {
-    final summary = _providerPriceRangeLabel(provider);
-    if (summary != null) return summary;
+    final price = _favoritePrice(marketplace, provider);
+    return providerCardFacts(
+      provider,
+      bridePlan: context.journeyProfile.isBride,
+      now: appNow(),
+      askedDay: marketplace.eventDate,
+      span: price.span,
+      priceKnown: price.known,
+      photoUrl: _favoritePhoto(marketplace, provider),
+      bookedByReader: marketplace.providersBookedByReader.contains(provider.id),
+    );
+  }
+
+  /// A saved provider's prices, as every card says them. The saved list
+  /// carries none, so they come from his page (services and packages), read
+  /// once; not known until then, and «السعر عند الطلب» only when nothing
+  /// is priced.
+  ({ProviderPriceSpan? span, bool known}) _favoritePrice(
+    ProviderMarketplaceProvider marketplace,
+    MarketplaceProvider provider,
+  ) {
+    final listed = providerPublishedSpan(provider);
+    if (listed != null) return (span: listed, known: true);
     if (marketplace.providerDetails(provider.id) == null) {
       if (_favoritePricesAsked.add(provider.id)) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -536,10 +579,33 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
           }
         });
       }
-      return null;
+      return (span: null, known: false);
     }
-    return providerPriceRange(marketplace.servicesFor(provider.id)) ??
-        'حسب الطلب';
+    return (
+      span: providerOwnKindSpan(
+        provider,
+        marketplace.servicesFor(provider.id),
+        marketplace.packagesFor(provider.id),
+      ),
+      known: true,
+    );
+  }
+
+  /// A saved provider's picture: the saved list carries his cover and logo
+  /// only, so his first work photo (outside the women's album) comes from
+  /// his page once read, as the directory's card shows it.
+  String? _favoritePhoto(
+    ProviderMarketplaceProvider marketplace,
+    MarketplaceProvider provider,
+  ) {
+    for (final photo
+        in marketplace.portfolioFor(provider.id)?.items ??
+            const <PublicPortfolioPhoto>[]) {
+      if (!photo.forWomen && photo.imageUrl.trim().isNotEmpty) {
+        return photo.imageUrl.trim();
+      }
+    }
+    return null;
   }
 
   /// The picks still saved, or the first two saved providers of the same
@@ -548,257 +614,5 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
     final saved = favorites.map((provider) => provider.id).toList();
     return _comparePicked?.where(saved.contains).toList() ??
         firstSameKindPair(favorites);
-  }
-
-  Widget _exploreTab(ProviderMarketplaceProvider provider) {
-    return RefreshIndicator(
-      color: context.accent.primary,
-      onRefresh: () => _refreshMarketplace(provider),
-      child: ListView(
-        controller: _scrollController,
-        padding: EdgeInsets.fromLTRB(
-          AarastV3Space.x4,
-          AarastV3Space.x3,
-          AarastV3Space.x4,
-          widget.embedded ? AarastV3Density.pageBottom : AarastV3Space.x6,
-        ),
-        children: [
-          if (!provider.includesAccountData) ...[
-            JourneyNote(
-              key: const Key('marketplace-login-note'),
-              text: context.say(
-                'تقدر تتصفح الحين. تطلب عروض وتتابعها بعد ما تحفظ خطتك برقم جوالك.',
-                'تقدرين تتصفحين الحين. تطلبين عروض وتتابعينها بعد ما تحفظين خطتك برقم جوالك.',
-              ),
-              icon: LucideIcons.logIn,
-              color: context.accent.primary,
-              soft: context.accent.primarySoft,
-            ),
-            const SizedBox(height: AarastV3Space.x3),
-          ],
-          if (provider.includesAccountData &&
-              provider.favoriteProvidersErrorMessage != null) ...[
-            const JourneyNote(
-              key: Key('marketplace-favorites-stale-warning'),
-              text: 'ما قدرنا نحدّث المحفوظين، فعلامات القلب ممكن تكون قديمة.',
-              icon: LucideIcons.alertTriangle,
-              color: AarastV3Color.danger,
-              soft: AarastV3Color.dangerSoft,
-            ),
-            Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: JourneyTextAction(
-                label: context.say('جرّب مرة ثانية', 'جرّبي مرة ثانية'),
-                color: AarastV3Color.danger,
-                onPressed: provider.loadMarketplace,
-              ),
-            ),
-            const SizedBox(height: AarastV3Space.x1),
-          ],
-          // Rashad 2026-11-18: the search is always the first thing here,
-          // with the place filter at its end; the kinds under it.
-          _MarketplaceSearch(
-            controller: _searchController,
-            focusNode: _searchFocusNode,
-            provider: provider,
-          ),
-          const SizedBox(height: AarastV3Space.x3),
-          _FilterChips(provider: provider),
-          if (_weddingLocation != null &&
-              !_weddingLocation!.hasRequiredLocation) ...[
-            const SizedBox(height: AarastV3Space.x2),
-            _LocationContextCard(
-              location: _weddingLocation,
-              onCompleteLocation: _openLocationCompletion,
-            ),
-          ],
-          if (provider.budgetMatchIntent != null) ...[
-            const SizedBox(height: AarastV3Space.x2),
-            _BudgetMatchContextCard(
-              intent: provider.budgetMatchIntent!,
-              categoryName: _activeCategoryName(context, provider),
-              onClear: provider.clearBudgetMatch,
-            ),
-          ],
-          if (provider.isLoading && provider.providers.isNotEmpty) ...[
-            const SizedBox(height: AarastV3Space.x2),
-            AarastV3ProgressLine(
-              key: const Key('marketplace-results-refreshing'),
-              height: AarastV3Size.bar,
-              color: context.accent.primary,
-              backgroundColor: context.accent.primarySoft,
-              semanticsLabel: 'تحديث نتائج المزودين',
-            ),
-          ],
-          const SizedBox(height: AarastV3Space.x4),
-          ..._exploreResults(provider),
-        ],
-      ),
-    );
-  }
-}
-
-/// One saved provider in f09: its photo (or its kind's icon), the box that
-/// picks it for comparing, its name, kind and prices.
-class _FavoriteCard extends StatelessWidget {
-  const _FavoriteCard({
-    required this.provider,
-    required this.price,
-    required this.picked,
-    required this.onPick,
-    required this.onOpen,
-    super.key,
-  });
-
-  final MarketplaceProvider provider;
-
-  /// Null while the provider's prices are not known yet.
-  final String? price;
-  final bool picked;
-  final VoidCallback onPick;
-  final VoidCallback onOpen;
-
-  @override
-  Widget build(BuildContext context) {
-    final kind = providerKindName(context, provider.primaryCategory);
-    final cover = provider.cardCoverUrl;
-    // Soft, as on the f02 card, so the picking box shows on it.
-    final placeholder = ColoredBox(
-      color: context.accent.primarySoft,
-      child: Center(
-        child: Icon(
-          providerServiceIcon(kind),
-          size: AarastV3Icon.xl,
-          color: context.accent.primary,
-        ),
-      ),
-    );
-    // RA-MO-361: the name joins the pressable's own node, and the compare
-    // box stays a button of its own; the card's one label had hidden it.
-    return AarastPressable(
-      onTap: onOpen,
-      borderRadius: BorderRadius.circular(AarastV3Radius.card),
-      child: Semantics(
-        label: provider.businessName,
-        child: Container(
-          clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(
-            color: AarastV3Color.paper,
-            borderRadius: BorderRadius.circular(AarastV3Radius.card),
-            border: picked
-                ? Border.all(
-                    color: context.accent.primary,
-                    width: AarastV3Size.lineStrong,
-                  )
-                : null,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // D118: a card photo's proportion of the card's width.
-              AspectRatio(
-                aspectRatio: AarastV3Media.cardPhoto,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    if (cover == null ||
-                        cover.isEmpty ||
-                        (context.watch<DevicePreferences?>()?.dataSaver ??
-                            false))
-                      placeholder
-                    else
-                      AarastNetworkImage(
-                        cover,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => placeholder,
-                      ),
-                    PositionedDirectional(
-                      top: 0,
-                      end: 0,
-                      child: Semantics(
-                        checked: picked,
-                        child: AarastPressable(
-                          key: ValueKey(
-                            'providers-favorite-pick-${provider.id}',
-                          ),
-                          onTap: onPick,
-                          semanticLabel: context.say(
-                            'اختره للمقارنة',
-                            'اختاريه للمقارنة',
-                          ),
-                          // The 24 box in a 48 target (DESIGN_SYSTEM).
-                          child: Padding(
-                            padding: const EdgeInsets.all(AarastV3Space.x3),
-                            child: Container(
-                              width: AarastV3Size.check,
-                              height: AarastV3Size.check,
-                              decoration: BoxDecoration(
-                                color: picked
-                                    ? context.accent.primary
-                                    : AarastV3Color.paper,
-                                borderRadius: BorderRadius.circular(
-                                  AarastV3Radius.xs,
-                                ),
-                              ),
-                              child: picked
-                                  ? const Icon(
-                                      LucideIcons.check,
-                                      size: AarastV3Icon.sm,
-                                      color: AarastV3Color.onPrimary,
-                                    )
-                                  : null,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              ExcludeSemantics(
-                child: Padding(
-                  padding: const EdgeInsets.all(AarastV3Space.x2),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        provider.businessName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: JourneyType.of(
-                          JourneyType.body,
-                          weight: JourneyType.bold,
-                        ),
-                      ),
-                      if (kind.isNotEmpty)
-                        Text(
-                          kind,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: JourneyType.of(
-                            JourneyType.caption,
-                            color: AarastV3Color.textMuted,
-                          ),
-                        ),
-                      if (price != null)
-                        Text(
-                          price!,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: JourneyType.of(
-                            JourneyType.small,
-                            weight: JourneyType.bold,
-                            color: context.accent.primary,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }

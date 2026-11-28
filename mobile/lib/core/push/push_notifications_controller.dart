@@ -44,7 +44,16 @@ enum PushPhoneState {
   /// The person turned them off: only the phone's own settings turn them on.
   off,
 
-  /// They reach the phone.
+  /// Allowed, but one or more of the app's channels is turned off in the
+  /// phone ([PushNotificationsController.blockedChannels] names them).
+  channelsOff,
+
+  /// Allowed, but this phone is not linked to the account yet: its
+  /// registration with Google or with the server failed (no network, most
+  /// often). It is tried again when the network comes back.
+  notLinked,
+
+  /// They reach the phone: allowed, every channel on, the phone linked.
   on,
 
   /// The phone did not say; nothing is claimed.
@@ -104,10 +113,11 @@ class PushNotificationsController extends ChangeNotifier
   bool get isAvailable => _initialized && _gateway.isAvailable;
 
   /// RA-MO-359: push cannot work on this phone: it has no Google services
-  /// (a Huawei phone), or the registration with them failed. Said by the
-  /// home's card, so the reader knows alerts stay in the app; a later
-  /// registration that succeeds takes it back.
-  bool get unavailableOnThisPhone => _noGoogleServices || _registrationFailed;
+  /// (a Huawei phone). Said by the home's card, so the reader knows alerts
+  /// stay in the app. A registration that failed is not this: it fails
+  /// without a network on any phone and is tried again
+  /// ([PushPhoneState.notLinked]).
+  bool get unavailableOnThisPhone => _noGoogleServices;
   bool _noGoogleServices = false;
   bool _registrationFailed = false;
   bool get hasPendingNotificationsOpen => _pendingNotificationsOpen;
@@ -372,20 +382,45 @@ class PushNotificationsController extends ChangeNotifier
     }
   }
 
+  /// One turned-off channel's page in the phone's settings; false when the
+  /// phone would not open it.
+  Future<bool> openChannelSettings(String channelId) async {
+    try {
+      return await PlayServicesCheck.openChannelSettings(channelId);
+    } on Object {
+      return false;
+    }
+  }
+
   /// The registration once the person turned them on in the phone's
   /// settings: called when a page sees [PushPhoneState.on] again.
   Future<void> turnedOnInPhoneSettings() => _queueCurrentRegistration();
 
-  /// The settings page's banner: what the phone does with the alerts now.
+  /// The app's channels turned off in the phone, as last read by [phoneState].
+  Set<String> get blockedChannels => _blockedChannels;
+  Set<String> _blockedChannels = const {};
+
+  /// What the phone does with the alerts now. «on» only when they can
+  /// really reach it: allowed, no channel turned off, and, for a signed-in
+  /// account, this phone registered with the server.
   Future<PushPhoneState> phoneState() async {
     await _initializing;
     if (!isAvailable || unavailableOnThisPhone) return PushPhoneState.unavailable;
     try {
-      return switch (await _authorization()) {
-        PushAuthorizationStatus.authorized => PushPhoneState.on,
-        PushAuthorizationStatus.denied => PushPhoneState.off,
-        PushAuthorizationStatus.notDetermined => PushPhoneState.notAsked,
-      };
+      final permission = await _authorization();
+      if (permission == PushAuthorizationStatus.denied) return PushPhoneState.off;
+      if (permission == PushAuthorizationStatus.notDetermined) {
+        return PushPhoneState.notAsked;
+      }
+      _blockedChannels = await _system.blockedChannels();
+      if (_blockedChannels.isNotEmpty) return PushPhoneState.channelsOff;
+      // A registration under way is waited for, so the page does not say
+      // «not linked» for the second it takes.
+      await _deviceOperation;
+      if (_boundUserId != null && _registeredFid == null) {
+        return PushPhoneState.notLinked;
+      }
+      return PushPhoneState.on;
     } on Object {
       return PushPhoneState.unknown;
     }
@@ -569,8 +604,9 @@ class PushNotificationsController extends ChangeNotifier
       try {
         fid = await _gateway.ensureRegistrationAndGetInstallationId();
       } on Object {
-        // The phone's own registration with Google failed: no server call
-        // can fix it, so the card says push does not work here.
+        // The phone's own registration with Google failed (no network,
+        // most often): this phone is not linked yet, and is tried again
+        // when the network comes back.
         _setRegistrationFailed(true);
         rethrow;
       }

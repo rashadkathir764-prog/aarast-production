@@ -234,7 +234,7 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
         )
         .toList();
     final title = row == null
-        ? 'المزودين'
+        ? 'المزوّدون'
         : offers.length >= 2
         ? '${context.say('قارن', 'قارني')} عروض ${row.title}'
         : row.title;
@@ -324,8 +324,8 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
                         JourneyNote(
                           key: const ValueKey('requests-choose-note'),
                           text: context.say(
-                            'لما تختار، نطلب منهم حجز يوم عرسك، ولما تطلب الحجز يدخل السعر مالك.',
-                            'لما تختارين، نطلب منهم حجز يوم عرسك، ولما تطلبين الحجز يدخل السعر مالك.',
+                            'لما تختار، تطلب منهم حجز يوم عرسك، ولما تطلب الحجز يدخل السعر في المال.',
+                            'لما تختارين، تطلبين منهم حجز يوم عرسك، ولما تطلبين الحجز يدخل السعر في المال.',
                           ),
                           icon: LucideIcons.wallet,
                         )
@@ -488,8 +488,8 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
       builder: (sheetContext) => JourneySheetBody(
         title: question,
         subtitle: context.say(
-          'السعر يدخل مالك لما تطلب الحجز، وما تقدر تختار عرض ثاني لهذي الخدمة.',
-          'السعر يدخل مالك لما تطلبين الحجز، وما تقدرين تختارين عرض ثاني لهذي الخدمة.',
+          'السعر يدخل في المال لما تطلب الحجز، وما تقدر تختار عرض ثاني لهذي الخدمة.',
+          'السعر يدخل في المال لما تطلبين الحجز، وما تقدرين تختارين عرض ثاني لهذي الخدمة.',
         ),
         children: [
           JourneyButton(

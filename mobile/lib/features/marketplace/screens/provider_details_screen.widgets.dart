@@ -1,101 +1,182 @@
 part of 'provider_details_screen.dart';
 
-/// D131: what is known of her wedding day in his calendar. The day's answer
-/// comes with the directory's list (the page asks no day), so it is read
-/// from the card she came from when the details do not carry it.
-ProviderDayStatus? _dayStatus(
+/// Why no request can be sent for the plan's wedding day, from the page's
+/// own `dayStatus` (the server refuses it too, 409
+/// PROVIDER_DAY_UNAVAILABLE); null when nothing stops it.
+String? _dayBlock(
   ProviderMarketplaceProvider state,
   MarketplaceProvider provider,
-) =>
-    provider.dayStatus ??
-    state.providers
-        .where((listed) => listed.id == provider.id)
-        .firstOrNull
-        ?.dayStatus;
+) {
+  final day = state.eventDate;
+  if (day == null || planDayIsPast(day, appNow())) return null;
+  // The day is full with the reader's own booking: nothing to refuse, the
+  // footer says where that booking stands.
+  if (state.providersBookedByReader.contains(provider.id)) return null;
+  return providerFooterDayBlock(provider.dayStatus);
+}
 
-/// f03's footer: «اطلب عرض سعر» (or where the latest request stands) and
-/// «واتساب». An unclaimed listing (w33) cannot take requests, so it says so
-/// and keeps WhatsApp only.
+/// What the page reads for its view, beside the screen's own loading.
+extension _ProviderPageReads on _ProviderDetailsScreenState {
+  /// «المزيد من التقييمات». A page that did not come is said: the button
+  /// went quiet for a moment and came back, with no reviews and no word.
+  Future<void> _loadMoreReviews(
+    ProviderMarketplaceProvider state,
+    String providerId,
+  ) async {
+    await state.loadMoreReviews(providerId);
+    if (!mounted) return;
+    final error = state.reviewsErrorFor(providerId);
+    if (error != null) AarastToast.showError(context, error);
+  }
+
+  /// «ضمن بندك»: the plan's item for his kind has an amount, and his lowest
+  /// riyal price fits it.
+  bool _withinBudget(
+    MarketplaceProvider provider,
+    List<MarketplaceService> services,
+    String? planId,
+  ) {
+    final finance = context.read<FinanceProvider?>();
+    if (planId == null || finance?.loadedPlanId != planId) return false;
+    // G40: the item his offers land in, as the server lists it.
+    final item = budgetItemForCategories(
+      finance!.categories,
+      (item) => finance.providerCategoryIdsFor(item.id),
+      [
+        provider.primaryCategory?.id ?? provider.primaryCategoryId,
+        for (final service in services) service.category?.id,
+      ],
+    );
+    final allocated = num.tryParse(item?.allocatedAmount ?? '') ?? 0;
+    final span = providerOwnKindSpan(
+      provider,
+      services,
+      context.read<ProviderMarketplaceProvider>().packagesFor(provider.id),
+    );
+    return span != null &&
+        span.currency == defaultCurrencyCode &&
+        priceFitsItem(span.min, allocated);
+  }
+}
+
+/// The footer's reason for a closed or a full day; null otherwise.
+String? providerFooterDayBlock(ProviderDayStatus? status) => switch (status) {
+  ProviderDayStatus.closed => aarastText.providersDayClosedReason,
+  ProviderDayStatus.full => aarastText.providersDayFullReason,
+  null => null,
+};
+
+/// f03's footer, one filled button (REFINEMENT_SPEC 2.6). A claimed
+/// listing: «اطلب عرض سعر» (or where the latest request stands) and
+/// «واتساب»; on a closed or full wedding day the request waits, disabled,
+/// with the reason over it. An unclaimed listing takes no request (w33):
+/// «اتصل» and «واتساب», with why.
 extension _ProviderQuoteFooter on _ProviderDetailsScreenState {
   Widget _quoteFooter(String? selectedPlanId) {
     return Consumer<ProviderMarketplaceProvider>(
       builder: (context, marketplace, _) {
         final provider = marketplace.providerDetails(widget.providerId);
-        final claimed = provider?.isClaimed != false;
-        final quotes = marketplace.quotesForProviderInScope(
-          widget.providerId,
-          weddingPlanId: selectedPlanId,
+        if (provider == null) return const SizedBox.shrink();
+        final gender = context.gender;
+        final onWhatsApp = _externalLinkAction(
+          context,
+          providerWhatsAppUri(provider.whatsapp),
+          aarastText.providersWhatsAppFailed,
         );
-        final latest = quotes.isEmpty ? null : quotes.first;
-        final loadingQuote =
-            !_quoteContextReady ||
-            marketplace.isProviderQuoteContextLoading(widget.providerId);
-        final onWhatsApp = provider == null
-            ? null
-            : _externalLinkAction(
-                context,
-                providerWhatsAppUri(provider.whatsapp),
-                'ما قدرنا نفتح واتساب على هذا الجوال.',
-              );
-        if (!claimed && onWhatsApp == null) {
-          return SafeArea(
-            top: false,
-            child: Padding(
-              padding: AarastV3Density.actionInsets,
-              child: _UnclaimedLine(),
+        final String? reason;
+        final Widget main;
+        if (!provider.isClaimed) {
+          reason = aarastText.providersUnclaimedFooter(gender);
+          main = JourneyButton(
+            key: const Key('provider-details-call'),
+            label: aarastText.providersCall(gender),
+            icon: LucideIcons.phone,
+            large: true,
+            expand: true,
+            onPressed: _externalLinkAction(
+              context,
+              phoneCallUri(provider.phone),
+              aarastText.providersCallFailed,
             ),
+          );
+        } else {
+          final quotes = marketplace.quotesForProviderInScope(
+            widget.providerId,
+            weddingPlanId: selectedPlanId,
+          );
+          final latest = quotes.isEmpty ? null : quotes.first;
+          final loading =
+              !_quoteContextReady ||
+              marketplace.isProviderQuoteContextLoading(widget.providerId);
+          final asksNew = providerFooterAsksForNewQuote(latest);
+          // A day he cannot take stops a new request only; a request under
+          // way stays open to follow.
+          reason = asksNew ? _dayBlock(marketplace, provider) : null;
+          main = JourneyButton(
+            key: const Key('provider-details-quote'),
+            label: _primaryQuoteActionLabel(latest, gender),
+            large: true,
+            expand: true,
+            loading: loading,
+            onPressed: loading || reason != null
+                ? null
+                : () => _openPrimaryQuoteAction(context, latest),
           );
         }
         return SafeArea(
           top: false,
-          child: Padding(
-            padding: AarastV3Density.actionInsets,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (!claimed) ...[
-                  _UnclaimedLine(),
-                  const SizedBox(height: AarastV3Space.x2),
-                ],
-                Row(
-                  children: [
-                    if (claimed)
-                      Expanded(
-                        child: JourneyButton(
-                          key: const Key('provider-details-quote'),
-                          label: _primaryQuoteActionLabel(
-                            latest,
-                            context.journeyProfile,
-                          ),
-                          background: context.accent.primary,
-                          large: true,
-                          expand: true,
-                          loading: loadingQuote,
-                          onPressed: loadingQuote
-                              ? null
-                              : () => _openPrimaryQuoteAction(context, latest),
-                        ),
+          child: DecoratedBox(
+            decoration: const BoxDecoration(
+              color: AarastV3Color.paper,
+              border: Border(top: BorderSide(color: AarastV3Color.line)),
+            ),
+            child: Padding(
+              padding: AarastV3Density.actionInsets,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (reason != null) ...[
+                    Text(
+                      reason,
+                      key: const Key('provider-details-footer-reason'),
+                      textAlign: TextAlign.center,
+                      style: JourneyType.of(
+                        JourneyType.small,
+                        color: AarastV3Color.textMuted,
                       ),
-                    if (onWhatsApp != null) ...[
-                      if (claimed) const SizedBox(width: AarastV3Space.x2),
-                      Expanded(
-                        flex: claimed ? 0 : 1,
-                        child: JourneyButton(
-                          key: const Key('provider-whatsapp-action'),
-                          label: 'واتساب',
-                          icon: LucideIcons.messageCircle,
-                          background: AarastV3Color.mintSoft,
-                          foreground: AarastV3Color.mint,
-                          large: true,
-                          expand: !claimed,
-                          onPressed: onWhatsApp,
-                        ),
-                      ),
-                    ],
+                    ),
+                    const SizedBox(height: AarastV3Space.x2),
                   ],
-                ),
-              ],
+                  // «واتساب» takes its own width and the main action the
+                  // rest: a word may go to a second line, never a letter
+                  // (at 320 and 1.3 a shared split broke «واتساب» in two).
+                  LayoutBuilder(
+                    builder: (context, constraints) => Row(
+                      children: [
+                        Expanded(child: main),
+                        if (onWhatsApp != null) ...[
+                          const SizedBox(width: AarastV3Space.x2),
+                          ConstrainedBox(
+                            constraints: BoxConstraints(
+                              maxWidth:
+                                  constraints.maxWidth *
+                                  JourneyEndRow.amountShare,
+                            ),
+                            child: JourneyButton.outline(
+                              key: const Key('provider-whatsapp-action'),
+                              label: aarastText.providersWhatsApp,
+                              icon: LucideIcons.messageCircle,
+                              large: true,
+                              onPressed: onWhatsApp,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -104,32 +185,21 @@ extension _ProviderQuoteFooter on _ProviderDetailsScreenState {
   }
 }
 
-/// Opens [uri] outside the app; null (no link) hides the action. A device
-/// that cannot open it gets [failure] instead of a silent no-op.
+/// Opens [uri] outside the app; null (no link) hides or disables the
+/// action. A phone that cannot open it says so instead of doing nothing.
 VoidCallback? _externalLinkAction(
   BuildContext context,
   Uri? uri,
   String failure,
 ) {
   if (uri == null) return null;
-  return () async {
-    bool opened;
-    try {
-      opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } on PlatformException {
-      opened = false;
-    } on MissingPluginException {
-      opened = false;
-    }
-    if (!opened && context.mounted) AarastToast.showError(context, failure);
-  };
+  // The page's one way out of the app (`openOutsideApp`).
+  return () => openOutsideApp(context, uri, failure);
 }
 
 /// The footer asks for a new request: there is none, or the latest is over
-/// (cancelled, declined, run past its days, its offer expired). The label
-/// and the tap read this one rule; they had two, and on a request past its
-/// days the label said «اطلب عرض جديد» while the tap opened the dead
-/// request (RA-MO-251).
+/// (cancelled, declined, past its days, its offer expired). The label and
+/// the tap read this one rule (RA-MO-251).
 bool providerFooterAsksForNewQuote(QuoteRequest? quote) {
   if (quote == null) return true;
   return switch (quote.status) {
@@ -139,44 +209,46 @@ bool providerFooterAsksForNewQuote(QuoteRequest? quote) {
   };
 }
 
-/// Where the latest request to this provider stands, as the footer's action.
-String _primaryQuoteActionLabel(QuoteRequest? quote, JourneyProfile profile) {
-  final say = profile.say;
-  if (quote == null) return say('اطلب عرض سعر', 'اطلبي عرض سعر');
+/// Where the latest request to him stands, as the footer's action.
+String _primaryQuoteActionLabel(QuoteRequest? quote, String gender) {
+  if (quote == null) return aarastText.providersRequestQuote(gender);
   if (providerFooterAsksForNewQuote(quote)) {
-    return say('اطلب عرض جديد', 'اطلبي عرض جديد');
+    return aarastText.providersRequestAgain(gender);
   }
   if (quote.status == 'SENT' || quote.status == 'VIEWED') {
-    return say('تابع طلبك', 'تابعي طلبك');
+    return aarastText.providersFollowRequest(gender);
   }
-  if (quote.status == 'RESPONDED') return say('شوف العرض', 'شوفي العرض');
-  return say('شوفه في طلباتي', 'شوفيه في طلباتي');
+  if (quote.status == 'RESPONDED') return aarastText.providersOpenOffer(gender);
+  return aarastText.providersOpenInRequests(gender);
 }
 
-/// w33: an unclaimed listing takes no requests until its owner claims it.
-const unclaimedProviderMessage = 'ما يستقبل طلبات لين يستلم صاحبه ملفه';
-
-class _UnclaimedLine extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      unclaimedProviderMessage,
-      key: const Key('provider-details-unclaimed'),
-      textAlign: TextAlign.center,
-      style: JourneyType.of(JourneyType.small, color: AarastV3Color.textMuted),
-    );
-  }
-}
-
-/// A page with no provider to show: the way back above [child].
+/// A page with no provider to show yet, or none at all: the way back above
+/// the state.
 class _DetailsFrame extends StatelessWidget {
-  const _DetailsFrame({required this.onBack, required this.child});
+  const _DetailsFrame({
+    required this.onBack,
+    required this.phase,
+    required this.onRetry,
+  });
 
   final VoidCallback onBack;
-  final Widget child;
+  final JourneyListPhase phase;
+  final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {
+    final (title, body, action) = switch (phase) {
+      JourneyListPhase.error => (
+        aarastText.providersDetailsErrorTitle,
+        aarastText.providersLoadErrorBody(context.gender),
+        aarastText.providersRetry(context.gender),
+      ),
+      _ => (
+        aarastText.providersDetailsMissingTitle,
+        aarastText.providersDetailsMissingBody,
+        null,
+      ),
+    };
     return ListView(
       padding: AarastV3Density.pageInsets,
       children: [
@@ -185,12 +257,43 @@ class _DetailsFrame extends StatelessWidget {
           child: JourneyRoundButton(
             key: const ValueKey('provider-details-back'),
             icon: LucideIcons.arrowRight,
-            tooltip: 'رجوع',
+            tooltip: aarastText.providersBack,
             onPressed: onBack,
           ),
         ),
         const SizedBox(height: AarastV3Space.x5),
-        child,
+        if (phase == JourneyListPhase.loading)
+          const JourneyListState(
+            phase: JourneyListPhase.loading,
+            section: JourneySection.providers,
+          )
+        else
+          Column(
+            key: ValueKey('provider-details-${phase.name}'),
+            children: [
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: JourneyType.of(
+                  JourneyType.lead,
+                  weight: JourneyType.bold,
+                ),
+              ),
+              const SizedBox(height: AarastV3Space.x1),
+              Text(
+                body,
+                textAlign: TextAlign.center,
+                style: JourneyType.of(
+                  JourneyType.body,
+                  color: AarastV3Color.textMuted,
+                ),
+              ),
+              if (action != null) ...[
+                const SizedBox(height: AarastV3Space.x3),
+                JourneyButton(label: action, onPressed: onRetry),
+              ],
+            ],
+          ),
       ],
     );
   }

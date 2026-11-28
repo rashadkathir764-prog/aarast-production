@@ -71,7 +71,7 @@ class _ParticipantProvidersScreenState
           padding: AarastV3Density.pageInsets,
           children: [
             JourneyTabHeader(
-              title: 'المزودين',
+              title: 'المزوّدون',
               status: [
                 if (title.isNotEmpty) title,
                 // B5: said to the reader as who they are.

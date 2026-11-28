@@ -9,25 +9,23 @@ class CompactYemeniMoneyParts {
     this.millionUnit,
   });
 
+  /// The digits as shown, «3», «1.5», «250,000».
   final String number;
+
+  /// The word that sits beside [number]: «مليون» (1, 2, a fraction, 100 and
+  /// up), «ملايين» (3 to 10), «مليونًا» (11 to 99). Null below a million.
   final String? millionUnit;
   final String currency;
   final String spokenCurrency;
 
-  /// The amount as text, kept on one line ([keepCurrencyOnLine]).
-  String get plainText {
-    final unit = millionUnit;
-    return keepCurrencyOnLine(
-      unit == null ? '$number $currency' : '$number $unit $currency',
-    );
-  }
+  /// The digits and their word, «1 مليون», «2 مليون», «3 ملايين», or the
+  /// digits alone below a million.
+  String get _counted => millionUnit == null ? number : '$number $millionUnit';
 
-  String get semanticText {
-    final unit = millionUnit;
-    return unit == null
-        ? '$number $spokenCurrency'
-        : '$number $unit $spokenCurrency';
-  }
+  /// The amount as text, kept on one line ([keepCurrencyOnLine]).
+  String get plainText => keepCurrencyOnLine('$_counted $currency');
+
+  String get semanticText => '$_counted $spokenCurrency';
 
   /// A directionally isolated representation for embedding inside Arabic text.
   ///
@@ -36,11 +34,59 @@ class CompactYemeniMoneyParts {
   /// reordering from turning `1.5 مليون ر.ي` into a detached unit/currency.
   String get directionalText {
     final unit = millionUnit;
-    final suffix = unit == null
-        ? _isolateRtl(currency)
-        : '${_isolateRtl(unit)} ${_isolateRtl(currency)}';
-    return keepCurrencyOnLine(_isolateLtr('$number $suffix'));
+    if (unit == null) {
+      return keepCurrencyOnLine(
+        _isolateLtr('$number ${_isolateRtl(currency)}'),
+      );
+    }
+    return keepCurrencyOnLine(
+      _isolateLtr('$number ${_isolateRtl(unit)} ${_isolateRtl(currency)}'),
+    );
   }
+}
+
+/// A short figure's scale: millions or thousands.
+enum CompactScale {
+  million(one: 'مليون', few: 'ملايين', many: 'مليونًا'),
+  thousand(one: 'ألف', few: 'آلاف', many: 'ألفًا');
+
+  const CompactScale({
+    required this.one,
+    required this.few,
+    required this.many,
+  });
+
+  /// The singular: beside 1, 2, a fraction, and 100 and up.
+  final String one;
+
+  /// After 3 to 10: «3 ملايين».
+  final String few;
+
+  /// After 11 to 99: «15 مليونًا».
+  final String many;
+}
+
+/// [number] as shown («1», «2», «15», «1.5», «-3») with its [scale] word
+/// (LANGUAGE.md §4.7, D136): «1 مليون»، «2 مليون»، «3 ملايين»، «15 مليونًا»،
+/// «100 مليون»، «1.5 مليون»; «2 ألف»، «3 آلاف»، «250 ألفًا»، «800 ألف».
+///
+/// A short figure always opens with its digits. One and two are not said as
+/// words («مليون»، «مليونان»): the dual changes with its place in the
+/// sentence («اتفقت على مليونين»، «الباقي مليونان»), and one figure is read
+/// in every place, so the word form was wrong after every preposition.
+String countedScaleWords(String number, {required CompactScale scale}) =>
+    '$number ${scaleWordBesideDigits(number, scale: scale)}';
+
+/// The [scale] word that sits beside [number]'s digits: the singular for
+/// 1, 2, a fraction and 100 up, the plural after 3 to 10, the accusative
+/// after 11 to 99.
+String scaleWordBesideDigits(String number, {required CompactScale scale}) {
+  final whole = int.tryParse(number.replaceAll(',', ''));
+  if (whole == null) return scale.one;
+  final lastTwo = whole.abs() % 100;
+  if (lastTwo >= 3 && lastTwo <= 10) return scale.few;
+  if (lastTwo >= 11) return scale.many;
+  return scale.one;
 }
 
 // The app's money in three ways, one source (the design critique's blockers
@@ -114,9 +160,10 @@ CompactYemeniMoneyParts compactMoneyParts(
   final absValue = value.abs();
   final negative = value < 0 ? '-' : '';
   if (absValue >= 1000000) {
+    final number = '$negative${compactTenths(absValue, 1000000)}';
     return CompactYemeniMoneyParts(
-      number: '$negative${compactTenths(absValue, 1000000)}',
-      millionUnit: 'مليون',
+      number: number,
+      millionUnit: scaleWordBesideDigits(number, scale: CompactScale.million),
       currency: currencyLabelAr(currencyCode),
       spokenCurrency: currencySpokenLabelAr(currencyCode),
     );

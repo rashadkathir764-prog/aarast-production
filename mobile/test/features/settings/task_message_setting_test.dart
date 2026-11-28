@@ -53,9 +53,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('settings-task-message')), findsOneWidget);
-    expect(find.text('لما تعطي مهمة لأحد'), findsOneWidget);
+    expect(find.text('حين تسند مهمة إلى أحد'), findsOneWidget);
     expect(
-      find.text('نجهّز له رسالة فيها المهمة وموعدها، تنرسل من جوالك أنت.'),
+      find.text('نجهّز له رسالة فيها المهمة وموعدها، تُرسل من جوالك أنت.'),
       findsOneWidget,
     );
     final ask = find.byKey(const Key('settings-task-message-ask'));
@@ -75,7 +75,9 @@ void main() {
       expect(DevicePreferences(stored).taskMessageMode, mode);
     }
 
-    expect(find.bySemanticsLabel('افتح واتساب مباشرة'), findsOneWidget);
+    // Changed on purpose (REFINEMENT_SPEC 2.8): a short fixed choice is a
+    // verbal noun, the same for a man and a woman.
+    expect(find.bySemanticsLabel('فتح واتساب مباشرة'), findsOneWidget);
     expect(api.calls, 0, reason: 'a phone choice, not the server\'s');
     expect(tester.takeException(), isNull);
   });

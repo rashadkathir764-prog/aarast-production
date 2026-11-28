@@ -115,7 +115,7 @@ void main() {
     );
     // D80: every participant reads tasks, guests and providers; only the
     // money can be closed.
-    for (final section in ['المهام', 'الضيوف', 'المزودين']) {
+    for (final section in ['المهام', 'الضيوف', 'المزوّدون']) {
       expect(level(section, 'يشوف'), findsOneWidget, reason: section);
       expect(level(section, 'يعدّل'), findsOneWidget, reason: section);
       expect(level(section, 'لا'), findsNothing, reason: section);

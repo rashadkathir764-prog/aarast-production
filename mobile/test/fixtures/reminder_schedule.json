@@ -96,5 +96,58 @@
         ]
       }
     }
+  },
+  "preferenceCoverage": {
+    "switches": {
+      "taskRemindersEnabled": [
+        "TASK_ASSIGNED",
+        "TASK_DUE_SOON",
+        "TASK_OVERDUE",
+        "WEDDING_COUNTDOWN"
+      ],
+      "paymentRemindersEnabled": [
+        "PAYMENT_SCHEDULE_DUE_SOON",
+        "PAYMENT_SCHEDULE_OVERDUE",
+        "BUDGET_CATEGORY_EXCEEDED",
+        "LOAN_REPAYMENT_DUE_SOON",
+        "LOAN_REPAYMENT_OVERDUE",
+        "FUNDING_EXPECTED"
+      ],
+      "providerMessagesEnabled": [
+        "QUOTE_REQUEST_SUBMITTED",
+        "QUOTE_OFFER_RECEIVED",
+        "QUOTE_ACCEPTED",
+        "QUOTE_REJECTED",
+        "CHAT_MESSAGE_RECEIVED",
+        "BOOKING_NEWS",
+        "QUOTE_REQUEST_EXPIRING",
+        "BOOKING_REQUESTED",
+        "REVIEW_RECEIVED",
+        "REVIEW_REPLIED",
+        "CONVERSATION_REPORT_CLOSED"
+      ],
+      "bookingRemindersEnabled": [
+        "BOOKING_REMINDER"
+      ]
+    },
+    "always": [
+      "SHARING_INVITATION",
+      "SHARING_UPDATED",
+      "SHARING_INVITE_ACCEPTED",
+      "SHARING_INVITE_DECLINED",
+      "PLAN_UPDATED",
+      "SYNC_REQUIRED",
+      "GENERAL",
+      "GUEST_RESPONDED",
+      "PROVIDER_APPROVED",
+      "PROVIDER_NEEDS_CHANGES",
+      "PROVIDER_REJECTED",
+      "PROVIDER_SUSPENDED",
+      "PROVIDER_IN_REVIEW",
+      "PROVIDER_CLAIM_DECIDED",
+      "LISTING_PLAN_CHANGED",
+      "PORTFOLIO_REVIEWED",
+      "PROVIDER_PROFILE_CHANGE_REVIEWED"
+    ]
   }
 }

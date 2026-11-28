@@ -1,6 +1,7 @@
 import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:aarast_mobile/features/marketplace/models/marketplace_models.dart';
-import 'package:aarast_mobile/features/marketplace/screens/provider_marketplace_screen.dart';
+import 'package:aarast_mobile/features/marketplace/widgets/provider_result_card.dart'
+    show providerKindName;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

@@ -23,7 +23,8 @@ class ProviderBoardRow {
   final String title;
   final int stage;
 
-  /// Who and where: «قاعة سبأ · أكّدت 21 يناير», «طلبت من 2 · ينتظر الرد».
+  /// Who and where: «قاعة سبأ · أكدوا 21 يناير», «طلبت من اثنين · ينتظر
+  /// الرد».
   final String detail;
   final String? budgetCategoryId;
 
@@ -238,12 +239,12 @@ ProviderBoardRow _row({
   if (isBooked) {
     if (confirmed != null) {
       final day = confirmed.booking!.eventDate;
+      // The provider confirmed, not the reader: the line is the same for the
+      // groom and the bride, in the words the booking's own screen uses
+      // («أكدوا 21 يناير»). It read «أكّدي» to the bride, an order to her.
       return make(
         4,
-        reader.say(
-          '${_providerName(confirmed)} · أكّد ${formatArabicDayMonth(day)}',
-          '${_providerName(confirmed)} · أكّدي ${formatArabicDayMonth(day)}',
-        ),
+        '${_providerName(confirmed)} · أكدوا ${formatArabicDayMonth(day)}',
       );
     }
     if (outsideParty != null) {
@@ -280,7 +281,7 @@ bool _isLiveQuote(QuoteRequest quote) =>
     quote.lifecycleStatus != 'EXPIRED';
 
 /// A request under way: live and not yet a confirmed booking. The providers
-/// tab opens on «طلباتي» while one is, and on «استكشف» otherwise (D72).
+/// tab opens on «طلباتي» while one is, and on «الدليل» otherwise (D72).
 bool hasRequestUnderWay(Iterable<QuoteRequest> quotes) => quotes.any(
   (quote) => _isLiveQuote(quote) && quote.booking?.isConfirmed != true,
 );

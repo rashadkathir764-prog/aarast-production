@@ -103,7 +103,7 @@ class _LoanRepaymentsSheetState extends State<LoanRepaymentsSheet> {
     if (days < 0) return '$date · متأخرة';
     if (days == 0) return '$date · اليوم';
     if (days <= 30) {
-      return '$date · بعد ${arabicCount(days, one: 'يوم', two: 'يومين', few: 'أيام', many: 'يوم')}';
+      return '$date · بعد ${arabicDays(days)}';
     }
     return date;
   }

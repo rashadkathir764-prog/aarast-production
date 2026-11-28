@@ -222,7 +222,7 @@ extension _PlanCenterPlanEdit on _PlanCenterScreenState {
       builder: (sheetContext) => JourneySheetBody(
         title: context.say('تحذف الخطة؟', 'تحذفين الخطة؟'),
         subtitle:
-            '«${plan.title}» تنقفل من الحين عندك وعند المشاركين، وبعد 30 يوم '
+            '«${plan.title}» تنقفل من الحين عندك وعند المشاركين، وبعد 30 يومًا '
             'تنحذف كلها: الضيوف والدعوات والمهام والمواعيد والمال والمحادثات '
             'والتنبيهات. لين ذاك اليوم '
             '${context.say('تقدر ترجعها', 'تقدرين ترجعينها')} من هنا.',
@@ -252,7 +252,7 @@ extension _PlanCenterPlanEdit on _PlanCenterScreenState {
       context: context,
       builder: (sheetContext) => JourneySheetBody(
         title: context.say('متأكد؟', 'متأكدة؟'),
-        subtitle: 'بعد 30 يوم ما نقدر نرجّع منها شي أبدًا.',
+        subtitle: 'بعد 30 يومًا ما نقدر نرجّع منها شي أبدًا.',
         children: [
           JourneyButton(
             key: const ValueKey('plan-delete-confirm'),
@@ -296,7 +296,7 @@ extension _PlanCenterPlanEdit on _PlanCenterScreenState {
     _showSuccess(
       restore
           ? 'رجعت الخطة كما كانت.'
-          : 'الخطة بتنحذف بعد 30 يوم، و${context.say('تقدر ترجعها', 'تقدرين ترجعينها')} قبلها.',
+          : 'الخطة بتنحذف بعد 30 يومًا، و${context.say('تقدر ترجعها', 'تقدرين ترجعينها')} قبلها.',
     );
     await _load();
   }
